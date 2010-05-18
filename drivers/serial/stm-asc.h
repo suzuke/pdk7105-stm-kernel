@@ -19,6 +19,8 @@
 #include <linux/serial_core.h>
 #include <linux/clk.h>
 #include <linux/stm/pad.h>
+
+#ifdef CONFIG_SERIAL_STM_ASC_FDMA
 #include <linux/stm/stm-dma.h>
 
 struct asc_port_fdma {
@@ -29,6 +31,7 @@ struct asc_port_fdma {
 	struct asc_port_fdma_tx_channel *tx;
 	unsigned int tx_req_id;
 };
+#endif
 
 struct asc_port {
 	struct uart_port port;
