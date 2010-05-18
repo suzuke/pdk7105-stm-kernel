@@ -1479,7 +1479,7 @@ config SERIAL_BCM63XX_CONSOLE
 
 config SERIAL_STM_ASC
 	tristate "ST ASC serial port support"
-	depends on CPU_SUBTYPE_ST40
+	depends on STM_DRIVERS
 	default y
 	select SERIAL_CORE
 	help

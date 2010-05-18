@@ -543,7 +543,7 @@ config I2C_SIMTEC
 
 config I2C_STM
 	tristate "STMicroelectronics SSC I2C support"
-	depends on CPU_SUBTYPE_ST40
+	depends on STM_DRIVERS
 	help
 	  Enable this option to add support for STMicroelectronics SoCs
 	  hardware SSC (Synchronous Serial Controller) as a I2C controller.

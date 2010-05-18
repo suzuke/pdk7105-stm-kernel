@@ -3,9 +3,8 @@
 #
 
 config STM_DRIVERS
-	boolean
-	default y if CPU_SUBTYPE_ST40
-	default n
+	def_bool n
+	select ARCH_REQUIRE_GPIOLIB
 
 menu "STM specific devices"
         depends on STM_DRIVERS
