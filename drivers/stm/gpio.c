@@ -719,6 +719,8 @@ void __init stm_gpio_early_init(struct platform_device pdevs[], int num,
 		struct platform_device *pdev = &pdevs[port_no];
 		struct resource *memory;
 		struct stm_gpio_port *port = &stm_gpio_ports[port_no];
+		struct stm_plat_pio_data *data = dev_get_platdata(&pdev->dev);
+		void __iomem *regs;
 
 		/* Skip non existing ports */
 		if (!pdev->name)
@@ -728,10 +730,15 @@ void __init stm_gpio_early_init(struct platform_device pdevs[], int num,
 		if (!memory)
 			panic("stm_gpio: Can't find memory resource!\n");
 
-		port->base = ioremap(memory->start,
+		regs = NULL;
+		if (data)
+			regs = data->regs;
+		if (!regs)
+			regs = ioremap(memory->start,
 				memory->end - memory->start + 1);
-		if (!port->base)
+		if (!regs)
 			panic("stm_gpio: Can't get IO memory mapping!\n");
+		port->base = regs;
 		port->gpio_chip.request = stm_gpio_request;
 		port->gpio_chip.free = stm_gpio_free;
 		port->gpio_chip.get = stm_gpio_get;

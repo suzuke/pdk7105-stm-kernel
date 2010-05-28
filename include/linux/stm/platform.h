@@ -88,6 +88,7 @@ struct stm_plat_asc_data {
 	int hw_flow_control:1;
 	int txfifo_bug:1;
 	struct stm_pad_config *pad_config;
+	void __iomem *regs;
 };
 
 extern int stm_asc_console_device;
@@ -241,6 +242,10 @@ struct stm_plat_sata_data {
 };
 
 /*** PIO platform data ***/
+
+struct stm_plat_pio_data {
+	void __iomem *regs;
+};
 
 struct stm_plat_pio_irqmux_data {
 	int port_first;

@@ -313,9 +313,12 @@ static void __devinit asc_init_port(struct asc_port *ascport,
 	ascport->fdma.tx_req_id = pdev->resource[3].start;
 #endif
 
-	/* Assume that we can always use ioremap */
-	port->flags	|= UPF_IOREMAP;
-	port->membase	= NULL;
+	if (plat_data->regs)
+		port->membase = plat_data->regs;
+	else {
+		port->flags	|= UPF_IOREMAP;
+		port->membase	= NULL;
+	}
 
 	ascport->clk = clk_get(&pdev->dev, "comms_clk");
 	if (IS_ERR(ascport->clk))
