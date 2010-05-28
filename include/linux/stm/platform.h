@@ -59,9 +59,22 @@
 			.flags = IORESOURCE_IRQ, \
 		}
 
-#else
+#elif defined(CONFIG_ARCH_ST200)
 
-#error Unknown architecture
+#define STM_PLAT_RESOURCE_IRQ(_st40, _st200) \
+		{ \
+			.start = (_st200), \
+			.end = (_st200), \
+			.flags = IORESOURCE_IRQ, \
+		}
+
+#define STM_PLAT_RESOURCE_IRQ_NAMED(_name, _st40, _st200) \
+		{ \
+			.start = (_st200), \
+			.end = (_st200), \
+			.name = (_name), \
+			.flags = IORESOURCE_IRQ, \
+		}
 
 #endif
 
