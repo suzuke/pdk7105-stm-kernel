@@ -358,6 +358,17 @@ config ARCH_NOMADIK
 	help
 	  Support for the Nomadik platform by ST-Ericsson
 
+config ARCH_STM
+	bool "STMicroelectronics Consumer Electronics family"
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	select HAVE_ARM_GT
+	select STM_DRIVERS
+	help
+	  This enables support for STMicroelectronics Digital Consumer
+	  Electronics family of parts, primarily targetted at set-top-box
+	  and other digital audio/video applications.
+
 config ARCH_IOP13XX
 	bool "IOP13xx-based"
 	depends on MMU
@@ -787,6 +798,8 @@ source "arch/arm/mach-at91/Kconfig"
 source "arch/arm/plat-mxc/Kconfig"
 
 source "arch/arm/mach-nomadik/Kconfig"
+
+source "arch/arm/mach-stm/Kconfig"
 
 source "arch/arm/mach-netx/Kconfig"
 

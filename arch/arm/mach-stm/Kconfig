@@ -1,0 +1,18 @@
+menu "STMicroelectronics Consumer Electronics platform type"
+	depends on ARCH_STM
+
+config MACH_STM_NICE
+	bool "Support NICE generic platform"
+	select ARM_GIC
+	select CPU_V7
+	help
+	  Include support for a generic NICE platform.
+
+
+config MACH_STM_MBXXX
+       bool "Support MBxxx board"
+       select MACH_STM_NICE
+       help
+         Include support for an MBxxx board which has a NICE SOC.
+
+endmenu
