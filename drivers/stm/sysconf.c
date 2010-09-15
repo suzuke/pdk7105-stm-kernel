@@ -634,10 +634,14 @@ void __init sysconf_early_init(struct platform_device *pdevs, int pdevs_num)
 		BUG_ON(!mem);
 
 		block->size = mem->end - mem->start + 1;
-		block->base = ioremap(mem->start, block->size);
-		if (!block->base)
-			panic("Unable to ioremap %s registers!",
-			      dev_name(&block->pdev->dev));
+		if (data->regs)
+			block->base = data->regs;
+		else {
+			block->base = ioremap(mem->start, block->size);
+			if (!block->base)
+				panic("Unable to ioremap %s registers!",
+				      dev_name(&block->pdev->dev));
+		}
 
 		sysconf_groups_num += data->groups_num;
 	}

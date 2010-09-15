@@ -286,6 +286,7 @@ struct stm_plat_sysconf_group {
 struct stm_plat_sysconf_data {
 	int groups_num;
 	struct stm_plat_sysconf_group *groups;
+	void __iomem *regs;
 };
 
 
