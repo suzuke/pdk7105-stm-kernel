@@ -66,6 +66,16 @@ static struct map_desc nice_io_desc[] __initdata = {
 		.pfn		= __phys_to_pfn(NICE_PIO_SAS_FRONT_BASE),
 		.length		= SZ_64K,
 		.type		= MT_DEVICE,
+	}, {
+		.virtual	= IO_ADDRESS(NICE_SBC_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(NICE_SBC_SYSCONF_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	}, {
+		.virtual	= IO_ADDRESS(NICE_SBC_ASC0_BASE),
+		.pfn		= __phys_to_pfn(NICE_SBC_ASC0_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
 	}	
 };
 

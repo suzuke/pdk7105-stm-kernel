@@ -58,7 +58,7 @@ struct asc_port {
 
 #define FIFO_SIZE		16
 
-#define ASC_MAX_PORTS		4
+#define ASC_MAX_PORTS		8
 
 /*---- Global variables ---------------------------------------*/
 

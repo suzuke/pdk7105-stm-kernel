@@ -13,7 +13,8 @@
 
 #include <mach/soc-nice.h>
 
-#define DEBUG_LL_UART_OFFSET	(NICE_ASC0_BASE & 0x03ffffff)
+//#define DEBUG_LL_UART_OFFSET	(NICE_ASC0_BASE & 0x03ffffff)
+#define DEBUG_LL_UART_OFFSET	(NICE_SBC_ASC0_BASE & 0x03ffffff)
 
 #ifndef DEBUG_LL_UART_OFFSET
 #error "Unknown platform"
@@ -24,8 +25,8 @@
 		tst	\rx, #1			@ MMU enabled?
 		moveq	\rx,      #0xfc000000	@ physical base
 		movne	\rx,      #0xfb000000	@ virtual base
-		orr	\rx, \rx, #(DEBUG_LL_UART_OFFSET & 0x03fc0000)
-		orr	\rx, \rx, #(DEBUG_LL_UART_OFFSET & 0x0003f000)
+		add	\rx, \rx, #(DEBUG_LL_UART_OFFSET & 0x03fc0000)
+		add	\rx, \rx, #(DEBUG_LL_UART_OFFSET & 0x0003f000)
 		.endm
 
 #include <asm/hardware/debug-stm-asc.S>

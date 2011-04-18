@@ -36,16 +36,61 @@
 
 /* ASC resources ---------------------------------------------------------- */
 
-static struct stm_pad_config nice_asc_pad_config[4];
+static struct stm_pad_config nice_asc_pad_config[6] = {
+
+	/* Comms block ASCs in SASG1 */
+	[0] = {
+		/* UART0 */
+		/* Tx: PIO10[0], Rx: PIO10[1], RTS: PIO10[3], CTS: PIO10[2] */
+		/* Plus smartcard signals on PIO10[4] to PIO10[7] */
+	},
+	[1] = {
+		/* UART1 */
+		/* Tx: PIO11[0], Rx: PIO11[1], RTS: PIO11[3], CTS: PIO11[2] */
+		/* Plus smartcard signals on PIO10[4] to PIO10[7] */
+	},
+	[2] = {
+		/* UART2 */
+		/* Tx: PIO17[4], Rx: PIO17[5], RTS: PIO17[7], CTS: PIO17[6] */
+	},
+	[3] = {
+		/* UART3 - not wired to pins */
+	},
+
+	/* SBC comms block ASCs in SASG1 */
+	[4] = {
+		/* UART10 */
+		/* Tx: PIO3[4], Rx: PIO3[5], RTS: PIO3[7], CTS: PIO3[6] */
+	},
+	[5] = {
+		/* UART11 */
+		/* Tx: PIO2[6], Rx: PIO2[7], RTS: PIO3[0], CTS: PIO3[1] */
+	},
+
+#if 0
+	/* MPE41 UART */
+	[6] = {
+		/* UART100 */
+		/* Tx: PIO101[1], Rx: PIO101[2], RTS: PIO101[4], CTS: PIO101[3] */
+	},
+#endif
+};
 
 static struct platform_device nice_asc_devices[] = {
+
+	/* Comms block ASCs in SASG1 */
+	/*
+	 * Assuming these are UART0 to UART2 in the PIO document.
+	 * Note no UART3.
+	 * Assuming these are asc_100 to asc_103 in interrupt document
+	 */
 	[0] = {
 		.name = "stm-asc",
 		/* .id set in nice_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(NICE_ASC0_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(171+32),
+			STM_PLAT_RESOURCE_IRQ(195+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 11),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 15),
 		},
@@ -60,7 +105,7 @@ static struct platform_device nice_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(NICE_ASC1_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(172+32),
+			STM_PLAT_RESOURCE_IRQ(196+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 12),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 16),
 		},
@@ -74,7 +119,7 @@ static struct platform_device nice_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(NICE_ASC2_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(173+32),
+			STM_PLAT_RESOURCE_IRQ(197+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 13),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 17),
 		},
@@ -88,7 +133,7 @@ static struct platform_device nice_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(NICE_ASC3_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(174+32),
+			STM_PLAT_RESOURCE_IRQ(198+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
@@ -96,6 +141,48 @@ static struct platform_device nice_asc_devices[] = {
 			.pad_config = &nice_asc_pad_config[3],
 		},
 	},
+
+	/* SBC comms block ASCs in SASG1 */
+	/*
+	 * Assuming these are UART10 and UART11 in the PIO document.
+	 * Assuming these are lpm_uart_0 and lpm_uart_1 in interrupt document.
+	 */
+	[4] = {
+		.name = "stm-asc",
+		/* .id set in nice_configure_asc() */
+		.num_resources = 4,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(NICE_SBC_ASC0_BASE, 0x2c),
+			STM_PLAT_RESOURCE_IRQ(209+32),
+			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
+			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
+		},
+		.dev.platform_data = &(struct stm_plat_asc_data) {
+			.pad_config = &nice_asc_pad_config[4],
+		},
+	},
+#if 0
+	[5] = {
+		.name = "stm-asc",
+		/* .id set in nice_configure_asc() */
+		.num_resources = 4,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(NICE_SBC_ASC1_BASE, 0x2c),
+			STM_PLAT_RESOURCE_IRQ(210+32),
+			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
+			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
+		},
+		.dev.platform_data = &(struct stm_plat_asc_data) {
+			.pad_config = &nice_asc_pad_config[5],
+		},
+	},
+#endif
+
+	/*
+	 * Note the interrupt document also describes a top level UART
+	 * in the MPE41, described simply as asc_0. 
+	 * Memory map describes a top level UART_0, at 0xFD4FB000.
+	 */
 };
 
 /* Note these three variables are global, and shared with the stasc driver
@@ -251,5 +338,6 @@ void clk_put()
 
 int clk_get_rate()
 {
-	return 100000000;
+	/* Return correct value for comms clock, so ASC works. */
+	return 450000;
 }

@@ -9,10 +9,10 @@ config MACH_STM_NICE
 	  Include support for a generic NICE platform.
 
 
-config MACH_STM_MBXXX
-       bool "Support MBxxx board"
-       select MACH_STM_NICE
-       help
-         Include support for an MBxxx board which has a NICE SOC.
+config MACH_STIH415_VELOCE
+	bool "Support STiH415 Veloce emulator platform"
+	select MACH_STM_NICE
+	help
+	  Include support for a STiH415 Veloce emulator platform.
 
 endmenu
