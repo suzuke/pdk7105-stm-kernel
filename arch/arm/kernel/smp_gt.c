@@ -147,7 +147,7 @@ static irqreturn_t gt_clockevent_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-struct irqaction gt_clockevent_irq = {
+static struct irqaction gt_clockevent_irq = {
 	.handler = gt_clockevent_interrupt,
 	.dev_id = &gt_clockevent,
 	.flags = IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
