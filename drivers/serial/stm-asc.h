@@ -42,6 +42,7 @@ struct asc_port {
 	int txfifo_bug:1;
 	int suspended:1;
 	int check_parity:1;
+	unsigned int force_m1:1;
 #ifdef CONFIG_SERIAL_STM_ASC_FDMA
 	struct asc_port_fdma fdma;
 #endif

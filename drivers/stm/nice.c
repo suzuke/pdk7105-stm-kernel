@@ -130,6 +130,7 @@ void __init nice_configure_asc(int asc, struct nice_asc_config *config)
 
 	pdev->id = tty_id++;
 	plat_data->hw_flow_control = config->hw_flow_control;
+	plat_data->force_m1 = config->force_m1;
 
 	if (config->is_console)
 		stm_asc_console_device = pdev->id;

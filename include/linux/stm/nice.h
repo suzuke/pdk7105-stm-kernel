@@ -22,6 +22,7 @@ struct nice_asc_config {
 	} routing;
 	int hw_flow_control;
 	int is_console;
+	int force_m1;
 };
 void nice_configure_asc(int asc, struct nice_asc_config *config);
 
