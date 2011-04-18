@@ -371,10 +371,11 @@ static int __init asc_console_init(void)
 	if (!stm_asc_configured_devices_num)
 		return 0;
 
-	asc_init_ports();
-	register_console(&asc_console);
-	if (stm_asc_console_device != -1)
+	if (stm_asc_console_device >= 0) {
 		add_preferred_console("ttyAS", stm_asc_console_device, NULL);
+		asc_init_ports();
+		register_console(&asc_console);
+	}
 
 	return 0;
 }
