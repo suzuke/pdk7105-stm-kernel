@@ -211,7 +211,7 @@ CONFIG_ARCH_STM=y
 # STMicroelectronics Consumer Electronics platform type
 #
 # CONFIG_CPU_SUBTYPE_STX7108 is not set
-CONFIG_MACH_STM_NICE=y
+CONFIG_MACH_STM_STIH415=y
 # CONFIG_MACH_STM_STX7108 is not set
 # CONFIG_MACH_STM_MBXXX is not set
 # CONFIG_MACH_STM_MBYYY is not set

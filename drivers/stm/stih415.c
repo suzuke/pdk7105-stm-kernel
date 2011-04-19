@@ -17,11 +17,11 @@
 #include <linux/stm/emi.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
-#include <linux/stm/nice.h>
+#include <linux/stm/stih415.h>
 
 #include <asm/mach/map.h>
 
-#include <mach/soc-nice.h>
+#include <mach/soc-stih415.h>
 #include <mach/hardware.h>
 
 /* Currently STM_PLAT_RESOURCE_IRQ only works for SH4 and ST200 */
@@ -36,7 +36,7 @@
 
 /* ASC resources ---------------------------------------------------------- */
 
-static struct stm_pad_config nice_asc_pad_config[6] = {
+static struct stm_pad_config stih415_asc_pad_config[6] = {
 
 	/* Comms block ASCs in SASG1 */
 	[0] = {
@@ -76,7 +76,7 @@ static struct stm_pad_config nice_asc_pad_config[6] = {
 #endif
 };
 
-static struct platform_device nice_asc_devices[] = {
+static struct platform_device stih415_asc_devices[] = {
 
 	/* Comms block ASCs in SASG1 */
 	/*
@@ -86,59 +86,59 @@ static struct platform_device nice_asc_devices[] = {
 	 */
 	[0] = {
 		.name = "stm-asc",
-		/* .id set in nice_configure_asc() */
+		/* .id set in stih415_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_ASC0_BASE, 0x2c),
+			STM_PLAT_RESOURCE_MEM(STIH415_ASC0_BASE, 0x2c),
 			STM_PLAT_RESOURCE_IRQ(195+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 11),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 15),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &nice_asc_pad_config[0],
-			.regs = (void __iomem *)IO_ADDRESS(NICE_ASC0_BASE),
+			.pad_config = &stih415_asc_pad_config[0],
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_ASC0_BASE),
 		},
 	},
 	[1] = {
 		.name = "stm-asc",
-		/* .id set in nice_configure_asc() */
+		/* .id set in stih415_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_ASC1_BASE, 0x2c),
+			STM_PLAT_RESOURCE_MEM(STIH415_ASC1_BASE, 0x2c),
 			STM_PLAT_RESOURCE_IRQ(196+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 12),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 16),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &nice_asc_pad_config[1],
+			.pad_config = &stih415_asc_pad_config[1],
 		},
 	},
 	[2] = {
 		.name = "stm-asc",
-		/* .id set in nice_configure_asc() */
+		/* .id set in stih415_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_ASC2_BASE, 0x2c),
+			STM_PLAT_RESOURCE_MEM(STIH415_ASC2_BASE, 0x2c),
 			STM_PLAT_RESOURCE_IRQ(197+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 13),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 17),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &nice_asc_pad_config[2],
+			.pad_config = &stih415_asc_pad_config[2],
 		},
 	},
 	[3] = {
 		.name = "stm-asc",
-		/* .id set in nice_configure_asc() */
+		/* .id set in stih415_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_ASC3_BASE, 0x2c),
+			STM_PLAT_RESOURCE_MEM(STIH415_ASC3_BASE, 0x2c),
 			STM_PLAT_RESOURCE_IRQ(198+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &nice_asc_pad_config[3],
+			.pad_config = &stih415_asc_pad_config[3],
 		},
 	},
 
@@ -149,31 +149,31 @@ static struct platform_device nice_asc_devices[] = {
 	 */
 	[4] = {
 		.name = "stm-asc",
-		/* .id set in nice_configure_asc() */
+		/* .id set in stih415_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_SBC_ASC0_BASE, 0x2c),
+			STM_PLAT_RESOURCE_MEM(STIH415_SBC_ASC0_BASE, 0x2c),
 			STM_PLAT_RESOURCE_IRQ(209+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &nice_asc_pad_config[4],
+			.pad_config = &stih415_asc_pad_config[4],
 		},
 	},
 #if 0
 	[5] = {
 		.name = "stm-asc",
-		/* .id set in nice_configure_asc() */
+		/* .id set in stih415_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_SBC_ASC1_BASE, 0x2c),
+			STM_PLAT_RESOURCE_MEM(STIH415_SBC_ASC1_BASE, 0x2c),
 			STM_PLAT_RESOURCE_IRQ(210+32),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &nice_asc_pad_config[5],
+			.pad_config = &stih415_asc_pad_config[5],
 		},
 	},
 #endif
@@ -194,17 +194,17 @@ int __initdata stm_asc_console_device;
 /* Platform devices to register */
 unsigned int __initdata stm_asc_configured_devices_num = 0;
 struct platform_device __initdata
-		*stm_asc_configured_devices[ARRAY_SIZE(nice_asc_devices)];
+		*stm_asc_configured_devices[ARRAY_SIZE(stih415_asc_devices)];
 
-void __init nice_configure_asc(int asc, struct nice_asc_config *config)
+void __init stih415_configure_asc(int asc, struct stih415_asc_config *config)
 {
-	static int configured[ARRAY_SIZE(nice_asc_devices)];
+	static int configured[ARRAY_SIZE(stih415_asc_devices)];
 	static int tty_id;
-	struct nice_asc_config default_config = {};
+	struct stih415_asc_config default_config = {};
 	struct platform_device *pdev;
 	struct stm_plat_asc_data *plat_data;
 
-	BUG_ON(asc < 0 || asc >= ARRAY_SIZE(nice_asc_devices));
+	BUG_ON(asc < 0 || asc >= ARRAY_SIZE(stih415_asc_devices));
 
 	BUG_ON(configured[asc]);
 	configured[asc] = 1;
@@ -212,7 +212,7 @@ void __init nice_configure_asc(int asc, struct nice_asc_config *config)
 	if (!config)
 		config = &default_config;
 
-	pdev = &nice_asc_devices[asc];
+	pdev = &stih415_asc_devices[asc];
 	plat_data = pdev->dev.platform_data;
 
 	pdev->id = tty_id++;
@@ -226,28 +226,28 @@ void __init nice_configure_asc(int asc, struct nice_asc_config *config)
 }
 
 /* Add platform device as configured by board specific code */
-static int __init nice_add_asc(void)
+static int __init stih415_add_asc(void)
 {
 	return platform_add_devices(stm_asc_configured_devices,
 			stm_asc_configured_devices_num);
 }
-arch_initcall(nice_add_asc);
+arch_initcall(stih415_add_asc);
 
 
 
 /* PIO ports resources ---------------------------------------------------- */
 
-static struct platform_device nice_pio_devices[] = {
+static struct platform_device stih415_pio_devices[] = {
 	/* MPE PIO block */
 	[0] = {
 		.name = "stm-gpio",
 		.id = 0,
 		.num_resources = 2,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_PIO_MPE_BASE, 0x100),
+			STM_PLAT_RESOURCE_MEM(STIH415_PIO_MPE_BASE, 0x100),
 		},
 		.dev.platform_data = &(struct stm_plat_pio_data) {
-			.regs = (void __iomem *)IO_ADDRESS(NICE_PIO_MPE_BASE),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_PIO_MPE_BASE),
 		},
 	},
 	/* SAS rear PIO block */
@@ -256,10 +256,10 @@ static struct platform_device nice_pio_devices[] = {
 		.id = 1,
 		.num_resources = 2,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_PIO_SAS_REAR_BASE, 0x100),
+			STM_PLAT_RESOURCE_MEM(STIH415_PIO_SAS_REAR_BASE, 0x100),
 		},
 		.dev.platform_data = &(struct stm_plat_pio_data) {
-			.regs = (void __iomem *)IO_ADDRESS(NICE_PIO_SAS_REAR_BASE),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_PIO_SAS_REAR_BASE),
 		},
 	},
 	/* SAS front PIO block */
@@ -268,15 +268,15 @@ static struct platform_device nice_pio_devices[] = {
 		.id = 2,
 		.num_resources = 2,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(NICE_PIO_SAS_FRONT_BASE, 0x100),
+			STM_PLAT_RESOURCE_MEM(STIH415_PIO_SAS_FRONT_BASE, 0x100),
 		},
 		.dev.platform_data = &(struct stm_plat_pio_data) {
-			.regs = (void __iomem *)IO_ADDRESS(NICE_PIO_SAS_FRONT_BASE),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_PIO_SAS_FRONT_BASE),
 		},
 	},
 };
 
-static int nice_pio_config(unsigned gpio,
+static int stih415_pio_config(unsigned gpio,
                 enum stm_pad_gpio_direction direction, int function)
 {
 	switch (direction) {
@@ -311,14 +311,14 @@ static int nice_pio_config(unsigned gpio,
 /* Early initialisation-----------------------------------------------------*/
 
 /* Initialise devices which are required early in the boot process. */
-void __init nice_early_device_init(void)
+void __init stih415_early_device_init(void)
 {
 #if 0
 	/* Initialise PIO and sysconf drivers */
-	sysconf_early_init(&nice_sysconf_device, 1);
+	sysconf_early_init(&stih415_sysconf_device, 1);
 #endif
-	stm_gpio_early_init(nice_pio_devices,
-			ARRAY_SIZE(nice_pio_devices),
+	stm_gpio_early_init(stih415_pio_devices,
+			ARRAY_SIZE(stih415_pio_devices),
 			256);
 	stm_pad_init(ARRAY_SIZE(nice_pio_devices) * STM_GPIO_PINS_PER_PORT,
 		     0, 0, nice_pio_config);

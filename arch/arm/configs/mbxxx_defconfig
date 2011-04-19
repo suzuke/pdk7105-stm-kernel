@@ -204,7 +204,7 @@ CONFIG_ARCH_STM=y
 #
 # STMicroelectronics Consumer Electronics platform type
 #
-CONFIG_MACH_STM_NICE=y
+CONFIG_MACH_STM_STIH415=y
 CONFIG_MACH_STM_MBXXX=y
 
 #

@@ -12,7 +12,7 @@
 #ifndef __ASM_ARCH_IRQS_H
 #define __ASM_ARCH_IRQS_H
 
-#include <mach/irqs-nice.h>
+#include <mach/irqs-stih415.h>
 
 #define IRQ_GLOBALTIMER		27
 #define IRQ_LOCALTIMER		29

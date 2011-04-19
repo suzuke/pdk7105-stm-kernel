@@ -11,10 +11,10 @@
  * published by the Free Software Foundation.
  */
 
-#include <mach/soc-nice.h>
+#include <mach/soc-stih415.h>
 
-//#define DEBUG_LL_UART_OFFSET	(NICE_ASC0_BASE & 0x03ffffff)
-#define DEBUG_LL_UART_OFFSET	(NICE_SBC_ASC0_BASE & 0x03ffffff)
+//#define DEBUG_LL_UART_OFFSET	(STIH415_ASC0_BASE & 0x03ffffff)
+#define DEBUG_LL_UART_OFFSET	(STIH415_SBC_ASC0_BASE & 0x03ffffff)
 
 #ifndef DEBUG_LL_UART_OFFSET
 #error "Unknown platform"

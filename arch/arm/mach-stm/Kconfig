@@ -1,17 +1,16 @@
 menu "STMicroelectronics Consumer Electronics platform type"
 	depends on ARCH_STM
 
-config MACH_STM_NICE
-	bool "Support NICE generic platform"
+config MACH_STM_STIH415
+	bool "Support STiH415 generic platform"
 	select ARM_GIC
 	select CPU_V7
 	help
-	  Include support for a generic NICE platform.
-
+	  Include support for a generic STiH415 (Orly) platform.
 
 config MACH_STIH415_VELOCE
 	bool "Support STiH415 Veloce emulator platform"
-	select MACH_STM_NICE
+	select MACH_STM_STIH415
 	help
 	  Include support for a STiH415 Veloce emulator platform.
 

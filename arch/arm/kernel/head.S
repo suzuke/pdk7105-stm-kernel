@@ -329,13 +329,13 @@ __create_page_tables:
 	str	r3, [r0]
 #endif
 #ifdef CONFIG_MACH_STIH415_VELOCE
-#include <mach/soc-nice.h>
+#include <mach/soc-stih415.h>
 	/*
 	 * Initialise the UART, as we don't have a boot loader.
 	 */
 
 	/* SBC sysconf initialise */
-	ldr	r0, =NICE_SBC_SYSCONF_BASE
+	ldr	r0, =STIH415_SBC_SYSCONF_BASE
 	mov	r3, #0x00110000
 	str	r3, [r0, #0x0c]
 	mov	r3, #0x10000000
@@ -352,7 +352,7 @@ __create_page_tables:
 	 * eg Fmax = 980KHz, ICCLK=490KHz, so for 4800 baud, ASCBaudRate=10272
 	 *    Fmax = 900KHz, ICCLK=450KHz, so for 4800 baud, ASCBaudRate=11185
 	 */
-	ldr	r0, =NICE_SBC_ASC0_BASE
+	ldr	r0, =STIH415_SBC_ASC0_BASE
 	ldr	r3, =0x00002BB1
 	str	r3, [r0, #0x00]	/* ASC_BAUD_RATE */
 	ldr	r3, =0x00001589	/* 8 bit, no parity, 1 stop, no CTS */

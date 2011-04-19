@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-stm/include/mach/irqs-nice.h
+ * arch/arm/mach-stm/include/mach/irqs-stih415.h
  *
  * Copyright (C) 2010 STMicroelectronics Limited.
  * Author: Stuart Menefy <stuart.menefy@st.com>
@@ -9,4 +9,3 @@
  * published by the Free Software Foundation.
  */
 
-#define IRQ_NICE_ASC0		(IRQ_GIC_START + 171)

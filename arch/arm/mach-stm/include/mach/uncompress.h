@@ -20,7 +20,12 @@
  */
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
-#include <mach/soc-nice.h>
+
+#ifdef CONFIG_MACH_STM_STIH415
+#include <mach/soc-stih415.h>
+#elif defined(CONFIG_MACH_STM_STX7108)
+#include <mach/soc-stx7108.h>
+#endif
 
 #define ASC_TX_BUF(base)	(*(volatile unsigned int*)((base) + 0x04))
 #define ASC_CTRL(base)		(*(volatile unsigned int*)((base) + 0x0c))
@@ -34,10 +39,11 @@
  */
 static inline unsigned long get_uart_base(void)
 {
+#ifdef CONFIG_MACH_STM_STIH415
 	if (machine_is_stm_mbxxx())
-		return NICE_ASC0_BASE;
-	else
-		return 0;
+		return STIH415_ASC0_BASE;
+#endif
+	return 0;
 }
 
 /*
