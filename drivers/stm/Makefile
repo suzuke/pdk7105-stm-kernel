@@ -7,8 +7,10 @@ obj-y					+= gpio.o
 obj-y					+= pad.o
 obj-y					+= sysconf.o
 obj-y					+= device.o
+ifeq ($(CONFIG_SUPERH), y)
 obj-y					+= clk.o
 obj-y					+= clocks/
+endif
 
 obj-$(CONFIG_STM_DMA)			+= fdma.o fdma-xbar.o
 obj-$(CONFIG_STM_MIPHY)			+= miphy.o

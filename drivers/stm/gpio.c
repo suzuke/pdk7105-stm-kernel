@@ -25,6 +25,7 @@
 #include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/sysdev.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/pio.h>
