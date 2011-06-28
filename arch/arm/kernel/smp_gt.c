@@ -134,7 +134,6 @@ static struct clock_event_device gt_clockevent = {
 	.cpumask	= cpu_all_mask,
 };
 
-#ifndef CONFIG_SMP
 static irqreturn_t gt_clockevent_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = dev_id;
@@ -152,25 +151,6 @@ static struct irqaction gt_clockevent_irq = {
 	.dev_id = &gt_clockevent,
 	.flags = IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
 };
-#endif
-
-#ifdef CONFIG_SMP
-/*
- * local_timer_ack: checks for a local timer interrupt.
- *
- * If a local timer interrupt has occurred, acknowledge and return 1.
- * Otherwise, return 0.
- */
-int twd_timer_ack(void)
-{
-	if (__raw_readl(gt_base + GT_INT_STATUS)) {
-		__raw_writel(1, gt_base + GT_INT_STATUS);
-		return 1;
-	}
-
-	return 0;
-}
-#endif
 
 static void __init gt_clockevents_init(int timer_irq)
 {
@@ -185,17 +165,10 @@ static void __init gt_clockevents_init(int timer_irq)
 	gt_clockevent.min_delta_ns =
 		clockevent_delta2ns(0xf, &gt_clockevent);
 
-#ifdef CONFIG_SMP
-	/* Make sure our local interrupt controller has this enabled */
-	local_irq_save(flags);
-	get_irq_chip(timer_irq)->unmask(timer_irq);
-	local_irq_restore(flags);
-#else
 	gt_clockevent_irq.name = gt_clockevent.name;
 	gt_clockevent_irq.irq = timer_irq;
 
 	setup_irq(timer_irq, &gt_clockevent_irq);
-#endif
 
 	clockevents_register_device(&gt_clockevent);
 }
