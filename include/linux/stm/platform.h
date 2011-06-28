@@ -372,6 +372,7 @@ struct stm_plat_fdma_fw_regs {
 	unsigned long cntn;
 	unsigned long saddrn;
 	unsigned long daddrn;
+	unsigned long node_size;
 };
 
 struct stm_plat_fdma_data {
@@ -523,5 +524,19 @@ struct stm_mali_config {
 	int num_ext_resources;
 	struct stm_mali_resource *ext_mem;
 };
+
+#ifdef CONFIG_SUPERH
+#include <asm/processor.h>
+static inline const char* stm_soc(void)
+{
+	return get_cpu_subtype(&current_cpu_data);
+}
+#else
+static inline const char* stm_soc(void)
+{
+	return "STiH415";
+}
+#endif
+
 
 #endif /* __LINUX_STM_PLATFORM_H */

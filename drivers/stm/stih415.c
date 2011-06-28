@@ -308,6 +308,134 @@ static int stih415_pio_config(unsigned gpio,
 
 
 
+/* FDMA resources --------------------------------------------------------- */
+
+static struct stm_plat_fdma_fw_regs stih415_fdma_fw = {
+	.rev_id    = 0x10000,
+	.cmd_statn = 0x10200,
+	.req_ctln  = 0x10240,
+	.ptrn      = 0x10800,
+	.cntn      = 0x10808,
+	.saddrn    = 0x1080c,
+	.daddrn    = 0x10810,
+	.node_size = 128,
+};
+
+static struct stm_plat_fdma_hw stih415_fdma_hw = {
+	.slim_regs = {
+		.id       = 0x0000 + (0x000 << 2), /* 0x0000 */
+		.ver      = 0x0000 + (0x001 << 2), /* 0x0004 */
+		.en       = 0x0000 + (0x002 << 2), /* 0x0008 */
+		.clk_gate = 0x0000 + (0x003 << 2), /* 0x000c */
+	},
+	.dmem = {
+		.offset = 0x10000,
+		.size   = 0xc00 << 2, /* 3072 * 4 = 12K */
+	},
+	.periph_regs = {
+		.sync_reg = 0x17f88,
+		.cmd_sta  = 0x17fc0,
+		.cmd_set  = 0x17fc4,
+		.cmd_clr  = 0x17fc8,
+		.cmd_mask = 0x17fcc,
+		.int_sta  = 0x17fd0,
+		.int_set  = 0x17fd4,
+		.int_clr  = 0x17fd8,
+		.int_mask = 0x17fdc,
+	},
+	.imem = {
+		.offset = 0x18000,
+		.size   = 0x1800 << 2, /* 6144 * 4 = 24K (18K populated) */
+	},
+};
+
+static struct stm_plat_fdma_data stih415_fdma_platform_data = {
+	.hw = &stih415_fdma_hw,
+	.fw = &stih415_fdma_fw,
+};
+
+static struct platform_device stih415_mpe_fdma_devices[] = {
+	{
+		/* FDMA_0_MPE: */
+		.name = "stm-fdma",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfd600000, 0x20000),
+			STM_PLAT_RESOURCE_IRQ(10+32),
+		},
+		.dev.platform_data = &stih415_fdma_platform_data,
+	}, {
+		/* FDMA_1_MPE: */
+		.name = "stm-fdma",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfd620000, 0x20000),
+			STM_PLAT_RESOURCE_IRQ(18+32),
+		},
+		.dev.platform_data = &stih415_fdma_platform_data,
+	}, {
+		/* FDMA_2_MPE: */
+		.name = "stm-fdma",
+		.id = 2,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfd640000, 0x20000),
+			STM_PLAT_RESOURCE_IRQ(26+32),
+		},
+		.dev.platform_data = &stih415_fdma_platform_data,
+	}
+};
+
+/* FDMA_MUX_MPE: 96 way */
+static struct platform_device stih415_mpe_fdma_xbar_device = {
+	.name = "stm-fdma-xbar",
+	.id = -1,
+	.num_resources = 1,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM(0xfd6df000, 0x1000),
+	},
+};
+
+/* TVOUT_FDMA at 0xfe000000 ??? */
+
+static struct platform_device stih415_sas_fdma_devices[] = {
+	{
+		/* FDMA_100: SAS FDMA 0 */
+		.name = "stm-fdma",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfea00000, 0x20000),
+			STM_PLAT_RESOURCE_IRQ(121+32),
+		},
+		.dev.platform_data = &stih415_fdma_platform_data,
+	}, {
+		/* FDMA_101: SAS FDMA 1 */
+		.name = "stm-fdma",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfea20000, 0x20000),
+			STM_PLAT_RESOURCE_IRQ(129+32),
+		},
+		.dev.platform_data = &stih415_fdma_platform_data,
+	}
+};
+
+/* FDMA_MUX_SAS: 64 way */
+static struct platform_device stih415_sas_fdma_xbar_device = {
+	.name = "stm-fdma-xbar",
+	.id = -1,
+	.num_resources = 1,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM(0xfee61000, 0x1000),
+	},
+};
+
+
+
 /* Early initialisation-----------------------------------------------------*/
 
 /* Initialise devices which are required early in the boot process. */
@@ -323,6 +451,23 @@ void __init stih415_early_device_init(void)
 	stm_pad_init(ARRAY_SIZE(nice_pio_devices) * STM_GPIO_PINS_PER_PORT,
 		     0, 0, nice_pio_config);
 }
+
+/* Late initialisation ---------------------------------------------------- */
+
+static struct platform_device *stih415_devices[] __initdata = {
+	&stih415_mpe_fdma_devices[0],
+	//&stih415_mpe_fdma_devices[1],
+	//&stih415_mpe_fdma_devices[2],
+	&stih415_mpe_fdma_xbar_device,
+};
+
+static int __init stih415_devices_setup(void)
+{
+	return platform_add_devices(stih415_devices,
+			ARRAY_SIZE(stih415_devices));
+}
+device_initcall(stih415_devices_setup);
+
 
 /* Horrible hacks! ---------------------------------------------------------*/
 

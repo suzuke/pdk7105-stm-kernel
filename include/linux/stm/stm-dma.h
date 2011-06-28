@@ -11,6 +11,9 @@
 #define STM_DMA_H
 
 #include <asm/dma.h>
+#ifdef CONFIG_STM_SH_DMA_API
+#include <linux/stm/sh-dma.h>
+#endif
 #include <asm/io.h>
 #include <asm/string.h>
 #include <linux/module.h>
