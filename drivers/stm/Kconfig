@@ -83,6 +83,11 @@ config STM_DMA_DEBUG
 	depends on STM_DMA
 	default n
 
+config STM_SH_DMA_API
+	bool
+	default y if STM_DMA && (!SUPERH)
+	default n
+
 config STM_COPROCESSOR_SUPPORT
 	bool "STMicroelectronics coprocessor support"
 	default y
