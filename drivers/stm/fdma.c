@@ -372,20 +372,33 @@ static irqreturn_t fdma_irq(int irq, void *dev_id)
 
 /* Request lines management */
 
-static struct fdma_req_router *fdma_req_router;
+static LIST_HEAD(fdma_req_routers);
 
 int fdma_register_req_router(struct fdma_req_router *router)
 {
-	BUG_ON(fdma_req_router);
-
-	fdma_req_router = router;
+	list_add(&router->list, &fdma_req_routers);
 
 	return 0;
 }
 
 void fdma_unregister_req_router(struct fdma_req_router *router)
 {
-	fdma_req_router = NULL;
+	struct fdma_req_router *tmp, *next = NULL;
+
+	list_for_each_entry_safe(tmp, next, &fdma_req_routers, list)
+		if (tmp->xbar_id == router->xbar_id)
+			list_del(&tmp->list);
+}
+
+struct fdma_req_router *fdma_get_router(struct fdma *fdma)
+{
+	struct fdma_req_router *tmp, *router  = NULL;
+
+	list_for_each_entry(tmp, &fdma_req_routers, list)
+		if (tmp->xbar_id == fdma->xbar)
+			router = tmp;
+
+	return router;
 }
 
 static struct stm_dma_req *fdma_req_allocate(struct fdma_channel *channel,
@@ -394,16 +407,19 @@ static struct stm_dma_req *fdma_req_allocate(struct fdma_channel *channel,
 	struct fdma *fdma = channel->fdma;
 	struct stm_dma_req *req = NULL;
 	int req_line = -EINVAL;
+	struct fdma_req_router *router = NULL;
 
 	spin_lock(&fdma->reqs_lock);
 
-	if (fdma_req_router) {
+	router = fdma_get_router(fdma);
+
+	if (router) {
 		/* There is a request lines crossbar registered - we can
 		 * use any of the available "local" request lines... */
 		if (fdma->reqs_used_mask < ~0UL) {
 			req_line = ffz(fdma->reqs_used_mask);
 
-			if (fdma_req_router->route(fdma_req_router,
+			if (router->route(router,
 						soc_req_line, fdma->pdev->id,
 						req_line) == 0)
 				fdma->reqs_used_mask |= (1 << req_line);
@@ -413,7 +429,6 @@ static struct stm_dma_req *fdma_req_allocate(struct fdma_channel *channel,
 	} else {
 		/* No crossbar - request lines are connected directly then */
 		unsigned long mask = 1 << soc_req_line;
-
 		BUG_ON(soc_req_line < 0 || soc_req_line >= FDMA_REQ_LINES);
 
 		if ((fdma->reqs_used_mask & mask) == 0) {
@@ -1322,6 +1337,7 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 
 	fdma->fw = plat_data->fw;
 	fdma->hw = plat_data->hw;
+	fdma->xbar = plat_data->xbar;
 
 	fdma->regs.id = fdma->hw->slim_regs.id;
 	fdma->regs.ver = fdma->hw->slim_regs.ver;

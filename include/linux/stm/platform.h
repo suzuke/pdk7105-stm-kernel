@@ -379,6 +379,7 @@ struct stm_plat_fdma_fw_regs {
 struct stm_plat_fdma_data {
 	struct stm_plat_fdma_hw *hw;
 	struct stm_plat_fdma_fw_regs *fw;
+	u8 xbar;
 };
 
 

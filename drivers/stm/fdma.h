@@ -185,6 +185,7 @@ struct fdma {
 
 	struct stm_plat_fdma_hw *hw;
 	struct stm_plat_fdma_fw_regs *fw;
+	u8 xbar; /* which crossbar is this FDMA attached to? */
 #ifdef CONFIG_HIBERNATION
 	struct fdma_segment_pm segment_pm[2]; /* saved segment (text/data) */
 #endif
@@ -194,6 +195,8 @@ struct fdma {
 struct fdma_req_router {
 	int (*route)(struct fdma_req_router *router, int input_req_line,
 			int fdma, int fdma_req_line);
+	struct list_head list;
+	u8 xbar_id;
 };
 
 int fdma_register_req_router(struct fdma_req_router *router);

@@ -53,6 +53,11 @@ static int __init fdma_xbar_probe(struct platform_device *pdev)
 	}
 
 	xbar->router.route = fdma_xbar_route;
+	xbar->router.xbar_id = pdev->id;
+
+	/* An ID of -1 means there is only one xbar, designate it as 0 */
+	if (xbar->router.xbar_id == (u8)-1)
+		xbar->router.xbar_id = 0;
 
 	platform_set_drvdata(pdev, xbar);
 
