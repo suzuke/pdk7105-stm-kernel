@@ -295,7 +295,6 @@ static int __cpuinit xen_cpu_up(unsigned int cpu)
 		(unsigned long)task_stack_page(idle) -
 		KERNEL_STACK_OFFSET + THREAD_SIZE;
 #endif
-	xen_setup_runstate_info(cpu);
 	xen_setup_timer(cpu);
 	xen_init_lock_cpu(cpu);
 
@@ -396,9 +395,9 @@ static void stop_self(void *v)
 	BUG();
 }
 
-static void xen_stop_other_cpus(int wait)
+static void xen_smp_send_stop(void)
 {
-	smp_call_function(stop_self, NULL, wait);
+	smp_call_function(stop_self, NULL, 0);
 }
 
 static void xen_smp_send_reschedule(int cpu)
@@ -466,7 +465,7 @@ static const struct smp_ops xen_smp_ops __initdata = {
 	.cpu_disable = xen_cpu_disable,
 	.play_dead = xen_play_dead,
 
-	.stop_other_cpus = xen_stop_other_cpus,
+	.smp_send_stop = xen_smp_send_stop,
 	.smp_send_reschedule = xen_smp_send_reschedule,
 
 	.send_call_func_ipi = xen_smp_send_call_function_ipi,

@@ -1181,7 +1181,7 @@ static void free_unnecessary_pages(void)
 
 	memory_bm_position_reset(&copy_bm);
 
-	while (to_free_normal > 0 || to_free_highmem > 0) {
+	while (to_free_normal > 0 && to_free_highmem > 0) {
 		unsigned long pfn = memory_bm_next_pfn(&copy_bm);
 		struct page *page = pfn_to_page(pfn);
 
@@ -1466,8 +1466,11 @@ static int
 swsusp_alloc(struct memory_bitmap *orig_bm, struct memory_bitmap *copy_bm,
 		unsigned int nr_pages, unsigned int nr_highmem)
 {
+	int error = 0;
+
 	if (nr_highmem > 0) {
-		if (get_highmem_buffer(PG_ANY))
+		error = get_highmem_buffer(PG_ANY);
+		if (error)
 			goto err_out;
 		if (nr_highmem > alloc_highmem) {
 			nr_highmem -= alloc_highmem;
@@ -1490,7 +1493,7 @@ swsusp_alloc(struct memory_bitmap *orig_bm, struct memory_bitmap *copy_bm,
 
  err_out:
 	swsusp_free();
-	return -ENOMEM;
+	return error;
 }
 
 asmlinkage int swsusp_save(void)
