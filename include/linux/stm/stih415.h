@@ -39,4 +39,23 @@ void stih415_configure_asc(int asc, struct stih415_asc_config *config);
 
 void stih415_configure_usb(int port);
 
+struct stih415_ethernet_config {
+	enum {
+		stih415_ethernet_mode_mii,
+		stih415_ethernet_mode_gmii,
+		stih415_ethernet_mode_gmii_gtx,
+		stih415_ethernet_mode_rmii,
+		stih415_ethernet_mode_rgmii_gtx,
+		stih415_ethernet_mode_reverse_mii
+	} mode;
+	int ext_clk;
+	int phy_bus;
+	int phy_addr;
+	void (*txclk_select)(int txclk_250_not_25_mhz);
+	struct stmmac_mdio_bus_data *mdio_bus_data;
+};
+void stih415_configure_ethernet(int port,
+		struct stih415_ethernet_config *config);
+
+
 #endif
