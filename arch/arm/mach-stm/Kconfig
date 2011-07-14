@@ -1,8 +1,14 @@
 menu "STMicroelectronics Consumer Electronics platform type"
 	depends on ARCH_STM
 
+# CPU_SUBTYPE_xxx style names for code shared with SH4
+
+config CPU_SUBTYPE_STIH415
+       def_bool n
+
 config MACH_STM_STIH415
 	bool "Support STiH415 generic platform"
+	select CPU_SUBTYPE_STIH415
 	select ARM_GIC
 	select CPU_V7
 	help
