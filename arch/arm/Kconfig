@@ -362,6 +362,7 @@ config ARCH_STM
 	bool "STMicroelectronics Consumer Electronics family"
 	select GENERIC_TIME
 	select GENERIC_CLOCKEVENTS
+	select CLKDEV_LOOKUP
 	select HAVE_ARM_GT
 	select STM_DRIVERS
 	help

@@ -467,27 +467,3 @@ static int __init stih415_devices_setup(void)
 			ARRAY_SIZE(stih415_devices));
 }
 device_initcall(stih415_devices_setup);
-
-
-/* Horrible hacks! ---------------------------------------------------------*/
-
-void clk_get()
-{
-	return 0;
-}
-
-void clk_put()
-{
-	return 0;
-}
-
-int clk_get_rate()
-{
-	/* Return correct value for comms clock, so ASC works. */
-	return 450000;
-}
-
-int clk_enable()
-{
-	return 0;
-}

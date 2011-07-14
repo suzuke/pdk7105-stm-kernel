@@ -16,6 +16,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/gpio.h>
 #include <linux/stm/pio.h>
+#include <linux/stm/platform.h>
 #include <asm-generic/errno-base.h>
 
 #define clk_t	struct clk
@@ -97,7 +98,7 @@ enum clk_err {
 /* Retrieving chip cut (major) */
 static inline unsigned long chip_major_version(void)
 {
-	return cpu_data->cut_major;
+	return stm_soc_version_major();
 }
 
 #endif /* #ifndef __CLKLLA_OSLAYER_H */

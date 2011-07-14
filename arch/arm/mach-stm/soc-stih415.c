@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/sysdev.h>
 #include <linux/io.h>
+#include <linux/stm/clk.h>
 
 #include <asm/irq.h>
 #include <asm/leds.h>
@@ -94,6 +95,8 @@ void __init stih415_gic_init_irq(void)
 
 static void __init stih415_timer_init(void)
 {
+	plat_clk_init();
+
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(STIH415_GLOBAL_TIMER_BASE),
 			  IRQ_GLOBALTIMER);

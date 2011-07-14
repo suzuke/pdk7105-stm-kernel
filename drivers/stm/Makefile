@@ -7,10 +7,8 @@ obj-y					+= gpio.o
 obj-y					+= pad.o
 obj-y					+= sysconf.o
 obj-y					+= device.o
-ifeq ($(CONFIG_SUPERH), y)
 obj-y					+= clk.o
 obj-y					+= clocks/
-endif
 
 obj-$(CONFIG_STM_SH_DMA_API)		+= sh-dma-api.o sh-dma-sysfs.o
 obj-$(CONFIG_STM_DMA)			+= fdma.o fdma-xbar.o
@@ -42,4 +40,4 @@ obj-$(CONFIG_CPU_SUBTYPE_STX7111)	+= stx7111.o stx7111_clock.o stx7111_audio.o s
 obj-$(CONFIG_CPU_SUBTYPE_STX7141)	+= stx7141.o stx7141_clock.o stx7141_audio.o stx7141_comms.o stx7141_hispeed.o
 obj-$(CONFIG_CPU_SUBTYPE_STX7200)	+= stx7200.o stx7200_clock.o stx7200_audio.o stx7200_comms.o stx7200_hispeed.o
 
-obj-$(CONFIG_MACH_STM_STIH415)		+= stih415.o
+obj-$(CONFIG_MACH_STM_STIH415)		+= stih415.o stih415_clock.o

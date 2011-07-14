@@ -23,7 +23,7 @@
 
 
 #include <linux/clk.h>
-#include <asm-generic/div64.h>
+#include <linux/math64.h>
 
 /*
  * Linux specific function

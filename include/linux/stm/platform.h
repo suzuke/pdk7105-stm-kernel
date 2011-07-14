@@ -531,12 +531,21 @@ static inline const char* stm_soc(void)
 {
 	return get_cpu_subtype(&current_cpu_data);
 }
+
+static inline unsigned long stm_soc_version_major(void)
+{
+	return cpu_data->cut_major;
+}
 #else
 static inline const char* stm_soc(void)
 {
 	return "STiH415";
 }
-#endif
 
+static inline unsigned long stm_soc_version_major(void)
+{
+        return 1;
+}
+#endif
 
 #endif /* __LINUX_STM_PLATFORM_H */
