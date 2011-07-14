@@ -412,45 +412,38 @@ static int stih415_pio_config(unsigned gpio,
 	int port = stm_gpio_port(gpio);
 	int pin = stm_gpio_pin(gpio);
 	struct stih415_pio_config *config = priv;
-	struct stm_pio_control *pio_control;
 
 	BUG_ON(port > ARRAY_SIZE(stih415_pio_devices));
 	BUG_ON(function < 0 || function > 5);
 
-	pio_control = &stih415_pio_controls[port];
 
 	if (function > 0)
-		stm_pio_control_config_direction(pio_control, pin, direction,
+		stm_pio_control_config_direction(port, pin, direction,
 				config ? config->mode : NULL);
 
-	stm_pio_control_config_function(pio_control, pin, function);
+	stm_pio_control_config_function(port, pin, function);
 
-	if (config && config->retime) {
-		struct stm_pio_control_retime_config *retime = config->retime;
-		unsigned long mask =
-			(retime->clk1notclk0 > 0 ? 1<<0 : 0) |
-			(retime->delay_input > 0 ? 3<<2 : 0) |
-			(retime->invertclk   > 0 ? 1<<4 : 0) |
-			(retime->retime      > 0 ? 1<<5 : 0) |
-			(retime->clknotdata  > 0 ? 1<<6 : 0) |
-			(retime->double_edge > 0 ? 1<<7 : 0);
-		unsigned long config =
-			((retime->clk1notclk0 & 1) << 0) |
-			((retime->delay_input & 3) << 2) |
-			((retime->invertclk   & 1) << 4) |
-			((retime->retime      & 1) << 5) |
-			((retime->clknotdata  & 1) << 6) |
-			((retime->double_edge & 1) << 7);
-		stm_pio_control_config_retime(pio_control, pin, mask, config);
-	}
+	if (config && config->retime)
+		stm_pio_control_config_retime(port, pin, config->retime);
 
 	return 0;
 }
 
+static const struct stm_pio_control_retime_offset stih415_pio_retime_offset = {
+	.clk1notclk0_offset 	= 0,
+	.delay_lsb_offset	= 2,
+	.delay_msb_offset	= 3,
+	.invertclk_offset	= 4,
+	.retime_offset		= 5,
+	.clknotdata_offset	= 6,
+	.double_edge_offset	= 7,
+};
+
 static void __init stih415_pio_init(void)
 {
 	stm_pio_control_init(stih415_pio_control_configs, stih415_pio_controls,
-			     ARRAY_SIZE(stih415_pio_control_configs));
+			     ARRAY_SIZE(stih415_pio_control_configs),
+			     &stih415_pio_retime_offset);
 }
 
 
