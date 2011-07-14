@@ -21,10 +21,9 @@
 #include <mach/hardware.h>
 
 /* We are clocked by PERIPHCLK */
-/* Assume this is 100MHz for now (as QEMU does) */
 /* Note we are using a prescaler value of zero currently, so this is
  * the units for all operations. */
-#define PERIPHCLK	100000000
+#define PERIPHCLK	200000000
 
 #define GT_COUNTER0	0x00
 #define GT_COUNTER1	0x04
