@@ -18,25 +18,50 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stih415.h>
+#include <linux/stm/stih415-periphs.h>
 
+#ifdef CONFIG_ARM
 #include <asm/mach/map.h>
-
 #include <mach/soc-stih415.h>
 #include <mach/hardware.h>
+#endif
+
+#ifdef CONFIG_SUPERH
+#include <asm/irq-ilc.h>
+#endif
+
+#include "pio-control.h"
+
+
+/*
+ * ARM and ST40 interrupts are virtually identical, so we can use the same
+ * parameter for both. Only mailbox and some A/V interrupts are connected
+ * to the ST200's, however 4 ILC outputs are available, which could be
+ * used if required.
+ */
+#if defined(CONFIG_SUPERH)
+#define STIH415_IRQ(irq) ILC_IRQ(irq)
+#elif defined(CONFIG_ARM)
+#define STIH415_IRQ(irq) ((irq)+32)
+#endif
 
 /* Currently STM_PLAT_RESOURCE_IRQ only works for SH4 and ST200 */
 #undef STM_PLAT_RESOURCE_IRQ
 #define STM_PLAT_RESOURCE_IRQ(_irq) \
 	{ \
-		.start = (_irq), \
-		.end = (_irq), \
+		.start = STIH415_IRQ(_irq), \
+		.end = STIH415_IRQ(_irq),	\
 		.flags = IORESOURCE_IRQ, \
 	}
+
+#ifndef CONFIG_ARM
+#define IO_ADDRESS(x) 0
+#endif
 
 
 /* ASC resources ---------------------------------------------------------- */
 
-static struct stm_pad_config stih415_asc_pad_config[6] = {
+static struct stm_pad_config stih415_asc_pad_configs[6] = {
 
 	/* Comms block ASCs in SASG1 */
 	[0] = {
@@ -52,6 +77,13 @@ static struct stm_pad_config stih415_asc_pad_config[6] = {
 	[2] = {
 		/* UART2 */
 		/* Tx: PIO17[4], Rx: PIO17[5], RTS: PIO17[7], CTS: PIO17[6] */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(17, 4, 2),	/* TX */
+			STM_PAD_PIO_IN(17, 5, 2),	/* RX */
+			STM_PAD_PIO_IN_NAMED(17, 6, 2, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(17, 7, 2, "RTS"),
+		},
 	},
 	[3] = {
 		/* UART3 - not wired to pins */
@@ -59,12 +91,28 @@ static struct stm_pad_config stih415_asc_pad_config[6] = {
 
 	/* SBC comms block ASCs in SASG1 */
 	[4] = {
-		/* UART10 */
+		/* SBC_UART0 (aka UART10) */
 		/* Tx: PIO3[4], Rx: PIO3[5], RTS: PIO3[7], CTS: PIO3[6] */
+		/* OE: PIO4[0] */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(3, 4, 1),	/* TX */
+			STM_PAD_PIO_IN(3, 5, 1),	/* RX */
+			STM_PAD_PIO_IN_NAMED(3, 6, 1, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(3, 7, 1, "RTS"),
+		},
 	},
 	[5] = {
-		/* UART11 */
-		/* Tx: PIO2[6], Rx: PIO2[7], RTS: PIO3[0], CTS: PIO3[1] */
+		/* SBC_UART1 (aka UART11) */
+		/* Tx: PIO2[6], Rx: PIO2[7], RTS: PIO3[1], CTS: PIO3[0] */
+		/* OE: PIO3[2] */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(2, 6, 3),	/* TX */
+			STM_PAD_PIO_IN(2, 7, 3),	/* RX */
+			STM_PAD_PIO_IN_NAMED(3, 0, 3, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(3, 1, 3, "RTS"),
+		},
 	},
 
 #if 0
@@ -90,12 +138,12 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC0_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(195+32),
+			STM_PLAT_RESOURCE_IRQ(195),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 11),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 15),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &stih415_asc_pad_config[0],
+			.pad_config = &stih415_asc_pad_configs[0],
 			.regs = (void __iomem *)IO_ADDRESS(STIH415_ASC0_BASE),
 		},
 	},
@@ -105,12 +153,12 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC1_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(196+32),
+			STM_PLAT_RESOURCE_IRQ(196),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 12),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 16),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &stih415_asc_pad_config[1],
+			.pad_config = &stih415_asc_pad_configs[1],
 		},
 	},
 	[2] = {
@@ -119,12 +167,12 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC2_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(197+32),
+			STM_PLAT_RESOURCE_IRQ(197),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 13),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 17),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &stih415_asc_pad_config[2],
+			.pad_config = &stih415_asc_pad_configs[2],
 		},
 	},
 	[3] = {
@@ -133,12 +181,12 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC3_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(198+32),
+			STM_PLAT_RESOURCE_IRQ(198),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &stih415_asc_pad_config[3],
+			.pad_config = &stih415_asc_pad_configs[3],
 		},
 	},
 
@@ -153,30 +201,28 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SBC_ASC0_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(209+32),
+			STM_PLAT_RESOURCE_IRQ(209),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &stih415_asc_pad_config[4],
+			.pad_config = &stih415_asc_pad_configs[4],
 		},
 	},
-#if 0
 	[5] = {
 		.name = "stm-asc",
 		/* .id set in stih415_configure_asc() */
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SBC_ASC1_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(210+32),
+			STM_PLAT_RESOURCE_IRQ(210),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
-			.pad_config = &stih415_asc_pad_config[5],
+			.pad_config = &stih415_asc_pad_configs[5],
 		},
 	},
-#endif
 
 	/*
 	 * Note the interrupt document also describes a top level UART
@@ -217,7 +263,16 @@ void __init stih415_configure_asc(int asc, struct stih415_asc_config *config)
 
 	pdev->id = tty_id++;
 	plat_data->hw_flow_control = config->hw_flow_control;
+	//plat_data->txfifo_bug = 1;
 	plat_data->force_m1 = config->force_m1;
+
+	if (!config->hw_flow_control) {
+		/* Don't claim RTS/CTS pads */
+		struct stm_pad_config *pad_config;
+		pad_config = &stih415_asc_pad_configs[asc];
+		stm_pad_set_pio_ignored(pad_config, "RTS");
+		stm_pad_set_pio_ignored(pad_config, "CTS");
+	}
 
 	if (config->is_console)
 		stm_asc_console_device = pdev->id;
@@ -237,73 +292,165 @@ arch_initcall(stih415_add_asc);
 
 /* PIO ports resources ---------------------------------------------------- */
 
-static struct platform_device stih415_pio_devices[] = {
-	/* MPE PIO block */
-	[0] = {
-		.name = "stm-gpio",
-		.id = 0,
-		.num_resources = 2,
-		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIH415_PIO_MPE_BASE, 0x100),
-		},
-		.dev.platform_data = &(struct stm_plat_pio_data) {
-			.regs = (void __iomem *)IO_ADDRESS(STIH415_PIO_MPE_BASE),
-		},
-	},
-	/* SAS rear PIO block */
-	[1] = {
-		.name = "stm-gpio",
-		.id = 1,
-		.num_resources = 2,
-		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIH415_PIO_SAS_REAR_BASE, 0x100),
-		},
-		.dev.platform_data = &(struct stm_plat_pio_data) {
-			.regs = (void __iomem *)IO_ADDRESS(STIH415_PIO_SAS_REAR_BASE),
-		},
-	},
-	/* SAS front PIO block */
-	[2] = {
-		.name = "stm-gpio",
-		.id = 2,
-		.num_resources = 2,
-		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIH415_PIO_SAS_FRONT_BASE, 0x100),
-		},
-		.dev.platform_data = &(struct stm_plat_pio_data) {
-			.regs = (void __iomem *)IO_ADDRESS(STIH415_PIO_SAS_FRONT_BASE),
-		},
-	},
+#define STIH415_PIO(_num, _base)					\
+	[_num] = {							\
+		.name = "stm-gpio",					\
+		.id = _num,						\
+		.num_resources = 1,					\
+		.resource = (struct resource[]) {			\
+			STM_PLAT_RESOURCE_MEM(_base, 0x100),		\
+		},							\
+		.dev.platform_data = &(struct stm_plat_pio_data) {	\
+			.regs = (void __iomem *)IO_ADDRESS(_base),	\
+		},							\
+	}
+
+static struct platform_device stih415_pio_devices[27] = {
+	/* SAS */
+	/* NB the datsheet shows these starting at 0xfd611000 */
+	/* 0-4: SBC_PIO */
+	STIH415_PIO(0, 0xfe610000),
+	STIH415_PIO(1, 0xfe611000),
+	STIH415_PIO(2, 0xfe612000),
+	STIH415_PIO(3, 0xfe613000),
+	STIH415_PIO(4, 0xfe614000),
+	/* 5-12: PIO_FRONT */
+	STIH415_PIO(5, 0xfee00000),
+	STIH415_PIO(6, 0xfee01000),
+	STIH415_PIO(7, 0xfee02000),
+	STIH415_PIO(8, 0xfee03000),
+	STIH415_PIO(9, 0xfee04000),
+	STIH415_PIO(10, 0xfee05000),
+	STIH415_PIO(11, 0xfee06000),
+	STIH415_PIO(12, 0xfee07000),
+	/* 13-18: PIO_REAR */
+	STIH415_PIO(13, 0xfe820000),
+	STIH415_PIO(14, 0xfe821000),
+	STIH415_PIO(15, 0xfe822000),
+	STIH415_PIO(16, 0xfe823000),
+	STIH415_PIO(17, 0xfe824000),
+	STIH415_PIO(18, 0xfe825000),
+
+	/* MPE */
+	/* NB the data sheet has these two reversed, which is correct? */
+	/* 100-102: PIO_RIGHT (aka MPE_PIO) */
+	STIH415_PIO(19, 0xfd6b0000),
+	STIH415_PIO(20, 0xfd6b1000),
+	STIH415_PIO(21, 0xfd6b2000),
+	/* 103-107: PIO_LEFT (aka PIO_1_MPE) */
+	STIH415_PIO(22, 0xfd330000),
+	STIH415_PIO(23, 0xfd331000),
+	STIH415_PIO(24, 0xfd332000),
+	STIH415_PIO(25, 0xfd333000),
+	STIH415_PIO(26, 0xfd334000),
 };
 
+/* Interrupts
+PIO_RIGHT: 113
+PIO_LEFT 114
+PIO_SBC 180
+PIO_FRONT 181
+PIO_REAR 182
+Need to add 32 for A9
+*/
+
+#define STIH415_PIO_CONTROL(_num, _alt_num,				\
+		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
+		_rt)				\
+	[_num] = {							\
+		.alt = { SYSCONF(_alt_num) },			\
+		.oe = { SYSCONF(_oe_num), _lsb, _msb },			\
+		.pu = { SYSCONF(_pu_num), _lsb, _msb },			\
+		.od = { SYSCONF(_od_num), _lsb, _msb },			\
+		.retiming = {						\
+			{ SYSCONF(_rt) },				\
+			{ SYSCONF(_rt+1) }				\
+		},							\
+ 	}
+
+#define STIH415_PIO_CONTROL4(_num, _alt_num,			\
+		_oe_num, _pu_num, _od_num, _rt)			\
+	STIH415_PIO_CONTROL(_num,   _alt_num,			\
+		_oe_num, _pu_num, _od_num,  0,  7,		\
+		_rt),					\
+	STIH415_PIO_CONTROL(_num+1, _alt_num+1,		\
+		_oe_num, _pu_num, _od_num,  8, 15,		\
+		_rt+2),					\
+	STIH415_PIO_CONTROL(_num+2, _alt_num+2,		\
+		_oe_num, _pu_num, _od_num, 16, 23,		\
+		_rt+4),					\
+	STIH415_PIO_CONTROL(_num+3, _alt_num+3,		\
+		_oe_num, _pu_num, _od_num, 24, 31,		\
+		_rt+6)
+
+static const struct stm_pio_control_config stih415_pio_control_configs[27] = {
+	/*                  pio, alt,  oe,  pu,  od,lsb,msb, rt */
+	/* 0-4: SBC */
+	STIH415_PIO_CONTROL4( 0,   0,   5,   7,   9,          16),
+	STIH415_PIO_CONTROL(  4,   4,   6,   8,  10,  0,  7,  24),
+	/* 5-12: SAS_FRONT */
+	STIH415_PIO_CONTROL4( 5, 100, 108, 110, 112,         116),
+	STIH415_PIO_CONTROL4( 9, 104, 109, 111, 113,         124),
+	/* 13-18: SAS_REAR */
+	STIH415_PIO_CONTROL4(13, 300, 306, 308, 310,         338),
+	STIH415_PIO_CONTROL( 17, 304, 307, 309, 311,  0,  7, 346),
+	STIH415_PIO_CONTROL( 18, 305, 307, 309, 311,  8, 15, 348),
+	/* 100-102: MPE_PIO */
+	STIH415_PIO_CONTROL( 19, 400, 403, 404, 405,  0,  7, 406),
+	STIH415_PIO_CONTROL( 20, 401, 403, 404, 405,  8, 15, 408),
+	STIH415_PIO_CONTROL( 21, 402, 403, 404, 405, 16, 23, 410),
+	/* 103-107: PIO_1_MPE */
+	STIH415_PIO_CONTROL4(22, 500, 505, 507, 509,         511),
+	STIH415_PIO_CONTROL( 26, 504, 506, 508, 510,  0,  7, 519),
+};
+
+static struct stm_pio_control stih415_pio_controls[27];
+
 static int stih415_pio_config(unsigned gpio,
-                enum stm_pad_gpio_direction direction, int function, void* priv)
+		enum stm_pad_gpio_direction direction, int function, void* priv)
 {
-	switch (direction) {
-	case stm_pad_gpio_direction_in:
-		BUG_ON(function != -1);
-		stm_gpio_direction(gpio, STM_GPIO_DIRECTION_IN);
-		break;
-	case stm_pad_gpio_direction_out:
-		BUG_ON(function < 0);
-		BUG_ON(function > 1);
-		stm_gpio_direction(gpio, function ?
-				STM_GPIO_DIRECTION_ALT_OUT :
-				STM_GPIO_DIRECTION_OUT);
-		break;
-	case stm_pad_gpio_direction_bidir:
-		BUG_ON(function < 0);
-		BUG_ON(function > 1);
-		stm_gpio_direction(gpio, function ?
-				STM_GPIO_DIRECTION_ALT_BIDIR :
-				STM_GPIO_DIRECTION_BIDIR);
-		break;
-	default:
-		BUG();
-		break;
+	int port = stm_gpio_port(gpio);
+	int pin = stm_gpio_pin(gpio);
+	struct stih415_pio_config *config = priv;
+	struct stm_pio_control *pio_control;
+
+	BUG_ON(port > ARRAY_SIZE(stih415_pio_devices));
+	BUG_ON(function < 0 || function > 5);
+
+	pio_control = &stih415_pio_controls[port];
+
+	if (function > 0)
+		stm_pio_control_config_direction(pio_control, pin, direction,
+				config ? config->mode : NULL);
+
+	stm_pio_control_config_function(pio_control, pin, function);
+
+	if (config && config->retime) {
+		struct stm_pio_control_retime_config *retime = config->retime;
+		unsigned long mask =
+			(retime->clk1notclk0 > 0 ? 1<<0 : 0) |
+			(retime->delay_input > 0 ? 3<<2 : 0) |
+			(retime->invertclk   > 0 ? 1<<4 : 0) |
+			(retime->retime      > 0 ? 1<<5 : 0) |
+			(retime->clknotdata  > 0 ? 1<<6 : 0) |
+			(retime->double_edge > 0 ? 1<<7 : 0);
+		unsigned long config =
+			((retime->clk1notclk0 & 1) << 0) |
+			((retime->delay_input & 3) << 2) |
+			((retime->invertclk   & 1) << 4) |
+			((retime->retime      & 1) << 5) |
+			((retime->clknotdata  & 1) << 6) |
+			((retime->double_edge & 1) << 7);
+		stm_pio_control_config_retime(pio_control, pin, mask, config);
 	}
 
 	return 0;
+}
+
+static void __init stih415_pio_init(void)
+{
+	stm_pio_control_init(stih415_pio_control_configs, stih415_pio_controls,
+			     ARRAY_SIZE(stih415_pio_control_configs));
 }
 
 
@@ -362,7 +509,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(0xfd600000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(10+32),
+			STM_PLAT_RESOURCE_IRQ(10),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}, {
@@ -372,7 +519,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[2]) {
 			STM_PLAT_RESOURCE_MEM(0xfd620000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(18+32),
+			STM_PLAT_RESOURCE_IRQ(18),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}, {
@@ -382,7 +529,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[2]) {
 			STM_PLAT_RESOURCE_MEM(0xfd640000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(26+32),
+			STM_PLAT_RESOURCE_IRQ(26),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}
@@ -408,7 +555,7 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(0xfea00000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(121+32),
+			STM_PLAT_RESOURCE_IRQ(121),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}, {
@@ -418,7 +565,7 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[2]) {
 			STM_PLAT_RESOURCE_MEM(0xfea20000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(129+32),
+			STM_PLAT_RESOURCE_IRQ(129),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}
@@ -436,20 +583,167 @@ static struct platform_device stih415_sas_fdma_xbar_device = {
 
 
 
+/* sysconf resources ------------------------------------------------------ */
+
+static struct platform_device stih415_sysconf_devices[] = {
+	/* SAS */
+	{
+		/* CONFIG 0-33, STATUS 34-44 */
+		/* SYSCFG_SBC (aka SBC_SYSCFG) */
+		/* Stand-By Controler System configuration registers */
+		.name		= "sysconf",
+		.id		= 0,
+		.num_resources	= 1,
+		.resource	= (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfe600000, 0xb4),
+		},
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {
+			.regs = (void __iomem *)IO_ADDRESS(0xfe600000),
+			.groups_num = 1,
+			.groups = (struct stm_plat_sysconf_group []) {
+				{
+					.group = 0,
+					.offset = 0,
+					.name = "SYSCFG_SBC",
+				}
+			},
+		}
+	}, {
+		/* CONFIG 100-185, STATUS 186-200 */
+		/* SYSCFG_FRONT (aka SYSCFG_1_SAS) */
+		/* SAS System configuration registers */
+		.name		= "sysconf",
+		.id		= 1,
+		.num_resources	= 1,
+		.resource	= (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfee10000, 0x194),
+		},
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {
+			.regs = (void __iomem *)IO_ADDRESS(0xfee10000),
+			.groups_num = 1,
+			.groups = (struct stm_plat_sysconf_group []) {
+				{
+					.group = 1,
+					.offset = 0,
+					.name = "SYSCFG_FRONT",
+				}
+			},
+		}
+	}, {
+		/* SYSCONFIG 300-383, STATUS 384-399 */
+		/* SYSCFG_REAR (aka SYSCFG_2_SAS) */
+		/* SAS System configuration registers */
+		.name		= "sysconf",
+		.id		= 2,
+		.num_resources	= 1,
+		.resource	= (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfe830000, 0x190),
+		},
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {
+			.regs = (void __iomem *)IO_ADDRESS(0xfe830000),
+			.groups_num = 1,
+			.groups = (struct stm_plat_sysconf_group []) {
+				{
+					.group = 2,
+					.offset = 0,
+					.name = "SYSCFG_REAR",
+				}
+			},
+		}
+	},
+
+	/* MPE */
+	{
+		/* SYSCONFIG 400-421, SYSSTATUS 423-429 */
+		/* Note no 422, but fortunatly there is a hole in addressing */
+		/* SYSCFG_LEFT (aka SYSCFG_1_MPE, SYSCFG_TRANSPORT) */
+		/* MPE System configuration registers 1 */
+		.name		= "sysconf",
+		.id		= 3,
+		.num_resources	= 1,
+		.resource	= (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfd690000, 0x78),
+		},
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {
+			.regs = (void __iomem *)IO_ADDRESS(0xfd690000),
+			.groups_num = 1,
+			.groups = (struct stm_plat_sysconf_group []) {
+				{
+					.group = 3,
+					.offset = 0,
+					.name = "SYSCFG_LEFT",
+				}
+			},
+		}
+	}, {
+		/* SYSCONFIG 500-573, SYSSTATUS 574-595 */
+		/* SYSCFG_RIGHT (aka SYSCFG_0_MPE, SYSCFG_VIDEO) */
+		/* MPE System configuration registers 0 */
+		.name		= "sysconf",
+		.id		= 4,
+		.num_resources	= 1,
+		.resource	= (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfd320000, 0x180),
+		},
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {
+			.regs = (void __iomem *)IO_ADDRESS(0xfd320000),
+			.groups_num = 1,
+			.groups = (struct stm_plat_sysconf_group []) {
+				{
+					.group = 4,
+					.offset = 0,
+					.name = "SYSCFG_RIGHT",
+				}
+			},
+		}
+	}, {
+		/* SYSCONFIG 600-661, SYSSTATUS 662-686 */
+		/* SYSCFG_SYSTEM (aka SYSCFG_3_MPE, SYSCFG_CPU) */
+		/* MPE System configuration registers 3 */
+		.name		= "sysconf",
+		.id		= 5,
+		.num_resources	= 1,
+		.resource	= (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfdde0000, 0x15c),
+		},
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {
+			.regs = (void __iomem *)IO_ADDRESS(0xfdde0000),
+			.groups_num = 1,
+			.groups = (struct stm_plat_sysconf_group []) {
+				{
+					.group = 5,
+					.offset = 0,
+					.name = "SYSCFG_SYSTEM",
+				}
+			},
+		}
+	},
+};
+
+
+
 /* Early initialisation-----------------------------------------------------*/
 
 /* Initialise devices which are required early in the boot process. */
 void __init stih415_early_device_init(void)
 {
-#if 0
 	/* Initialise PIO and sysconf drivers */
-	sysconf_early_init(&stih415_sysconf_device, 1);
-#endif
+	sysconf_early_init(stih415_sysconf_devices,
+			   ARRAY_SIZE(stih415_sysconf_devices));
+	stih415_pio_init();
 	stm_gpio_early_init(stih415_pio_devices,
 			ARRAY_SIZE(stih415_pio_devices),
-			256);
-	stm_pad_init(ARRAY_SIZE(nice_pio_devices) * STM_GPIO_PINS_PER_PORT,
-		     0, 0, nice_pio_config);
+#ifdef CONFIG_ARM
+			256
+#else
+			ILC_FIRST_IRQ + ILC_NR_IRQS 
+#endif
+		);
+	stm_pad_init(ARRAY_SIZE(stih415_pio_devices) * STM_GPIO_PINS_PER_PORT,
+		     0, 0, stih415_pio_config);
+
+	/* Version information in SYSTEM_STATUS427 */
+>>>>>>> 67540da... stm: Add more STiH415 infrastructure
 }
 
 /* Late initialisation ---------------------------------------------------- */

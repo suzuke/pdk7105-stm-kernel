@@ -50,16 +50,11 @@ static struct map_desc stih415_io_desc[] __initdata = {
 	}, {
 		.virtual	= IO_ADDRESS(STIH415_ASC0_BASE),
 		.pfn		= __phys_to_pfn(STIH415_ASC0_BASE),
-		.length		= SZ_4K,
-		.type		= MT_DEVICE,
-	}, {
-		.virtual	= IO_ADDRESS(STIH415_PIO_MPE_BASE),
-		.pfn		= __phys_to_pfn(STIH415_PIO_MPE_BASE),
 		.length		= SZ_64K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual	= IO_ADDRESS(STIH415_PIO_SAS_REAR_BASE),
-		.pfn		= __phys_to_pfn(STIH415_PIO_SAS_REAR_BASE),
+		.virtual	= IO_ADDRESS(STIH415_PIO_SAS_SBC_BASE),
+		.pfn		= __phys_to_pfn(STIH415_PIO_SAS_SBC_BASE),
 		.length		= SZ_64K,
 		.type		= MT_DEVICE,
 	}, {
@@ -68,14 +63,49 @@ static struct map_desc stih415_io_desc[] __initdata = {
 		.length		= SZ_64K,
 		.type		= MT_DEVICE,
 	}, {
+		.virtual	= IO_ADDRESS(STIH415_PIO_SAS_REAR_BASE),
+		.pfn		= __phys_to_pfn(STIH415_PIO_SAS_REAR_BASE),
+		.length		= SZ_64K,
+		.type		= MT_DEVICE,
+	}, {
+		.virtual	= IO_ADDRESS(STIH415_PIO_MPE_RIGHT_BASE),
+		.pfn		= __phys_to_pfn(STIH415_PIO_MPE_RIGHT_BASE),
+		.length		= SZ_64K,
+		.type		= MT_DEVICE,
+	}, {
+		.virtual	= IO_ADDRESS(STIH415_PIO_MPE_LEFT_BASE),
+		.pfn		= __phys_to_pfn(STIH415_PIO_MPE_LEFT_BASE),
+		.length		= SZ_64K,
+		.type		= MT_DEVICE,
+	}, {
 		.virtual	= IO_ADDRESS(STIH415_SBC_SYSCONF_BASE),
 		.pfn		= __phys_to_pfn(STIH415_SBC_SYSCONF_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
+		.virtual	= IO_ADDRESS(STIH415_SAS_FRONT_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(STIH415_SAS_FRONT_SYSCONF_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	}, {
+		.virtual	= IO_ADDRESS(STIH415_SAS_REAR_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(STIH415_SAS_REAR_SYSCONF_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	}, {
+		.virtual	= IO_ADDRESS(STIH415_MPE_LEFT_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(STIH415_MPE_LEFT_SYSCONF_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	}, {
+		.virtual	= IO_ADDRESS(STIH415_MPE_RIGHT_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(STIH415_MPE_RIGHT_SYSCONF_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	}, {
 		.virtual	= IO_ADDRESS(STIH415_SBC_ASC0_BASE),
 		.pfn		= __phys_to_pfn(STIH415_SBC_ASC0_BASE),
-		.length		= SZ_4K,
+		.length		= SZ_64K,
 		.type		= MT_DEVICE,
 	}
 };
