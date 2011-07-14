@@ -20,4 +20,10 @@ config MACH_STIH415_VELOCE
 	help
 	  Include support for a STiH415 Veloce emulator platform.
 
+config MACH_STM_B2000
+	bool "Support B2000 - STiH415 (Orly) MBoard"
+	select MACH_STM_STIH415
+	help
+	  Include support for a B2000 - STiH415 (Orly) MBoard.
+
 endmenu
