@@ -490,6 +490,7 @@ static const char *cpu_name[] = {
 	[CPU_FLI7510]	= "Freeman-510", [CPU_FLI7520]	= "Freeman-520",
 	[CPU_FLI7530]	= "Freeman-530", [CPU_FLI7540]	= "Freeman-540",
 	[CPU_ST40RA]	= "ST40RA",	[CPU_ST40GX1]	= "ST40GX1",
+	[CPU_STIH415]	= "STiH415",
 	[CPU_STX5197]	= "STx5197",	[CPU_STX5206]	= "STx5206",
 	[CPU_STI5528]	= "STi5528",	[CPU_STM8000]	= "STm8000",
 	[CPU_STX7100]	= "STx7100",	[CPU_STX7105]	= "STx7105",

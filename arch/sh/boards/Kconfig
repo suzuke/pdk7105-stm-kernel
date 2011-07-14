@@ -333,6 +333,14 @@ config SH_ST_ADI7108
 	  Select SH_ST_ADI7108 if configuring for a
 	  STMicroelectronics STi7108-ADI Reference Board.
 
+config SH_ST_B2000
+	bool "B2000: STiH415 (Orly) processor module board"
+	depends on CPU_SUBTYPE_STIH415
+	default n
+	help
+	  Select SH_ST_B2000 if configuring for a
+	  STMicroelectronics STiH415 (Orly) processor module board.
+
 config SH_ST_CAB5197
 	bool "CAB5197: STx5197 CAB reference board"
 	depends on CPU_SUBTYPE_STX5197
