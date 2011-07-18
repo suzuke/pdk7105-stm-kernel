@@ -292,7 +292,7 @@ arch_initcall(stih415_add_asc);
 
 /* PIO ports resources ---------------------------------------------------- */
 
-#define STIH415_PIO(_num, _base)					\
+#define STIH415_PIO_ENTRY(_num, _base)					\
 	[_num] = {							\
 		.name = "stm-gpio",					\
 		.id = _num,						\
@@ -309,40 +309,40 @@ static struct platform_device stih415_pio_devices[27] = {
 	/* SAS */
 	/* NB the datsheet shows these starting at 0xfd611000 */
 	/* 0-4: SBC_PIO */
-	STIH415_PIO(0, 0xfe610000),
-	STIH415_PIO(1, 0xfe611000),
-	STIH415_PIO(2, 0xfe612000),
-	STIH415_PIO(3, 0xfe613000),
-	STIH415_PIO(4, 0xfe614000),
+	STIH415_PIO_ENTRY(0, 0xfe610000),
+	STIH415_PIO_ENTRY(1, 0xfe611000),
+	STIH415_PIO_ENTRY(2, 0xfe612000),
+	STIH415_PIO_ENTRY(3, 0xfe613000),
+	STIH415_PIO_ENTRY(4, 0xfe614000),
 	/* 5-12: PIO_FRONT */
-	STIH415_PIO(5, 0xfee00000),
-	STIH415_PIO(6, 0xfee01000),
-	STIH415_PIO(7, 0xfee02000),
-	STIH415_PIO(8, 0xfee03000),
-	STIH415_PIO(9, 0xfee04000),
-	STIH415_PIO(10, 0xfee05000),
-	STIH415_PIO(11, 0xfee06000),
-	STIH415_PIO(12, 0xfee07000),
+	STIH415_PIO_ENTRY(5, 0xfee00000),
+	STIH415_PIO_ENTRY(6, 0xfee01000),
+	STIH415_PIO_ENTRY(7, 0xfee02000),
+	STIH415_PIO_ENTRY(8, 0xfee03000),
+	STIH415_PIO_ENTRY(9, 0xfee04000),
+	STIH415_PIO_ENTRY(10, 0xfee05000),
+	STIH415_PIO_ENTRY(11, 0xfee06000),
+	STIH415_PIO_ENTRY(12, 0xfee07000),
 	/* 13-18: PIO_REAR */
-	STIH415_PIO(13, 0xfe820000),
-	STIH415_PIO(14, 0xfe821000),
-	STIH415_PIO(15, 0xfe822000),
-	STIH415_PIO(16, 0xfe823000),
-	STIH415_PIO(17, 0xfe824000),
-	STIH415_PIO(18, 0xfe825000),
+	STIH415_PIO_ENTRY(13, 0xfe820000),
+	STIH415_PIO_ENTRY(14, 0xfe821000),
+	STIH415_PIO_ENTRY(15, 0xfe822000),
+	STIH415_PIO_ENTRY(16, 0xfe823000),
+	STIH415_PIO_ENTRY(17, 0xfe824000),
+	STIH415_PIO_ENTRY(18, 0xfe825000),
 
 	/* MPE */
 	/* NB the data sheet has these two reversed, which is correct? */
 	/* 100-102: PIO_RIGHT (aka MPE_PIO) */
-	STIH415_PIO(19, 0xfd6b0000),
-	STIH415_PIO(20, 0xfd6b1000),
-	STIH415_PIO(21, 0xfd6b2000),
+	STIH415_PIO_ENTRY(19, 0xfd6b0000),
+	STIH415_PIO_ENTRY(20, 0xfd6b1000),
+	STIH415_PIO_ENTRY(21, 0xfd6b2000),
 	/* 103-107: PIO_LEFT (aka PIO_1_MPE) */
-	STIH415_PIO(22, 0xfd330000),
-	STIH415_PIO(23, 0xfd331000),
-	STIH415_PIO(24, 0xfd332000),
-	STIH415_PIO(25, 0xfd333000),
-	STIH415_PIO(26, 0xfd334000),
+	STIH415_PIO_ENTRY(22, 0xfd330000),
+	STIH415_PIO_ENTRY(23, 0xfd331000),
+	STIH415_PIO_ENTRY(24, 0xfd332000),
+	STIH415_PIO_ENTRY(25, 0xfd333000),
+	STIH415_PIO_ENTRY(26, 0xfd334000),
 };
 
 /* Interrupts
@@ -354,7 +354,7 @@ PIO_REAR 182
 Need to add 32 for A9
 */
 
-#define STIH415_PIO_CONTROL(_num, _alt_num,				\
+#define STIH415_PIO_ENTRY_CONTROL(_num, _alt_num,				\
 		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
 		_rt)				\
 	[_num] = {							\
@@ -368,40 +368,40 @@ Need to add 32 for A9
 		},							\
  	}
 
-#define STIH415_PIO_CONTROL4(_num, _alt_num,			\
+#define STIH415_PIO_ENTRY_CONTROL4(_num, _alt_num,			\
 		_oe_num, _pu_num, _od_num, _rt)			\
-	STIH415_PIO_CONTROL(_num,   _alt_num,			\
+	STIH415_PIO_ENTRY_CONTROL(_num,   _alt_num,			\
 		_oe_num, _pu_num, _od_num,  0,  7,		\
 		_rt),					\
-	STIH415_PIO_CONTROL(_num+1, _alt_num+1,		\
+	STIH415_PIO_ENTRY_CONTROL(_num+1, _alt_num+1,		\
 		_oe_num, _pu_num, _od_num,  8, 15,		\
 		_rt+2),					\
-	STIH415_PIO_CONTROL(_num+2, _alt_num+2,		\
+	STIH415_PIO_ENTRY_CONTROL(_num+2, _alt_num+2,		\
 		_oe_num, _pu_num, _od_num, 16, 23,		\
 		_rt+4),					\
-	STIH415_PIO_CONTROL(_num+3, _alt_num+3,		\
+	STIH415_PIO_ENTRY_CONTROL(_num+3, _alt_num+3,		\
 		_oe_num, _pu_num, _od_num, 24, 31,		\
 		_rt+6)
 
 static const struct stm_pio_control_config stih415_pio_control_configs[27] = {
 	/*                  pio, alt,  oe,  pu,  od,lsb,msb, rt */
 	/* 0-4: SBC */
-	STIH415_PIO_CONTROL4( 0,   0,   5,   7,   9,          16),
-	STIH415_PIO_CONTROL(  4,   4,   6,   8,  10,  0,  7,  24),
+	STIH415_PIO_ENTRY_CONTROL4( 0,   0,   5,   7,   9,          16),
+	STIH415_PIO_ENTRY_CONTROL(  4,   4,   6,   8,  10,  0,  7,  24),
 	/* 5-12: SAS_FRONT */
-	STIH415_PIO_CONTROL4( 5, 100, 108, 110, 112,         116),
-	STIH415_PIO_CONTROL4( 9, 104, 109, 111, 113,         124),
+	STIH415_PIO_ENTRY_CONTROL4( 5, 100, 108, 110, 112,         116),
+	STIH415_PIO_ENTRY_CONTROL4( 9, 104, 109, 111, 113,         124),
 	/* 13-18: SAS_REAR */
-	STIH415_PIO_CONTROL4(13, 300, 306, 308, 310,         338),
-	STIH415_PIO_CONTROL( 17, 304, 307, 309, 311,  0,  7, 346),
-	STIH415_PIO_CONTROL( 18, 305, 307, 309, 311,  8, 15, 348),
+	STIH415_PIO_ENTRY_CONTROL4(13, 300, 306, 308, 310,         338),
+	STIH415_PIO_ENTRY_CONTROL( 17, 304, 307, 309, 311,  0,  7, 346),
+	STIH415_PIO_ENTRY_CONTROL( 18, 305, 307, 309, 311,  8, 15, 348),
 	/* 100-102: MPE_PIO */
-	STIH415_PIO_CONTROL( 19, 400, 403, 404, 405,  0,  7, 406),
-	STIH415_PIO_CONTROL( 20, 401, 403, 404, 405,  8, 15, 408),
-	STIH415_PIO_CONTROL( 21, 402, 403, 404, 405, 16, 23, 410),
+	STIH415_PIO_ENTRY_CONTROL( 19, 400, 403, 404, 405,  0,  7, 406),
+	STIH415_PIO_ENTRY_CONTROL( 20, 401, 403, 404, 405,  8, 15, 408),
+	STIH415_PIO_ENTRY_CONTROL( 21, 402, 403, 404, 405, 16, 23, 410),
 	/* 103-107: PIO_1_MPE */
-	STIH415_PIO_CONTROL4(22, 500, 505, 507, 509,         511),
-	STIH415_PIO_CONTROL( 26, 504, 506, 508, 510,  0,  7, 519),
+	STIH415_PIO_ENTRY_CONTROL4(22, 500, 505, 507, 509,         511),
+	STIH415_PIO_ENTRY_CONTROL( 26, 504, 506, 508, 510,  0,  7, 519),
 };
 
 static struct stm_pio_control stih415_pio_controls[27];
