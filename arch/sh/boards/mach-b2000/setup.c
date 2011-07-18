@@ -111,7 +111,23 @@ static struct platform_device b2000_phy_devices[] = {
 	},
 };
 
+static struct platform_device b2000_leds = {
+	.name = "leds-gpio",
+	.id = -1,
+	.dev.platform_data = &(struct gpio_led_platform_data) {
+		.num_leds = 1,
+		.leds = (struct gpio_led[]) {
+			{
+				.name = "FP_LED",
+				.default_trigger = "heartbeat",
+				.gpio = stm_gpio(STIH415_PIO(105), 7),
+			}
+		},
+	},
+};
+
 static struct platform_device *b2000_devices[] __initdata = {
+	&b2000_leds,
 };
 
 static int __init b2000_devices_init(void)
