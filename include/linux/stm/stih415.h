@@ -60,5 +60,6 @@ struct stih415_ethernet_config {
 void stih415_configure_ethernet(int port,
 		struct stih415_ethernet_config *config);
 
+void stih415_configure_mali(struct stm_mali_config *config);
 
 #endif

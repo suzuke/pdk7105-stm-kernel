@@ -713,6 +713,42 @@ static struct platform_device stih415_sysconf_devices[] = {
 	},
 };
 
+/* Mali resources --------------------------------------------------------- */
+
+static struct platform_device stih415_mali_device = {
+	.name = "mali",
+	.id = 0,
+	.num_resources = 21,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM_NAMED("MALI400GP", 0xfd680000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("MALI400PP-0", 0xfd688000, 0x10F0),
+		STM_PLAT_RESOURCE_MEM_NAMED("MALI400PP-1", 0xfd68A000, 0x10F0),
+		STM_PLAT_RESOURCE_MEM_NAMED("MALI400PP-2", 0xfd68C000, 0x10F0),
+		STM_PLAT_RESOURCE_MEM_NAMED("MALI400PP-3", 0xfd68E000, 0x10F0),
+		STM_PLAT_RESOURCE_MEM_NAMED("MMU-1", 0xfd683000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("MMU-2", 0xfd684000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("MMU-3", 0xfd685000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("MMU-4", 0xfd686000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("MMU-5", 0xfd687000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("MALI400L2",  0xfd681000, 0x1000),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400GP", STIH415_IRQ(80), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-0", STIH415_IRQ(78), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-1", STIH415_IRQ(82), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-2", STIH415_IRQ(83), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-3", STIH415_IRQ(84), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-1", STIH415_IRQ(81), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-2", STIH415_IRQ(79), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-3", STIH415_IRQ(85), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-4", STIH415_IRQ(86), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-5", STIH415_IRQ(87), -1),
+	},
+};
+
+void stih415_configure_mali(struct stm_mali_config *priv_data)
+{
+	stih415_mali_device.dev.platform_data = priv_data;
+	platform_device_register(&stih415_mali_device);
+}
 
 
 /* Early initialisation-----------------------------------------------------*/
