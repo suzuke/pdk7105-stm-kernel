@@ -49,8 +49,18 @@ COMMON_OBJS := $(addprefix ./common/, \
 PLATFORM_OBJS := $(addprefix ./platform/stm/, \
         mali_platform.o )
 
-ifeq ($(CONFIG_CPU_SUBTYPE_STX7108)$(CONFIG_CPU_SUBTYPE_FLI7510),y)
+MALI_OBJS := $(OSK_OBJS) $(UKK_OBJS) $(COMMON_OBJS) $(LINUX_OBJS) $(PLATFORM_OBJS)
+
+ifeq ($(CONFIG_CPU_SUBTYPE_STIH415)$(CONFIG_CPU_SUBTYPE_STX7108)$(CONFIG_CPU_SUBTYPE_FLI7510),y)
+ifeq ($(CONFIG_CPU_SUBTYPE_STIH415),y)
+SOC                      := stih415
+endif
+ifeq ($(CONFIG_CPU_SUBTYPE_STX7108),y)
 SOC                      := stx7108
+endif
+ifeq ($(CONFIG_CPU_SUBTYPE_FLI7510),y)
+SOC                      := fli75x0
+endif
 USING_MMU                := 1
 USING_UMP                := 0
 USING_MALI200            := 0
@@ -69,7 +79,6 @@ USING_PROFILING        	 := 0
 TIMESTAMP              	 := default
 USING_MALI_PMM_TESTSUITE := 0
 
-MALI_OBJS := $(OSK_OBJS) $(UKK_OBJS) $(COMMON_OBJS) $(LINUX_OBJS) $(PLATFORM_OBJS)
 MALI_OBJS += $(addprefix ./common/, \
         mali_kernel_MALI200.o \
         mali_kernel_GP2.o \
