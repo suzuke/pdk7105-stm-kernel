@@ -5,15 +5,20 @@
 # License.  See the file COPYING in the main directory of this archive for
 # more details.
 #
-MALI_DIR="drivers/stm/mali"
-# Get ARM relase version string
-SVN_REV:=$(shell [ -e $(MALI_DIR)/version ] && cat $(MALI_DIR)/version)
+MALI_DIR := $(srctree)/drivers/stm/mali
+
+# Get ARM release version string
+SVN_REV := $(shell [ -e $(MALI_DIR)/version ] && cat $(MALI_DIR)/version)
 
 # Get API version of user-kernel interface by extracting it from the mali_kernel_ioctl.h file
-API_VERSION:=$(shell grep "\#define _MALI_API_VERSION" $(MALI_DIR)/common/mali_uk_types.h | cut -d' ' -f 3 )
+API_VERSION := $(shell grep "\#define _MALI_API_VERSION" $(MALI_DIR)/common/mali_uk_types.h | cut -d' ' -f 3 )
+
+# Driver include paths
+ccflags-y := -I$(MALI_DIR) -I$(MALI_DIR)/common -I$(MALI_DIR)/linux -I$(MALI_DIR)/platform
+ccflags-y += -I$(MALI_DIR)/linux/license/gpl
 
 # Source files which always are included in a build
-OSK_OBJS=$(addprefix ./linux/, \
+OSK_OBJS := $(addprefix ./linux/, \
         mali_osk_atomics.o \
         mali_osk_irq.o \
         mali_osk_locks.o \
@@ -26,45 +31,45 @@ OSK_OBJS=$(addprefix ./linux/, \
         mali_osk_time.o \
         mali_osk_timers.o)
 
-UKK_OBJS=$(addprefix ./linux/,\
+UKK_OBJS := $(addprefix ./linux/,\
         mali_ukk_mem.o \
         mali_ukk_gp.o \
         mali_ukk_pp.o \
         mali_ukk_core.o)
 
-LINUX_OBJS=$(addprefix ./linux/, \
+LINUX_OBJS := $(addprefix ./linux/, \
         mali_kernel_linux.o \
         mali_osk_indir_mmap.o)
 
-COMMON_OBJS = $(addprefix ./common/, \
+COMMON_OBJS := $(addprefix ./common/, \
         mali_kernel_core.o \
         mali_kernel_rendercore.o \
         mali_kernel_descriptor_mapping.o)
 
-PLATFORM_OBJS = $(addprefix ./platform/stm/, \
+PLATFORM_OBJS := $(addprefix ./platform/stm/, \
         mali_platform.o )
 
 ifeq ($(CONFIG_CPU_SUBTYPE_STX7108)$(CONFIG_CPU_SUBTYPE_FLI7510),y)
-SOC                      = stx7108
-USING_MMU                = 1
-USING_UMP                = 0
-USING_MALI200            = 0
-USING_MALI400            = 1
-USING_MALI400_L2_CACHE   = 1
-USING_GP2                = 1
+SOC                      := stx7108
+USING_MMU                := 1
+USING_UMP                := 0
+USING_MALI200            := 0
+USING_MALI400            := 1
+USING_MALI400_L2_CACHE   := 1
+USING_GP2                := 1
 
 # new for r2p1
-ONLY_ZBT                 = 0
-USING_ZBT                = 1
-USING_OS_MEMORY          = 0
-USING_PMM                = 1
-USING_MALI_RUN_TIME_PM 	 = 0
-USING_GPU_UTILIZATION  	 = 0
-USING_PROFILING        	 = 0
-TIMESTAMP              	 = default
-USING_MALI_PMM_TESTSUITE = 0
+ONLY_ZBT                 := 0
+USING_ZBT                := 1
+USING_OS_MEMORY          := 0
+USING_PMM                := 1
+USING_MALI_RUN_TIME_PM 	 := 0
+USING_GPU_UTILIZATION  	 := 0
+USING_PROFILING        	 := 0
+TIMESTAMP              	 := default
+USING_MALI_PMM_TESTSUITE := 0
 
-MALI_OBJS = $(OSK_OBJS) $(UKK_OBJS) $(COMMON_OBJS) $(LINUX_OBJS) $(PLATFORM_OBJS)
+MALI_OBJS := $(OSK_OBJS) $(UKK_OBJS) $(COMMON_OBJS) $(LINUX_OBJS) $(PLATFORM_OBJS)
 MALI_OBJS += $(addprefix ./common/, \
         mali_kernel_MALI200.o \
         mali_kernel_GP2.o \
@@ -86,13 +91,14 @@ MALI_OBJS += $(addprefix ./linux/, \
         mali_kernel_pm.o \
         mali_osk_pm.o \
         mali_device_pause_resume.o)
+ccflags-y += -I$(MALI_DIR)/common/pmm
 endif
 
 ifeq ($(USING_PROFILING),1)
 MALI_OBJS += $(addprefix ./common/, \
         mali_kernel_profiling.o) \
         timestamp-$(TIMESTAMP)/mali_timestamp.o
-EXTRA_CFLAGS += -I$(MALI_DIR)/timestamp-$(TIMESTAMP)
+ccflags-y += -I$(MALI_DIR)/timestamp-$(TIMESTAMP)
 endif
 
 ifeq ($(USING_GPU_UTILIZATION),1)
@@ -102,15 +108,8 @@ endif
 
 MAIL_OBJS += malidrv_build_info.o
 
-# Driver include paths
-EXTRA_CFLAGS += -I$(MALI_DIR) -I$(MALI_DIR)/common -I$(MALI_DIR)/linux -I$(MALI_DIR)/platform 
-EXTRA_CFLAGS += -I$(MALI_DIR)/linux/license/gpl
-ifeq ($(USING_PMM),1)
-EXTRA_CFLAGS += -I$(MALI_DIR)/common/pmm
-endif
-
 # Mali driver defines
-EXTRA_CFLAGS += -DUSING_MMU=$(USING_MMU) \
+ccflags-y += 	-DUSING_MMU=$(USING_MMU) \
 		-DMALI_USE_UNIFIED_MEMORY_PROVIDER=0 \
 		-D_MALI_OSK_SPECIFIC_INDIRECT_MMAP \
 		-DMALI_UKK_HAS_IMPLICIT_MMAP_CLEANUP \
@@ -120,7 +119,7 @@ EXTRA_CFLAGS += -DUSING_MMU=$(USING_MMU) \
 		-DSVN_REV_STRING=\"$(SVN_REV)\"
 
 # Mali driver defines new for r2p1
-EXTRA_CFLAGS += -DUSING_ZBT=$(USING_ZBT) \
+ccflags-y += 	-DUSING_ZBT=$(USING_ZBT) \
 		-DUSING_OS_MEMORY=$(USING_OS_MEMORY) \
 		-DONLY_ZBT=$(ONLY_ZBT) \
 		-DUSING_MALI_PMM=$(USING_PMM) \
@@ -130,10 +129,10 @@ EXTRA_CFLAGS += -DUSING_ZBT=$(USING_ZBT) \
 		-DMALI_POWER_MGMT_TEST_SUITE=$(USING_MALI_PMM_TESTSUITE)
 
 ifeq ($(CONFIG_STM_MALI_DEBUG),y)
-EXTRA_CFLAGS += -DDEBUG
+ccflags-y += -DDEBUG
 endif
 
-BUILD_DATE = $(shell LANG=C /bin/date "+%a %b %d %Y %H:%m %Z")
+BUILD_DATE := $(shell LANG=C /bin/date "+%a %b %d %Y %H:%m %Z")
 
 CFLAGS_malidrv_build_info.o := -DMALIDRV_SOC="KBUILD_STR($(SOC))"     \
 		-DMALIDRV_KERNELDIR="KBUILD_STR($(KERNELDIR))" \
