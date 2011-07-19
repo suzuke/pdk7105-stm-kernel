@@ -26,4 +26,12 @@ config MACH_STM_B2000
 	help
 	  Include support for a B2000 - STiH415 (Orly) MBoard.
 
+config MACH_STM_B2000_MALI_OS_MEMORY_SIZE
+	depends on MACH_STM_B2000
+	hex "Maximum Mali GPU OS memory size"
+	default "0x5000000"
+	help
+	  Specify the size of memory which the Mali driver is allowed to allocate
+	  from Linux kernel.
+
 endmenu

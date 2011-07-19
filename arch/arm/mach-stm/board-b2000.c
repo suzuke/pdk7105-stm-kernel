@@ -139,6 +139,32 @@ static struct platform_device b2000_leds = {
 static struct platform_device *b2000_devices[] __initdata = {
 	&b2000_leds,
 };
+
+
+static struct stm_mali_resource b2000_mali_mem[1] = {
+	{
+		.name   = "OS_MEMORY",
+		.start  =  0,
+		.end    =  CONFIG_MACH_STM_B2000_MALI_OS_MEMORY_SIZE-1,
+	},
+};
+
+static struct stm_mali_resource b2000_mali_ext_mem[] = {
+	{
+		.name   = "EXTERNAL_MEMORY_RANGE",
+		.start  =  0x40000000,
+		.end    =  0xBFFFFFFF,
+	}
+};
+
+
+static struct stm_mali_config b2000_mali_config = {
+	.num_mem_resources = ARRAY_SIZE(b2000_mali_mem),
+	.mem = b2000_mali_mem,
+	.num_ext_resources = ARRAY_SIZE(b2000_mali_ext_mem),
+	.ext_mem = b2000_mali_ext_mem,
+};
+
 static void __init b2000_init(void)
 {
 	/* Reset */
@@ -180,6 +206,8 @@ static void __init b2000_init(void)
 	stih415_configure_usb(0);
 	stih415_configure_usb(1);
 	stih415_configure_usb(2);
+
+	stih415_configure_mali(&b2000_mali_config);
 
 	platform_add_devices(b2000_devices,
 		ARRAY_SIZE(b2000_devices));
