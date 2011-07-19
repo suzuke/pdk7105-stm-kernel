@@ -167,7 +167,9 @@ config STM_RNG
          driver found in the char drivers menu.
 
 config STM_MALI
-	depends on CPU_SUBTYPE_STX7108
+	depends on (CPU_SUBTYPE_STX7108 || \
+                    CPU_SUBTYPE_FLI7510 || \
+                    CPU_SUBTYPE_STIH415)
 	tristate "STM Mali GPU support"
 	default n
 	help
