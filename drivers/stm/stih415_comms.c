@@ -23,27 +23,6 @@
 #include <mach/hardware.h>
 #endif
 
-/*
- * ARM and ST40 interrupts are virtually identical, so we can use the same
- * parameter for both. Only mailbox and some A/V interrupts are connected
- * to the ST200's, however 4 ILC outputs are available, which could be
- * used if required.
- */
-#if defined(CONFIG_SUPERH)
-#define STIH415_IRQ(irq) ILC_IRQ(irq)
-#elif defined(CONFIG_ARM)
-#define STIH415_IRQ(irq) ((irq)+32)
-#endif
-
-/* Currently STM_PLAT_RESOURCE_IRQ only works for SH4 and ST200 */
-#undef STM_PLAT_RESOURCE_IRQ
-#define STM_PLAT_RESOURCE_IRQ(_irq) \
-	{ \
-		.start = STIH415_IRQ(_irq), \
-		.end = STIH415_IRQ(_irq),	\
-		.flags = IORESOURCE_IRQ, \
-	}
-
 /* SSC resources ---------------------------------------------------------- */
 
 /* Pad configuration for I2C mode */
@@ -218,7 +197,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SSC0_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(187),
+			STIH415_RESOURCE_IRQ(187),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -229,7 +208,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SSC1_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(188),
+			STIH415_RESOURCE_IRQ(188),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -240,7 +219,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SSC2_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(189),
+			STIH415_RESOURCE_IRQ(189),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -251,7 +230,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SSC3_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(190),
+			STIH415_RESOURCE_IRQ(190),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -262,7 +241,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SSC4_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(191),
+			STIH415_RESOURCE_IRQ(191),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -273,7 +252,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SSC5_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(192),
+			STIH415_RESOURCE_IRQ(192),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -284,7 +263,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SSC6_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(193),
+			STIH415_RESOURCE_IRQ(193),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -296,7 +275,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SBC_SSC0_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(206),
+			STIH415_RESOURCE_IRQ(206),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -308,7 +287,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SBC_SSC1_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(207),
+			STIH415_RESOURCE_IRQ(207),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -320,7 +299,7 @@ static struct platform_device stih415_ssc_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SBC_SSC2_BASE, 0x110),
-			STM_PLAT_RESOURCE_IRQ(208),
+			STIH415_RESOURCE_IRQ(208),
 		},
 		.dev.platform_data = &(struct stm_plat_ssc_data) {
 			/* .pad_config_* set in stih415_configure_ssc_*() */
@@ -407,7 +386,7 @@ static struct platform_device stih415_lirc_device = {
 	.num_resources = 2,
 	.resource = (struct resource []) {
 		STM_PLAT_RESOURCE_MEM(STIH415_SBC_IRB_BASE, 0x234),
-		STM_PLAT_RESOURCE_IRQ(203),
+		STIH415_RESOURCE_IRQ(203),
 	},
 	.dev.platform_data = &(struct stm_plat_lirc_data) {
 		/* The clock settings will be calculated by

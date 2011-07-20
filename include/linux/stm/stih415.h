@@ -14,6 +14,38 @@
 #include <linux/spi/spi.h>
 #include <linux/stm/platform.h>
 
+/*
+ * ARM and ST40 interrupts are virtually identical, so we can use the same
+ * parameter for both. Only mailbox and some A/V interrupts are connected
+ * to the ST200's, however 4 ILC outputs are available, which could be
+ * used if required.
+ */
+#if defined(CONFIG_SUPERH)
+#define STIH415_IRQ(irq) ILC_IRQ(irq)
+#elif defined(CONFIG_ARM)
+#define STIH415_IRQ(irq) ((irq)+32)
+#endif
+
+#define STIH415_RESOURCE_IRQ(_irq) \
+	{ \
+		.start = STIH415_IRQ(_irq), \
+		.end = STIH415_IRQ(_irq),	\
+		.flags = IORESOURCE_IRQ, \
+	}
+
+#define STIH415_RESOURCE_IRQ_NAMED(_name, _irq)	\
+	{ \
+		.start = STIH415_IRQ(_irq), \
+		.end = STIH415_IRQ(_irq), \
+		.name = (_name), \
+		.flags = IORESOURCE_IRQ, \
+	}
+
+#ifndef CONFIG_ARM
+#define IO_ADDRESS(x) 0
+#endif
+
+
 #define SYSCONFG_GROUP(x) \
 	(((x) < 100) ? 0 : (((x) < 300) ? 1 : (((x)/100)-1)))
 #define SYSCONF_OFFSET(x) \
@@ -26,6 +58,7 @@
 	(((x) < 100) ? (x) : ((x)-100+19))
 
 #define LPM_SYSCONF_BANK	(6)
+
 
 struct stih415_pio_config {
         struct stm_pio_control_mode_config *mode;

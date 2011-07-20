@@ -608,12 +608,6 @@ static struct plat_stmmacenet_data stih415_ethernet_platform_data[] = {
 	}
 };
 
-#if defined(CONFIG_SUPERH)
-#define STIH415_IRQ(irq) ILC_IRQ(irq)
-#elif defined(CONFIG_ARM)
-#define STIH415_IRQ(irq) ((irq)+32)
-#endif
-
 static u64 stih415_usb_dma_mask = DMA_BIT_MASK(32);
 static struct platform_device stih415_ethernet_devices[] = {
 	{
@@ -622,7 +616,7 @@ static struct platform_device stih415_ethernet_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(0xFE810000, 0x8000),
-			STM_PLAT_RESOURCE_IRQ_NAMED("macirq", STIH415_IRQ(147), -1),
+			STIH415_RESOURCE_IRQ_NAMED("macirq", 147),
 		},
 		.dev = {
 			.dma_mask = &stih415_usb_dma_mask,
@@ -635,7 +629,7 @@ static struct platform_device stih415_ethernet_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(0xFEF08000, 0x8000),
-			STM_PLAT_RESOURCE_IRQ_NAMED("macirq", STIH415_IRQ(150), -1),
+			STIH415_RESOURCE_IRQ_NAMED("macirq", 150),
 		},
 
 		.dev = {

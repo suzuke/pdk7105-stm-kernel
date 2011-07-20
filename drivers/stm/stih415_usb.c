@@ -32,42 +32,8 @@
 #include "pio-control.h"
 
 
-/*
- * ARM and ST40 interrupts are virtually identical, so we can use the same
- * parameter for both. Only mailbox and some A/V interrupts are connected
- * to the ST200's, however 4 ILC outputs are available, which could be
- * used if required.
- */
-#if defined(CONFIG_SUPERH)
-#define STIH415_IRQ(irq) ILC_IRQ(irq)
-#elif defined(CONFIG_ARM)
-#define STIH415_IRQ(irq) ((irq)+32)
-#endif
-
-/* Currently STM_PLAT_RESOURCE_IRQ only works for SH4 and ST200 */
-#undef STM_PLAT_RESOURCE_IRQ
-#define STM_PLAT_RESOURCE_IRQ(_irq) \
-	{ \
-		.start = STIH415_IRQ(_irq), \
-		.end = STIH415_IRQ(_irq),	\
-		.flags = IORESOURCE_IRQ, \
-	}
-#undef STM_PLAT_RESOURCE_IRQ_NAMED
-#define STM_PLAT_RESOURCE_IRQ_NAMED(_name, _irq)	\
-	{ \
-		.start = STIH415_IRQ(_irq), \
-		.end = STIH415_IRQ(_irq), \
-		.name = (_name), \
-		.flags = IORESOURCE_IRQ, \
-	}
-
-#ifndef CONFIG_ARM
-#define IO_ADDRESS(x) 0
-#endif
-
 
 /* USB resources ---------------------------------------------------------- */
-
 static u64 stih415_usb_dma_mask = DMA_BIT_MASK(32);
 
 #define USB_HOST_PWR		"USB_HOST_PWR"
@@ -205,8 +171,8 @@ static struct platform_device stih415_usb_devices[] = {
 					0xfe1ffe00, 0x100),
 			STM_PLAT_RESOURCE_MEM_NAMED("protocol",
 					0xfe1fff00, 0x100),
-			STM_PLAT_RESOURCE_IRQ_NAMED("ehci", 155),
-			STM_PLAT_RESOURCE_IRQ_NAMED("ohci", 156),
+			STIH415_RESOURCE_IRQ_NAMED("ehci", 155),
+			STIH415_RESOURCE_IRQ_NAMED("ohci", 156),
 		},
 	},
 	[1] = {
@@ -227,8 +193,8 @@ static struct platform_device stih415_usb_devices[] = {
 					0xfe2ffe00, 0x100),
 			STM_PLAT_RESOURCE_MEM_NAMED("protocol",
 					0xfe2fff00, 0x100),
-			STM_PLAT_RESOURCE_IRQ_NAMED("ehci", 157),
-			STM_PLAT_RESOURCE_IRQ_NAMED("ohci", 158),
+			STIH415_RESOURCE_IRQ_NAMED("ehci", 157),
+			STIH415_RESOURCE_IRQ_NAMED("ohci", 158),
 		},
 	},
 	[2] = {
@@ -249,8 +215,8 @@ static struct platform_device stih415_usb_devices[] = {
 					0xfe3ffe00, 0x100),
 			STM_PLAT_RESOURCE_MEM_NAMED("protocol",
 					0xfe3fff00, 0x100),
-			STM_PLAT_RESOURCE_IRQ_NAMED("ehci", 159),
-			STM_PLAT_RESOURCE_IRQ_NAMED("ohci", 160),
+			STIH415_RESOURCE_IRQ_NAMED("ehci", 159),
+			STIH415_RESOURCE_IRQ_NAMED("ohci", 160),
 		},
 	},
 };

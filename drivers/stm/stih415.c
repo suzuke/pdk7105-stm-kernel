@@ -34,30 +34,7 @@
 #include "pio-control.h"
 
 
-/*
- * ARM and ST40 interrupts are virtually identical, so we can use the same
- * parameter for both. Only mailbox and some A/V interrupts are connected
- * to the ST200's, however 4 ILC outputs are available, which could be
- * used if required.
- */
-#if defined(CONFIG_SUPERH)
-#define STIH415_IRQ(irq) ILC_IRQ(irq)
-#elif defined(CONFIG_ARM)
-#define STIH415_IRQ(irq) ((irq)+32)
-#endif
 
-/* Currently STM_PLAT_RESOURCE_IRQ only works for SH4 and ST200 */
-#undef STM_PLAT_RESOURCE_IRQ
-#define STM_PLAT_RESOURCE_IRQ(_irq) \
-	{ \
-		.start = STIH415_IRQ(_irq), \
-		.end = STIH415_IRQ(_irq),	\
-		.flags = IORESOURCE_IRQ, \
-	}
-
-#ifndef CONFIG_ARM
-#define IO_ADDRESS(x) 0
-#endif
 
 
 /* ASC resources ---------------------------------------------------------- */
@@ -139,7 +116,7 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC0_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(195),
+			STIH415_RESOURCE_IRQ(195),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 11),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 15),
 		},
@@ -154,7 +131,7 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC1_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(196),
+			STIH415_RESOURCE_IRQ(196),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 12),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 16),
 		},
@@ -168,7 +145,7 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC2_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(197),
+			STIH415_RESOURCE_IRQ(197),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 13),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 17),
 		},
@@ -182,7 +159,7 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_ASC3_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(198),
+			STIH415_RESOURCE_IRQ(198),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
@@ -202,7 +179,7 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SBC_ASC0_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(209),
+			STIH415_RESOURCE_IRQ(209),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
@@ -216,7 +193,7 @@ static struct platform_device stih415_asc_devices[] = {
 		.num_resources = 4,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(STIH415_SBC_ASC1_BASE, 0x2c),
-			STM_PLAT_RESOURCE_IRQ(210),
+			STIH415_RESOURCE_IRQ(210),
 			STM_PLAT_RESOURCE_DMA_NAMED("rx_half_full", 14),
 			STM_PLAT_RESOURCE_DMA_NAMED("tx_half_empty", 18),
 		},
@@ -522,7 +499,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(0xfd600000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(10),
+			STIH415_RESOURCE_IRQ(10),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}, {
@@ -532,7 +509,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[2]) {
 			STM_PLAT_RESOURCE_MEM(0xfd620000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(18),
+			STIH415_RESOURCE_IRQ(18),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}, {
@@ -542,7 +519,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[2]) {
 			STM_PLAT_RESOURCE_MEM(0xfd640000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(26),
+			STIH415_RESOURCE_IRQ(26),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}
@@ -568,7 +545,7 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(0xfea00000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(121),
+			STIH415_RESOURCE_IRQ(121),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}, {
@@ -578,7 +555,7 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 		.num_resources = 2,
 		.resource = (struct resource[2]) {
 			STM_PLAT_RESOURCE_MEM(0xfea20000, 0x20000),
-			STM_PLAT_RESOURCE_IRQ(129),
+			STIH415_RESOURCE_IRQ(129),
 		},
 		.dev.platform_data = &stih415_fdma_platform_data,
 	}
@@ -769,16 +746,16 @@ static struct platform_device stih415_mali_device = {
 		STM_PLAT_RESOURCE_MEM_NAMED("MMU-4", 0xfd686000, 0x1000),
 		STM_PLAT_RESOURCE_MEM_NAMED("MMU-5", 0xfd687000, 0x1000),
 		STM_PLAT_RESOURCE_MEM_NAMED("MALI400L2",  0xfd681000, 0x1000),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400GP", STIH415_IRQ(80), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-0", STIH415_IRQ(78), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-1", STIH415_IRQ(82), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-2", STIH415_IRQ(83), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MALI400PP-3", STIH415_IRQ(84), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-1", STIH415_IRQ(81), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-2", STIH415_IRQ(79), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-3", STIH415_IRQ(85), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-4", STIH415_IRQ(86), -1),
-		STM_PLAT_RESOURCE_IRQ_NAMED("MMU-5", STIH415_IRQ(87), -1),
+		STIH415_RESOURCE_IRQ_NAMED("MALI400GP", 80),
+		STIH415_RESOURCE_IRQ_NAMED("MALI400PP-0", 78),
+		STIH415_RESOURCE_IRQ_NAMED("MALI400PP-1", 82),
+		STIH415_RESOURCE_IRQ_NAMED("MALI400PP-2", 83),
+		STIH415_RESOURCE_IRQ_NAMED("MALI400PP-3", 84),
+		STIH415_RESOURCE_IRQ_NAMED("MMU-1", 81),
+		STIH415_RESOURCE_IRQ_NAMED("MMU-2", 79),
+		STIH415_RESOURCE_IRQ_NAMED("MMU-3", 85),
+		STIH415_RESOURCE_IRQ_NAMED("MMU-4", 86),
+		STIH415_RESOURCE_IRQ_NAMED("MMU-5", 87),
 	},
 };
 
