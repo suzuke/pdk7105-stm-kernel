@@ -36,6 +36,7 @@
 #include <linux/uaccess.h>
 #include <linux/param.h>
 #include <linux/gpio.h>
+#include <linux/err.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
 #include <linux/stm/platform.h>
@@ -443,8 +444,9 @@ static int __init spi_stm_probe(struct platform_device *pdev)
 	ssc_store32(spi_stm, SSC_CTL, reg);
 
 	spi_stm->clk = clk_get(&pdev->dev, "comms_clk");
-	if (!spi_stm->clk) {
+	if (IS_ERR(spi_stm->clk)) {
 		dev_err(&pdev->dev, "Comms clock not found!\n");
+		status = PTR_ERR(spi_stm->clk);
 		goto err5;
 	}
 
