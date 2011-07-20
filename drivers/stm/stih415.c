@@ -725,9 +725,27 @@ static struct platform_device stih415_sysconf_devices[] = {
 				}
 			},
 		}
+	}, {
+		/* LPM CONFIG and Status Registers */
+		.name		= "sysconf",
+		.id		= 6,
+		.num_resources	= 1,
+		.resource	= (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIH415_SBC_LPM_CONF_BASE, 0x54),
+		},
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_SBC_LPM_CONF_BASE),
+			.groups_num = 1,
+			.groups = (struct stm_plat_sysconf_group []) {
+				{
+					.group = 6,
+					.offset = 0,
+					.name = "LPM_CFG_REGS",
+				}
+			},
+		}
 	},
 };
-
 /* Mali resources --------------------------------------------------------- */
 
 static struct platform_device stih415_mali_device = {

@@ -25,6 +25,8 @@
 #define STIH415_PIO(x) \
 	(((x) < 100) ? (x) : ((x)-100+19))
 
+#define LPM_SYSCONF_BANK	(6)
+
 struct stih415_pio_config {
         struct stm_pio_control_mode_config *mode;
         struct stm_pio_control_retime_config *retime;
