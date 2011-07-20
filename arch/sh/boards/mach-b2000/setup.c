@@ -66,6 +66,15 @@ static int b2000_gmii1_reset(void *bus)
 
 
 #ifdef CONFIG_SH_ST_B2000_GMAC1_GMII_MODE
+/*
+ * On B2000B board PIO 2-5 conflicts with the HDMI hot-plug detection pin.
+ * As we have a seperate 125clk pin in to the MAC, we might not need
+ * tx clk selection.
+ * Removing R59 from B2032A will solve the problem and TXCLK is
+ * always connected to PHY TXCLK.
+ * NOTE: This will be an issue if the B2032 is used with a 7108 as
+ * 125clk comes from phy txclk, and so this signal is needed.
+ */
 static void b2000_gmac1_txclk_select(int txclk_250_not_25_mhz)
 {
 	/* When 1000 speed is negotiated we have to set the PIO2[5]. */
@@ -170,7 +179,11 @@ static int __init b2000_devices_init(void)
 	gpio_request(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, "GMII0_TXCLK_SEL");
 	gpio_direction_output(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
 
-/* GMII Mode on B2032A needs R26 to be fitted with 51R */
+/*
+ * GMII Mode on B2032A needs R26 to be fitted with 51R
+ * On B2000B board, to get GMAC0 working make sure that jumper
+ * on PIN 9-10 on CN35 and CN36 are removed.
+ */
 	stih415_configure_ethernet(0, &(struct stih415_ethernet_config) {
 #ifndef CONFIG_SH_ST_B2000_GMAC0_GMII_MODE
 			.mode = stih415_ethernet_mode_mii,
@@ -182,7 +195,7 @@ static int __init b2000_devices_init(void)
 			.phy_bus = 0, });
 
 	stih415_configure_ethernet(1, &(struct stih415_ethernet_config) {
-#ifndef CONFIG_SH_ST_B2000_GMAC0_GMII_MODE
+#ifndef CONFIG_SH_ST_B2000_GMAC1_GMII_MODE
 			.mode = stih415_ethernet_mode_mii,
 #else
 			.mode = stih415_ethernet_mode_gmii_gtx,
