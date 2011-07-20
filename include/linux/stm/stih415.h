@@ -62,6 +62,29 @@ struct stih415_ethernet_config {
 void stih415_configure_ethernet(int port,
 		struct stih415_ethernet_config *config);
 
+struct stih415_ssc_config {
+	void (*spi_chipselect)(struct spi_device *spi, int is_on);
+};
+
+#define STIH415_SBC_SSC(num)		(num + 7)
+#define STIH415_SSC(num)		(num)
+
+/* Use the above macros while passing SSC number. */
+int stih415_configure_ssc_spi(int ssc, struct stih415_ssc_config *config);
+int stih415_configure_ssc_i2c(int ssc);
+
+
+struct stih415_lirc_config {
+	enum {
+		stih415_lirc_rx_disabled,
+		stih415_lirc_rx_mode_ir,
+		stih415_lirc_rx_mode_uhf
+	} rx_mode;
+	int tx_enabled;
+	int tx_od_enabled;
+};
+void stih415_configure_lirc(struct stih415_lirc_config *config);
+
 void stih415_configure_mali(struct stm_mali_config *config);
 
 #endif

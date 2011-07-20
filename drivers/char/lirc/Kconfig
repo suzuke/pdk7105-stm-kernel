@@ -147,7 +147,7 @@ config LIRC_SUPPORT
 
         config LIRC_STM
                 tristate "STM Driver"
-                depends on LIRC_SUPPORT && CPU_SUBTYPE_ST40
+                depends on LIRC_SUPPORT && STM_DRIVERS
 		help
 		 The IR and UHF RX processors are identical and independent,
 		 except that the IR receiver does not use the noise and

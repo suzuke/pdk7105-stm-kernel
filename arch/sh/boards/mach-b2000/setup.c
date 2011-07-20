@@ -195,6 +195,19 @@ static int __init b2000_devices_init(void)
 	stih415_configure_usb(1);
 	stih415_configure_usb(2);
 
+	/* HDMI */
+	stih415_configure_ssc_i2c(STIH415_SSC(1));
+
+	/* Frontend I2C, make sure J17-J20 are configured accordingly */
+	stih415_configure_ssc_i2c(STIH415_SSC(3));
+
+	/* Backend I2C, make sure J50, J51 are configured accordingly */
+	stih415_configure_ssc_i2c(STIH415_SBC_SSC(0));
+
+	/* IR_IN */
+	stih415_configure_lirc(&(struct stih415_lirc_config) {
+			.rx_mode = stih415_lirc_rx_mode_ir, });
+
 	stih415_configure_mali(&b2000_mali_config);
 
 	return platform_add_devices(b2000_devices,
