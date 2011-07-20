@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
+#include <linux/clk.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
@@ -276,6 +277,10 @@ void __init stih415_configure_asc(int asc, struct stih415_asc_config *config)
 
 	if (config->is_console)
 		stm_asc_console_device = pdev->id;
+
+	if (asc > 3)
+		clk_add_alias_platform_device(NULL, pdev,
+			"sbc_comms_clk", NULL);
 
 	stm_asc_configured_devices[stm_asc_configured_devices_num++] = pdev;
 }
