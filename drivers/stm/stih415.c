@@ -416,10 +416,25 @@ static int stih415_pio_config(unsigned gpio,
 	BUG_ON(port > ARRAY_SIZE(stih415_pio_devices));
 	BUG_ON(function < 0 || function > 5);
 
-
-	if (function > 0)
+	if (function == 0) {
+		switch (direction) {
+		case stm_pad_gpio_direction_in:
+			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_IN);
+			break;
+		case stm_pad_gpio_direction_out:
+			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_OUT);
+			break;
+		case stm_pad_gpio_direction_bidir:
+			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_BIDIR);
+			break;
+		default:
+			BUG();
+			break;
+		}
+	} else {
 		stm_pio_control_config_direction(port, pin, direction,
 				config ? config->mode : NULL);
+	}
 
 	stm_pio_control_config_function(port, pin, function);
 
