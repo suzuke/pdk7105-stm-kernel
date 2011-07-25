@@ -14,7 +14,7 @@ int __init plat_clk_alias_init(void)
 {
 	clk_add_alias("cpu_clk", NULL, "CLKM_A9", NULL);
 	/* comms clk */
-	clk_add_alias("comms_clk", NULL, "CLKS_IC_IF_0", NULL);
+	clk_add_alias("comms_clk", NULL, "CLKS_IC_REG", NULL);
 	/* module clk ?!?!?! */
 	clk_add_alias("module_clk", NULL, "CLKS_IC_IF_0", NULL);
 	/* EMI clk */
