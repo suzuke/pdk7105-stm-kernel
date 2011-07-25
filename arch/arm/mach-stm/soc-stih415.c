@@ -103,6 +103,11 @@ static struct map_desc stih415_io_desc[] __initdata = {
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
+		.virtual	= IO_ADDRESS(STIH415_MPE_SYSTEM_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(STIH415_MPE_SYSTEM_SYSCONF_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	}, {
 		.virtual	= IO_ADDRESS(STIH415_SBC_ASC0_BASE),
 		.pfn		= __phys_to_pfn(STIH415_SBC_ASC0_BASE),
 		.length		= SZ_64K,
