@@ -559,7 +559,7 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 	{
 		/* FDMA_100: SAS FDMA 0 */
 		.name = "stm-fdma",
-		.id = 0,
+		.id = 3,
 		.num_resources = 2,
 		.resource = (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(0xfea00000, 0x20000),
@@ -569,7 +569,7 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 	}, {
 		/* FDMA_101: SAS FDMA 1 */
 		.name = "stm-fdma",
-		.id = 1,
+		.id = 4,
 		.num_resources = 2,
 		.resource = (struct resource[2]) {
 			STM_PLAT_RESOURCE_MEM(0xfea20000, 0x20000),
