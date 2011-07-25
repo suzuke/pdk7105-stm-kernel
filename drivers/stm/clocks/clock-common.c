@@ -10,6 +10,10 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+14/mar/11 fabrice.charpentier@st.com
+	  Added PLL1200 functions.
+07/mar/11 fabrice.charpentier@st.com
+	  clk_pll3200_get_params() revisited.
 11/mar/10 fabrice.charpentier@st.com
 	  clk_pll800_get_params() fully revisited.
 10/dec/09 francesco.virlinzi@st.com
@@ -23,7 +27,7 @@
 
 
 #include <linux/clk.h>
-#include <linux/math64.h>
+#include <asm-generic/div64.h>
 
 /*
  * Linux specific function
@@ -61,46 +65,10 @@ static unsigned int most_significant_set_bit(unsigned int x)
 #include "clock-oslayer.h"
 #include "clock-common.h"
 
-/* ========================================================================
-   Name:        clk_pll800_get_rate()
-   Description: Convert input/mdiv/ndiv/pvid values to frequency for PLL800
-   Params:      'input' freq (Hz), mdiv/ndiv/pvid values
-   Output:      '*rate' updated
-   Return:      Error code.
-   ======================================================================== */
 
-int clk_pll800_get_rate(unsigned long input, unsigned long mdiv,
-	unsigned long ndiv, unsigned long pdiv, unsigned long *rate)
-{
-	if (!mdiv)
-		mdiv++; /* mdiv=0 or 1 => MDIV=1 */
-
-	/* Note: input is divided by 1000 to avoid overflow */
-	*rate = (((2 * (input/1000) * ndiv) / mdiv) / (1 << pdiv)) * 1000;
-
-	return 0;
-}
-
-/* ========================================================================
-   Name:        clk_pll1600_get_rate()
-   Description: Convert input/mdiv/ndiv values to frequency for PLL1600
-   Params:      'input' freq (Hz), mdiv/ndiv values
-		Info: mdiv also called rdiv, ndiv also called ddiv
-   Output:      '*rate' updated with value of HS output.
-   Return:      Error code.
-   ======================================================================== */
-
-int clk_pll1600_get_rate(unsigned long input, unsigned long mdiv,
-			 unsigned long ndiv, unsigned long *rate)
-{
-	if (!mdiv)
-		return CLK_ERR_BAD_PARAMETER;
-
-	/* Note: input is divided by 1000 to avoid overflow */
-	*rate = ((2 * (input/1000) * ndiv) / mdiv) * 1000;
-
-	return 0;
-}
+/*
+ * PLL800
+ */
 
 /* ========================================================================
    Name:        clk_pll800_get_params()
@@ -109,6 +77,7 @@ int clk_pll1600_get_rate(unsigned long input, unsigned long mdiv,
    Output:      updated *mdiv, *ndiv & *pdiv (register values)
    Return:      'clk_err_t' error code
    ======================================================================== */
+
 /*
  * PLL800 in FS mode computation algo
  *
@@ -174,9 +143,118 @@ int clk_pll800_get_params(unsigned long input, unsigned long output,
 
 	if (deviation == output) /* No solution found */
 		return CLK_ERR_BAD_PARAMETER;
-
-    return 0;
+	return 0;
 }
+
+/* ========================================================================
+   Name:        clk_pll800_get_rate()
+   Description: Convert input/mdiv/ndiv/pvid values to frequency for PLL800
+   Params:      'input' freq (Hz), mdiv/ndiv/pvid values
+   Output:      '*rate' updated
+   Return:      Error code.
+   ======================================================================== */
+
+int clk_pll800_get_rate(unsigned long input, unsigned long mdiv,
+	unsigned long ndiv, unsigned long pdiv, unsigned long *rate)
+{
+	if (!mdiv)
+		mdiv++; /* mdiv=0 or 1 => MDIV=1 */
+
+	/* Note: input is divided by 1000 to avoid overflow */
+	*rate = (((2 * (input/1000) * ndiv) / mdiv) / (1 << pdiv)) * 1000;
+
+	return 0;
+}
+
+/*
+ * PLL1200
+ */
+
+/* ========================================================================
+   Name:        clk_pll1200_get_params()
+   Description: Freq to parameters computation for PLL1200.
+   Input:       input=input freq (Hz),output=output freq (Hz)
+                WARNING: Output freq is given for PHI (FVCO/ODF with ODF=1),
+                         so BEFORE output dividers.
+   Output:      updated *idf & *ndiv
+   Return:      'clk_err_t' error code
+   ======================================================================== */
+
+/* PLL output structure
+ *   FVCO >> Divider (ODF) >> PHI
+ * 
+ * PHI = (INFF * LDF) / (ODF * IDF) when BYPASS = L
+ *
+ * Rules:
+ *   9.6Mhz <= input (INFF) <= 350Mhz
+ *   600Mhz <= FVCO <= 1200Mhz
+ *   9.52Mhz <= PHI output <= 1200Mhz
+ *   1 <= m (register value for IDF) <= 7
+ *   8 <= n (register value for NDIV=LDF) <= 127
+ *   1 <= n (register value for ODF) <= 63
+ */
+
+int clk_pll1200_get_params(unsigned long input, unsigned long output,
+                           unsigned long *idf, unsigned long *ndiv)
+{
+	unsigned long m, n;
+	unsigned long deviation, new_freq;
+	long new_deviation;
+
+	/* Output clock range: 9.52Mhz to 1200Mhz */
+	if (output < 9520000 || output > 1200000000)
+		return CLK_ERR_BAD_PARAMETER;
+
+	input /= 1000;
+	output /= 1000;
+
+	deviation = output;
+	for (m=1; (m < 7) && deviation; m++) {
+		n = m * output / input;
+
+		/* Checks */
+		if (n < 8) continue;
+		if (n > 127) break;
+
+		new_freq = (input * n) / m;
+		new_deviation = new_freq - output;
+		if (new_deviation < 0)
+			new_deviation = -new_deviation;
+		if (!new_deviation || new_deviation < deviation) {
+			*idf	= m;
+			*ndiv	= n;
+			deviation = new_deviation;
+		}
+	}
+
+	if (deviation == output) /* No solution found */
+		return CLK_ERR_BAD_PARAMETER;
+	return 0;
+}
+
+/* ========================================================================
+   Name:        clk_pll1200_get_rate()
+   Description: Convert input/idf/ndiv values to FVCO frequency for PLL1200
+   Params:      'input' freq (Hz), idf/ndiv values
+   Output:      '*rate' updated with value of FVCO output (PHI/1).
+   Return:      Error code.
+   ======================================================================== */
+
+int clk_pll1200_get_rate(unsigned long input, unsigned long idf,
+			unsigned long ndiv, unsigned long *rate)
+{
+	if (!idf)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Note: input is divided by 1000 to avoid overflow */
+	*rate = (((input / 1000) * ndiv) / idf) * 1000;
+
+	return 0;
+}
+
+/*
+ * PLL1600
+ */
 
 /* ========================================================================
    Name:        clk_pll1600_get_params()
@@ -186,7 +264,7 @@ int clk_pll800_get_params(unsigned long input, unsigned long output,
    Return:      'clk_err_t' error code
    ======================================================================== */
 
-
+/* Revisited algo, adding checks and jitter enhancements */
 /*
  * Rules:
  *   600Mhz <= output (FVCO) <= 1800Mhz
@@ -196,7 +274,7 @@ int clk_pll800_get_params(unsigned long input, unsigned long output,
  */
 
 int clk_pll1600_get_params(unsigned long input, unsigned long output,
-			   unsigned long *mdiv, unsigned long *ndiv)
+                           unsigned long *mdiv, unsigned long *ndiv)
 {
 	unsigned long m, n, pfdin;
 	unsigned long deviation, new_freq;
@@ -214,13 +292,10 @@ int clk_pll1600_get_params(unsigned long input, unsigned long output,
 		n = m * output / (input * 2);
 
 		/* Checks */
-		if (n < 4)
-			continue;
-		if (n > 255)
-			break;
+		if (n < 4) continue;
+		if (n > 255) break;
 		pfdin = input / m; /* 4Mhz <= PFDIN <= 75Mhz */
-		if (pfdin < 4000 || pfdin > 75000)
-			continue;
+		if (pfdin < 4000 || pfdin > 75000) continue;
 
 		new_freq = (input * 2 * n) / m;
 		new_deviation = new_freq - output;
@@ -235,46 +310,134 @@ int clk_pll1600_get_params(unsigned long input, unsigned long output,
 
 	if (deviation == output) /* No solution found */
 		return CLK_ERR_BAD_PARAMETER;
+	return 0;
+}
+
+/* ========================================================================
+   Name:        clk_pll1600_get_rate()
+   Description: Convert input/mdiv/ndiv values to frequency for PLL1600
+   Params:      'input' freq (Hz), mdiv/ndiv values
+                Info: mdiv also called rdiv, ndiv also called ddiv
+   Output:      '*rate' updated with value of HS output.
+   Return:      Error code.
+   ======================================================================== */
+
+int clk_pll1600_get_rate(unsigned long input, unsigned long mdiv,
+						 unsigned long ndiv, unsigned long *rate)
+{
+	if (!mdiv)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Note: input is divided by 1000 to avoid overflow */
+	*rate = ((2 * (input/1000) * ndiv) / mdiv) * 1000;
+
+	return 0;
+}
+
+/*
+ * PLL3200
+ */
+
+/* ========================================================================
+   Name:        clk_pll3200_get_rate()
+   Description: Convert input/idf/ndiv values to FVCOby2 frequency for PLL3200
+   Params:      'input' freq (Hz), idf/ndiv values
+   Output:      '*rate' updated with value of FVCOby2 output (PHIx / 1).
+   Return:      Error code.
+   ======================================================================== */
+
+int clk_pll3200_get_rate(unsigned long input, unsigned long idf,
+			unsigned long ndiv, unsigned long *rate)
+{
+	if (!idf)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Note: input is divided by 1000 to avoid overflow */
+	*rate = ((2 * (input/1000) * ndiv) / idf) * 1000;
 
 	return 0;
 }
 
 /* ========================================================================
-   Name:        clk_fsyn_get_rate()
-   Description: Parameters to freq computation for frequency synthesizers.
-		WARNING: parameters are HARDWARE CODED values, not the one
-		used in formula.
+   Name:        clk_pll3200_get_params()
+   Description: Freq to parameters computation for PLL3200.
+   Input:       input=input freq (Hz), output=FVCOBY2 freq (Hz)
+   Output:      updated *idf & *ndiv, plus *cp value (charge pump)
+   Return:      'clk_err_t' error code
    ======================================================================== */
 
-/* This has to be enhanced to support several Fsyn types */
+/* PLL output structure
+ * VCO >> /2 >> FVCOBY2
+ *                 |> Divider (ODF0) >> PHI0
+ *                 |> Divider (ODF1) >> PHI1
+ *                 |> Divider (ODF2) >> PHI2
+ *                 |> Divider (ODF3) >> PHI3
+ * 
+ * FVCOby2 output = (input*4*NDIV) / (2*IDF) (assuming FRAC_CONTROL==L)
+ *
+ * Rules:
+ *   4Mhz <= input <= 350Mhz
+ *   800Mhz <= output (FVCOby2) <= 1600Mhz
+ *   1 <= i (register value for IDF) <= 7
+ *   8 <= n (register value for NDIV) <= 200
+ */
 
-int clk_fsyn_get_rate(unsigned long input, unsigned long pe,
-		unsigned long md, unsigned long sd, unsigned long *rate)
+int clk_pll3200_get_params(unsigned long input, unsigned long output,
+			   unsigned long *idf, unsigned long *ndiv,
+			   unsigned long *cp)
 {
-	int md2 = md;
-	long long p, q, r, s, t;
-	if (md & 0x10)
-		md2 = md | 0xfffffff0;/* adjust the md sign */
+	unsigned long i, n;
+	unsigned long deviation, new_freq;
+	long new_deviation;
+	/* Charge pump table: highest ndiv value for cp=6 to 25 */
+	static const unsigned char cp_table[] = 
+		{ 48, 56, 64, 72, 80, 88, 96, 104, 112, 120,
+		  128, 136, 144, 152, 160, 168, 176, 184, 192 };
 
-	input *= 8;
+	/* Output clock range: 800Mhz to 1600Mhz */
+	if (output < 800000000 || output > 1600000000)
+		return CLK_ERR_BAD_PARAMETER;
 
-	p = 1048576ll * input;
-	q = 32768 * md2;
-	r = 1081344 - pe;
-	s = r + q;
-	t = (1 << (sd + 1)) * s;
-	*rate = div64_u64(p, t);
+	input /= 1000;
+	output /= 1000;
+
+	deviation = output;
+	for (i=1; (i < 7) && deviation; i++) {
+		n = i * output / (2 * input);
+
+		/* Checks */
+		if (n < 8) continue;
+		if (n > 200) break;
+
+		new_freq = (input * 2 * n) / i;
+		new_deviation = new_freq - output;
+		if (new_deviation < 0)
+			new_deviation = -new_deviation;
+		if (!new_deviation || new_deviation < deviation) {
+			*idf	= i;
+			*ndiv	= n;
+			deviation = new_deviation;
+		}
+	}
+
+	if (deviation == output) /* No solution found */
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Computing recommended charge pump value */
+	for( *cp = 6; n > cp_table[*cp-6]; (*cp)++ );
 
 	return 0;
 }
+
+/*
+ * FS216
+ */
 
 /* ========================================================================
    Name:        clk_fsyn_get_params()
    Description: Freq to parameters computation for frequency synthesizers
    Input:       input=input freq (Hz), output=output freq (Hz)
    Output:      updated *md, *pe & *sdiv
-		WARNING: parameters are HARDWARE CODED values, not the one
-		used in formula.
    Return:      'clk_err_t' error code
    ======================================================================== */
 
@@ -282,8 +445,7 @@ int clk_fsyn_get_rate(unsigned long input, unsigned long pe,
    Currently based on C090_4FS216_25. */
 
 int clk_fsyn_get_params(unsigned long input, unsigned long output,
-			unsigned long *md, unsigned long *pe,
-			unsigned long *sdiv)
+			unsigned long *md, unsigned long *pe, unsigned long *sdiv)
 {
 	unsigned long long p, q;
 	unsigned int predivide;
@@ -335,5 +497,171 @@ int clk_fsyn_get_params(unsigned long input, unsigned long output,
 
 	/* return 0 if all variables meet their contraints */
 	return (lsdiv <= 7 && -16 <= lmd && lmd <= -1 && lpe <= 32767) ? 0 : -1;
+}
+
+/* ========================================================================
+   Name:        clk_fsyn_get_rate()
+   Description: Parameters to freq computation for frequency synthesizers.
+   ======================================================================== */
+
+/* This has to be enhanced to support several Fsyn types */
+
+int clk_fsyn_get_rate(unsigned long input, unsigned long pe,
+		unsigned long md, unsigned long sd, unsigned long *rate)
+{
+	int md2 = md;
+	long long p, q, r, s, t;
+	if (md & 0x10)
+		md2 = md | 0xfffffff0;/* adjust the md sign */
+
+	input *= 8;
+
+	p = 1048576ll * input;
+	q = 32768 * md2;
+	r = 1081344 - pe;
+	s = r + q;
+	t = (1 << (sd + 1)) * s;
+	*rate = div64_u64(p, t);
+
+	return 0;
+}
+
+/*
+   FS660
+   Based on C32_4FS_660MHZ_LR_EG_5U1X2T8X_um spec.
+
+   This FSYN embed a programmable PLL which then serve the 4 digital blocks
+   
+   clkin => PLL660 => DIG660_0 => clkout0
+                   => DIG660_1 => clkout1
+                   => DIG660_2 => clkout2
+                   => DIG660_3 => clkout3
+   For this reason the PLL660 is programmed separately from digital parts.
+*/
+
+/* ========================================================================
+   Name:        clk_fs660_vco_get_params()
+   Description: Compute params for embeded PLL660
+   Input:       input=input freq (Hz), output=output freq (Hz)
+   Output:      updated *ndiv (register value). Note that PDIV is frozen to 1.
+   Return:      'clk_err_t' error code
+   ======================================================================== */
+
+int clk_fs660_vco_get_params(unsigned long input, unsigned long output,
+			     unsigned long *ndiv)
+{
+/* Formula
+   VCO frequency = (fin x ndiv) / pdiv
+   ndiv = VCOfreq * pdiv / fin
+   */
+	unsigned long pdiv = 1, n;
+
+	/* Output clock range: 384Mhz to 660Mhz */
+	if (output < 384000000 || output > 660000000)
+		return CLK_ERR_BAD_PARAMETER;
+
+	if (input > 40000000)
+		/* This means that PDIV would be 2 instead of 1.
+		   Not supported today. */
+		return CLK_ERR_BAD_PARAMETER;
+
+	input /= 1000;
+	output /= 1000;
+
+	n = output * pdiv / input;
+	*ndiv = n - 16; /* Converting formula value to reg value */
+
+	return 0;
+}
+
+/* ========================================================================
+   Name:        clk_fs660_dig_get_params()
+   Description: Compute params for digital part of FS660
+   Input:       input=VCO freq, output=requested freq (Hz)
+   Output:      
+   Return:      'clk_err_t' error code
+   ======================================================================== */
+
+int clk_fs660_dig_get_params(unsigned long input, unsigned long output,
+			     unsigned long *md, unsigned long *pe, unsigned long *sdiv)
+{
+	int si;
+	unsigned long p20 = 1048576; /* 2 power 20 */
+	unsigned long s; /* sdiv value */
+	unsigned long ns = 1; /* nsdiv value. Stuck to 1 on ORLY.
+				May require param for futur chips */
+	unsigned long p; /* pe value */
+	unsigned long m; /* md value */
+	unsigned long new_freq, new_deviation, deviation;
+
+	/* Reduce freq to prevent overflows */
+	input /= 20000;
+	output /= 20000;
+
+	deviation = output;
+	for (si = 0; (si < 9) && deviation; si++) {
+		s = (1 << si);
+		for (m = 0; (m < 32) && deviation; m++) {
+			p = (input * 100000) / (s * ns * output);
+			p = p - 100000 - (m * 100000/ 32);
+			p = p * p20 / 100000;
+			if (p > 32767) continue;
+			new_freq = (input * 100000) / (s * ns * (100000 + (m * 100000 / 32) + (p * 100000 / p20)));
+/* printf("sdiv=%d, md=%d, pe=%u => new_freq=%u\n",s,m,p,new_freq); */
+			if (new_freq < output)
+				new_deviation = output - new_freq;
+			else
+				new_deviation = new_freq - output;
+			if (!new_deviation || (new_deviation < deviation)) {
+				*pe = p;
+				*md = m;
+				*sdiv = si;
+				deviation = new_deviation;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/* ========================================================================
+   Name:        clk_fs660_get_rate()
+   Description: Parameters to freq computation for frequency synthesizers.
+   Inputs:	input=VCO frequency
+   Outputs:	*rate updated
+   ======================================================================== */
+
+int clk_fs660_get_rate(unsigned long input, unsigned long pe,
+			unsigned long md, unsigned long sdiv,
+			unsigned long *rate)
+{
+	unsigned long s = (1 << sdiv); /* sdiv value */
+	unsigned long ns = 1; /* nsdiv value. Stuck to 1 on ORLY */
+	unsigned long p20 = 1048576; /* 2 power 20 */
+
+	/* Reduce freq to prevent overflow */
+	input /= 20000;
+	*rate = (input * 100000) / (s * ns * (100000 + (md * 100000 / 32) + (pe * 100000 / p20)));
+	*rate *= 20000;
+
+	return 0;
+}
+
+/* ========================================================================
+   Name:        clk_fs660_vco_get_rate()
+   Description: Compute VCO frequency of FS660 embeded PLL (PLL660)
+   Input: ndiv & pdiv registers values
+   Output: updated *rate (Hz)
+   ======================================================================== */
+
+int clk_fs660_vco_get_rate(unsigned long input, unsigned long ndiv,
+			   unsigned long *rate)
+{
+	unsigned long nd = ndiv + 16; /* ndiv value */
+	unsigned long pdiv = 1; /* Frozen. Not configurable so far */
+
+	*rate = (input * nd) / pdiv;
+
+	return 0;
 }
 

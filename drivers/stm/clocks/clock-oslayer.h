@@ -86,6 +86,13 @@ static struct clk_ops  _name = {					\
 		.rate = (_rate),					\
 }
 
+#define _CLK_FIXED(_id, _rate, _flags)					\
+[_id] = (clk_t) {							\
+		.name = #_id,						\
+		.id = (_id),						\
+		.rate = (_rate),					\
+		.flags = (_flags),					\
+}
 
 /* Low level API errors */
 enum clk_err {
