@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
+#include <linux/clkdev.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/nand.h>
 #include <linux/stmmac.h>
@@ -547,5 +548,21 @@ static inline unsigned long stm_soc_version_major(void)
         return 1;
 }
 #endif
+
+static inline int clk_add_alias_platform_device(const char *alias,
+	struct platform_device *pdev, char *id, struct device *dev)
+{
+	char dev_name_buf[20];
+	const char* dev_name;
+
+	if (pdev->id == -1) {
+		dev_name = pdev->name;
+	} else {
+		snprintf(dev_name_buf, sizeof(dev_name_buf), "%s.%d",
+			pdev->name, pdev->id);
+		dev_name = dev_name_buf;
+	}
+	return clk_add_alias(alias, dev_name, id, dev);
+}
 
 #endif /* __LINUX_STM_PLATFORM_H */
