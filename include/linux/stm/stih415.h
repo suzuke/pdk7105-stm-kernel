@@ -118,6 +118,16 @@ struct stih415_lirc_config {
 };
 void stih415_configure_lirc(struct stih415_lirc_config *config);
 
+struct stih415_pwm_config {
+	enum {
+		stih415_sas_pwm = 0,
+		stih415_sbc_pwm
+	} pwm;
+	int out0_enabled;
+	int out1_enabled;
+};
+void stih415_configure_pwm(struct stih415_pwm_config *config);
+
 void stih415_configure_mali(struct stm_mali_config *config);
 
 #endif

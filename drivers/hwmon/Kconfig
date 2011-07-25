@@ -797,7 +797,7 @@ config SENSORS_TMP421
 
 config SENSORS_STM_PWM
 	tristate "STMicroelectronics PWM"
-	depends on CPU_SUBTYPE_ST40
+	depends on STM_DRIVERS
 	help
 	  This is a simple driver for the PWM (Pulse Width Modulation)
 	  hardware present on many ST chips. Although the PWM hardware can

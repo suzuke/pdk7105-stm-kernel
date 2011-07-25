@@ -15,6 +15,7 @@
 #include <linux/i2c.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/emi.h>
+#include <linux/stm/platform.h>
 #include <linux/stm/stih415.h>
 #include <linux/stm/stih415-periphs.h>
 #include <linux/clk.h>
@@ -457,4 +458,88 @@ void __init stih415_configure_lirc(struct stih415_lirc_config *config)
 		"sbc_comms_clk", NULL);
 
 	platform_device_register(&stih415_lirc_device);
+}
+
+
+/* PWM resources ---------------------------------------------------------- */
+
+static struct stm_plat_pwm_data stih415_pwm_platform_data[] =  {
+	/* SAS PWM Module  */
+	[0] = {
+		.channel_pad_config = {
+			[0] = &(struct stm_pad_config) {
+				.gpios_num = 1,
+				.gpios = (struct stm_pad_gpio []) {
+					STM_PAD_PIO_OUT(9, 7, 2),
+				},
+			},
+			[1] = &(struct stm_pad_config) {
+				.gpios_num = 1,
+				.gpios = (struct stm_pad_gpio []) {
+					STM_PAD_PIO_OUT(13, 2, 2),
+				},
+			},
+		},
+	},
+	/* SBC PWM Module */
+	[1] = {
+		.channel_pad_config = {
+			[0] = &(struct stm_pad_config) {
+				.gpios_num = 1,
+				.gpios = (struct stm_pad_gpio []) {
+					STM_PAD_PIO_OUT(3, 0, 1),
+				},
+			},
+			[1] = &(struct stm_pad_config) {
+				.gpios_num = 1,
+				.gpios = (struct stm_pad_gpio []) {
+					STM_PAD_PIO_OUT(4, 4, 1),
+				},
+			},
+		},
+	},
+};
+
+static struct platform_device stih415_pwm_devices[] =  {
+	[0] = {
+		.name = "stm-pwm",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIH415_PWM_BASE, 0x68),
+			STIH415_RESOURCE_IRQ(200),
+		},
+		.dev.platform_data = &stih415_pwm_platform_data[0],
+	},
+	[1] = {
+		.name = "stm-pwm",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIH415_SBC_PWM_BASE, 0x68),
+			STIH415_RESOURCE_IRQ(202),
+		},
+		.dev.platform_data = &stih415_pwm_platform_data[1],
+	},
+};
+
+static int __initdata stih415_pwm_configured[ARRAY_SIZE(stih415_pwm_devices)];
+void __init stih415_configure_pwm(struct stih415_pwm_config *config)
+{
+	int pwm;
+
+	BUG_ON(!config);
+	pwm = config->pwm;
+	BUG_ON(pwm < 0 || pwm >= ARRAY_SIZE(stih415_pwm_devices));
+
+	BUG_ON(stih415_pwm_configured[pwm]);
+
+	stih415_pwm_configured[pwm] = 1;
+
+	stih415_pwm_platform_data[pwm].channel_enabled[0] =
+			config->out0_enabled;
+	stih415_pwm_platform_data[pwm].channel_enabled[1] =
+				config->out1_enabled;
+
+	platform_device_register(&stih415_pwm_devices[pwm]);
 }

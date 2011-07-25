@@ -235,6 +235,10 @@ static void __init b2000_init(void)
 
 	stih415_configure_mali(&b2000_mali_config);
 
+	stih415_configure_pwm(&(struct stih415_pwm_config) {
+			.pwm = stih415_sbc_pwm,
+			.out0_enabled = 1, });
+
 	platform_add_devices(b2000_devices,
 		ARRAY_SIZE(b2000_devices));
 	return;
