@@ -131,6 +131,7 @@ void __init stih415_gic_init_irq(void)
 static void __init stih415_timer_init(void)
 {
 	plat_clk_init();
+	plat_clk_alias_init();
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(STIH415_GLOBAL_TIMER_BASE),

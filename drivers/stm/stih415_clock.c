@@ -12,6 +12,41 @@
 
 int __init plat_clk_alias_init(void)
 {
+	clk_add_alias("cpu_clk", NULL, "CLKM_A9", NULL);
+	/* comms clk */
+	clk_add_alias("comms_clk", NULL, "CLKS_IC_IF_0", NULL);
+	/* module clk ?!?!?! */
+	clk_add_alias("module_clk", NULL, "CLKS_IC_IF_0", NULL);
+	/* EMI clk */
+	clk_add_alias("emi_clk", NULL, "CLKS_EMI_SS", NULL);
+
+	/* fdmas MPE41 clocks */
+	clk_add_alias("fdma_slim_clk", "stm-fdma.0", "CLKM_FDMA10", NULL);
+	clk_add_alias("fdma_slim_clk", "stm-fdma.1", "CLKM_FDMA11", NULL);
+	clk_add_alias("fdma_slim_clk", "stm-fdma.2", "CLKM_FDMA12", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.0", "CLKM_IC_TS", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.1", "CLKM_IC_TS", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.2", "CLKM_IC_TS", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.0", "CLKM_IC_REG_LP", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.1", "CLKM_IC_REG_LP", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.2", "CLKM_IC_REG_LP", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.0", "CLKM_IC_REG", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.1", "CLKM_IC_REG", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.2", "CLKM_IC_REG", NULL);
+
+	/* fdmas SASG1 clocks */
+	clk_add_alias("fdma_slim_clk", "stm-fdma.3", "CLKS_FDMA0", NULL);
+	clk_add_alias("fdma_slim_clk", "stm-fdma.4", "CLKS_FDMA1", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.3", "CLKS_IC_REG",  NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.4", "CLKS_IC_REG",  NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.3", "CLKS_IC_REG_LP", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.4", "CLKS_IC_REG_LP", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.3", "CLKS_IC_REG", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.4", "CLKS_IC_REG", NULL);
+
+	/* PCI clk */
+	clk_add_alias("pci_clk", NULL, "CLKS_IC_IF_2", NULL);
+	clk_add_alias("pcie_clk", NULL, "CLKS_IC_IF_2", NULL);
 
 	return 0;
 }
