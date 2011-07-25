@@ -17,6 +17,7 @@
 #include <linux/clk.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/pad.h>
+#include <linux/stm/device.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stih415.h>
 #include <linux/stm/stih415-periphs.h>
@@ -790,6 +791,56 @@ void __init stih415_early_device_init(void)
 >>>>>>> 67540da... stm: Add more STiH415 infrastructure
 }
 
+/* Internal temperature sensor resources ---------------------------------- */
+static void stih415_temp_power(struct stm_device_state *device_state,
+		enum stm_device_power_state power)
+{
+	int value = (power == stm_device_power_on) ? 1 : 0;
+
+	stm_device_sysconf_write(device_state, "TEMP_PWR", value);
+}
+
+static struct platform_device stih415_temp_device[] = {
+	[0] = {
+		/* Thermal sensor on SAS */
+		.name = "stm-temp",
+		.id = 0,
+		.dev.platform_data = &(struct plat_stm_temp_data) {
+			.dcorrect = { SYSCONF(178), 4, 8 },
+			.overflow = { SYSCONF(198), 8, 8 },
+			.data = { SYSCONF(198), 10, 16 },
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 1,
+				.power = stih415_temp_power,
+				.sysconfs = (struct stm_device_sysconf []){
+					STM_DEVICE_SYSCONF(SYSCONF(178),
+						9, 9, "TEMP_PWR"),
+				},
+			}
+		},
+	},
+	[1] = {
+		/* Thermal sensor on MPE */
+		.name = "stm-temp",
+		.id = 1,
+		.dev.platform_data = &(struct plat_stm_temp_data) {
+			.dcorrect = { SYSCONF(607), 3, 7 },
+			.overflow = { SYSCONF(667), 9, 9 },
+			.data = { SYSCONF(667), 11, 18 },
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 1,
+				.power = stih415_temp_power,
+				.sysconfs = (struct stm_device_sysconf []){
+					STM_DEVICE_SYSCONF(SYSCONF(607),
+						8, 8, "TEMP_PWR"),
+				},
+			}
+		},
+	}
+
+};
+
+
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stih415_devices[] __initdata = {
@@ -797,6 +848,8 @@ static struct platform_device *stih415_devices[] __initdata = {
 	//&stih415_mpe_fdma_devices[1],
 	//&stih415_mpe_fdma_devices[2],
 	&stih415_mpe_fdma_xbar_device,
+	&stih415_temp_device[0],
+	&stih415_temp_device[1],
 };
 
 static int __init stih415_devices_setup(void)
