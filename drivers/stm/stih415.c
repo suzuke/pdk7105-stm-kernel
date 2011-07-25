@@ -603,10 +603,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 0,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(0xfe600000, 0xb4),
+			STM_PLAT_RESOURCE_MEM(STIH415_SBC_SYSCONF_BASE, 0xb4),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(0xfe600000),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_SBC_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -624,10 +624,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 1,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(0xfee10000, 0x194),
+			STM_PLAT_RESOURCE_MEM(STIH415_SAS_FRONT_SYSCONF_BASE, 0x194),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(0xfee10000),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_SAS_FRONT_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -645,10 +645,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 2,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(0xfe830000, 0x190),
+			STM_PLAT_RESOURCE_MEM(STIH415_SAS_REAR_SYSCONF_BASE, 0x190),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(0xfe830000),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_SAS_REAR_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -670,10 +670,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 3,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(0xfd690000, 0x78),
+			STM_PLAT_RESOURCE_MEM(STIH415_MPE_LEFT_SYSCONF_BASE, 0x78),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(0xfd690000),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_MPE_LEFT_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -691,10 +691,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 4,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(0xfd320000, 0x180),
+			STM_PLAT_RESOURCE_MEM(STIH415_MPE_RIGHT_SYSCONF_BASE, 0x180),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(0xfd320000),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_MPE_RIGHT_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -712,10 +712,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 5,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(0xfdde0000, 0x15c),
+			STM_PLAT_RESOURCE_MEM(STIH415_MPE_SYSTEM_SYSCONF_BASE, 0x15c),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(0xfdde0000),
+			.regs = (void __iomem *)IO_ADDRESS(STIH415_MPE_SYSTEM_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
