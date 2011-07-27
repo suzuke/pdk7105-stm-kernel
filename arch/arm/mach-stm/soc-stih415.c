@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/sysdev.h>
 #include <linux/io.h>
+#include <linux/err.h>
 #include <linux/stm/clk.h>
 
 #include <asm/irq.h>
@@ -135,12 +136,18 @@ void __init stih415_gic_init_irq(void)
 
 static void __init stih415_timer_init(void)
 {
+	struct clk* a9_clk;
+
 	plat_clk_init();
 	plat_clk_alias_init();
 
+	a9_clk = clk_get(NULL, "CLKM_A9");
+	if (IS_ERR(a9_clk))
+		panic("Unable to determine Cortex A9 clock frequency\n");
+
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(STIH415_GLOBAL_TIMER_BASE),
-			  IRQ_GLOBALTIMER);
+			  IRQ_GLOBALTIMER, clk_get_rate(a9_clk)/2);
 #endif
 
 #ifdef CONFIG_HAVE_ARM_TWD

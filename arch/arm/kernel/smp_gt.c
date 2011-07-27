@@ -20,11 +20,6 @@
 
 #include <mach/hardware.h>
 
-/* We are clocked by PERIPHCLK */
-/* Note we are using a prescaler value of zero currently, so this is
- * the units for all operations. */
-#define PERIPHCLK	300000000
-
 #define GT_COUNTER0	0x00
 #define GT_COUNTER1	0x04
 
@@ -42,6 +37,11 @@
 #define GT_AUTO_INC	0x18
 
 static void __iomem *gt_base;
+
+/* We are clocked by PERIPHCLK */
+/* Note we are using a prescaler value of zero currently, so this is
+ * the units for all operations. */
+static unsigned long gt_periphclk;
 
 union gt_counter {
 	cycle_t cycles;
@@ -97,7 +97,7 @@ static void gt_clockevent_set_mode(enum clock_event_mode mode,
 {
 	switch(mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
-		gt_compare_set(PERIPHCLK/HZ, 1);
+		gt_compare_set(gt_periphclk/HZ, 1);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		/* period set, and timer enabled in 'next_event' hook */
@@ -158,7 +158,7 @@ static void __init gt_clockevents_init(int timer_irq)
 	gt_clockevent.irq = timer_irq;
 	gt_clockevent.shift = 32;
 	gt_clockevent.mult =
-		div_sc(PERIPHCLK, NSEC_PER_SEC, gt_clockevent.shift);
+		div_sc(gt_periphclk, NSEC_PER_SEC, gt_clockevent.shift);
 	gt_clockevent.max_delta_ns =
 		clockevent_delta2ns(0xffffffff, &gt_clockevent);
 	gt_clockevent.min_delta_ns =
@@ -196,13 +196,15 @@ static void __init gt_clocksource_init(void)
 
 	gt_clocksource.shift = 20;
 	gt_clocksource.mult =
-		clocksource_hz2mult(PERIPHCLK, gt_clocksource.shift);
+		clocksource_hz2mult(gt_periphclk, gt_clocksource.shift);
 	clocksource_register(&gt_clocksource);
 }
 
-void __init global_timer_init(void __iomem *base, unsigned int timer_irq)
+void __init global_timer_init(void __iomem *base, unsigned int timer_irq,
+			      unsigned long freq)
 {
 	gt_base = base;
+	gt_periphclk = freq;
 
 	gt_clocksource_init();
 	gt_clockevents_init(timer_irq);
