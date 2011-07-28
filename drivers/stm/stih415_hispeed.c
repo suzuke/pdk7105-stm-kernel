@@ -17,7 +17,7 @@
 #include <linux/phy.h>
 #include <linux/stm/miphy.h>
 #include <linux/stm/device.h>
-
+#include <linux/clk.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
@@ -88,26 +88,6 @@
 		}, \
 	}
 
-#define MDC_CLOCK_OUT(_port, _pin, _func, _retiming) \
-	{ \
-		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_out, \
-		.function = _func, \
-		.priv = &(struct stih415_pio_config) { \
-			.retime = _retiming, \
-		}, \
-	}
-
-#define MY_PHY_CLOCK(_port, _pin, _func, _retiming) \
-	{ \
-		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_out, \
-		.function = _func, \
-		.name = "PHYCLK", \
-		.priv = &(struct stih415_pio_config) { \
-		.retime = _retiming, \
-		}, \
-	}
 #define PHY_CLOCK(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
@@ -118,11 +98,6 @@
 		.retime = _retiming, \
 		}, \
 	}
-
-
-/* FIXME MII_PHY_REF_CLK ??
- * MII_CLK_125 */
-
 
 
 static struct stm_pad_config stih415_ethernet_mii_pad_configs[] = {
@@ -390,20 +365,22 @@ static struct stm_pad_config stih415_ethernet_rgmii_pad_configs[] = {
 };
 static struct stm_pad_config stih415_ethernet_rmii_pad_configs[] = {
 	[0] = {
-		.gpios_num = 12,
+		.gpios_num = 11,
 		.gpios = (struct stm_pad_gpio []) {
-			PHY_CLOCK(13, 5, 3, RET_NICLK(0)),/* PHYCLK */
+			PHY_CLOCK(13, 5, 2, RET_NICLK(1)),/* PHYCLK */
 			DATA_IN(13, 6, 2, RET_BYPASS(0)),/* MDINT */
-			DATA_OUT(13, 7, 2, RET_SE_NICLK_IO(0, 1)),/* TXEN */
-			DATA_OUT(14, 0, 2, RET_SE_NICLK_IO(0, 1)),/* TXD[0] */
-			DATA_OUT(14, 1, 2, RET_SE_NICLK_IO(0, 1)),/* TXD[1] */
-			DATA_IN(16, 0, 2, RET_SE_NICLK_IO(2, 1)),/* RXD.0 */
-			DATA_IN(16, 1, 2, RET_SE_NICLK_IO(2, 1)),/* RXD.1 */
-			DATA_OUT(15, 1, 2, RET_SE_NICLK_IO(0, 1)),/* TXER */
-			DATA_OUT_PU(15, 4, 2, RET_BYPASS(3)),/* MDIO */
-			CLOCK_OUT(15, 5, 2, RET_NICLK(0)),/* MDC */
-			DATA_IN(15, 6, 2, RET_SE_NICLK_IO(2, 1)),/* RXDV */
-			DATA_IN(15, 7, 2, RET_SE_NICLK_IO(2, 1)),/* RX_ER */
+			DATA_OUT(13, 7, 2, RET_SE_NICLK_IO(0, 0)),/* TXEN */
+			DATA_OUT(14, 0, 2, RET_SE_NICLK_IO(0, 0)),/* TXD[0] */
+			DATA_OUT(14, 1, 2, RET_SE_NICLK_IO(0, 0)),/* TXD[1] */
+			DATA_OUT(15, 4, 2, RET_BYPASS(3)),/* MDIO */
+			CLOCK_OUT(15, 5, 2, RET_NICLK(1)),/* MDC */
+			/* NOTE:
+			 * retime settings for RX pins is
+			 * incorrect in App note */
+			DATA_IN(15, 6, 2, RET_SE_NICLK_IO(0, 1)),/* RXDV */
+			DATA_IN(15, 7, 2, RET_SE_NICLK_IO(0, 0)),/* RX_ER */
+			DATA_IN(16, 0, 2, RET_SE_NICLK_IO(0, 1)),/* RXD.0 */
+			DATA_IN(16, 1, 2, RET_SE_NICLK_IO(0, 1)),/* RXD.1 */
 		},
 		.sysconfs_num = 4,
 		.sysconfs = (struct stm_pad_sysconf []) {
@@ -418,20 +395,19 @@ static struct stm_pad_config stih415_ethernet_rmii_pad_configs[] = {
 		},
 	},
 	[1] =  {
-		.gpios_num = 12,
+		.gpios_num = 11,
 		.gpios = (struct stm_pad_gpio []) {
-			PHY_CLOCK(2, 3, 2, RET_NICLK(0)),/* PHYCLK */
-			DATA_IN(1, 3, 1, RET_BYPASS(0)),/* MDINT */
-			DATA_OUT(0, 5, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
 			DATA_OUT(0, 0, 1, RET_SE_NICLK_IO(0, 0)),/* TXD[0] */
 			DATA_OUT(0, 1, 1, RET_SE_NICLK_IO(0, 0)),/* TXD[1] */
-			DATA_OUT(0, 4, 1, RET_SE_NICLK_IO(0, 0)),/* TXER */
-			DATA_OUT_PU(1, 0, 1, RET_BYPASS(2)),/* MDIO */
-			CLOCK_OUT(1, 1, 1, RET_NICLK(1)),/* MDC */
-			DATA_IN(2, 0, 1, RET_SE_NICLK_IO(2, 0)),/* RXDV */
+			DATA_OUT(0, 5, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
+			DATA_OUT(1, 0, 1, RET_BYPASS(3)),/* MDIO */
+			CLOCK_OUT(1, 1, 1, RET_NICLK(0)),/* MDC */
+			DATA_IN(1, 3, 1, RET_BYPASS(0)),/* MDINT */
+			DATA_IN(1, 4, 1, RET_SE_NICLK_IO(2, 1)),/* RXD[0] */
+			DATA_IN(1, 5, 1, RET_SE_NICLK_IO(2, 1)),/* RXD[1] */
+			DATA_IN(2, 0, 1, RET_SE_NICLK_IO(2, 1)),/* RXDV */
 			DATA_IN(2, 1, 1, RET_SE_NICLK_IO(2, 0)),/* RX_ER */
-			DATA_IN(1, 4, 1, RET_SE_NICLK_IO(2, 0)),/* RXD[0] */
-			DATA_IN(1, 5, 1, RET_SE_NICLK_IO(2, 0)),/* RXD[1] */
+			PHY_CLOCK(2, 3, 1, RET_NICLK(1)),/* PHYCLK */
 		},
 		.sysconfs_num = 4,
 		.sysconfs = (struct stm_pad_sysconf []) {
@@ -530,14 +506,7 @@ static struct stm_pad_config stih415_ethernet_reverse_mii_pad_configs[] = {
 		},
 	},
 };
-#if 0
-static void stih415_ethernet_rmii_speed(void *bsp_priv, unsigned int speed)
-{
-	struct sysconf_field *mac_speed_sel = bsp_priv;
 
-	sysconf_write(mac_speed_sel, (speed == SPEED_100) ? 1 : 0);
-}
-#endif
 static void stih415_ethernet_gtx_speed(void *priv, unsigned int speed)
 {
 	void (*txclk_select)(int txclk_250_not_25_mhz) = priv;
@@ -711,31 +680,37 @@ void __init stih415_configure_ethernet(int port,
 		plat_data->bsp_priv = config->txclk_select;
 		interface = PHY_INTERFACE_MODE_RGMII;
 		break;
-	case stih415_ethernet_mode_rmii:
+	case stih415_ethernet_mode_rmii:  {
+		struct sysconf_field *sc;
 		pad_config = &stih415_ethernet_rmii_pad_configs[port];
+
+		/* SEL_INTERNAL_NO_EXT_PHYCLK */
+		if (!port)
+			sc  = sysconf_claim(2, 82, 7, 7, "rmii");
+		else
+			sc  = sysconf_claim(0, 29, 7, 7, "rmii");
+
 		if (config->ext_clk) {
-			stm_pad_set_pio_in(pad_config, "PHYCLK", 2 + port);
+			stm_pad_set_pio_in(pad_config, "PHYCLK", 3 - port);
 			/* SEL_INTERNAL_NO_EXT_PHYCLK */
-			if (!port)
-				stm_pad_config_add_sysconf(pad_config,
-							2, 82, 7, 7, 0);
-			else
-				stm_pad_config_add_sysconf(pad_config,
-							0, 29, 7, 7, 0);
+			sysconf_write(sc, 0);
 		} else {
-			stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
-			/* SEL_INTERNAL_NO_EXT_PHYCLK */
+			unsigned long phy_clk_rate;
+			struct clk *phy_clk;
 			if (!port)
-				stm_pad_config_add_sysconf(pad_config,
-							2, 82, 7, 7, 1);
+				phy_clk = clk_get(NULL, "CLKS_GMAC0_PHY");
 			else
-				stm_pad_config_add_sysconf(pad_config,
-							0, 29, 7, 7, 1);
+				phy_clk = clk_get(NULL, "CLKS_ETH1_PHY");
+
+			BUG_ON(!phy_clk);
+			stm_pad_set_pio_out(pad_config, "PHYCLK", 2 - port);
+			phy_clk_rate = 50000000;
+			clk_set_rate(phy_clk, phy_clk_rate);
+			/* SEL_INTERNAL_NO_EXT_PHYCLK */
+			sysconf_write(sc, 1);
 		}
-#if 0
-		plat_data->fix_mac_speed = stih415_ethernet_rmii_speed;
-#endif
-		break;
+		interface = PHY_INTERFACE_MODE_RMII;
+	} break;
 	case stih415_ethernet_mode_reverse_mii:
 		pad_config = &stih415_ethernet_reverse_mii_pad_configs[port];
 		if (config->ext_clk)
