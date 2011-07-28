@@ -128,6 +128,8 @@ struct stih415_pwm_config {
 };
 void stih415_configure_pwm(struct stih415_pwm_config *config);
 
+void stih415_configure_mmc(int emmc);
+
 void stih415_configure_mali(struct stm_mali_config *config);
 
 #endif

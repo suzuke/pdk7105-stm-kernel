@@ -254,6 +254,10 @@ static int __init b2000_devices_init(void)
 			.pwm = stih415_sbc_pwm,
 			.out0_enabled = 1, });
 
+#ifdef STM_GMAC0_B2035_CARD
+	stih415_configure_mmc(0);
+#endif
+
 	return platform_add_devices(b2000_devices,
 			ARRAY_SIZE(b2000_devices));
 }

@@ -444,6 +444,126 @@ static void __init stih415_pio_init(void)
 			     &stih415_pio_retime_offset);
 }
 
+/* MMC/SD resources ------------------------------------------------------ */
+/* Custom PAD configuration for the MMC Host controller */
+#define STIH415_PIO_MMC_CLK_OUT(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = 4, \
+		.name = "MMCCLK", \
+		.priv = &(struct stih415_pio_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 1, \
+				.od = 1, \
+			}, \
+			.retime = &(struct stm_pio_control_retime_config) { \
+				.retime = 0, \
+				.clk1notclk0 = 1, \
+				.clknotdata = 1, \
+				.double_edge = 0, \
+				.invertclk = 0, \
+				.delay_input = 0, \
+			}, \
+		}, \
+	}
+
+#define STIH415_PIO_MMC_OUT(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = 4, \
+		.priv = &(struct stih415_pio_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 1, \
+				.od = 1, \
+			}, \
+		}, \
+	}
+#define STIH415_PIO_MMC_BIDIR(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = 4, \
+		.priv = &(struct stih415_pio_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 0, \
+				.od = 0, \
+			}, \
+		}, \
+	}
+#define STIH415_PIO_MMC_IN(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_in, \
+		.function = 1, \
+	}
+
+static struct stm_pad_config stih415_mmc_pad_config = {
+	.gpios_num = 14,
+	.gpios = (struct stm_pad_gpio []) {
+		STIH415_PIO_MMC_CLK_OUT(13, 4),
+		STIH415_PIO_MMC_BIDIR(14, 4),	/* MMC Data[0]*/
+		STIH415_PIO_MMC_BIDIR(14, 5),	/* MMC Data[1]*/
+		STIH415_PIO_MMC_BIDIR(14, 6),	/* MMC Data[2]*/
+		STIH415_PIO_MMC_BIDIR(14, 7),	/* MMC Data[3]*/
+
+		STIH415_PIO_MMC_OUT(15, 1),	/* MMC command */
+		STIH415_PIO_MMC_IN(15, 3),	/* MMC Write Protection */
+
+		STIH415_PIO_MMC_BIDIR(16, 4),	/* MMC Data[4]*/
+		STIH415_PIO_MMC_BIDIR(16, 5),	/* MMC Data[5]*/
+		STIH415_PIO_MMC_BIDIR(16, 6),	/* MMC Data[6]*/
+		STIH415_PIO_MMC_BIDIR(16, 7),	/* MMC Data[7]*/
+
+		STIH415_PIO_MMC_OUT(17, 1),	/* MMC Card PWR */
+		STIH415_PIO_MMC_IN(17, 2),	/* MMC Card Detect */
+		STIH415_PIO_MMC_OUT(17, 3),	/* MMC LED on */
+	},
+};
+
+static int mmc_pad_resources(struct sdhci_host *sdhci)
+{
+	if (!devm_stm_pad_claim(sdhci->mmc->parent, &stih415_mmc_pad_config,
+				dev_name(sdhci->mmc->parent)))
+		return -ENODEV;
+
+	return 0;
+}
+
+static struct sdhci_pltfm_data stih415_mmc_platform_data = {
+	.init = mmc_pad_resources,
+	.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+};
+
+static struct platform_device stih415_mmc_device = {
+	.name = "sdhci",
+	.id = 0,
+	.num_resources = 2,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM(0xfe81e000, 0x1000),
+		STIH415_RESOURCE_IRQ_NAMED("mmcirq", 145),
+	},
+	.dev = {
+		.platform_data = &stih415_mmc_platform_data,
+	}
+};
+
+void __init stih415_configure_mmc(int emmc)
+{
+	struct sdhci_pltfm_data *plat_data;
+
+	plat_data = &stih415_mmc_platform_data;
+
+	if (unlikely(emmc))
+		plat_data->quirks |= SDHCI_QUIRK_NONREMOVABLE_CARD;
+
+	platform_device_register(&stih415_mmc_device);
+}
+
 
 
 /* FDMA resources --------------------------------------------------------- */
