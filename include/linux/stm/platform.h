@@ -534,19 +534,41 @@ static inline const char* stm_soc(void)
 	return get_cpu_subtype(&current_cpu_data);
 }
 
+static inline unsigned long stm_soc_type(void)
+{
+	return cpu_data->type;
+}
+
 static inline unsigned long stm_soc_version_major(void)
 {
 	return cpu_data->cut_major;
 }
+
+static inline unsigned long stm_soc_version_minor(void)
+{
+	return cpu_data->cut_minor;
+}
 #else
+#define CPU_STIH415 0x57100415
+
 static inline const char* stm_soc(void)
 {
 	return "STiH415";
 }
 
+static inline unsigned long stm_soc_type(void)
+{
+	return CPU_STIH415;
+}
+
 static inline unsigned long stm_soc_version_major(void)
 {
-        return 1;
+	return 1;
+}
+
+static inline unsigned long stm_soc_version_minor(void)
+{
+	return 0;
 }
 #endif
 

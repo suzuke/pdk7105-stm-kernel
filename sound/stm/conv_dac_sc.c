@@ -169,7 +169,7 @@ static int snd_stm_conv_dac_sc_register(struct snd_device *snd_device)
 	return 0;
 }
 
-static int __exit snd_stm_conv_dac_sc_disconnect(struct snd_device *snd_device)
+static int snd_stm_conv_dac_sc_disconnect(struct snd_device *snd_device)
 {
 	struct snd_stm_conv_dac_sc *conv_dac_sc =
 			snd_device->device_data;

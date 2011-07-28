@@ -149,6 +149,8 @@ int snd_stm_irq_request(struct platform_device *pdev,
 #define snd_stm_irq_release(irq, dev_id) free_irq(irq, dev_id)
 
 int snd_stm_fdma_request(struct platform_device *pdev, int *channel);
+int snd_stm_fdma_request_by_name(struct platform_device *pdev, int *channel,
+		const char *name);
 #define snd_stm_fdma_release(channel) free_dma(channel)
 
 
