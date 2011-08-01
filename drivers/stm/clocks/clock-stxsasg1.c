@@ -294,11 +294,7 @@ SYSCONF(0, 109, 25, 25);
  *	[15 : 15]: NDIV
  *	[16 : 17]: BW
  */
-SYSCONF(0, 134, 0, 0);
-SYSCONF(0, 134, 10, 13);
-SYSCONF(0, 134, 14, 14);
-SYSCONF(0, 134, 15, 15);
-SYSCONF(0, 134, 16, 17);
+SYSCONF(0, 134, 0, 31);
 
 struct fsynth_sysconf {
         struct sysconf_field *pe;
@@ -321,11 +317,7 @@ static struct fsynth_sysconf fsynth_gp_channel[4];
  *      [15 : 15]: NDIV
  *      [16 : 17]: BW
  */
-SYSCONF(0, 312, 0, 0);
-SYSCONF(0, 312, 10, 13);
-SYSCONF(0, 312, 14, 14);
-SYSCONF(0, 312, 15, 15);
-SYSCONF(0, 312, 16, 17);
+SYSCONF(0, 312, 0, 31);
 
 SYSCONF(0, 379, 0, 15);
 SYSCONF(0, 380, 0, 31);
@@ -353,11 +345,7 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	call_platform_sys_claim(109, 24, 24);
 	call_platform_sys_claim(109, 25, 25);
 
-	call_platform_sys_claim(134, 0, 0);
-	call_platform_sys_claim(134, 10, 13);
-	call_platform_sys_claim(134, 14, 14);
-	call_platform_sys_claim(134, 15, 15);
-	call_platform_sys_claim(134, 16, 17);
+	call_platform_sys_claim(134, 0, 31);
 
 	/* FS_0: ch_1 */
 	fsynth_gp_channel[0].pe = platform_sys_claim(135, 0, 4);
@@ -380,11 +368,7 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	fsynth_gp_channel[3].sdiv = platform_sys_claim(149, 0, 2);
 	fsynth_gp_channel[3].prog_en = platform_sys_claim(150, 0, 0);
 
-	call_platform_sys_claim(312, 0, 0);
-	call_platform_sys_claim(312, 10, 13);
-	call_platform_sys_claim(312, 14, 14);
-	call_platform_sys_claim(312, 15, 15);
-	call_platform_sys_claim(312, 16, 17);
+	call_platform_sys_claim(312, 0, 31);
 	/* FS_1: ch_1 */
 	fsynth_vid_channel[0].pe = platform_sys_claim(313, 0, 4);
 	fsynth_vid_channel[0].md = platform_sys_claim(314, 0, 15);
@@ -1482,7 +1466,7 @@ Quad FSYN + Video Clock Controller
    ======================================================================== */
 static int clkgenc_fsyn_recalc(clk_t *clk_p)
 {
-	unsigned long dig_bit;
+	unsigned long cfg, dig_bit;
 	unsigned long pe, md, sdiv;
 	int channel, err = 0;
 
@@ -1492,9 +1476,10 @@ static int clkgenc_fsyn_recalc(clk_t *clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
 	#if !defined(CLKLLA_NO_PLL)
-
+	cfg = SYSCONF_READ(0, 312, 0, 31);
 	/* Checking FSYN analog status */
-	if (!SYSCONF_READ(0, 312, 14, 14)) {   /* Analog power down */
+	if ((cfg  & ((1 << 14) | (1 << 0))) != ((1 << 14) | (1 << 0))) {
+		/* Analog power down */
 		clk_p->rate = 0;
 		return 0;
 	}
@@ -1502,8 +1487,8 @@ static int clkgenc_fsyn_recalc(clk_t *clk_p)
 	channel = clk_p->id - CLKS_C_PIX_HD_VCC;
 
 	/* Checking FSYN digital part */
-	dig_bit = SYSCONF_READ(0, 312, 10, 13);
-	if (!(dig_bit & (1 << channel))) {	/* digital part in standbye */
+	dig_bit = 10 + channel;
+	if ((cfg & (1 << dig_bit)) == 0) {	/* digital part in standbye */
 		clk_p->rate = 0;
 		return 0;
 	}
@@ -1634,6 +1619,7 @@ static int clkgenc_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long md, pe, sdiv;
 	unsigned long data;
+	unsigned long val;
 	int channel, err;
 
 	if (!clk_p)
@@ -1647,14 +1633,11 @@ static int clkgenc_set_rate(clk_t *clk_p, unsigned long freq)
 
 		channel = clk_p->id - CLKS_C_PIX_HD_VCC;
 
-		/* Removing reset */
-		SYSCONF_WRITE(0, 312, 0, 0, 1);
-		/* Removing analog standby */
-		SYSCONF_WRITE(0, 312, 14, 14, 1);
-		/* Removing digit standby */
-		data = SYSCONF_READ(0, 312, 10, 13);
-		data |= (1 << channel);
-		SYSCONF_WRITE(0, 312, 10, 13, data);
+		val = SYSCONF_READ(0, 312, 0, 31);
+		/* Removing reset, digit standby and analog standby */
+		val |= (1 << 14) | (1 << (10 + channel)) | (1 << 0);
+		SYSCONF_WRITE(0, 312, 0, 31, val);
+
 #ifdef ST_OS21
 		SYSCONF_WRITE(0, 314 + (4 * channel), 0, 15, pe);
 		SYSCONF_WRITE(0, 313 + (4 * channel), 0, 4, md);
@@ -1791,22 +1774,22 @@ static int clkgenc_fsyn_xable(clk_t *clk_p, unsigned long enable)
 
 	chan = clk_p->id - CLKS_C_PIX_HD_VCC;
 
-	val = SYSCONF_READ(0, 312, 10, 13);
+	val = SYSCONF_READ(0, 312, 0, 31);
 	/* Powering down/up digital part */
 	if (enable) {
 		/* Powering up digital part */
-		SYSCONF_WRITE(0, 312, 10, 13, val | (1 << chan));
+		val |= (1 << (10 + chan));
 		/* Powering up analog part */
-		SYSCONF_WRITE(0, 312, 14, 14, 1);
+		val |= (1 << 14);
 	} else {
 		/* Powering down digital part */
-		val &= ~(1 << chan);
-		SYSCONF_WRITE(0, 312, 10, 13, val);
+		val &= ~(1 << (10 + chan));
 		/* If all channels are off then power down FS0 */
-		if ((val & 0xf) == 0)
-			SYSCONF_WRITE(0, 312, 14, 14, 0);
+		if ((val & 0x3c00) == 0)
+			val &= ~(1 << 14);
 	}
 	
+	SYSCONF_WRITE(0, 312, 0, 31, val);
 
 	/* Freq recalc required only if a channel is enabled */
 	if (enable)
@@ -1880,7 +1863,7 @@ CLOCKGEN D (CCSC, MCHI, TSout src, ref clock for MMCRU)
    ======================================================================== */
 static int clkgend_fsyn_recalc(clk_t *clk_p)
 {
-	unsigned long dig_bit;
+	unsigned long cfg, dig_bit;
 	unsigned long pe, md, sdiv;
 	int channel, err = 0;
 
@@ -1890,22 +1873,22 @@ static int clkgend_fsyn_recalc(clk_t *clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
 	/* Checking FSYN analog status */
-	if (!SYSCONF_READ(0, 134, 14, 14)) {   /* Analog power down */
+	cfg = SYSCONF_READ(0, 134, 0, 31);
+	if ((cfg & (1 << 14)) == 0) {   /* Analog power down */
 		clk_p->rate = 0;
 		return 0;
 	}
 
-	channel = clk_p->id - CLKS_D_CCSC;
-
 	/* Checking FSYN digital part */
-	dig_bit = SYSCONF_READ(0, 134, 10, 13);
-	if ((dig_bit & (1 << channel)) == 0) { /* digital part in standbye */
+	dig_bit = 10 + clk_p->id - CLKS_D_CCSC;
+	if ((cfg & (1 << dig_bit)) == 0) { /* digital part in standbye */
 		clk_p->rate = 0;
 		return 0;
 	}
 
 	/* FSYN up & running.
 	   Computing frequency */
+	channel = clk_p->id - CLKS_D_CCSC;
 #ifdef ST_OS21
 	pe = SYSCONF_READ(0, 136 + (4 * channel), 0, 15);
 	md = SYSCONF_READ(0, 135 + (4 * channel), 0, 4);
@@ -1981,13 +1964,11 @@ static int clkgend_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 		return CLK_ERR_BAD_PARAMETER;
 
 	channel = clk_p->id - CLKS_D_CCSC;
-	/* Power up */
-	SYSCONF_WRITE(0, 134, 14, 14, 1);
-	/* FS reset out */
-	SYSCONF_WRITE(0, 134, 0, 0, 1);
-	/* Release digit reset */
-	val = SYSCONF_READ(0, 134, 10, 13);
-	SYSCONF_WRITE(0, 134, 10, 13, val | (1 << channel));
+	val = SYSCONF_READ(0, 134, 0, 31);
+	/* Power up, release digit reset & FS reset */
+	val |= (1 << 14) | (1 << (10 + channel)) | (1 << 0);
+	SYSCONF_WRITE(0, 134, 0, 31, val);
+
 #ifdef ST_OS21
 	SYSCONF_WRITE(0, 136 + (4 * channel), 0, 15, pe);
 	SYSCONF_WRITE(0, 135 + (4 * channel), 0, 4, md);
@@ -2022,22 +2003,20 @@ static int clkgend_fsyn_xable(clk_t *clk_p, unsigned long enable)
 	if (clk_p->id < CLKS_D_CCSC || clk_p->id > CLKS_D_MCHI)
 		return CLK_ERR_BAD_PARAMETER;
 
+	val = SYSCONF_READ(0, 134, 0, 31);
 	channel = clk_p->id - CLKS_D_CCSC;
 
 	/* Powering down/up digital part */
-	val = SYSCONF_READ(0, 134, 10, 13);
 	if (enable) {
-		val |= (1 << channel);
-		SYSCONF_WRITE(0, 134, 10, 13, val);
-		SYSCONF_WRITE(0, 134, 14, 14, 1);
-		SYSCONF_WRITE(0, 134, 0, 0, 1);
+		val |= (1 << (10 + channel));
+		val |= (1 << 14) | (1 << 0);
 	} else {
-		val &= ~(1 << channel);
-		SYSCONF_WRITE(0, 134, 10, 13, val);
-		if ((val & 0xf) == 0)
-			SYSCONF_WRITE(0, 134, 14, 14, 0);
+		val &= ~(1 << (10 + channel));
+		if ((val & 0x3c00) == 0)
+			val &= ~(1 << 14);
 	}
 
+	SYSCONF_WRITE(0, 134, 0, 31, val);
 	/* Freq recalc required only if a channel is enabled */
 	if (enable)
 		return clkgend_fsyn_recalc(clk_p);

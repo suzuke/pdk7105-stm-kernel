@@ -50,6 +50,7 @@
 #include "clock-common.h"
 
 static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p);
+static int clkgenf_observe(clk_t *clk_p, unsigned long *div_p);
 static int clkgenax_set_parent(clk_t *clk_p, clk_t *src_p);
 static int clkgenf_set_parent(clk_t *clk_p, clk_t *src_p);
 static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq);
@@ -61,6 +62,7 @@ static int clkgenddr_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgena9_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgenmali_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgenax_set_div(clk_t *clk_p, unsigned long *div_p);
+/*static int clkgenddr_set_div(clk_t *clk_p, unsigned long *div_p);*/
 static int clkgenax_recalc(clk_t *clk_p);
 static int clkgene_recalc(clk_t *clk_p);
 static int clkgenf_recalc(clk_t *clk_p);
@@ -79,6 +81,7 @@ static int clkgenddr_init(clk_t *clk_p);
 static int clkgena9_init(clk_t *clk_p);
 static int clkgenmali_init(clk_t *clk_p);
 static int clkgenax_identify_parent(clk_t *clk_p);
+/*static int clkgene_identify_parent(clk_t *clk_p);*/
 
 _CLK_OPS(clkgena0,
 	"A10",
@@ -136,9 +139,9 @@ _CLK_OPS(clkgenf,
 	clkgenf_recalc,
 	clkgenf_enable,
 	clkgenf_disable,
-	NULL,
+	clkgenf_observe,
 	NULL,		/* No measure function */
-	NULL		/* No observation point */
+	"PIO107[0 & 2]" /* Observation point */
 );
 _CLK_OPS(clkgenddr,
 	"DDR-SS",
@@ -426,6 +429,12 @@ SYSCONF(0, 401, 8, 10);
 SYSCONF(0, 401, 16, 18);
 SYSCONF(0, 403, 8, 8);
 SYSCONF(0, 403, 12, 12);
+SYSCONF(0, 504, 0, 1);
+SYSCONF(0, 504, 8, 10);
+
+SYSCONF(0, 506, 0, 0);
+SYSCONF(0, 506, 2, 2);
+
 SYSCONF(0, 555, 0, 3);
 /*
  * 556: [0:7] clock source (2 bits x channel) 
@@ -480,7 +489,7 @@ SYSCONF(0, 564, 15, 29);
 SYSCONF(0, 565, 0, 14);
 SYSCONF(0, 565, 16, 31);
 
-
+SYSCONF(0, 566, 3, 6);
 
 SYSCONF(0, 573,0, 0);
 SYSCONF(0, 601, 0, 0);
@@ -523,6 +532,12 @@ int __init mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	call_platform_sys_claim(401, 16, 18);
 	call_platform_sys_claim(403, 8, 8);
 	call_platform_sys_claim(403, 12, 12);
+
+	call_platform_sys_claim(504, 0, 1);
+	call_platform_sys_claim(504, 8, 10);
+
+	call_platform_sys_claim(506, 0, 0);
+	call_platform_sys_claim(506, 2, 2);
 
 	call_platform_sys_claim(555, 0, 3);
 	call_platform_sys_claim(556, 0, 7);	
@@ -573,6 +588,8 @@ int __init mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	call_platform_sys_claim(564, 15, 29);
 	call_platform_sys_claim(565, 0, 14);
 	call_platform_sys_claim(565, 16, 31);
+
+	call_platform_sys_claim(566, 3, 6);
 
 	call_platform_sys_claim(573,0, 0);
 	call_platform_sys_claim(601, 0, 0);
@@ -708,7 +725,7 @@ static int clkgenax_get_index(int clkid, unsigned long *srcreg, int *shift)
 
 static int clkgenax_set_parent(clk_t *clk_p, clk_t *src_p)
 {
-	unsigned long clk_src, val, base_id;
+	unsigned long clk_src = 0, val, base_id;
 	int idx, shift;
 	unsigned long srcreg, base_addr;
 
@@ -1279,7 +1296,7 @@ CLOCKGEN A0 clocks group
 static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, idf, ndiv, cp, data;
-	int err;
+	int err = 0;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1372,7 +1389,7 @@ CLOCKGEN A1 clocks group
 static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, idf, ndiv, cp, data;
-	int err;
+	int err = 0;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1461,7 +1478,7 @@ CLOCKGEN A2 clocks group
 static int clkgena2_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, idf, ndiv, cp, data;
-	int err;
+	int err = 0;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1613,7 +1630,6 @@ static int clkgene_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	if (clk_p->id == CLKM_E_FS_VCO) {
 		if (clk_fs660_vco_get_params(clk_p->parent->rate, freq, &ndiv))
 			return CLK_ERR_BAD_PARAMETER;
-/* ndiv = 4; */
 		SYSCONF_WRITE(0, 562, 24, 26, ndiv);
 		SYSCONF_WRITE(0, 562, 27, 27, 1); /* PLL power up */
 		return 0;
@@ -1623,9 +1639,6 @@ static int clkgene_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	if (clk_fs660_dig_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
-/* md = 0x16;
-pe = 0x6db7;
-sdiv = 0; */
 	chan = clk_p->id - CLKM_PIX_MDTP1;
 	data = SYSCONF_READ(0, 562, 4, 23);
 	data &= ~(0x1f << (5 * chan));
@@ -1646,10 +1659,12 @@ sdiv = 0; */
 	data &= ~(0x1f << (4 * chan));
 	data |= (sdiv << (4 * chan));
 	SYSCONF_WRITE(0, 565, 16, 31, data);
+
 	/* PROG set/reset */
 	data = SYSCONF_READ(0, 562, 0, 3);
 	SYSCONF_WRITE(0, 562, 0, 3, data | (1 << chan));
 	SYSCONF_WRITE(0, 562, 0, 3, data & ~(1 << chan));
+
 	/* NSB set */
 	data = SYSCONF_READ(0, 563, 0, 3);
 	SYSCONF_WRITE(0, 563, 0, 3, data |  (1 << chan));/* Release "freeze" (NSBi) */
@@ -1844,7 +1859,7 @@ static int clkgenf_identify_parent(clk_t *clk_p)
 		chan = clk_p->id - CLKM_PIX_MAIN_OUT;
 		/* sel : 00 clk_hd, 01 clk_sd, 10 clk_hd_ext, 11 clk_sd_ext */
 		val = SYSCONF_READ(0, 556, 0, 7);
-		val >>= chan * 2;
+		val >>= (chan * 2);
 		val &= 0x3;
 		clk_p->parent = fs_parent_clocks[val];
 	} else if (clk_p->id == CLKM_PROC_VID) {
@@ -1969,15 +1984,15 @@ static int clkgenf_vcc_set_div(clk_t *clk_p, unsigned long *div_p)
 static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long data, chan;
-	unsigned long md, pe, sdiv;
+	unsigned long md, pe, sdiv, ndiv;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
 	if (clk_p->id == CLKM_F_FS_VCO) {
-		if (clk_fs660_vco_get_params(clk_p->parent->rate, freq, &sdiv))
+		if (clk_fs660_vco_get_params(clk_p->parent->rate, freq, &ndiv))
 			return CLK_ERR_BAD_PARAMETER;
-		SYSCONF_WRITE(0, 558, 24, 26, sdiv);
+		SYSCONF_WRITE(0, 558, 24, 26, ndiv);
 		SYSCONF_WRITE(0, 558, 27, 27, 1); /* PLL power up */
 		return 0;
 	}
@@ -1992,7 +2007,7 @@ static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	data = SYSCONF_READ(0, 558, 4, 23);
 	data &= ~(0x1f << (chan * 5));
 	data |= (md << (chan * 5));
-	SYSCONF_WRITE(0, 558, 4, 23, md);
+	SYSCONF_WRITE(0, 558, 4, 23, data);
 
 	/* PE set */
 	switch (chan) {
@@ -2002,7 +2017,7 @@ static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	default:
 		SYSCONF_WRITE(0, 561, 0, 14, pe);
 	}
-	
+
 	/* SDIV set */
 	data = SYSCONF_READ(0, 561, 16, 31);
 	data &= ~(0xf << (4 * chan));
@@ -2087,7 +2102,7 @@ static int clkgenf_fsyn_xable(clk_t *clk_p, unsigned long enable)
 	} else {
 		/* Powering down digital part */
 		cfg559_0_3 &= ~(1 << chan);
-		/* If all channels are off then power down FS0 */
+		/* If all channels are off then power down FS */
 		if ((cfg559_0_3 & 0xf) == 0)
 			SYSCONF_WRITE(0, 558, 27, 27, 0);
 	}
@@ -2121,6 +2136,41 @@ static int clkgenf_enable(clk_t *clk_p)
 static int clkgenf_disable(clk_t *clk_p)
 {
 	return clkgenf_fsyn_xable(clk_p, 0);
+}
+
+/* ========================================================================
+   Name:        clkgenf_observe
+   Description: Clocks observation function
+   Returns:     'clk_err_t' error code
+   ======================================================================== */
+
+static int clkgenf_observe(clk_t *clk_p, unsigned long *div_p)
+{
+	unsigned long chan;
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id != CLKM_PIX_MAIN_OUT && clk_p->id != CLKM_PIX_AUX_OUT &&
+		clk_p->id != CLKM_PIX_MAIN_VIDFS)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Observation points:
+	 * VCC channels => PIO107[0] alt 3
+	 * PIX_MAIN_VIDFS => PIO107[2] alt 2
+	*/
+
+	/* Configuring appropriate PIO */
+	if (clk_p->id == CLKM_PIX_MAIN_OUT || clk_p->id == CLKM_PIX_AUX_OUT) {
+		chan = clk_p->id - CLKM_PIX_MAIN_OUT;
+		SYSCONF_WRITE(0, 566, 3, 6, chan);
+		SYSCONF_WRITE(0, 504, 0, 1, 3);         /* Alternate mode */
+		SYSCONF_WRITE(0, 506, 0, 0, 1);         /* Enabling IO */
+	} else {
+		SYSCONF_WRITE(0, 504, 8, 10, 2);        /* Alternate mode */
+		SYSCONF_WRITE(0, 506, 2, 2, 1);         /* Enabling IO */
+	}
+
+	return 0;
 }
 
 /******************************************************************************
@@ -2249,7 +2299,7 @@ CA9 PLL
 
 static int clkgena9_recalc(clk_t *clk_p)
 {
-	int err;
+	int err = 0;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
