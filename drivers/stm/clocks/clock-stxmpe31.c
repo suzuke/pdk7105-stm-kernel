@@ -547,7 +547,7 @@ int __init mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	call_platform_sys_claim(559, 0, 3);
 	call_platform_sys_claim(559, 4, 18);
 	call_platform_sys_claim(560, 0, 14);
-//	call_platform_sys_claim(559, 15, 29);
+	call_platform_sys_claim(560, 15, 29);
 	call_platform_sys_claim(561, 0, 14);
 	call_platform_sys_claim(561, 16, 31);
 
