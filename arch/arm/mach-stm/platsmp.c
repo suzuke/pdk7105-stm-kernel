@@ -96,6 +96,7 @@ printk("%s(%d)\n", __FUNCTION__, cpu);
 	 * Note that "pen_release" is the hardware CPU ID, whereas
 	 * "cpu" is Linux's internal ID.
 	 */
+	flush_cache_all();
 	pen_release = cpu;
 	flush_cache_all();
 
