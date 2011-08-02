@@ -28,7 +28,7 @@
 
 #define FDMA_MIN_CHANNEL 0
 #define FDMA_MAX_CHANNEL 15
-#define FDMA_MAX_DEVICES 3
+#define FDMA_MAX_DEVICES 5
 
 static char *fdma_channels[FDMA_MAX_DEVICES];
 module_param_array_named(channels, fdma_channels, charp, NULL, S_IRUGO);

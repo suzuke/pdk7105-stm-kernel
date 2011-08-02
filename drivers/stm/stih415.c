@@ -607,9 +607,10 @@ static struct stm_plat_fdma_hw stih415_fdma_hw = {
 	},
 };
 
-static struct stm_plat_fdma_data stih415_fdma_platform_data = {
+static struct stm_plat_fdma_data stih415_mpe_fdma_platform_data = {
 	.hw = &stih415_fdma_hw,
 	.fw = &stih415_fdma_fw,
+	.xbar = 0,
 };
 
 static struct platform_device stih415_mpe_fdma_devices[] = {
@@ -622,7 +623,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 			STM_PLAT_RESOURCE_MEM(0xfd600000, 0x20000),
 			STIH415_RESOURCE_IRQ(10),
 		},
-		.dev.platform_data = &stih415_fdma_platform_data,
+		.dev.platform_data = &stih415_mpe_fdma_platform_data,
 	}, {
 		/* FDMA_1_MPE: */
 		.name = "stm-fdma",
@@ -632,7 +633,7 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 			STM_PLAT_RESOURCE_MEM(0xfd620000, 0x20000),
 			STIH415_RESOURCE_IRQ(18),
 		},
-		.dev.platform_data = &stih415_fdma_platform_data,
+		.dev.platform_data = &stih415_mpe_fdma_platform_data,
 	}, {
 		/* FDMA_2_MPE: */
 		.name = "stm-fdma",
@@ -642,14 +643,14 @@ static struct platform_device stih415_mpe_fdma_devices[] = {
 			STM_PLAT_RESOURCE_MEM(0xfd640000, 0x20000),
 			STIH415_RESOURCE_IRQ(26),
 		},
-		.dev.platform_data = &stih415_fdma_platform_data,
+		.dev.platform_data = &stih415_mpe_fdma_platform_data,
 	}
 };
 
 /* FDMA_MUX_MPE: 96 way */
 static struct platform_device stih415_mpe_fdma_xbar_device = {
 	.name = "stm-fdma-xbar",
-	.id = -1,
+	.id = 0,
 	.num_resources = 1,
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfd6df000, 0x1000),
@@ -657,6 +658,12 @@ static struct platform_device stih415_mpe_fdma_xbar_device = {
 };
 
 /* TVOUT_FDMA at 0xfe000000 ??? */
+
+static struct stm_plat_fdma_data stih415_sas_fdma_platform_data = {
+	.hw = &stih415_fdma_hw,
+	.fw = &stih415_fdma_fw,
+	.xbar = 1,
+};
 
 static struct platform_device stih415_sas_fdma_devices[] = {
 	{
@@ -668,7 +675,7 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 			STM_PLAT_RESOURCE_MEM(0xfea00000, 0x20000),
 			STIH415_RESOURCE_IRQ(121),
 		},
-		.dev.platform_data = &stih415_fdma_platform_data,
+		.dev.platform_data = &stih415_sas_fdma_platform_data,
 	}, {
 		/* FDMA_101: SAS FDMA 1 */
 		.name = "stm-fdma",
@@ -678,14 +685,14 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 			STM_PLAT_RESOURCE_MEM(0xfea20000, 0x20000),
 			STIH415_RESOURCE_IRQ(129),
 		},
-		.dev.platform_data = &stih415_fdma_platform_data,
+		.dev.platform_data = &stih415_sas_fdma_platform_data,
 	}
 };
 
-/* FDMA_MUX_SAS: 64 way */
+/* FDMA_MUX_SAS: 96 way */
 static struct platform_device stih415_sas_fdma_xbar_device = {
 	.name = "stm-fdma-xbar",
-	.id = -1,
+	.id = 1,
 	.num_resources = 1,
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfee61000, 0x1000),
@@ -965,9 +972,12 @@ static struct platform_device stih415_temp_device[] = {
 
 static struct platform_device *stih415_devices[] __initdata = {
 	&stih415_mpe_fdma_devices[0],
-	//&stih415_mpe_fdma_devices[1],
-	//&stih415_mpe_fdma_devices[2],
+	&stih415_mpe_fdma_devices[1],
+	&stih415_mpe_fdma_devices[2],
 	&stih415_mpe_fdma_xbar_device,
+	&stih415_sas_fdma_devices[0],
+	&stih415_sas_fdma_devices[1],
+	&stih415_sas_fdma_xbar_device,
 	&stih415_temp_device[0],
 	&stih415_temp_device[1],
 };
