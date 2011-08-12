@@ -397,7 +397,7 @@ static int stih415_pio_config(unsigned gpio,
 	struct stih415_pio_config *config = priv;
 
 	BUG_ON(port > ARRAY_SIZE(stih415_pio_devices));
-	BUG_ON(function < 0 || function > 5);
+	BUG_ON(function < 0 || function > 7);
 
 	if (function == 0) {
 		switch (direction) {
