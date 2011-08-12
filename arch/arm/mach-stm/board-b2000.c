@@ -22,6 +22,7 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/stih415.h>
 
+#include <asm/hardware/cache-l2x0.h>
 #include <asm/mach-types.h>
 #include <asm/memory.h>
 #include <asm/delay.h>
@@ -165,6 +166,11 @@ static struct stm_mali_config b2000_mali_config = {
 
 static void __init b2000_init(void)
 {
+#ifdef CONFIG_CACHE_L2X0
+	/* No need to override default L2 cache configuration */
+        l2x0_init(__io_address(STIH415_PL310_BASE), 0x0, 0xFFFFFFFF);
+#endif
+
 	/* Reset */
 	gpio_request(GMII0_PHY_NOT_RESET, "GMII0_PHY_NOT_RESET");
 	gpio_direction_output(GMII0_PHY_NOT_RESET, 0);
