@@ -17,6 +17,12 @@ jiffies = jiffies_64;
 jiffies = jiffies_64 + 4;
 #endif
 
+PHDRS {
+	text PT_LOAD FLAGS(5);		/* R_E */
+	data PT_LOAD FLAGS(7);		/* RWE */
+	note PT_NOTE FLAGS(0);		/* ___ */
+}
+
 SECTIONS
 {
 #ifdef CONFIG_XIP_KERNEL
@@ -77,7 +83,7 @@ SECTIONS
 		. = ALIGN(PAGE_SIZE);
 		__init_end = .;
 #endif
-	}
+	} :text
 
 	/DISCARD/ : {			/* Exit code and data		*/
 		EXIT_TEXT
@@ -122,6 +128,8 @@ SECTIONS
 
 	RO_DATA(PAGE_SIZE)
 
+	NOTES :text :note
+
 	_etext = .;			/* End of text and rodata section */
 
 #ifdef CONFIG_ARM_UNWIND
@@ -133,7 +141,7 @@ SECTIONS
 		__start_unwind_idx = .;
 		*(.ARM.exidx*)
 		__stop_unwind_idx = .;
-	}
+	} :text
 	.ARM.unwind_tab : {
 		__start_unwind_tab = .;
 		*(.ARM.extab*)
@@ -196,7 +204,7 @@ SECTIONS
 		CONSTRUCTORS
 
 		_edata = .;
-	}
+	} :data
 	_edata_loc = __data_loc + SIZEOF(.data);
 
 #ifdef CONFIG_HAVE_TCM
