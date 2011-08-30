@@ -39,7 +39,16 @@ static void __init b2000_setup(char **cmdline_p)
 #define GMII0_PHY_NOT_RESET stm_gpio(25 /*106 -100 + 18 */, 2)
 #define GMII1_PHY_NOT_RESET stm_gpio(4, 7)
 #define GMII1_PHY_CLKOUT_NOT_TXCLK_SEL stm_gpio(2, 5)
+#define HDMI_HOTPLUG	GMII1_PHY_CLKOUT_NOT_TXCLK_SEL
 #define GMII0_PHY_CLKOUT_NOT_TXCLK_SEL stm_gpio(13, 4)
+
+static struct stm_pad_config stih415_hdmi_hp_pad_config = {
+        .gpios_num = 1,
+        .gpios = (struct stm_pad_gpio []) {
+                STM_PAD_PIO_IN(2, 5, 1),      /* HDMI Hotplug */
+        },
+};
+
 
 
 static int b2000_gmii0_reset(void *bus)
@@ -160,15 +169,24 @@ static int __init b2000_devices_init(void)
 	gpio_request(GMII1_PHY_NOT_RESET, "GMII1_PHY_NOT_RESET");
 	gpio_direction_output(GMII1_PHY_NOT_RESET, 0);
 
+#if !defined(CONFIG_STM_GMAC1_NONE)
 	/* Default to 100 Mbps */
 	gpio_request(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, "GMII1_TXCLK_SEL");
 	gpio_direction_output(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
 	gpio_free(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL);
+#else
+	/* Default to HDMI HotPlug */
+	if (stm_pad_claim(&stih415_hdmi_hp_pad_config, "HDMI_Hotplug") == NULL)
+		printk(KERN_ERR "Failed to claim HDMI-Hotplug pad!\n");
 
+#endif
+
+#if !defined(CONFIG_STM_GMAC0_NONE)
 	/* Default to 100 Mbps */
 	gpio_request(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, "GMII0_TXCLK_SEL");
 	gpio_direction_output(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
 	gpio_free(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL);
+#endif
 
 /*
  * B2032A (MII or GMII) Ethernet card
