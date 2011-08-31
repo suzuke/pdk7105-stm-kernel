@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * File name   : clock-stxMPE31.h
+ * File name   : clock-stxMPE41.h
  * Description : Low Level API - Clocks identifiers
  *
  * COPYRIGHT (C) 2009 STMicroelectronics - All Rights Reserved
@@ -8,7 +8,7 @@
  * License.  See linux/COPYING for more information.
  *
  *****************************************************************************/
- 
+
 enum {
 	/* Clockgen A10 */
 	CLKM_A0_REF,		/* OSC clock */

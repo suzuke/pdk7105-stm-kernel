@@ -23,15 +23,6 @@
 
 /* Includes --------------------------------------------------------------- */
 
-#ifdef ST_OS21
-
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "clock.h"
-
-#else /* Linux */
-
 #include <linux/stm/stih415.h>
 #include <linux/stm/clk.h>
 #include <linux/stm/sysconf.h>
@@ -49,24 +40,15 @@ struct sysconf_field *platform_sys_claim(int _nr, int _lsb, int _msb)
 		SYSCONF_OFFSET(_nr), _lsb, _msb, "Clk lla");
 }
 
-#endif
-
 #include "clock-stih415.h"
-#define CLKLLA_SYSCONF_UNIQREGS		1 /* Required for oslayer */
-#define PIO_BASE_ADDRESS(bank)		0 /* Required for oslayer */
-#define         PIO_CLEAR_PnC0                0x28
-#define         PIO_CLEAR_PnC1                0x38
-#define         PIO_CLEAR_PnC2                0x48
-#define         PIO_PnC0                      0x20
-#define         PIO_PnC1                      0x30
-#define         PIO_PnC2                      0x40
-#define         PIO_SET_PnC0                  0x24
-#define         PIO_SET_PnC1                  0x34
-#define         PIO_SET_PnC2                  0x44
+#undef SYSCONF
 #include "clock-oslayer.h"
+#include "clock-common.h"
+
+#define CLKLLA_SYSCONF_UNIQREGS		1 /* Required for oslayer */
 
 /* External functions prototypes */
-extern int mpe31_clk_init(clk_t *, clk_t *, clk_t *, clk_t *);	/* MPE31 */
+extern int mpe41_clk_init(clk_t *, clk_t *, clk_t *, clk_t *);	/* MPE41 */
 extern int sasg1_clk_init(clk_t *);				/* SASG1 */
 
 /* SOC top input clocks. */
@@ -100,8 +82,8 @@ int plat_clk_init(void)
 	clk_main = clk_get(NULL,"CLKS_C_PIX_MAIN");
 	clk_aux = clk_get(NULL,"CLKS_C_PIX_AUX");
 
-	/* MPE31 clocks */
-	mpe31_clk_init(&clk_clocks[0], &clk_clocks[1], clk_main, clk_aux);
+	/* MPE41 clocks */
+	mpe41_clk_init(&clk_clocks[0], &clk_clocks[1], clk_main, clk_aux);
 
 	return 0;
 }

@@ -33,11 +33,31 @@
 #include "clock.h"
 
 #define CLKLLA_SYSCONF_UNIQREGS			1
+
+static sysconf_base_t sysconf_base[] = {
+	{ 0, 99, SYS_SBC_BASE_ADDRESS },
+	{ 100, 299, SYS_FRONT_BASE_ADDRESS },
+	{ 300, 399, SYS_REAR_BASE_ADDRESS },
+	{ 0, 0, 0 }
+};
+
 #else /* Linux */
 
 #include <linux/stm/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+
+struct fsynth_sysconf {
+        struct sysconf_field *pe;
+        struct sysconf_field *md;
+        struct sysconf_field *sdiv;
+        struct sysconf_field *prog_en;
+};
+
+/* Sysconf from 135 to 150 */
+static struct fsynth_sysconf fsynth_vid_channel[4];
+/* Sysconf from 313 to 328 */
+static struct fsynth_sysconf fsynth_gp_channel[4];
 
 #endif
 
@@ -67,6 +87,7 @@ static int clkgenc_vcc_recalc(clk_t *clk_p);
 static int clkgenc_recalc(clk_t *clk_p);
 static int clkgend_recalc(clk_t *clk_p);
 static int clkgend_fsyn_recalc(clk_t *clk_p);
+static int clkgene_recalc(clk_t *clk_p);     /* Added to get infos for USB */
 static int clkgenax_enable(clk_t *clk_p);
 static int clkgenb_enable(clk_t *clk_p);
 static int clkgenc_enable(clk_t *clk_p);
@@ -82,14 +103,11 @@ static int clkgenb_init(clk_t *clk_p);
 static int clkgenc_init(clk_t *clk_p);
 static int clkgend_init(clk_t *clk_p);
 
-/*
- *  Initialized to be working on ST40/OS21
- */
-static void * cga0_base = (void *)CKGA0_BASE_ADDRESS;
-static void * cga1_base = (void *)CKGA1_BASE_ADDRESS;
-static void * cgb_base = (void *)CKGB_BASE_ADDRESS;
-static void * cgc_base = (void *)CKGC_BASE_ADDRESS;
-static void * cgd_base = (void *)CKGD_BASE_ADDRESS;
+static void *cga0_base;
+static void *cga1_base;
+static void *cgb_base;
+static void *cgc_base;
+static void *cgd_base;
 
 _CLK_OPS(clkgena0,
 	"A0/REAR",
@@ -250,35 +268,6 @@ _CLK_P(CLKS_D_MCHI, &clkgend, 0,
    Returns:     'clk_err_t' error code.
    ======================================================================== */
 
-#ifdef ST_OS21
-
-static sysconf_base_t sysconf_base[] = {
-	{ 0, 99, SYS_SBC_BASE_ADDRESS },
-	{ 100, 299, SYS_FRONT_BASE_ADDRESS },
-	{ 300, 399, SYS_REAR_BASE_ADDRESS },
-	{ 0, 0, 0 }
-};
-
-int sasg1_clk_init(clk_t *_sys_clk_in)
-{
-	int i;
-
-	clk_clocks[CLKS_A0_REF].parent = _sys_clk_in;
-	clk_clocks[CLKS_A1_REF].parent = _sys_clk_in;
-	clk_clocks[CLKS_B_REF].parent = _sys_clk_in;
-	clk_clocks[CLKS_C_REF].parent = _sys_clk_in;
-	clk_clocks[CLKS_D_REF].parent = _sys_clk_in;
-
-printf("Registering SAS clocks\n");
-	for (i = 0; i < ARRAY_SIZE(clk_clocks); ++i) {
-		if (clk_clocks[i].name == 0) continue; /* ID only (ex: SPARE) */
-		clk_register(&clk_clocks[i]);
-	}
-printf(" => done\n");
-
-	return 0;
-}
-#else
 //SYSCONF(0, 107, 0, 1);
 //SYSCONF(0, 107, 4, 5);
 SYSCONF(0, 109, 24, 24);
@@ -294,18 +283,6 @@ SYSCONF(0, 109, 25, 25);
  *	[16 : 17]: BW
  */
 SYSCONF(0, 134, 0, 31);
-
-struct fsynth_sysconf {
-        struct sysconf_field *pe;
-        struct sysconf_field *md;
-        struct sysconf_field *sdiv;
-        struct sysconf_field *prog_en;
-};
-
-/* from 135 to 150 */
-static struct fsynth_sysconf fsynth_vid_channel[4];
-/* from 313 to 328 */
-static struct fsynth_sysconf fsynth_gp_channel[4];
 
 /*
  * FS_1:
@@ -323,21 +300,9 @@ SYSCONF(0, 380, 0, 31);
 SYSCONF(0, 381, 0, 31);
 
 
-
-/*
- * The platform_sys_claim is used to be able to compile
- * this file __without__ any include chip based
- * the platform_sys_claim has to be implemented
- * in a chip-oriented file
- */
-struct sysconf_field *platform_sys_claim(int nr, int lsb, int msb);
-
 int __init sasg1_clk_init(clk_t *_sys_clk_in)
 {
 	int ret;
-#define call_platform_sys_claim(_nr, _lsb, _msb)		\
-	sys_0_##_nr##_##_lsb##_##_msb =			 \
-			platform_sys_claim(_nr, _lsb, _msb)
 
 //	call_platform_sys_claim(107, 0, 1);
 //	call_platform_sys_claim(107, 4, 5);
@@ -345,7 +310,9 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	call_platform_sys_claim(109, 25, 25);
 
 	call_platform_sys_claim(134, 0, 31);
+	call_platform_sys_claim(312, 0, 31);
 
+#ifndef ST_OS21
 	/* FS_0: ch_1 */
 	fsynth_gp_channel[0].pe = platform_sys_claim(135, 0, 4);
 	fsynth_gp_channel[0].md = platform_sys_claim(136, 0, 15);
@@ -367,7 +334,6 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	fsynth_gp_channel[3].sdiv = platform_sys_claim(149, 0, 2);
 	fsynth_gp_channel[3].prog_en = platform_sys_claim(150, 0, 0);
 
-	call_platform_sys_claim(312, 0, 31);
 	/* FS_1: ch_1 */
 	fsynth_vid_channel[0].pe = platform_sys_claim(313, 0, 4);
 	fsynth_vid_channel[0].md = platform_sys_claim(314, 0, 15);
@@ -388,6 +354,7 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	fsynth_vid_channel[3].md = platform_sys_claim(326, 0, 15);
 	fsynth_vid_channel[3].sdiv = platform_sys_claim(327, 0, 2);
 	fsynth_vid_channel[3].prog_en = platform_sys_claim(328, 0, 0);
+#endif
 
 	call_platform_sys_claim(379, 0, 15);
 	call_platform_sys_claim(380, 0, 31);
@@ -404,22 +371,25 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	cgb_base = ioremap_nocache(CKGB_BASE_ADDRESS , 0x1000);
 	cgc_base = ioremap_nocache(CKGC_BASE_ADDRESS , 0x1000);
 	cgd_base = ioremap_nocache(CKGD_BASE_ADDRESS , 0x1000);
-	
+
 	/* Set clock gen B to use crystal, remove 1024 divisor on spdif clock */
 	CLK_WRITE(cgb_base + CKGB_LOCK, 0xc0de);
 	CLK_WRITE(cgb_base + CKGB_CRISTAL_SEL, 0);
 	CLK_WRITE(cgb_base + CKGB_POWER_DOWN, 0);
 	CLK_WRITE(cgb_base + CKGB_LOCK, 0xc1a0);
 
+#ifdef ST_OS21
+	printf("Registering SASG1 clocks\n");
+        clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
+        printf("done");
+#else
 	ret = clk_register_table(clk_clocks, CLKS_B_REF, 1);
 
 	ret |= clk_register_table(&clk_clocks[CLKS_B_REF],
 				ARRAY_SIZE(clk_clocks) - CLKS_B_REF, 0);
-
+#endif
 	return 0;
 }
-
-#endif
 
 /******************************************************************************
 CLOCKGEN Ax clocks groups
@@ -884,6 +854,7 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, mdiv, ndiv, pdiv, data;
 	int err = 0;
+	long deviation, new_deviation;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -926,6 +897,10 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 		break;
 	case CLKS_FDMA0 ... CLKS_MII1_REF:
 		div = clk_p->parent->rate / freq;
+		deviation = (clk_p->parent->rate / div) - freq;
+		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
+		if (new_deviation < 0) new_deviation = -new_deviation;
+		if (new_deviation < deviation) div++;
 		err = clkgenax_set_div(clk_p, &div);
 		break;
 	default:
@@ -1014,6 +989,8 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, mdiv, ndiv, pdiv, data;
 	int err = 0;
+	long deviation, new_deviation;
+
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1057,6 +1034,10 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 	case CLKS_ADP_WC_STAC ... CLKS_MII0_REF:
 	case CLKS_TST_MVTAC_SYS:
 		div = clk_p->parent->rate / freq;
+		deviation = (clk_p->parent->rate / div) - freq;
+		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
+		if (new_deviation < 0) new_deviation = -new_deviation;
+		if (new_deviation < deviation) div++;
 		err = clkgenax_set_div(clk_p, &div);
 		break;
 	default:
@@ -1097,7 +1078,6 @@ static unsigned long clkgena1_get_measure(clk_t *clk_p)
 	src = measure_table_a1[clk_p->id - CLKS_ADP_WC_STAC];
 	if (src == 0xff)
 		return 0;
-
 
 	measure = 0;
 
@@ -1273,6 +1253,12 @@ static int clkgenb_set_rate(clk_t *clk_p, unsigned long freq)
 
 	/* No clockgen B internal divider used. Hence all clocks can be considered
 	   as FS output */
+	if (clk_p->id == CLKS_B_PCM_FSYN3) {
+		/* Disable power down reset state */
+		clkgenb_unlock();
+		CLK_WRITE(cgb_base + CKGB_POWER_DOWN, 0);
+		clkgenb_lock();
+	}
 	err = clkgenb_fsyn_set_rate(clk_p, freq);
 	if (!err)
 		err = clkgenb_recalc(clk_p);
@@ -1312,6 +1298,7 @@ static int clkgenb_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	CLK_WRITE(cgb_base + CKGB_FS_PE(bank, channel), pe);
 	CLK_WRITE(cgb_base + CKGB_FS_SDIV(bank, channel), sdiv);
 	CLK_WRITE(cgb_base + CKGB_FS_EN_PRG(bank, channel), 0x1);
+	CLK_WRITE(cgb_base + CKGB_FS_EN_PRG(bank, channel), 0x0);
 	clkgenb_lock();
 
 	#endif
@@ -1469,6 +1456,7 @@ Quad FSYN + Video Clock Controller
    Description: Get CKGC FSYN clocks frequencies function
    Returns:     'clk_err_t' error code
    ======================================================================== */
+
 static int clkgenc_fsyn_recalc(clk_t *clk_p)
 {
 	unsigned long cfg, dig_bit;
@@ -1481,10 +1469,11 @@ static int clkgenc_fsyn_recalc(clk_t *clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
 	#if !defined(CLKLLA_NO_PLL)
+
+	/* Checking FSYN analog & reset status */
 	cfg = SYSCONF_READ(0, 312, 0, 31);
-	/* Checking FSYN analog status */
 	if ((cfg  & ((1 << 14) | (1 << 0))) != ((1 << 14) | (1 << 0))) {
-		/* Analog power down */
+		/* Analog power down or reset */
 		clk_p->rate = 0;
 		return 0;
 	}
@@ -1656,15 +1645,19 @@ static int clkgenc_set_rate(clk_t *clk_p, unsigned long freq)
 		sysconf_write(fsynth_vid_channel[channel].prog_en, 1);
 		sysconf_write(fsynth_vid_channel[channel].prog_en, 0);
 #endif
-	} else {
+	} else { /* Video Clock Controller clocks */
 		unsigned long div;
+		long deviation, new_deviation;
 
-		/* Video Clock Controller clocks */
 		div = clk_p->parent->rate / freq;
+		deviation = (clk_p->parent->rate / div) - freq;
+		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
+		if (new_deviation < 0) new_deviation = -new_deviation;
+		if (new_deviation < deviation) div++;
 		err = clkgenc_vcc_set_div(clk_p, &div);
 	}
 
-	/* Computing FSyn params. Should be common function with FSyn type */
+	/* Recomputing freq from real HW status */
 	return clkgenc_recalc(clk_p);
 }
 
@@ -1731,7 +1724,7 @@ static int clkgenc_set_parent(clk_t *clk_p, clk_t *parent_p)
 		return CLK_ERR_BAD_PARAMETER;
 	}
 	data = SYSCONF_READ(0, 380, 0, 31);
-	data &= (0x3 << (chan * 2));
+	data &= ~(0x3 << (chan * 2));
 	data |= (val << (chan * 2));
 	SYSCONF_WRITE(0, 380, 0, 31, data);
 	clk_p->parent = parent_p;
@@ -1793,7 +1786,6 @@ static int clkgenc_fsyn_xable(clk_t *clk_p, unsigned long enable)
 		if ((val & 0x3c00) == 0)
 			val &= ~(1 << 14);
 	}
-	
 	SYSCONF_WRITE(0, 312, 0, 31, val);
 
 	/* Freq recalc required only if a channel is enabled */
@@ -1834,8 +1826,9 @@ static int clkgenc_disable(clk_t *clk_p)
 
 static int clkgenc_observe(clk_t *clk_p, unsigned long *div_p)
 {
-#ifdef OS21
+#ifdef ST_OS21
 	unsigned long chan;
+
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 	if (clk_p->id < CLKS_C_PIX_HDMI || clk_p->id > CLKS_C_SLAVE_MCRU)
@@ -1848,7 +1841,7 @@ static int clkgenc_observe(clk_t *clk_p, unsigned long *div_p)
 	SYSCONF_WRITE(0, 105, 12, 14, 5);	/* Selecting alt mode 5 */
 	SYSCONF_WRITE(0, 109, 11, 11, 1);	/* Enabling IO */
 
-	/* No possible predivider on clockgen B */
+	/* No possible predivider on this clockgen */
 	*div_p = 1;
 #else
 #warning "clk_observe disabled"
@@ -1866,6 +1859,7 @@ CLOCKGEN D (CCSC, MCHI, TSout src, ref clock for MMCRU)
    Description: Get CKGD FSYN clocks frequencies function
    Returns:     'clk_err_t' error code
    ======================================================================== */
+
 static int clkgend_fsyn_recalc(clk_t *clk_p)
 {
 	unsigned long cfg, dig_bit;
@@ -2020,8 +2014,8 @@ static int clkgend_fsyn_xable(clk_t *clk_p, unsigned long enable)
 		if ((val & 0x3c00) == 0)
 			val &= ~(1 << 14);
 	}
-
 	SYSCONF_WRITE(0, 134, 0, 31, val);
+
 	/* Freq recalc required only if a channel is enabled */
 	if (enable)
 		return clkgend_fsyn_recalc(clk_p);

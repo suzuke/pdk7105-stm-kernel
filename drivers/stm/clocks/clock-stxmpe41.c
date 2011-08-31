@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * File name   : clock-stxMPE31.c
+ * File name   : clock-stxMPE41.c
  * Description : Low Level API - HW specific implementation
  *
  * COPYRIGHT (C) 2009 STMicroelectronics - All Rights Reserved
@@ -21,7 +21,7 @@
 */
 
 /* Co-emulation support:
-   CLKLLA_NO_PLL  => RTL (emulation or co-emulation) where only PLL/FSYN are 
+   CLKLLA_NO_PLL  => RTL (emulation or co-emulation) where only PLL/FSYN are
                      not present. The rest of the logic is there.
  */
 
@@ -36,15 +36,23 @@
 
 #define CLKLLA_SYSCONF_UNIQREGS			1
 
+static sysconf_base_t sysconf_base[] = {
+	{ 400, 499, SYS_TRANSPORT_BASE_ADDRESS },
+	{ 500, 599, SYS_VIDEO_BASE_ADDRESS },
+	{ 600, 699, SYS_CPU_BASE_ADDRESS },
+	{ 0, 0, 0 }
+};
+
 #else /* Linux */
 
 #include <linux/stm/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+
 #endif
 
-#include "clock-stxmpe31.h"
-#include "clock-regs-stxmpe31.h"
+#include "clock-stxmpe41.h"
+#include "clock-regs-stxmpe41.h"
 #include "clock-oslayer.h"
 #include "clock-common.h"
 
@@ -61,7 +69,6 @@ static int clkgenddr_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgena9_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgenmali_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgenax_set_div(clk_t *clk_p, unsigned long *div_p);
-/*static int clkgenddr_set_div(clk_t *clk_p, unsigned long *div_p);*/
 static int clkgenax_recalc(clk_t *clk_p);
 static int clkgene_recalc(clk_t *clk_p);
 static int clkgenf_recalc(clk_t *clk_p);
@@ -80,7 +87,6 @@ static int clkgenddr_init(clk_t *clk_p);
 static int clkgena9_init(clk_t *clk_p);
 static int clkgenmali_init(clk_t *clk_p);
 static int clkgenax_identify_parent(clk_t *clk_p);
-/*static int clkgene_identify_parent(clk_t *clk_p);*/
 
 _CLK_OPS(clkgena0,
 	"A10",
@@ -140,7 +146,7 @@ _CLK_OPS(clkgenf,
 	clkgenf_disable,
 	clkgenf_observe,
 	NULL,		/* No measure function */
-	"PIO107[0 & 2]" /* Observation point */
+	"PIO107[0 & 2]"	/* Observation point */
 );
 _CLK_OPS(clkgenddr,
 	"DDR-SS",
@@ -179,15 +185,11 @@ _CLK_OPS(clkgenmali,
 	NULL		/* No observation point */
 );
 
-/*
- *  The cga0_base, cga1_base, etc... are initialized here
- *  just to be running on ST40/OS21
- */
-static void * cga0_base = (void *)CKGA0_BASE_ADDRESS;
-static void * cga1_base = (void *)CKGA1_BASE_ADDRESS;
-static void * cga2_base = (void *)CKGA2_BASE_ADDRESS;
-static void * cgb_base = (void*)CKGB_BASE_ADDRESS;
-static void * cgd_base =  (void*)CKGD_BASE_ADDRESS;
+static void * cga0_base;
+static void * cga1_base;
+static void * cga2_base;
+static void * cgb_base;
+static void * cgd_base;
 
 /* Physical clocks description */
 static clk_t clk_clocks[] = {
@@ -381,46 +383,11 @@ _CLK_P(CLKM_PHI_GPUPLL, &clkgenmali, 350000000,
 };
 
 /* ========================================================================
-   Name:        mpe31_clk_init()
+   Name:        mpe41_clk_init()
    Description: SOC specific LLA initialization
    Returns:     'clk_err_t' error code.
    ======================================================================== */
 
-#ifdef ST_OS21
-static sysconf_base_t sysconf_base[] = {
-	{ 400, 499, SYS_TRANSPORT_BASE_ADDRESS },
-	{ 500, 599, SYS_VIDEO_BASE_ADDRESS },
-	{ 600, 699, SYS_CPU_BASE_ADDRESS },
-	{ 0, 0, 0 }
-};
-
-int mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
-		clk_t *_pix_main_clk, clk_t *_pix_aux_clk) 
-{
-	int i;
-
-	clk_clocks[CLKM_A0_REF].parent = _sys_clk_in;
-	clk_clocks[CLKM_A1_REF].parent = _sys_clk_in;
-	clk_clocks[CLKM_A2_REF].parent = _sys_clk_in;
-	clk_clocks[CLKM_E_REF].parent = _sys_clk_in;
-	clk_clocks[CLKM_F_REF].parent = _sys_clk_in;
-	clk_clocks[CLKM_DDR_REF].parent = _sys_clk_in;
-	clk_clocks[CLKM_A9_REF].parent = _sys_clk_in;
-	clk_clocks[CLKM_MALI_REF].parent = _sys_clk_in;
-
-	clk_clocks[CLKM_PIX_MAIN_SAS].parent = _pix_main_clk;
-	clk_clocks[CLKM_PIX_AUX_SAS].parent = _pix_aux_clk;
-
-printf("Registering MPE clocks\n");
-	for (i = 0; i < ARRAY_SIZE(clk_clocks); ++i) {
-		if (clk_clocks[i].name == 0) continue; /* ID only (ex: SPARE) */
-		clk_register(&clk_clocks[i]);
-	}
-printf(" => done\n");
-
-	return 0;
-}
-#else	/* Linux */
 SYSCONF(0, 403, 10, 10);
 SYSCONF(0, 403, 10, 10);
 SYSCONF(0, 401, 0, 1);
@@ -436,7 +403,7 @@ SYSCONF(0, 506, 2, 2);
 
 SYSCONF(0, 555, 0, 3);
 /*
- * 556: [0:7] clock source (2 bits x channel) 
+ * 556: [0:7] clock source (2 bits x channel)
  */
 SYSCONF(0, 556, 0, 7);
 
@@ -509,22 +476,10 @@ SYSCONF(0, 654, 3, 8);
 SYSCONF(0, 654, 22, 24);
 SYSCONF(0, 654, 9, 16);
 
-/*
- * The platform_sys_claim is used to be able to compile
- * this file __without__ any include chip based
- * the platform_sys_claim has to be implemented
- * in a chip-oriented file
- */
-struct sysconf_field *platform_sys_claim(int nr, int lsb, int msb);
-
-int __init mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
-		clk_t *_pix_main_clk, clk_t *_pix_aux_clk) 
+int __init mpe41_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
+		clk_t *_pix_main_clk, clk_t *_pix_aux_clk)
 {
 	int ret;
-
-#define call_platform_sys_claim(_nr, _lsb, _msb)                \
-        sys_0_##_nr##_##_lsb##_##_msb =                         \
-                platform_sys_claim(_nr, _lsb, _msb)
 
 	call_platform_sys_claim(401, 0, 1);
 	call_platform_sys_claim(401, 8, 10);
@@ -539,8 +494,8 @@ int __init mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	call_platform_sys_claim(506, 2, 2);
 
 	call_platform_sys_claim(555, 0, 3);
-	call_platform_sys_claim(556, 0, 7);	
-	call_platform_sys_claim(557, 0, 7);	
+	call_platform_sys_claim(556, 0, 7);
+	call_platform_sys_claim(557, 0, 7);
 
 	/*
 	 * 558: [0:3]: Enable programmation of FS channels
@@ -548,7 +503,7 @@ int __init mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	 *	[24: 26] NDIV
 	 *	[27: 27] Pwd PLL
 	 * 559: [0:3]: NBS (1 bit x channel)
- 	 *	[4: 18]: Pe.0
+	 *	[4: 18]: Pe.0
 	 * 560: [0: 14]: Pe.1
 	 *	[15:29]: Pe.2
 	 * 561: [0 :14]: pe.3
@@ -629,15 +584,19 @@ int __init mpe31_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	cgb_base = ioremap_nocache(CKGB_BASE_ADDRESS, 0x1000);
 	cgd_base =  ioremap_nocache(CKGD_BASE_ADDRESS, 0x1000);
 
+#ifdef ST_OS21
+	printf("Registering MPE41 clocks\n");
+	clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
+	printf("done");
+#else
 	ret = clk_register_table(clk_clocks, CLKM_E_REF, 1);
 
 	ret |= clk_register_table(&clk_clocks[CLKM_E_REF],
 		ARRAY_SIZE(clk_clocks) - CLKM_E_REF, 0);
-
+#endif
 	return 0;
 }
 
-#endif
 
 /******************************************************************************
 CLOCKGEN Ax clocks groups. Common functions
@@ -667,9 +626,9 @@ static inline unsigned long clkgenax_get_base_id(clk_t *clk_p)
 /* Returns divN_cfg register offset */
 static inline unsigned long clkgenax_div_cfg(int clk_src, int clk_idx)
 {
-	static unsigned long pll0_odf_table[]={CKGA_PLL0_ODF0_DIV0_CFG, 
+	static unsigned long pll0_odf_table[]={CKGA_PLL0_ODF0_DIV0_CFG,
 		CKGA_PLL0_ODF1_DIV0_CFG, CKGA_PLL0_ODF2_DIV0_CFG, CKGA_PLL0_ODF3_DIV0_CFG};
-	static unsigned long pll1_odf_table[]={CKGA_PLL1_ODF0_DIV0_CFG, 
+	static unsigned long pll1_odf_table[]={CKGA_PLL1_ODF0_DIV0_CFG,
 		CKGA_PLL1_ODF1_DIV0_CFG, CKGA_PLL1_ODF2_DIV0_CFG, CKGA_PLL1_ODF3_DIV0_CFG};
 	unsigned long offset;
 
@@ -724,16 +683,16 @@ static int clkgenax_get_index(int clkid, unsigned long *srcreg, int *shift)
 
 static int clkgenax_set_parent(clk_t *clk_p, clk_t *src_p)
 {
-	unsigned long clk_src = 0, val, base_id;
+	unsigned long clk_src, val, base_id;
 	int idx, shift;
 	unsigned long srcreg, base_addr;
 
 	if (!clk_p || !src_p)
 		return CLK_ERR_BAD_PARAMETER;
-	if ((clk_p->id < CLKM_APB_PM) && (clk_p->id > CLKM_TRACE_A9) && 
+	if ((clk_p->id < CLKM_APB_PM) && (clk_p->id > CLKM_TRACE_A9) &&
 	    (clk_p->id < CLKM_FDMA12) &&
 	    (clk_p->id > CLKM_A1_DIV16) &&
-	    (clk_p->id < CLKM_VTAC_MAIN_PHY) && 
+	    (clk_p->id < CLKM_VTAC_MAIN_PHY) &&
 	    (clk_p->id > CLKM_DCEPHY_IMPCTRL))
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -1104,7 +1063,7 @@ static int clkgenax_recalc(clk_t *clk_p)
 			return 0;
 		}
 
-	   	offset = clkgenax_div_cfg(data, idx);
+		offset = clkgenax_div_cfg(data, idx);
 		data =  CLK_READ(base_addr + offset);
 		ratio = (data & 0x1F) + 1;
 		clk_p->rate = clk_p->parent->rate / ratio;
@@ -1151,7 +1110,7 @@ static unsigned long clkgenax_get_measure(clk_t *clk_p)
 {
 	unsigned long src, data;
 	unsigned long measure;
-    void *base;
+	void *base;
 	/* WARNING: the measure_table[] must strictly follows clockgen
 	 * enum order taking into account any reserved/unused clock
 	 * filled with 0xff
@@ -1171,8 +1130,8 @@ static unsigned long clkgenax_get_measure(clk_t *clk_p)
 	int i;
 
 	return 0;
-	
-	
+
+
 	if (!clk_p)
 		return 0;
 	if (clk_p->id >= CLKM_APB_PM && clk_p->id <= CLKM_TRACE_A9) {
@@ -1236,7 +1195,7 @@ static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p)
 	unsigned long divcfg;
 	unsigned long srcreg;
 	int shift;
-	
+
 	if (!clk_p || !div_p)
 		return CLK_ERR_BAD_PARAMETER;
 	if ((clk_p->id >= CLKM_APB_PM && clk_p->id <= CLKM_TRACE_A9) ||
@@ -1269,7 +1228,7 @@ static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p)
 
 	/* Configuring appropriate PIO */
 	if (base_addr == cga0_base) {
-		SYSCONF_WRITE(0, 401, 8, 10, 3);	/* Selecting alternate 3 */
+		SYSCONF_WRITE(0, 401, 8, 10, 3); /* Selecting alternate 3 */
 		SYSCONF_WRITE(0, 403, 10, 10, 1);/* Enabling IO */
 	} else if (base_addr == cga1_base) {
 		SYSCONF_WRITE(0, 401, 0, 1, 3);	/* Selecting alternate 3 */
@@ -1296,6 +1255,7 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, idf, ndiv, cp, data;
 	int err = 0;
+	long deviation, new_deviation;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1362,7 +1322,12 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 			return CLK_ERR_BAD_PARAMETER;
 		if (clk_p->id >= CLKM_A0_SPARE_21 && clk_p->id <= CLKM_A0_SPARE_29)
 			return CLK_ERR_BAD_PARAMETER;
+
 		div = clk_p->parent->rate / freq;
+		deviation = (clk_p->parent->rate / div) - freq;
+		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
+		if (new_deviation < 0) new_deviation = -new_deviation;
+		if (new_deviation < deviation) div++;
 		err = clkgenax_set_div(clk_p, &div);
 		break;
 	default:
@@ -1389,6 +1354,7 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, idf, ndiv, cp, data;
 	int err = 0;
+	long deviation, new_deviation;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1451,7 +1417,12 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 	case CLKM_FDMA12 ... CLKM_A1_DIV16:
 		if (clk_p->id == CLKM_A1_SPARE_14 || clk_p->id == CLKM_A1_SPARE_15)
 			return CLK_ERR_BAD_PARAMETER;
+
 		div = clk_p->parent->rate / freq;
+		deviation = (clk_p->parent->rate / div) - freq;
+		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
+		if (new_deviation < 0) new_deviation = -new_deviation;
+		if (new_deviation < deviation) div++;
 		err = clkgenax_set_div(clk_p, &div);
 		break;
 	default:
@@ -1478,6 +1449,7 @@ static int clkgena2_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long div, idf, ndiv, cp, data;
 	int err = 0;
+		long deviation, new_deviation;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1539,6 +1511,10 @@ static int clkgena2_set_rate(clk_t *clk_p, unsigned long freq)
 		break;
 	case CLKM_VTAC_MAIN_PHY ... CLKM_DCEPHY_IMPCTRL:
 		div = clk_p->parent->rate / freq;
+		deviation = (clk_p->parent->rate / div) - freq;
+		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
+		if (new_deviation < 0) new_deviation = -new_deviation;
+		if (new_deviation < deviation) div++;
 		err = clkgenax_set_div(clk_p, &div);
 		break;
 	default:
@@ -1806,10 +1782,10 @@ static int clkgenf_recalc(clk_t *clk_p)
 		clk_p->rate = clk_p->parent->rate;
 	else if((clk_p->id >= CLKM_F_FS_VCO) && (clk_p->id <= CLKM_F_FS_3)) {
 		return clkgenf_fsyn_recalc(clk_p);
-	} else if ((clk_p->id >= CLKM_PIX_MAIN_SAS) && 
+	} else if ((clk_p->id >= CLKM_PIX_MAIN_SAS) &&
 		(clk_p->id <= CLKM_PIX_AUX_SAS)) /* Clocks from SAS */
 		clk_p->rate = clk_p->parent->rate;
-	else if ((clk_p->id >= CLKM_PIX_MAIN_OUT) && 
+	else if ((clk_p->id >= CLKM_PIX_MAIN_OUT) &&
 		(clk_p->id <= CLKM_PIX_AUX_OUT)) { /* Video Clock Controller clocks */
 		unsigned long chan, val;
 		static const unsigned char tab1248[] = { 1, 2, 4, 8 };
@@ -1843,7 +1819,7 @@ static int clkgenf_recalc(clk_t *clk_p)
 static int clkgenf_identify_parent(clk_t *clk_p)
 {
 	unsigned long chan, val;
-	static clk_t *fs_parent_clocks[] = {
+	static const clk_t *fs_parent_clocks[] = {
 		&clk_clocks[CLKM_PIX_MAIN_VIDFS],
 		&clk_clocks[CLKM_PIX_AUX_VIDFS],
 		&clk_clocks[CLKM_PIX_MAIN_SAS],
@@ -1955,14 +1931,13 @@ static int clkgenf_vcc_set_div(clk_t *clk_p, unsigned long *div_p)
 
 	if (clk_p->id < CLKM_PIX_MAIN_OUT || clk_p->id > CLKM_PIX_AUX_OUT)
 		return CLK_ERR_BAD_PARAMETER;
-
 	if (*div_p < 1 || *div_p > 8)
 		return CLK_ERR_BAD_PARAMETER;
 
 	set = div_table[*div_p - 1];
 	if (set == 0xff)
 		return CLK_ERR_BAD_PARAMETER;
-	                
+
 	chan = clk_p->id - CLKM_PIX_MAIN_OUT;
 
 	/* Set SYSTEM_CONFIG557: div_mode, 2bits per channel */
@@ -2053,12 +2028,17 @@ static int clkgenf_set_rate(clk_t *clk_p, unsigned long freq)
 
 	if ((clk_p->id >= CLKM_F_FS_VCO) && (clk_p->id <= CLKM_F_FS_3))
 		err = clkgenf_fsyn_set_rate(clk_p, freq);
-	else if ((clk_p->id >= CLKM_PIX_MAIN_OUT) && 
+	else if ((clk_p->id >= CLKM_PIX_MAIN_OUT) &&
 		(clk_p->id <= CLKM_PIX_AUX_OUT)) {
 		unsigned long div;
+		long deviation, new_deviation;
 
 		/* Video Clock Controller clocks */
 		div = clk_p->parent->rate / freq;
+		deviation = (clk_p->parent->rate / div) - freq;
+		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
+		if (new_deviation < 0) new_deviation = -new_deviation;
+		if (new_deviation < deviation) div++;
 		err = clkgenf_vcc_set_div(clk_p, &div);
 	}
 	/* CLM_PROC_VID special case (mux output) */
@@ -2156,7 +2136,7 @@ static int clkgenf_observe(clk_t *clk_p, unsigned long *div_p)
 	/* Observation points:
 	 * VCC channels => PIO107[0] alt 3
 	 * PIX_MAIN_VIDFS => PIO107[2] alt 2
-	*/
+	 */
 
 	/* Configuring appropriate PIO */
 	if (clk_p->id == CLKM_PIX_MAIN_OUT || clk_p->id == CLKM_PIX_AUX_OUT) {
@@ -2337,7 +2317,7 @@ static int clkgena9_identify_parent(clk_t *clk_p)
 	if (clk_p->id != CLKM_A9) /* Other clocks have static parent */
 		return 0;
 
-	if (SYSCONF_READ(0, 654, 2 ,2)) /* Is CA9 clock sourced from PLL or A10-10 ? */
+	if (SYSCONF_READ(0, 654, 2, 2)) /* Is CA9 clock sourced from PLL or A10-10 ? */
 		if (SYSCONF_READ(0, 654, 1, 1))
 			clk_p->parent = &clk_clocks[CLKM_EXT2F_A9];
 		else
@@ -2528,4 +2508,3 @@ static int clkgenmali_set_rate(clk_t *clk_p, unsigned long freq)
 
 	return err;
 }
-

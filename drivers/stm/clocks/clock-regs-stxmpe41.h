@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * File name   : clock-regs-stxMPE31.h
+ * File name   : clock-regs-stxMPE41.h
  * Description : Low Level API - Base addresses & register definitions.
  *
  * COPYRIGHT (C) 2009 STMicroelectronics - All Rights Reserved
@@ -9,62 +9,62 @@
  *
  *****************************************************************************/
 
-#ifndef __CLOCK_LLA_REGS_MPE31_H
-#define __CLOCK_LLA_REGS_MPE31_H
+#ifndef __CLOCK_LLA_REGS_MPE41_H
+#define __CLOCK_LLA_REGS_MPE41_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* --- Base addresses --------------------------------------- */
-#define CKGA0_BASE_ADDRESS	0xfde12000 // ok
-#define CKGA1_BASE_ADDRESS	0xfd6db000 // ok
-#define CKGA2_BASE_ADDRESS	0xfd345000 // ok
+#define CKGA0_BASE_ADDRESS	0xfde12000
+#define CKGA1_BASE_ADDRESS	0xfd6db000
+#define CKGA2_BASE_ADDRESS	0xfd345000
 #define CKGB_BASE_ADDRESS	0xfd546000
 #define CKGD_BASE_ADDRESS	0xfe700000
 
-#define SYS_VIDEO_BASE_ADDRESS	0xFD320000 // ok
-#define SYS_TRANSPORT_BASE_ADDRESS	0xFD690000 // ok
-#define SYS_CPU_BASE_ADDRESS	0xFDDE0000 // ok
+#define SYS_VIDEO_BASE_ADDRESS	0xFD320000
+#define SYS_TRANSPORT_BASE_ADDRESS	0xFD690000
+#define SYS_CPU_BASE_ADDRESS	0xFDDE0000
 
 #define PIO5_BASE_ADDRESS               0xfd025000
 #define PIO_BASE_ADDRESS(bank)          PIO5_BASE_ADDRESS
 
 /* --- CKGA registers --- */
-#define CKGA_PLL0_REG0_CFG              0x000 // ok
-#define CKGA_PLL0_REG1_CFG              0x004 // ok
-#define CKGA_PLL0_REG2_CFG              0x008 // ok
-#define CKGA_PLL1_REG0_CFG              0x00c // ok
-#define CKGA_PLL1_REG1_CFG              0x010 // ok
-#define CKGA_PLL1_REG2_CFG              0x014 // ok
-#define CKGA_POWER_CFG	                0x018 // ok
-#define CKGA_CLKOPSRC_SWITCH_CFG        0x01c // ok
-#define CKGA_CLKOPSRC_SWITCH_CFG2       0x020 // ok
-#define CKGA_PLL0_ENABLE_FB             0x024 // ok
-#define CKGA_PLL1_ENABLE_FB             0x028 // ok
-#define CKGA_OSC_ENABLE_FB              0x02c // ok
+#define CKGA_PLL0_REG0_CFG              0x000
+#define CKGA_PLL0_REG1_CFG              0x004
+#define CKGA_PLL0_REG2_CFG              0x008
+#define CKGA_PLL1_REG0_CFG              0x00c
+#define CKGA_PLL1_REG1_CFG              0x010
+#define CKGA_PLL1_REG2_CFG              0x014
+#define CKGA_POWER_CFG	                0x018
+#define CKGA_CLKOPSRC_SWITCH_CFG        0x01c
+#define CKGA_CLKOPSRC_SWITCH_CFG2       0x020
+#define CKGA_PLL0_ENABLE_FB             0x024
+#define CKGA_PLL1_ENABLE_FB             0x028
+#define CKGA_OSC_ENABLE_FB              0x02c
 
-#define CKGA_CLKOBS_MUX0_CFG            0x030 // ok
-#define CKGA_CLKOBS_MASTER_MAXCOUNT     0x034 // ok
-#define CKGA_CLKOBS_CMD                 0x038 // ok
-#define CKGA_CLKOBS_STATUS              0x03c // ok
-#define CKGA_CLKOBS_SLAVE0_COUNT        0x040 // ok
-#define CKGA_OSCMUX_DEBUG               0x044 // ok
-#define CKGA_CLKOBS_MUX1_CFG            0x048 // ok
-#define CKGA_LOW_POWER_CTRL             0x04C // ok
+#define CKGA_CLKOBS_MUX0_CFG            0x030
+#define CKGA_CLKOBS_MASTER_MAXCOUNT     0x034
+#define CKGA_CLKOBS_CMD                 0x038
+#define CKGA_CLKOBS_STATUS              0x03c
+#define CKGA_CLKOBS_SLAVE0_COUNT        0x040
+#define CKGA_OSCMUX_DEBUG               0x044
+#define CKGA_CLKOBS_MUX1_CFG            0x048
+#define CKGA_LOW_POWER_CTRL             0x04C
 
-#define CKGA_PLL0_REG3_CFG              0x054 // ok
-#define CKGA_PLL1_REG3_CFG              0x058 // ok
+#define CKGA_PLL0_REG3_CFG              0x054
+#define CKGA_PLL1_REG3_CFG              0x058
 
-#define CKGA_OSC_DIV0_CFG				0x800 // ok
-#define CKGA_PLL0_ODF0_DIV0_CFG			0x900 // ok
-#define CKGA_PLL0_ODF1_DIV0_CFG			0x980 // ok
-#define CKGA_PLL0_ODF2_DIV0_CFG			0xa20 // ok
-#define CKGA_PLL0_ODF3_DIV0_CFG			0xa40 // ok
-#define CKGA_PLL1_ODF0_DIV0_CFG			0xa60 // ok
-#define CKGA_PLL1_ODF1_DIV0_CFG			0xa80 // ok
-#define CKGA_PLL1_ODF2_DIV0_CFG			0xb10 // ok
-#define CKGA_PLL1_ODF3_DIV0_CFG			0xb30 // ok
+#define CKGA_OSC_DIV0_CFG				0x800
+#define CKGA_PLL0_ODF0_DIV0_CFG			0x900
+#define CKGA_PLL0_ODF1_DIV0_CFG			0x980
+#define CKGA_PLL0_ODF2_DIV0_CFG			0xa20
+#define CKGA_PLL0_ODF3_DIV0_CFG			0xa40
+#define CKGA_PLL1_ODF0_DIV0_CFG			0xa60
+#define CKGA_PLL1_ODF1_DIV0_CFG			0xa80
+#define CKGA_PLL1_ODF2_DIV0_CFG			0xb10
+#define CKGA_PLL1_ODF3_DIV0_CFG			0xb30
 
 /* --- CKGB registers --- */
 #define CKGB_LOCK                       0x010
@@ -124,5 +124,4 @@ extern "C" {
 }
 #endif
 
-#endif  /* End __CLOCK_LLA_REGS_MPE31_H */
-
+#endif  /* End __CLOCK_LLA_REGS_MPE41_H */
