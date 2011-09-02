@@ -655,6 +655,10 @@ static struct platform_device stih415_mpe_fdma_xbar_device = {
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfd6df000, 0x1000),
 	},
+	.dev.platform_data = &(struct stm_plat_fdma_xbar_data) {
+		.first_fdma_id = 0,
+		.last_fdma_id = 2,
+	},
 };
 
 /* TVOUT_FDMA at 0xfe000000 ??? */
@@ -689,13 +693,17 @@ static struct platform_device stih415_sas_fdma_devices[] = {
 	}
 };
 
-/* FDMA_MUX_SAS: 96 way */
+/* FDMA_MUX_SAS: 64 way */
 static struct platform_device stih415_sas_fdma_xbar_device = {
 	.name = "stm-fdma-xbar",
 	.id = 1,
 	.num_resources = 1,
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfee61000, 0x1000),
+	},
+	.dev.platform_data = &(struct stm_plat_fdma_xbar_data) {
+		.first_fdma_id = 3,
+		.last_fdma_id = 4,
 	},
 };
 

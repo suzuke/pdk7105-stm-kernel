@@ -382,6 +382,11 @@ struct stm_plat_fdma_data {
 	u8 xbar;
 };
 
+struct stm_plat_fdma_xbar_data {
+	u8 first_fdma_id;
+	u8 last_fdma_id;
+};
+
 
 
 /*** PCI platform data ***/

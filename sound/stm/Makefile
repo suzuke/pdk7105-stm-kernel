@@ -59,6 +59,9 @@ snd-stm-stih415-y := stih415.o
 
 # External converters
 
+obj-$(CONFIG_SND_STM_CONV_BIPHASE) += snd-stm-conv-biphase.o
+snd-stm-conv-biphase-y := conv_biphase.o
+
 obj-$(CONFIG_SND_STM_CONV_DUMMY) += snd-stm-conv-dummy.o
 snd-stm-conv-dummy-y := conv_dummy.o
 

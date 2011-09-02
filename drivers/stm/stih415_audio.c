@@ -40,6 +40,19 @@ static struct platform_device stih415_conv_dac = {
 	},
 };
 
+/* Bi-phase formatter */
+
+static struct platform_device stih415_conv_biphase = {
+	.name = "snd_conv_biphase",
+	.id = -1,
+	.dev.platform_data = &(struct snd_stm_conv_biphase_info) {
+		.source_bus_id = "snd_uniperif_player.3",
+		.channel_from = 0,
+		.channel_to = 1,
+		.enable = { SYSCONF(331), 6, 6 },
+	},
+};
+
 /* Uniperipheral PCM players */
 
 static struct platform_device stih415_pcm_player_0 = {
@@ -197,6 +210,7 @@ static struct platform_device stih415_pcm_reader = {
 
 static struct platform_device *stih415_audio_devices[] __initdata = {
 	&stih415_conv_dac,
+	&stih415_conv_biphase,
 	&stih415_pcm_player_0,
 	&stih415_pcm_player_1,
 	&stih415_pcm_player_2,

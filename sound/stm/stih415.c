@@ -1,5 +1,5 @@
 /*
- *   STMicrolectronics STiH415 SoCaudio glue driver
+ *   STMicrolectronics STiH415 SoC audio glue driver
  *
  *   Copyright (c) 2010-2011 STMicroelectronics Limited
  *
@@ -43,8 +43,7 @@ static int index = -1; /* First available index */
 static char *id = "STiH415"; /* Default card ID */
 
 module_param(index, int, 0444);
-MODULE_PARM_DESC(index, "Index value for STiH415 audio subsystem "
-		"card.");
+MODULE_PARM_DESC(index, "Index value for STiH415 audio subsystem card.");
 module_param(id, charp, 0444);
 MODULE_PARM_DESC(id, "ID string for STiH415 audio subsystem card.");
 
@@ -53,9 +52,10 @@ MODULE_PARM_DESC(id, "ID string for STiH415 audio subsystem card.");
  * Audio initialization
  */
 
-static struct sysconf_field *snd_stm_stih415_pcmp_valid_sel;
 static struct sysconf_field *snd_stm_stih415_pcm_clk_sel;
-static struct sysconf_field *snd_stm_stih415_biphase_enable;
+static struct sysconf_field *snd_stm_stih415_biphase_idle_value;
+static struct sysconf_field *snd_stm_stih415_voip;
+static struct sysconf_field *snd_stm_stih415_pcmp_valid_sel;
 
 static int __init snd_stm_stih415_init(void)
 {
@@ -64,8 +64,7 @@ static int __init snd_stm_stih415_init(void)
 	snd_stm_printd(0, "%s()\n", __func__);
 
 	if (stm_soc_type() != CPU_STIH415) {
-		snd_stm_printe("Not supported (other than STIH415) SOC "
-				"detected!\n");
+		snd_stm_printe("Unsupported (not STiH415) SOC detected!\n");
 		result = -EINVAL;
 		goto error_soc_type;
 	}
@@ -74,32 +73,40 @@ static int __init snd_stm_stih415_init(void)
 	snd_stm_stih415_pcm_clk_sel = sysconf_claim(SYSCONF(331), 8, 11,
 						       "PCM_CLK_SEL");
 	if (!snd_stm_stih415_pcm_clk_sel) {
-		snd_stm_printe("Failed to claim sysconf field!\n");
+		snd_stm_printe("Failed to claim sysconf (PCM_CLK_SEL)\n");
 		result = -EBUSY;
-		goto error_sysconf_claim;
+		goto error_sysconf_claim_pcm_clk_sel;
 	}
 	sysconf_write(snd_stm_stih415_pcm_clk_sel, 0xf);
 
-	/* Enable bi-phase formatter */
-	snd_stm_stih415_biphase_enable = sysconf_claim(SYSCONF(331), 6, 6,
-						       "BIPHASE_ENABLE");
-	if (!snd_stm_stih415_biphase_enable) {
-		snd_stm_printe("Failed to claim sysconf field!\n");
+	/* Set bi-phase idle value */
+	snd_stm_stih415_biphase_idle_value = sysconf_claim(SYSCONF(331), 7, 7,
+						       "BIPHASE_IDLE_VALUE");
+	if (!snd_stm_stih415_biphase_idle_value) {
+		snd_stm_printe("Failed to claim sysconf (BIPHASE_IDLE_VALUE)\n");
 		result = -EBUSY;
-		goto error_sysconf_claim;
+		goto error_sysconf_claim_biphase_idle_value;
 	}
-	sysconf_write(snd_stm_stih415_biphase_enable, 1);
+	sysconf_write(snd_stm_stih415_biphase_idle_value, 0);
 
+	/* Clear all voip bits for now */
+	snd_stm_stih415_voip = sysconf_claim(SYSCONF(331), 2, 5, "VOIP");
+	if (!snd_stm_stih415_voip) {
+		snd_stm_printe("Failed to claim sysconf (VOIP)\n");
+		result = -EBUSY;
+		goto error_sysconf_claim_voip;
+	}
+	sysconf_write(snd_stm_stih415_voip, 0);
 
-	/* Route pcm player 2 */
+	/* Route pcm players */
 	snd_stm_stih415_pcmp_valid_sel = sysconf_claim(SYSCONF(331), 0, 1,
 						       "PCMP_VALID_SEL");
 	if (!snd_stm_stih415_pcmp_valid_sel) {
-		snd_stm_printe("Failed to claim sysconf field!\n");
+		snd_stm_printe("Failed to claim sysconf (PCMP_VALID_SEL)\n");
 		result = -EBUSY;
-		goto error_sysconf_claim;
+		goto error_sysconf_claim_pcmp_valid_sel;
 	}
-	sysconf_write(snd_stm_stih415_pcmp_valid_sel, 2);
+	sysconf_write(snd_stm_stih415_pcmp_valid_sel, 3);
 
 	result = snd_stm_card_register();
 	if (result != 0) {
@@ -111,8 +118,13 @@ static int __init snd_stm_stih415_init(void)
 
 error_card_register:
 	sysconf_release(snd_stm_stih415_pcmp_valid_sel);
-	return result;
-error_sysconf_claim:
+error_sysconf_claim_pcmp_valid_sel:
+	sysconf_release(snd_stm_stih415_voip);
+error_sysconf_claim_voip:
+	sysconf_release(snd_stm_stih415_biphase_idle_value);
+error_sysconf_claim_biphase_idle_value:
+	sysconf_release(snd_stm_stih415_pcm_clk_sel);
+error_sysconf_claim_pcm_clk_sel:
 error_soc_type:
 	return result;
 }
@@ -122,12 +134,13 @@ static void __exit snd_stm_stih415_exit(void)
 	snd_stm_printd(0, "%s()\n", __func__);
 
 	sysconf_release(snd_stm_stih415_pcmp_valid_sel);
-	sysconf_release(snd_stm_stih415_biphase_enable);
+	sysconf_release(snd_stm_stih415_voip);
+	sysconf_release(snd_stm_stih415_biphase_idle_value);
 	sysconf_release(snd_stm_stih415_pcm_clk_sel);
 }
 
 MODULE_AUTHOR("Sevanand Singh <sevanand.singh@st.com>");
-MODULE_DESCRIPTION("STMicroelectronics STiH415 audio driver");
+MODULE_DESCRIPTION("STMicroelectronics STiH415 audio glue driver");
 MODULE_LICENSE("GPL");
 
 module_init(snd_stm_stih415_init);

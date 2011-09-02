@@ -224,6 +224,24 @@ struct snd_stm_conv_i2sspdif_info {
 
 
 /*
+ * Bi-phase formatter converter description (platform data)
+ */
+
+struct snd_stm_conv_biphase_info {
+	const char *source_bus_id;
+	int channel_from, channel_to;
+
+	struct {
+		int group;
+		int num;
+		int lsb;
+		int msb;
+	} enable;
+};
+
+
+
+/*
  * PCM Player description (platform data)
  */
 
