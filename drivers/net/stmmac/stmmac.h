@@ -70,6 +70,7 @@ struct stmmac_priv {
 
 	u32 msg_enable;
 	spinlock_t lock;
+	spinlock_t tx_lock;
 	int wolopts;
 	int wolenabled;
 #ifdef CONFIG_STMMAC_TIMER
