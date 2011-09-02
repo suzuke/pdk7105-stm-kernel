@@ -406,6 +406,12 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	cgc_base = ioremap_nocache(CKGC_BASE_ADDRESS , 0x1000);
 	cgd_base = ioremap_nocache(CKGD_BASE_ADDRESS , 0x1000);
 	
+	/* Set clock gen B to use crystal, remove 1024 divisor on spdif clock */
+	CLK_WRITE(cgb_base + CKGB_LOCK, 0xc0de);
+	CLK_WRITE(cgb_base + CKGB_CRISTAL_SEL, 0);
+	CLK_WRITE(cgb_base + CKGB_POWER_DOWN, 0);
+	CLK_WRITE(cgb_base + CKGB_LOCK, 0xc1a0);
+
 	ret = clk_register_table(clk_clocks, CLKS_B_REF, 1);
 
 	ret |= clk_register_table(&clk_clocks[CLKS_B_REF],
