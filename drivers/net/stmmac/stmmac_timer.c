@@ -46,7 +46,6 @@ static void stmmac_rtc_start(void *timer, unsigned int new_freq)
 
 	rtc_irq_set_freq(rtc, rtc->irq_task, new_freq);
 	rtc_irq_set_state(rtc, rtc->irq_task, 1);
-	return;
 }
 
 static void stmmac_rtc_stop(void *timer)
@@ -54,7 +53,6 @@ static void stmmac_rtc_stop(void *timer)
 	struct rtc_device *rtc = timer;
 
 	rtc_irq_set_state(rtc, rtc->irq_task, 0);
-	return;
 }
 
 int stmmac_open_ext_timer(struct net_device *dev, struct stmmac_timer *tm)
@@ -112,7 +110,6 @@ static void stmmac_tmu_set_rate(void *timer_callb, unsigned int new_freq)
 
 	timer->timer_start(timer->tmu_priv);
 	timer->set_rate(timer->tmu_priv, new_freq);
-	return;
 }
 
 static void stmmac_tmu_stop(void *timer_callb)
@@ -120,7 +117,6 @@ static void stmmac_tmu_stop(void *timer_callb)
 	struct sh_timer_callb *timer = timer_callb;
 
 	timer->timer_stop(timer->tmu_priv);
-	return;
 }
 
 int stmmac_open_ext_timer(struct net_device *dev, struct stmmac_timer *tm)

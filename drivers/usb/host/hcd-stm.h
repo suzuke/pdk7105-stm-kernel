@@ -58,7 +58,6 @@
 #define AHB2STBUS_INOUT_THRESHOLD       0x00800080
 
 #include <linux/clk.h>
-#include "../core/hcd.h"
 
 #define USB_CLKS_NR			3
 

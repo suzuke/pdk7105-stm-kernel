@@ -16,8 +16,7 @@ static inline unsigned long xchg_u32(volatile u32 *m, unsigned long val)
 		"1: mov     r1,   r15     \n\t" /* LOGOUT */
 		: "=&r" (retval),
 		  "+r"  (m),
-		  "+r"  (val)	/* when val == r15 this function will not work as expected.
-				 * So val is added to output constriants */
+		  "+r"  (val)		/* inhibit r15 overloading */
 		:
 		: "memory", "r0", "r1");
 
@@ -39,9 +38,7 @@ static inline unsigned long xchg_u8(volatile u8 *m, unsigned long val)
 		"1: mov     r1,   r15     \n\t" /* LOGOUT */
 		: "=&r" (retval),
 		  "+r"  (m),
-		  "+r"  (val) /* If val == r15 code doesn't work.
-		               * So make val input/output constraint
-		               * preventing compiler using r15 directly */
+		  "+r"  (val)		/* inhibit r15 overloading */
 		:
 		: "memory" , "r0", "r1");
 
@@ -65,8 +62,7 @@ static inline unsigned long __cmpxchg_u32(volatile int *m, unsigned long old,
 		"   mov.l   %2,   @%3     \n\t" /* store new value */
 		"1: mov     r1,   r15     \n\t" /* LOGOUT */
 		: "=&r" (retval),
-		  "+r"  (old), "+r"  (new) /* old or new can be r15 so
-		                            * force into temporary register */
+		  "+r"  (old), "+r"  (new) /* old or new can be r15 */
 		:  "r"  (m)
 		: "memory" , "r0", "r1", "t");
 

@@ -21,6 +21,7 @@
  *
  */
 
+#include <linux/slab.h>
 #include <asm/clock.h>
 #include <asm/div64.h>
 #include <sound/core.h>

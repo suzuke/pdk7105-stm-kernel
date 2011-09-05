@@ -27,6 +27,7 @@ AS             := $(AS) -32
 LDFLAGS        := -m elf32_sparc
 CHECKFLAGS     += -D__sparc__
 export BITS    := 32
+UTS_MACHINE    := sparc
 
 #KBUILD_CFLAGS += -g -pipe -fcall-used-g5 -fcall-used-g7
 KBUILD_CFLAGS += -m32 -pipe -mno-fpu -fcall-used-g5 -fcall-used-g7
@@ -46,6 +47,7 @@ CHECKFLAGS      += -D__sparc__ -D__sparc_v9__ -D__arch64__ -m64
 
 LDFLAGS              := -m elf64_sparc
 export BITS          := 64
+UTS_MACHINE          := sparc64
 
 KBUILD_CFLAGS += -m64 -pipe -mno-fpu -mcpu=ultrasparc -mcmodel=medlow   \
                  -ffixed-g4 -ffixed-g5 -fcall-used-g7 -Wno-sign-compare \
@@ -86,7 +88,7 @@ boot := arch/sparc/boot
 # Default target
 all: zImage
 
-image zImage tftpboot.img vmlinux.aout: vmlinux
+image zImage uImage tftpboot.img vmlinux.aout: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
 
 archclean:
@@ -100,6 +102,7 @@ ifeq ($(ARCH),sparc)
 define archhelp
   echo  '* image        - kernel image ($(boot)/image)'
   echo  '* zImage       - stripped kernel image ($(boot)/zImage)'
+  echo  '  uImage       - U-Boot SPARC32 Image (only for LEON)'
   echo  '  tftpboot.img - image prepared for tftp'
 endef
 else

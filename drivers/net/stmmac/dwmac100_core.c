@@ -108,19 +108,18 @@ static void dwmac100_set_filter(struct net_device *dev)
 		value |= MAC_CONTROL_PR;
 		value &= ~(MAC_CONTROL_PM | MAC_CONTROL_IF | MAC_CONTROL_HO |
 			   MAC_CONTROL_HP);
-	} else if ((dev->mc_count > HASH_TABLE_SIZE)
+	} else if ((netdev_mc_count(dev) > HASH_TABLE_SIZE)
 		   || (dev->flags & IFF_ALLMULTI)) {
 		value |= MAC_CONTROL_PM;
 		value &= ~(MAC_CONTROL_PR | MAC_CONTROL_IF | MAC_CONTROL_HO);
 		writel(0xffffffff, ioaddr + MAC_HASH_HIGH);
 		writel(0xffffffff, ioaddr + MAC_HASH_LOW);
-	} else if (dev->mc_count == 0) {	/* no multicast */
+	} else if (netdev_mc_empty(dev)) {	/* no multicast */
 		value &= ~(MAC_CONTROL_PM | MAC_CONTROL_PR | MAC_CONTROL_IF |
 			   MAC_CONTROL_HO | MAC_CONTROL_HP);
 	} else {
-		int i;
 		u32 mc_filter[2];
-		struct dev_mc_list *mclist;
+		struct netdev_hw_addr *ha;
 
 		/* Perfect filter mode for physical address and Hash
 		   filter for multicast */
@@ -129,12 +128,11 @@ static void dwmac100_set_filter(struct net_device *dev)
 			   MAC_CONTROL_IF | MAC_CONTROL_HO);
 
 		memset(mc_filter, 0, sizeof(mc_filter));
-		for (i = 0, mclist = dev->mc_list;
-		     mclist && i < dev->mc_count; i++, mclist = mclist->next) {
+		netdev_for_each_mc_addr(ha, dev) {
 			/* The upper 6 bits of the calculated CRC are used to
 			 * index the contens of the hash table */
 			int bit_nr =
-			    ether_crc(ETH_ALEN, mclist->dmi_addr) >> 26;
+			    ether_crc(ETH_ALEN, ha->addr) >> 26;
 			/* The most significant bit determines the register to
 			 * use (H/L) while the other 5 bits determine the bit
 			 * within the register. */

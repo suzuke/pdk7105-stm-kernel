@@ -48,7 +48,6 @@ extern void __init boot_cpu_id_too_large(int cpu);
 extern unsigned int dcache_parity_tl1_occurred;
 extern unsigned int icache_parity_tl1_occurred;
 
-extern asmlinkage void update_perfctrs(void);
 extern asmlinkage void sparc_breakpoint(struct pt_regs *regs);
 extern void timer_interrupt(int irq, struct pt_regs *regs);
 
@@ -214,8 +213,8 @@ extern struct cheetah_err_info *cheetah_error_log;
 struct ino_bucket {
 /*0x00*/unsigned long __irq_chain_pa;
 
-	/* Virtual interrupt number assigned to this INO.  */
-/*0x08*/unsigned int __virt_irq;
+	/* Interrupt number assigned to this INO.  */
+/*0x08*/unsigned int __irq;
 /*0x0c*/unsigned int __pad;
 };
 

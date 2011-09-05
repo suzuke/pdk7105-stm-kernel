@@ -353,9 +353,9 @@ ENTRY(sys_call_table)
 	.long sys_pwritev
 	.long sys_rt_tgsigqueueinfo	/* 335 */
 	.long sys_perf_event_open
-	.long sys_ni_syscall /* will be sys_fanotify_init */
-	.long sys_ni_syscall /* will be sys_fanotify_mark */
-	.long sys_ni_syscall /* will be sys_prlimit64 */
+	.long sys_fanotify_init
+	.long sys_fanotify_mark
+	.long sys_prlimit64
 	/* Broken-out socket family */
 	.long sys_socket		/* 340 */
 	.long sys_bind
@@ -374,3 +374,11 @@ ENTRY(sys_call_table)
 	.long sys_getsockopt
 	.long sys_sendmsg		/* 355 */
 	.long sys_recvmsg
+	.long sys_recvmmsg
+	.long sys_accept4
+	.long sys_name_to_handle_at
+	.long sys_open_by_handle_at	/* 360 */
+	.long sys_clock_adjtime
+	.long sys_syncfs
+	.long sys_sendmmsg
+	.long sys_setns

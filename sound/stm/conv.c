@@ -22,6 +22,7 @@
  */
 
 #include <linux/init.h>
+#include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/device.h>
 #include <sound/control.h>

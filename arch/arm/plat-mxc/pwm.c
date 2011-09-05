@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/io.h>
@@ -56,7 +57,7 @@ int pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns)
 	if (pwm == NULL || period_ns == 0 || duty_ns > period_ns)
 		return -EINVAL;
 
-	if (cpu_is_mx27() || cpu_is_mx3() || cpu_is_mx25()) {
+	if (cpu_is_mx27() || cpu_is_mx3() || cpu_is_mx25() || cpu_is_mx51()) {
 		unsigned long long c;
 		unsigned long period_cycles, duty_cycles, prescale;
 		u32 cr;
@@ -94,7 +95,7 @@ int pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns)
 		 * register to follow the ratio of duty_ns vs. period_ns
 		 * accordingly.
 		 *
-		 * This is good enought for programming the brightness of
+		 * This is good enough for programming the brightness of
 		 * the LCD backlight.
 		 *
 		 * The real implementation would divide PERCLK[0] first by

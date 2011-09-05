@@ -60,12 +60,10 @@
 #include <linux/completion.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
+#include <linux/mtd/partitions.h>
 
 #include "stm_nandc_regs.h"
 
-#ifdef CONFIG_MTD_PARTITIONS
-#include <linux/mtd/partitions.h>
-#endif
 
 #define NAME	"stm-nand-flex"
 
@@ -103,13 +101,9 @@ struct stm_nand_flex_device {
 	struct ecc_params	ecc_boot;
 	struct ecc_params	ecc_flex;
 #endif
-
-#ifdef CONFIG_MTD_PARTITIONS
 	/* Partition Table */
 	int			nr_parts;
 	struct mtd_partition	*parts;
-#endif
-
 };
 
 /* STM NAND Controller operating in FLEX mode */
@@ -154,9 +148,7 @@ static struct stm_nand_flex_controller* mtd_to_flex(struct mtd_info *mtd)
 #define flex_writereg(val, reg)	iowrite32(val, flex->base_addr + (reg))
 #define flex_readreg(reg)	ioread32(flex->base_addr + (reg))
 
-#ifdef CONFIG_MTD_PARTITIONS
 static const char *part_probes[] = { "cmdlinepart", NULL };
-#endif
 
 /*** FLEX mode control functions (cf nand_base.c) ***/
 
@@ -1141,7 +1133,6 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 
 #endif
 
-#ifdef CONFIG_MTD_PARTITIONS
 	/* Try parsing commandline paritions */
 	data->nr_parts = parse_mtd_partitions(&data->mtd, part_probes,
 					      &data->parts, 0);
@@ -1154,7 +1145,7 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 
 	/* Add any partitions that were found */
 	if (data->nr_parts) {
-		res = add_mtd_partitions(&data->mtd,
+		res = mtd_device_register(&data->mtd,
 					 data->parts, data->nr_parts);
 		if (res)
 			goto out2;
@@ -1188,17 +1179,14 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 		}
 #endif
 	} else
-#endif
-		res = add_mtd_device(&data->mtd);
+		res = mtd_device_register(&data->mtd, NULL, 0);
 
 	if (!res)
 		return data;
 
  out2:
-#ifdef CONFIG_MTD_PARTITIONS
 	if (data->parts && data->parts != bank->partitions)
 		kfree(data->parts);
-#endif
 
 	kfree(data);
  out1:
@@ -1243,10 +1231,8 @@ static int __devexit stm_nand_flex_remove(struct platform_device *pdev)
 		struct stm_nand_flex_device *data = flex->devices[n];
 		nand_release(&data->mtd);
 
-#ifdef CONFIG_MTD_PARTITIONS
 		if (data->parts && data->parts != pdata->banks[n].partitions)
 			kfree(data->parts);
-#endif
 
 		kfree(data);
 	}

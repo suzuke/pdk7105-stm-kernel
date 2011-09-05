@@ -27,6 +27,7 @@
 *******************************************************************************/
 
 #include <linux/crc32.h>
+#include <linux/slab.h>
 #include "dwmac1000.h"
 
 static void dwmac1000_core_init(void __iomem *ioaddr)
@@ -93,30 +94,28 @@ static void dwmac1000_set_filter(struct net_device *dev)
 	unsigned int value = 0;
 
 	CHIP_DBG(KERN_INFO "%s: # mcasts %d, # unicast %d\n",
-	    __func__, dev->mc_count, dev->uc.count);
+		 __func__, netdev_mc_count(dev), netdev_uc_count(dev));
 
 	if (dev->flags & IFF_PROMISC)
 		value = GMAC_FRAME_FILTER_PR;
-	else if ((dev->mc_count > HASH_TABLE_SIZE)
+	else if ((netdev_mc_count(dev) > HASH_TABLE_SIZE)
 		   || (dev->flags & IFF_ALLMULTI)) {
 		value = GMAC_FRAME_FILTER_PM;	/* pass all multi */
 		writel(0xffffffff, ioaddr + GMAC_HASH_HIGH);
 		writel(0xffffffff, ioaddr + GMAC_HASH_LOW);
-	} else if (dev->mc_count > 0) {
-		int i;
+	} else if (!netdev_mc_empty(dev)) {
 		u32 mc_filter[2];
-		struct dev_mc_list *mclist;
+		struct netdev_hw_addr *ha;
 
 		/* Hash filter for multicast */
 		value = GMAC_FRAME_FILTER_HMC;
 
 		memset(mc_filter, 0, sizeof(mc_filter));
-		for (i = 0, mclist = dev->mc_list;
-		     mclist && i < dev->mc_count; i++, mclist = mclist->next) {
+		netdev_for_each_mc_addr(ha, dev) {
 			/* The upper 6 bits of the calculated CRC are used to
 			   index the contens of the hash table */
 			int bit_nr =
-			    bitrev32(~crc32_le(~0, mclist->dmi_addr, 6)) >> 26;
+			    bitrev32(~crc32_le(~0, ha->addr, 6)) >> 26;
 			/* The most significant bit determines the register to
 			 * use (H/L) while the other 5 bits determine the bit
 			 * within the register. */
@@ -127,7 +126,7 @@ static void dwmac1000_set_filter(struct net_device *dev)
 	}
 
 	/* Handle multiple unicast addresses (perfect filtering)*/
-	if (dev->uc.count > GMAC_MAX_UNICAST_ADDRESSES)
+	if (netdev_uc_count(dev) > GMAC_MAX_UNICAST_ADDRESSES)
 		/* Switch to promiscuous mode is more than 16 addrs
 		   are required */
 		value |= GMAC_FRAME_FILTER_PR;
@@ -135,9 +134,9 @@ static void dwmac1000_set_filter(struct net_device *dev)
 		int reg = 1;
 		struct netdev_hw_addr *ha;
 
-			list_for_each_entry(ha, &dev->uc.list, list) {
-				dwmac1000_set_umac_addr(ioaddr, ha->addr, reg);
-				reg++;
+		netdev_for_each_uc_addr(ha, dev) {
+			dwmac1000_set_umac_addr(ioaddr, ha->addr, reg);
+			reg++;
 		}
 	}
 

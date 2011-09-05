@@ -37,6 +37,7 @@
 #include <linux/bpa2.h>
 #endif
 #include <asm/unaligned.h>
+#include <asm/dwarf.h>
 
 #if defined(CONFIG_MODULES_BPA2)
 static struct bpa2_part *modules_bpa2_part;
@@ -177,6 +178,8 @@ int apply_relocate_add(Elf32_Shdr *sechdrs,
 #endif
 
 		switch (ELF32_R_TYPE(rel[i].r_info)) {
+		case R_SH_NONE:
+			break;
 		case R_SH_DIR32:
 			value = get_unaligned(location);
 			value += relocation;
@@ -206,14 +209,6 @@ int apply_relocate_add(Elf32_Shdr *sechdrs,
 			*location = (*location & ~0x3fffc00) |
 				(((relocation >> 16) & 0xffff) << 10);
 			break;
-		case R_SH_NONE:
-			/*
-			 * Some C++ modules may have NONE relocations when the
-			 * DWARF unwinder is configured.
-			 */
-			printk(KERN_WARNING "module %s: R_SH_NONE relocation\n",
-				me->name);
-			break;
 		default:
 			printk(KERN_ERR "module %s: Unknown relocation: %u\n",
 			       me->name, ELF32_R_TYPE(rel[i].r_info));
@@ -238,10 +233,14 @@ int module_finalize(const Elf_Ehdr *hdr,
 		    const Elf_Shdr *sechdrs,
 		    struct module *me)
 {
-	return module_bug_finalize(hdr, sechdrs, me);
+	int ret = 0;
+
+	ret |= module_dwarf_finalize(hdr, sechdrs, me);
+
+	return ret;
 }
 
 void module_arch_cleanup(struct module *mod)
 {
-	module_bug_cleanup(mod);
+	module_dwarf_cleanup(mod);
 }

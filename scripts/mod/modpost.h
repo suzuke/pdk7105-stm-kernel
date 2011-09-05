@@ -9,7 +9,83 @@
 #include <unistd.h>
 #include <elf.h>
 
-#include "elflib.h"
+#include "elfconfig.h"
+
+#if KERNEL_ELFCLASS == ELFCLASS32
+
+#define Elf_Ehdr    Elf32_Ehdr
+#define Elf_Shdr    Elf32_Shdr
+#define Elf_Sym     Elf32_Sym
+#define Elf_Addr    Elf32_Addr
+#define Elf_Sword   Elf64_Sword
+#define Elf_Section Elf32_Half
+#define ELF_ST_BIND ELF32_ST_BIND
+#define ELF_ST_TYPE ELF32_ST_TYPE
+
+#define Elf_Rel     Elf32_Rel
+#define Elf_Rela    Elf32_Rela
+#define ELF_R_SYM   ELF32_R_SYM
+#define ELF_R_TYPE  ELF32_R_TYPE
+#else
+
+#define Elf_Ehdr    Elf64_Ehdr
+#define Elf_Shdr    Elf64_Shdr
+#define Elf_Sym     Elf64_Sym
+#define Elf_Addr    Elf64_Addr
+#define Elf_Sword   Elf64_Sxword
+#define Elf_Section Elf64_Half
+#define ELF_ST_BIND ELF64_ST_BIND
+#define ELF_ST_TYPE ELF64_ST_TYPE
+
+#define Elf_Rel     Elf64_Rel
+#define Elf_Rela    Elf64_Rela
+#define ELF_R_SYM   ELF64_R_SYM
+#define ELF_R_TYPE  ELF64_R_TYPE
+#endif
+
+/* The 64-bit MIPS ELF ABI uses an unusual reloc format. */
+typedef struct
+{
+	Elf32_Word    r_sym;	/* Symbol index */
+	unsigned char r_ssym;	/* Special symbol for 2nd relocation */
+	unsigned char r_type3;	/* 3rd relocation type */
+	unsigned char r_type2;	/* 2nd relocation type */
+	unsigned char r_type1;	/* 1st relocation type */
+} _Elf64_Mips_R_Info;
+
+typedef union
+{
+	Elf64_Xword		r_info_number;
+	_Elf64_Mips_R_Info	r_info_fields;
+} _Elf64_Mips_R_Info_union;
+
+#define ELF64_MIPS_R_SYM(i) \
+  ((__extension__ (_Elf64_Mips_R_Info_union)(i)).r_info_fields.r_sym)
+
+#define ELF64_MIPS_R_TYPE(i) \
+  ((__extension__ (_Elf64_Mips_R_Info_union)(i)).r_info_fields.r_type1)
+
+#if KERNEL_ELFDATA != HOST_ELFDATA
+
+static inline void __endian(const void *src, void *dest, unsigned int size)
+{
+	unsigned int i;
+	for (i = 0; i < size; i++)
+		((unsigned char*)dest)[i] = ((unsigned char*)src)[size - i-1];
+}
+
+#define TO_NATIVE(x)						\
+({								\
+	typeof(x) __x;						\
+	__endian(&(x), &(__x), sizeof(__x));			\
+	__x;							\
+})
+
+#else /* endianness matches */
+
+#define TO_NATIVE(x) (x)
+
+#endif
 
 #define NOFAIL(ptr)   do_nofail((ptr), #ptr)
 void *do_nofail(void *ptr, const char *expr);
@@ -31,42 +107,61 @@ struct module {
 	const char *name;
 	int gpl_compatible;
 	struct symbol *unres;
-	struct elf_info *info;
 	int seen;
 	int skip;
 	int has_init;
 	int has_cleanup;
 	struct buffer dev_table_buf;
-	char **markers;
-	size_t nmarkers;
 	char	     srcversion[25];
 };
 
-/* How a symbol is exported */
-enum export {
-	export_plain,      export_unused,     export_gpl,
-	export_unused_gpl, export_gpl_future, export_unknown
+struct elf_info {
+	unsigned long size;
+	Elf_Ehdr     *hdr;
+	Elf_Shdr     *sechdrs;
+	Elf_Sym      *symtab_start;
+	Elf_Sym      *symtab_stop;
+	Elf_Section  export_sec;
+	Elf_Section  export_unused_sec;
+	Elf_Section  export_gpl_sec;
+	Elf_Section  export_unused_gpl_sec;
+	Elf_Section  export_gpl_future_sec;
+	const char   *strtab;
+	char	     *modinfo;
+	unsigned int modinfo_len;
+
+	/* support for 32bit section numbers */
+
+	unsigned int num_sections; /* max_secindex + 1 */
+	unsigned int secindex_strings;
+	/* if Nth symbol table entry has .st_shndx = SHN_XINDEX,
+	 * take shndx from symtab_shndx_start[N] instead */
+	Elf32_Word   *symtab_shndx_start;
+	Elf32_Word   *symtab_shndx_stop;
 };
 
+static inline int is_shndx_special(unsigned int i)
+{
+	return i != SHN_XINDEX && i >= SHN_LORESERVE && i <= SHN_HIRESERVE;
+}
 
-/* A hash of all exported symbols,
- * struct symbol is also used for lists of unresolved symbols */
+/*
+ * Move reserved section indices SHN_LORESERVE..SHN_HIRESERVE out of
+ * the way to -256..-1, to avoid conflicting with real section
+ * indices.
+ */
+#define SPECIAL(i) ((i) - (SHN_HIRESERVE + 1))
 
-#define SYMBOL_HASH_SIZE 1024
-
-struct symbol {
-	struct symbol *next;
-	struct module *module;
-	unsigned int crc;
-	int crc_valid;
-	unsigned int weak:1;
-	unsigned int vmlinux:1;    /* 1 if symbol is defined in vmlinux */
-	unsigned int kernel:1;     /* 1 if symbol is from kernel
-				    *  (only for external modules) **/
-	unsigned int preloaded:1;  /* 1 if symbol from Module.symvers */
-	enum export  export;       /* Type of export */
-	char name[0];
-};
+/* Accessor for sym->st_shndx, hides ugliness of "64k sections" */
+static inline unsigned int get_secindex(const struct elf_info *info,
+					const Elf_Sym *sym)
+{
+	if (is_shndx_special(sym->st_shndx))
+		return SPECIAL(sym->st_shndx);
+	if (sym->st_shndx != SHN_XINDEX)
+		return sym->st_shndx;
+	return info->symtab_shndx_start[sym - info->symtab_start];
+}
 
 /* file2alias.c */
 extern unsigned int cross_build;
@@ -82,11 +177,10 @@ void maybe_frob_rcs_version(const char *modfilename,
 void get_src_version(const char *modname, char sum[], unsigned sumlen);
 
 /* from modpost.c */
+void *grab_file(const char *filename, unsigned long *size);
 char* get_next_line(unsigned long *pos, void *file, unsigned long size);
+void release_file(void *file, unsigned long size);
 
-/* from ktablehash.c */
-#ifdef CONFIG_LKM_ELF_HASH
-void add_undef_hash(struct buffer *b, struct module *mod);
-void add_ksymtable_hash(struct buffer *b, struct module *mod);
-#endif
-
+void fatal(const char *fmt, ...);
+void warn(const char *fmt, ...);
+void merror(const char *fmt, ...);

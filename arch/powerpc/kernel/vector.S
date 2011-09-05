@@ -5,6 +5,7 @@
 #include <asm/cputable.h>
 #include <asm/thread_info.h>
 #include <asm/page.h>
+#include <asm/ptrace.h>
 
 /*
  * load_up_altivec(unused, unused, tsk)
@@ -58,7 +59,7 @@ _GLOBAL(load_up_altivec)
 	 * all 1's
 	 */
 	mfspr	r4,SPRN_VRSAVE
-	cmpdi	0,r4,0
+	cmpwi	0,r4,0
 	bne+	1f
 	li	r4,-1
 	mtspr	SPRN_VRSAVE,r4
@@ -101,7 +102,7 @@ _GLOBAL(giveup_altivec)
 	MTMSRD(r5)			/* enable use of VMX now */
 	isync
 	PPC_LCMPI	0,r3,0
-	beqlr-				/* if no previous owner, done */
+	beqlr				/* if no previous owner, done */
 	addi	r3,r3,THREAD		/* want THREAD of task */
 	PPC_LL	r5,PT_REGS(r3)
 	PPC_LCMPI	0,r5,0

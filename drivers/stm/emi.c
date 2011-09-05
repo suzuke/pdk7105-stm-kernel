@@ -7,6 +7,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/sysdev.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
@@ -357,8 +358,6 @@ static int emi_sysdev_resume(struct sys_device *dev)
 
 static struct sysdev_class emi_sysdev_class = {
 	.name = "emi",
-	.suspend = emi_sysdev_suspend,
-	.resume = emi_sysdev_resume,
 };
 
 struct sys_device emi_sysdev_dev = {

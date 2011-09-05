@@ -16,7 +16,6 @@
 #include <linux/delay.h>
 #include <linux/usb.h>
 #include <linux/io.h>
-#include "../core/hcd.h"
 #include "hcd-stm.h"
 
 #undef dgb_print

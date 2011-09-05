@@ -11,6 +11,7 @@
 
 
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/bootmem.h>
 #include <linux/bug.h>
 #include <linux/debugfs.h>

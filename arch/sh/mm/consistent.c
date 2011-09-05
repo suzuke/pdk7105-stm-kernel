@@ -11,11 +11,14 @@
  */
 #include <linux/mm.h>
 #include <linux/init.h>
+#include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma-debug.h>
 #include <linux/vmalloc.h>
 #include <linux/io.h>
+#include <linux/module.h>
+#include <linux/gfp.h>
 #include <asm/cacheflush.h>
 #include <asm/l2_cacheflush.h>
 #include <asm/addrspace.h>
@@ -211,6 +214,9 @@ static struct page *__consistent_unmap(void *vaddr, size_t size)
 
 #define PREALLOC_DMA_DEBUG_ENTRIES	4096
 
+struct dma_map_ops *dma_ops;
+EXPORT_SYMBOL(dma_ops);
+
 static int __init dma_init(void)
 {
 	dma_debug_init(PREALLOC_DMA_DEBUG_ENTRIES);
@@ -218,8 +224,8 @@ static int __init dma_init(void)
 }
 fs_initcall(dma_init);
 
-void *dma_alloc_coherent(struct device *dev, size_t size,
-			   dma_addr_t *dma_handle, gfp_t gfp)
+void *dma_generic_alloc_coherent(struct device *dev, size_t size,
+				 dma_addr_t *dma_handle, gfp_t gfp)
 {
 	void *ret;
 	int order;
@@ -228,8 +234,7 @@ void *dma_alloc_coherent(struct device *dev, size_t size,
 	void* kernel_addr;
 	size_t orig_size;
 
-	if (dma_alloc_from_coherent(dev, size, dma_handle, &ret))
-		return ret;
+	gfp |= __GFP_ZERO;
 
 	/* ignore region specifiers */
 	gfp &= ~(__GFP_DMA | __GFP_HIGHMEM);
@@ -250,7 +255,6 @@ void *dma_alloc_coherent(struct device *dev, size_t size,
 		return NULL;
 	}
 
-	memset(kernel_addr, 0, orig_size);
 	/*
 	 * Pages from the page allocator may have data present in
 	 * cache. So flush the cache before using uncached memory.
@@ -271,22 +275,17 @@ void *dma_alloc_coherent(struct device *dev, size_t size,
 
 	*dma_handle = phys_addr;
 
-	debug_dma_alloc_coherent(dev, orig_size, *dma_handle, ret);
-
 	return ret;
 }
-EXPORT_SYMBOL(dma_alloc_coherent);
 
-void dma_free_coherent(struct device *dev, size_t size,
-			 void *vaddr, dma_addr_t dma_handle)
+void dma_generic_free_coherent(struct device *dev, size_t size,
+			       void *vaddr, dma_addr_t dma_handle)
 {
 	int order = get_order(size);
 	struct page *page;
 
 	if (dma_release_from_coherent(dev, order, vaddr))
 		return;
-
-	debug_dma_free_coherent(dev, size, vaddr, dma_handle);
 
 	size = PAGE_ALIGN(size);
 	page = __consistent_unmap(vaddr, size);
@@ -301,23 +300,24 @@ void dma_free_coherent(struct device *dev, size_t size,
 		}
 	}
 }
-EXPORT_SYMBOL(dma_free_coherent);
 
 void dma_cache_sync(struct device *dev, void *vaddr, size_t size,
 		    enum dma_data_direction direction)
 {
+	void *addr = vaddr;
+
 	switch (direction) {
 	case DMA_FROM_DEVICE:		/* invalidate only */
-		__flush_invalidate_region(vaddr, size);
-		__l2_flush_invalidate_region(vaddr, size);
+		__flush_invalidate_region(addr, size);
+		__l2_flush_invalidate_region(addr, size);
 		break;
 	case DMA_TO_DEVICE:		/* writeback only */
-		__flush_wback_region(vaddr, size);
-		__l2_flush_wback_region(vaddr, size);
+		__flush_wback_region(addr, size);
+		__l2_flush_wback_region(addr, size);
 		break;
 	case DMA_BIDIRECTIONAL:		/* writeback and invalidate */
-		__flush_purge_region(vaddr, size);
-		__l2_flush_purge_region(vaddr, size);
+		__flush_purge_region(addr, size);
+		__l2_flush_purge_region(addr, size);
 		break;
 	default:
 		BUG();

@@ -15,9 +15,8 @@ obj-$(CONFIG_ARCH_SHMOBILE)	+= shmobile/
 
 # Common interfaces.
 
-obj-$(CONFIG_UBC_WAKEUP)	+= ubc.o
 obj-$(CONFIG_SH_ADC)		+= adc.o
 obj-$(CONFIG_SH_CLK_CPG_LEGACY)	+= clock-cpg.o
 obj-$(CONFIG_HWBLK)		+= hwblk.o
 
-obj-y	+= irq/ init.o clock.o
+obj-y	+= irq/ init.o clock.o fpu.o proc.o

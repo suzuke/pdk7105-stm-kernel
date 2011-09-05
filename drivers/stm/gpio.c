@@ -122,6 +122,7 @@ static void __stm_gpio_irq_handler(const struct stm_gpio_port *port)
 		unsigned gpio;
 		struct stm_gpio_pin *pin;
 		unsigned int pin_irq;
+		struct irq_data *irq_data;
 		struct irq_desc *pin_irq_desc;
 		unsigned long pin_mask;
 
@@ -132,8 +133,9 @@ static void __stm_gpio_irq_handler(const struct stm_gpio_port *port)
 		gpio = stm_gpio(port_no, pin_no);
 
 		pin_irq = gpio_to_irq(gpio);
-		pin_irq_desc = &irq_desc[pin_irq];
-		pin = get_irq_chip_data(pin_irq);
+		irq_data = irq_get_irq_data(pin_irq);
+		pin_irq_desc = irq_to_desc(pin_irq);
+		pin = irq_get_chip_data(pin_irq);
 		pin_mask = 1 << pin_no;
 
 		port_active &= ~pin_mask;
@@ -153,19 +155,24 @@ static void __stm_gpio_irq_handler(const struct stm_gpio_port *port)
 				continue;
 		}
 
-		if (unlikely(pin_irq_desc->status &
-				(IRQ_INPROGRESS | IRQ_DISABLED))) {
+		if (unlikely(irqd_irq_disabled(irq_data) ||
+			     irqd_irq_inprogress(irq_data))) {
 			set__PIO_CLR_PMASK(port->base, pin_mask);
 			/* The unmasking will be done by enable_irq in
 			 * case it is disabled or after returning from
 			 * the handler if it's already running.
 			 */
-			if (pin_irq_desc->status & IRQ_INPROGRESS) {
+			if (irqd_irq_inprogress(irq_data)) {
 				/* Level triggered interrupts won't
 				 * ever be reentered
 				 */
 				BUG_ON(port_level_mask & pin_mask);
-				pin_irq_desc->status |= IRQ_PENDING;
+
+				/* We used to set the IRQ_PENDING flag here,
+				 * but there is now now sensible way to do this.
+				 * So in effect we lose the one level of
+				 * buffering
+				 */
 			}
 			continue;
 		} else {
@@ -173,17 +180,20 @@ static void __stm_gpio_irq_handler(const struct stm_gpio_port *port)
 
 			/* If our handler has disabled interrupts,
 			 * then don't re-enable them */
-			if (pin_irq_desc->status & IRQ_DISABLED) {
+			if (irqd_irq_disabled(irq_data)) {
 				pr_debug("handler has disabled interrupts!\n");
 				port_mask &= ~pin_mask;
 			}
 		}
 
+		#warning ******************** GPIO INTERRUPTS NEED WORK
+#if 0
 		if (unlikely((pin_irq_desc->status &
 				(IRQ_PENDING | IRQ_DISABLED)) == IRQ_PENDING)) {
-			pin_irq_desc->status &= ~IRQ_PENDING;
+			#warning HOW TO DO pin_irq_desc->status &= ~IRQ_PENDING;
 			set__PIO_SET_PMASK(port->base, pin_mask);
 		}
+#endif
 
 	}
 
@@ -198,14 +208,14 @@ static void __stm_gpio_irq_handler(const struct stm_gpio_port *port)
 
 static void stm_gpio_irq_handler(unsigned int irq, struct irq_desc *desc)
 {
-	struct stm_gpio_port *port = get_irq_data(irq);
+	struct stm_gpio_port *port = irq_get_handler_data(irq);
 
 	__stm_gpio_irq_handler(port);
 }
 
 static void stm_gpio_irqmux_handler(unsigned int irq, struct irq_desc *desc)
 {
-	struct stm_gpio_irqmux *irqmux = get_irq_data(irq);
+	struct stm_gpio_irqmux *irqmux = irq_get_handler_data(irq);
 	unsigned long status;
 	int bit;
 
@@ -220,9 +230,9 @@ static void stm_gpio_irqmux_handler(unsigned int irq, struct irq_desc *desc)
 	}
 }
 
-static void stm_gpio_irq_chip_disable(unsigned int pin_irq)
+static void stm_gpio_irq_chip_disable(struct irq_data *d)
 {
-	unsigned gpio = irq_to_gpio(pin_irq);
+	unsigned gpio = irq_to_gpio(d->irq);
 	int port_no = stm_gpio_port(gpio);
 	int pin_no = stm_gpio_pin(gpio);
 
@@ -231,9 +241,9 @@ static void stm_gpio_irq_chip_disable(unsigned int pin_irq)
 	set__PIO_CLR_PMASK__CLR_PMASK__CLEAR(stm_gpio_bases[port_no], pin_no);
 }
 
-static void stm_gpio_irq_chip_enable(unsigned int pin_irq)
+static void stm_gpio_irq_chip_enable(struct irq_data *d)
 {
-	unsigned gpio = irq_to_gpio(pin_irq);
+	unsigned gpio = irq_to_gpio(d->irq);
 	int port_no = stm_gpio_port(gpio);
 	int pin_no = stm_gpio_pin(gpio);
 
@@ -242,9 +252,9 @@ static void stm_gpio_irq_chip_enable(unsigned int pin_irq)
 	set__PIO_SET_PMASK__SET_PMASK__SET(stm_gpio_bases[port_no], pin_no);
 }
 
-static int stm_gpio_irq_chip_type(unsigned int pin_irq, unsigned type)
+static int stm_gpio_irq_chip_type(struct irq_data *d, unsigned type)
 {
-	unsigned gpio = irq_to_gpio(pin_irq);
+	unsigned gpio = irq_to_gpio(d->irq);
 	int port_no = stm_gpio_port(gpio);
 	int pin_no = stm_gpio_pin(gpio);
 	struct stm_gpio_port *port = &stm_gpio_ports[port_no];
@@ -288,34 +298,47 @@ static int stm_gpio_irq_chip_type(unsigned int pin_irq, unsigned type)
 	return 0;
 }
 
-static int stm_gpio_irq_chip_wake(unsigned int irq, unsigned int on)
+static int stm_gpio_irq_chip_wake(struct irq_data *d, unsigned int on)
 {
 	return 0;
 }
 
 static struct irq_chip stm_gpio_irq_chip = {
 	.name		= "stm_gpio_irq",
-	.disable	= stm_gpio_irq_chip_disable,
-	.mask		= stm_gpio_irq_chip_disable,
-	.mask_ack	= stm_gpio_irq_chip_disable,
-	.unmask		= stm_gpio_irq_chip_enable,
-	.set_type	= stm_gpio_irq_chip_type,
-	.set_wake	= stm_gpio_irq_chip_wake,
+	.irq_disable	= stm_gpio_irq_chip_disable,
+	.irq_mask	= stm_gpio_irq_chip_disable,
+	.irq_mask_ack	= stm_gpio_irq_chip_disable,
+	.irq_unmask		= stm_gpio_irq_chip_enable,
+	.irq_set_type	= stm_gpio_irq_chip_type,
+	.irq_set_wake	= stm_gpio_irq_chip_wake,
 };
+
 
 static int stm_gpio_irq_init(int port_no)
 {
 	struct stm_gpio_pin *pin;
+	struct irq_data *data;
 	unsigned int pin_irq;
 	int pin_no;
+	int irq;
 
 	pin = stm_gpio_ports[port_no].pins;
 	pin_irq = stm_gpio_irq_base + (port_no * STM_GPIO_PINS_PER_PORT);
+
+	/* Pre-allocate the gpios, this is a bit dumb as 99% of them will never
+	 * be used. Should really allocate the irq on demand.
+	 */
+	irq = irq_alloc_descs(pin_irq, pin_irq, STM_GPIO_PINS_PER_PORT, 0);
+
+	BUG_ON(irq != pin_irq);
+
+	data = irq_get_irq_data(pin_irq);
+
 	for (pin_no = 0; pin_no < STM_GPIO_PINS_PER_PORT; pin_no++) {
-		set_irq_chip_and_handler_name(pin_irq, &stm_gpio_irq_chip,
+		irq_set_chip_and_handler_name(pin_irq, &stm_gpio_irq_chip,
 				handle_simple_irq, "stm_gpio");
-		set_irq_chip_data(pin_irq, pin);
-		stm_gpio_irq_chip_type(pin_irq, IRQ_TYPE_LEVEL_HIGH);
+		irq_set_chip_data(pin_irq, pin);
+		stm_gpio_irq_chip_type(data, IRQ_TYPE_LEVEL_HIGH);
 		pin++;
 		pin_irq++;
 	}
@@ -634,7 +657,8 @@ static void stm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 		owner = gpiochip_is_requested(chip, pin_no);
 		if (owner) {
 			unsigned irq = gpio_to_irq(gpio);
-			struct irq_desc	*desc = irq_desc + irq;
+			struct irq_desc	*desc = irq_to_desc(irq);
+			struct irq_data *data = irq_get_irq_data(irq);
 
 			seq_printf(s, "allocated by GPIO to '%s'", owner);
 
@@ -646,7 +670,7 @@ static void stm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 			if (desc->action) {
 				char *trigger;
 
-				switch (desc->status & IRQ_TYPE_SENSE_MASK) {
+				switch (irqd_get_trigger_type(data)) {
 				case IRQ_TYPE_NONE:
 					trigger = "default";
 					break;
@@ -673,8 +697,8 @@ static void stm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 
 				seq_printf(s, " and IRQ %d (%s trigger%s)",
 					irq, trigger,
-					(desc->status & IRQ_WAKEUP)
-						? " wakeup" : "");
+					irqd_is_wakeup_set(data) ? " wakeup"
+								 : "");
 			}
 
 			seq_printf(s, "\n");
@@ -773,8 +797,8 @@ static int __devinit stm_gpio_probe(struct platform_device *pdev)
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq >= 0) {
-		set_irq_chained_handler(irq, stm_gpio_irq_handler);
-		set_irq_data(irq, &stm_gpio_ports[port_no]);
+		irq_set_chained_handler(irq, stm_gpio_irq_handler);
+		irq_set_handler_data(irq, &stm_gpio_ports[port_no]);
 
 		if (stm_gpio_irq_init(port_no) != 0) {
 			printk(KERN_ERR "stm_gpio: Failed to init gpio "
@@ -851,8 +875,9 @@ static int __devinit stm_gpio_irqmux_probe(struct platform_device *pdev)
 
 	irqmux->port_first = plat_data->port_first;
 
-	set_irq_chained_handler(irq, stm_gpio_irqmux_handler);
-	set_irq_data(irq, irqmux);
+	irq_set_chained_handler(irq, stm_gpio_irqmux_handler);
+	irq_set_handler_data(irq, irqmux);
+
 
 	for (port_no = irqmux->port_first;
 			port_no < irqmux->port_first + plat_data->ports_num;
@@ -906,12 +931,12 @@ static int stm_gpio_suspend(struct stm_gpio_port *port)
 	/* Enable the wakeup pin IRQ if required */
 	for (pin_no = 0; pin_no < port->gpio_chip.ngpio; ++pin_no) {
 		int irq = gpio_to_irq(stm_gpio(port_no, pin_no));
-		struct irq_desc *desc = irq_to_desc(irq);
+		struct irq_data *data = irq_get_irq_data(irq);
 
-		if (IRQ_WAKEUP & desc->status)
-			stm_gpio_irq_chip_enable(irq);
+		if (irqd_is_wakeup_set(data))
+			stm_gpio_irq_chip_enable(data);
 		else
-			stm_gpio_irq_chip_disable(irq);
+			stm_gpio_irq_chip_disable(data);
 	}
 
 	return 0;
@@ -954,8 +979,6 @@ static int stm_gpio_sysdev_resume(struct sys_device *dev)
 
 static struct sysdev_class stm_gpio_sysdev_class = {
 	.name = "stm-gpio",
-	.suspend = stm_gpio_sysdev_suspend,
-	.resume = stm_gpio_sysdev_resume,
 };
 
 static int __init stm_gpio_init(void)

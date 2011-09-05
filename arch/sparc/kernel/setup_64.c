@@ -12,7 +12,6 @@
 #include <linux/stddef.h>
 #include <linux/unistd.h>
 #include <linux/ptrace.h>
-#include <linux/slab.h>
 #include <asm/smp.h>
 #include <linux/user.h>
 #include <linux/screen_info.h>
@@ -46,6 +45,7 @@
 #include <asm/setup.h>
 #include <asm/mmu.h>
 #include <asm/ns87303.h>
+#include <asm/btext.h>
 
 #ifdef CONFIG_IP_PNP
 #include <net/ipconfig.h>
@@ -209,7 +209,7 @@ void __init per_cpu_patch(void)
 		default:
 			prom_printf("Unknown cpu type, halting.\n");
 			prom_halt();
-		};
+		}
 
 		*(unsigned int *) (addr +  0) = insns[0];
 		wmb();
@@ -286,7 +286,10 @@ void __init setup_arch(char **cmdline_p)
 	parse_early_param();
 
 	boot_flags_init(*cmdline_p);
-	register_console(&prom_early_console);
+#ifdef CONFIG_EARLYFB
+	if (btext_find_display())
+#endif
+		register_console(&prom_early_console);
 
 	if (tlb_type == hypervisor)
 		printk("ARCH: SUN4V\n");
@@ -312,7 +315,7 @@ void __init setup_arch(char **cmdline_p)
 
 #ifdef CONFIG_IP_PNP
 	if (!ic_set_manually) {
-		int chosen = prom_finddevice ("/chosen");
+		phandle chosen = prom_finddevice("/chosen");
 		u32 cl, sv, gw;
 		
 		cl = prom_getintdefault (chosen, "client-ip", 0);
@@ -335,84 +338,6 @@ void __init setup_arch(char **cmdline_p)
 
 	paging_init();
 }
-
-/* BUFFER is PAGE_SIZE bytes long. */
-
-extern void smp_info(struct seq_file *);
-extern void smp_bogo(struct seq_file *);
-extern void mmu_info(struct seq_file *);
-
-unsigned int dcache_parity_tl1_occurred;
-unsigned int icache_parity_tl1_occurred;
-
-int ncpus_probed;
-
-static int show_cpuinfo(struct seq_file *m, void *__unused)
-{
-	seq_printf(m, 
-		   "cpu\t\t: %s\n"
-		   "fpu\t\t: %s\n"
-		   "pmu\t\t: %s\n"
-		   "prom\t\t: %s\n"
-		   "type\t\t: %s\n"
-		   "ncpus probed\t: %d\n"
-		   "ncpus active\t: %d\n"
-		   "D$ parity tl1\t: %u\n"
-		   "I$ parity tl1\t: %u\n"
-#ifndef CONFIG_SMP
-		   "Cpu0ClkTck\t: %016lx\n"
-#endif
-		   ,
-		   sparc_cpu_type,
-		   sparc_fpu_type,
-		   sparc_pmu_type,
-		   prom_version,
-		   ((tlb_type == hypervisor) ?
-		    "sun4v" :
-		    "sun4u"),
-		   ncpus_probed,
-		   num_online_cpus(),
-		   dcache_parity_tl1_occurred,
-		   icache_parity_tl1_occurred
-#ifndef CONFIG_SMP
-		   , cpu_data(0).clock_tick
-#endif
-		);
-#ifdef CONFIG_SMP
-	smp_bogo(m);
-#endif
-	mmu_info(m);
-#ifdef CONFIG_SMP
-	smp_info(m);
-#endif
-	return 0;
-}
-
-static void *c_start(struct seq_file *m, loff_t *pos)
-{
-	/* The pointer we are returning is arbitrary,
-	 * it just has to be non-NULL and not IS_ERR
-	 * in the success case.
-	 */
-	return *pos == 0 ? &c_start : NULL;
-}
-
-static void *c_next(struct seq_file *m, void *v, loff_t *pos)
-{
-	++*pos;
-	return c_start(m, pos);
-}
-
-static void c_stop(struct seq_file *m, void *v)
-{
-}
-
-const struct seq_operations cpuinfo_op = {
-	.start =c_start,
-	.next =	c_next,
-	.stop =	c_stop,
-	.show =	show_cpuinfo,
-};
 
 extern int stop_a_enabled;
 

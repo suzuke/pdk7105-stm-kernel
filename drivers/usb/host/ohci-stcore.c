@@ -132,8 +132,7 @@ static int ohci_hcd_stm_probe(struct platform_device *pdev)
 #ifdef CONFIG_PM
 		hcd->self.root_hub->do_remote_wakeup = 0;
 		hcd->self.root_hub->persist_enabled = 0;
-		hcd->self.root_hub->autosuspend_disabled = 1;
-		hcd->self.root_hub->autoresume_disabled = 1;
+		usb_disable_autosuspend(hcd->self.root_hub);
 #endif
 		return retval;
 	}

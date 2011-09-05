@@ -13,7 +13,6 @@
 #include <linux/string.h>
 #include <linux/errno.h>
 #include <linux/unistd.h>
-#include <linux/slab.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
 #include <linux/delay.h>
@@ -182,3 +181,11 @@ static void __exit icplus_exit(void)
 
 module_init(icplus_init);
 module_exit(icplus_exit);
+
+static struct mdio_device_id __maybe_unused icplus_tbl[] = {
+	{ 0x02430d80, 0x0ffffff0 },
+	{ 0x02430d90, 0x0ffffff0 },
+	{ }
+};
+
+MODULE_DEVICE_TABLE(mdio, icplus_tbl);

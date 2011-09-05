@@ -15,6 +15,7 @@ int __init plat_clk_alias_init(void)
 	/* core clocks */
 	clk_add_alias("cpu_clk", NULL, "CLKA_ST40_ICK", NULL);
 	clk_add_alias("module_clk", NULL, "CLKA_IC_IF_100", NULL);
+	clk_add_alias("tmu_fck", NULL, "CLKA_IC_IF_100", NULL);
 	clk_add_alias("comms_clk", NULL, "CLKA_IC_IF_100", NULL);
 
 	/* EMI clock */

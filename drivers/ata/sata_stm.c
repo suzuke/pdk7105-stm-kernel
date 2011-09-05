@@ -909,7 +909,7 @@ static unsigned stm_sata_host_irq(struct ata_port *ap)
 		ata_port_freeze(ap);
 		handled = 1;
 	} else
-		if (ap && (!(ap->flags & ATA_FLAG_DISABLED))) {
+		if (ap) {
 			struct ata_queued_cmd *qc;
 			struct stm_port_priv *pp = ap->private_data;
 
@@ -921,7 +921,7 @@ static unsigned stm_sata_host_irq(struct ata_port *ap)
 			 * the tag set.
 			 */
 			if (qc && (!(qc->tf.ctl & ATA_NIEN)))
-				handled += ata_sff_host_intr(ap, qc);
+				handled += ata_sff_port_intr(ap, qc);
 		}
 
 	return handled;
@@ -1116,8 +1116,7 @@ static struct ata_port_operations stm_ops = {
 };
 
 static const struct ata_port_info stm_port_info = {
-	.flags		= ATA_FLAG_SATA | ATA_FLAG_NO_LEGACY |
-			  ATA_FLAG_MMIO | ATA_FLAG_SATA_RESET | ATA_FLAG_PMP,
+	.flags		= ATA_FLAG_SATA | ATA_FLAG_PMP,
 	.pio_mask	= 0x1f, /* pio0-4 */
 	.mwdma_mask	= 0x07, /* mwdma0-2 */
 	.udma_mask	= ATA_UDMA6,

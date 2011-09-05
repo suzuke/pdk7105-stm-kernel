@@ -9,6 +9,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/bug.h>
 #include <linux/stm/device.h>
 

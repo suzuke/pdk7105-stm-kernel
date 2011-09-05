@@ -46,11 +46,16 @@ SECTIONS
 		SCHED_TEXT
 		LOCK_TEXT
 		KPROBES_TEXT
+		IRQENTRY_TEXT
 		*(.gnu.warning)
 	} = 0
 	_etext = .;
 
 	RO_DATA(PAGE_SIZE)
+
+	/* Start of data section */
+	_sdata = .;
+
 	.data1 : {
 		*(.data1)
 	}
@@ -103,7 +108,7 @@ SECTIONS
 		__sun4v_2insn_patch_end = .;
 	}
 
-	PERCPU(PAGE_SIZE)
+	PERCPU_SECTION(SMP_CACHE_BYTES)
 
 	. = ALIGN(PAGE_SIZE);
 	__init_end = .;

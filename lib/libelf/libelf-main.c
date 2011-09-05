@@ -8,6 +8,7 @@
  *
  */
 
+#include <linux/slab.h>
 #include <linux/libelf.h>
 #include <linux/string.h>
 #include <linux/module.h>

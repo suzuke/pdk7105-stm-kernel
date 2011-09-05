@@ -32,7 +32,6 @@
 #error "**********************************************************"
 #endif
 
-#include <linux/autoconf.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -40,7 +39,6 @@
 #include <linux/ioctl.h>
 #include <linux/fs.h>
 #include <linux/poll.h>
-#include <linux/smp_lock.h>
 #include <linux/completion.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18)
 #include <asm/uaccess.h>

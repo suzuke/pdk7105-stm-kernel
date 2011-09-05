@@ -15,6 +15,7 @@
  *   /raw - raw keyboard (read) and display (write) buffers access
  */
 
+#include <linux/slab.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>

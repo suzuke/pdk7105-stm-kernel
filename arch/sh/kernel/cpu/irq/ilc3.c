@@ -121,7 +121,7 @@ static struct sysdev_class ilc_sysdev_class;
  */
 int ilc2irq(unsigned int evtcode)
 {
-	struct ilc *ilc = get_irq_data(evt2irq(evtcode));
+	struct ilc *ilc = irq_get_handler_data(evt2irq(evtcode));
 #if	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7111) || \
@@ -155,7 +155,7 @@ int ilc2irq(unsigned int evtcode)
  */
 void ilc_irq_demux(unsigned int irq, struct irq_desc *desc)
 {
-	struct ilc *ilc = get_irq_data(irq);
+	struct ilc *ilc = irq_get_handler_data(irq);
 #if	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7111) || \
@@ -184,7 +184,7 @@ void ilc_irq_demux(unsigned int irq, struct irq_desc *desc)
 			continue;
 
 		input = (idx * 32) + ffs(status) - 1;
-		desc = irq_desc + input + ilc->first_irq;
+		desc = irq_to_desc(input + ilc->first_irq);
 		desc->handle_irq(ilc->first_irq + input, desc);
 		handled = 1;
 		ILC_CLR_STATUS(ilc->base, input);
@@ -214,15 +214,15 @@ void ilc_irq_demux(unsigned int irq, struct irq_desc *desc)
 	}
 }
 
-static unsigned int startup_ilc_irq(unsigned int irq)
+static unsigned int startup_ilc_irq(struct irq_data *d)
 {
-	struct ilc *ilc = get_irq_chip_data(irq);
+	struct ilc *ilc = irq_data_get_irq_chip_data(d);
 	unsigned int priority;
 	unsigned long flags;
-	int input = irq - ilc->first_irq;
+	int input = d->irq - ilc->first_irq;
 	struct ilc_irq *ilc_irq;
 
-	DPRINTK("%s: irq %d\n", __func__, irq);
+	DPRINTK("%s: irq %d\n", __func__, d->irq);
 
 	if ((input < 0) || (input >= ilc->inputs_num))
 		return -ENODEV;
@@ -258,15 +258,15 @@ static unsigned int startup_ilc_irq(unsigned int irq)
 	return 0;
 }
 
-static void shutdown_ilc_irq(unsigned int irq)
+static void shutdown_ilc_irq(struct irq_data *d)
 {
-	struct ilc *ilc = get_irq_chip_data(irq);
+	struct ilc *ilc = irq_data_get_irq_chip_data(d);
 	struct ilc_irq *ilc_irq;
 	unsigned int priority;
 	unsigned long flags;
-	int input = irq - ilc->first_irq;
+	int input = d->irq - ilc->first_irq;
 
-	DPRINTK("%s: irq %d\n", __func__, irq);
+	DPRINTK("%s: irq %d\n", __func__, d->irq);
 
 	WARN_ON(!ilc_is_used(&ilc->irqs[input]));
 
@@ -286,47 +286,47 @@ static void shutdown_ilc_irq(unsigned int irq)
 	spin_unlock_irqrestore(&ilc->lock, flags);
 }
 
-static void unmask_ilc_irq(unsigned int irq)
+static void unmask_ilc_irq(struct irq_data *d)
 {
-	struct ilc *ilc = get_irq_chip_data(irq);
-	int input = irq - ilc->first_irq;
+	struct ilc *ilc = irq_data_get_irq_chip_data(d);
+	int input = d->irq - ilc->first_irq;
 	struct ilc_irq *ilc_irq = &ilc->irqs[input];
 
-	DPRINTK2("%s: irq %d\n", __func__, irq);
+	DPRINTK2("%s: irq %d\n", __func__, d->irq);
 
 	ILC_SET_ENABLE(ilc->base, input);
 	ilc_set_enabled(ilc_irq);
 }
 
-static void mask_ilc_irq(unsigned int irq)
+static void mask_ilc_irq(struct irq_data *d)
 {
-	struct ilc *ilc = get_irq_chip_data(irq);
-	int input = irq - ilc->first_irq;
+	struct ilc *ilc = irq_data_get_irq_chip_data(d);
+	int input = d->irq - ilc->first_irq;
 	struct ilc_irq *ilc_irq = &ilc->irqs[input];
 
-	DPRINTK2("%s: irq %d\n", __func__, irq);
+	DPRINTK2("%s: irq %d\n", __func__, d->irq);
 
 	ILC_CLR_ENABLE(ilc->base, input);
 	ilc_set_disabled(ilc_irq);
 }
 
-static void mask_and_ack_ilc(unsigned int irq)
+static void mask_and_ack_ilc(struct irq_data *d)
 {
-	struct ilc *ilc = get_irq_chip_data(irq);
-	int input = irq - ilc->first_irq;
+	struct ilc *ilc = irq_data_get_irq_chip_data(d);
+	int input = d->irq - ilc->first_irq;
 	struct ilc_irq *ilc_irq = &ilc->irqs[input];
 
-	DPRINTK2("%s: irq %d\n", __func__, irq);
+	DPRINTK2("%s: irq %d\n", __func__, d->irq);
 
 	ILC_CLR_ENABLE(ilc->base, input);
 	(void)ILC_GET_ENABLE(ilc->base, input); /* Defeat write posting */
 	ilc_set_disabled(ilc_irq);
 }
 
-static int set_type_ilc_irq(unsigned int irq, unsigned int flow_type)
+static int set_type_ilc_irq(struct irq_data *d, unsigned int flow_type)
 {
-	struct ilc *ilc = get_irq_chip_data(irq);
-	int input = irq - ilc->first_irq;
+	struct ilc *ilc = irq_data_get_irq_chip_data(d);
+	int input = d->irq - ilc->first_irq;
 	int mode;
 
 	switch (flow_type) {
@@ -356,10 +356,10 @@ static int set_type_ilc_irq(unsigned int irq, unsigned int flow_type)
 }
 
 #ifdef CONFIG_SUSPEND
-static int set_wake_ilc_irq(unsigned int irq, unsigned int on)
+static int set_wake_ilc_irq(struct irq_data *d, unsigned int on)
 {
-	struct ilc *ilc = get_irq_chip_data(irq);
-	int input = irq - ilc->first_irq;
+	struct ilc *ilc = irq_data_get_irq_chip_data(d);
+	int input = d->irq - ilc->first_irq;
 	struct ilc_irq *ilc_irq = &ilc->irqs[input];
 
 	if (ilc->disable_wakeup)
@@ -382,13 +382,13 @@ static int set_wake_ilc_irq(unsigned int irq, unsigned int on)
 
 static struct irq_chip ilc_chip = {
 	.name		= "ILC3",
-	.startup	= startup_ilc_irq,
-	.shutdown	= shutdown_ilc_irq,
-	.mask		= mask_ilc_irq,
-	.mask_ack	= mask_and_ack_ilc,
-	.unmask		= unmask_ilc_irq,
-	.set_type	= set_type_ilc_irq,
-	.set_wake	= set_wake_ilc_irq,
+	.irq_startup	= startup_ilc_irq,
+	.irq_shutdown	= shutdown_ilc_irq,
+	.irq_mask	= mask_ilc_irq,
+	.irq_mask_ack	= mask_and_ack_ilc,
+	.irq_unmask		= unmask_ilc_irq,
+	.irq_set_type	= set_type_ilc_irq,
+	.irq_set_wake	= set_wake_ilc_irq,
 };
 
 static void __init ilc_demux_init(struct platform_device *pdev)
@@ -403,16 +403,16 @@ static void __init ilc_demux_init(struct platform_device *pdev)
 
 		/* SIM: Should we do the masking etc in ilc_irq_demux and
 		 * then change this to handle_simple_irq? */
-		set_irq_chip_and_handler_name(irq, &ilc_chip,
+		irq_set_chip_and_handler_name(irq, &ilc_chip,
 				handle_level_irq, ilc->name);
-		set_irq_chip_data(irq, ilc);
+		irq_set_chip_data(irq, ilc);
 	}
 
 	i = 0;
 	irq = platform_get_irq(pdev, i++);
 	while (irq >= 0) {
-		set_irq_chip_and_handler(irq, &dummy_irq_chip, ilc_irq_demux);
-		set_irq_data(irq, ilc);
+		irq_set_chip_and_handler(irq, &dummy_irq_chip, ilc_irq_demux);
+		irq_set_handler_data(irq, ilc);
 		irq = platform_get_irq(pdev, i++);
 	}
 
@@ -622,8 +622,6 @@ static int ilc_sysdev_resume(struct sys_device *dev)
 
 static struct sysdev_class ilc_sysdev_class = {
 	.name = "ilc3",
-	.suspend = ilc_sysdev_suspend,
-	.resume = ilc_sysdev_resume,
 };
 
 static int __init ilc_init(void)

@@ -317,7 +317,8 @@ static int __init hdk7105_device_init(void)
 		gpio_direction_input(HDK7105_PIO_PCI_SERR);
 		hdk7105_pci_config.serr_irq =
 				gpio_to_irq(HDK7105_PIO_PCI_SERR);
-		set_irq_type(hdk7105_pci_config.serr_irq, IRQ_TYPE_LEVEL_LOW);
+		irq_set_irq_type(hdk7105_pci_config.serr_irq,
+				 IRQ_TYPE_LEVEL_LOW);
 	} else {
 		printk(KERN_WARNING "hdk7105: Failed to claim PCI SERR PIO!\n");
 	}
@@ -421,22 +422,9 @@ static int __init hdk7105_device_init(void)
 }
 arch_initcall(hdk7105_device_init);
 
-static void __iomem *hdk7105_ioport_map(unsigned long port, unsigned int size)
-{
-	/*
-	 * If we have PCI then this should never be called because we
-	 * are using the generic iomap implementation. If we don't
-	 * have PCI then there are no IO mapped devices, so it still
-	 * shouldn't be called.
-	 */
-	BUG();
-	return (void __iomem *)CCN_PVR;
-}
-
 struct sh_machine_vector mv_hdk7105 __initmv = {
 	.mv_name		= "hdk7105",
 	.mv_setup		= hdk7105_setup,
 	.mv_nr_irqs		= NR_IRQS,
-	.mv_ioport_map		= hdk7105_ioport_map,
 	STM_PCI_IO_MACHINE_VEC
 };

@@ -21,7 +21,7 @@ struct sdhci_host {
 	/* Data set by hardware interface driver */
 	const char *hw_name;	/* Hardware bus name */
 
-	unsigned int quirks;	/* Deviations from spec. */
+	unsigned long long quirks;	/* Deviations from spec. */
 
 /* Controller doesn't honor resets unless we touch the clock register */
 #define SDHCI_QUIRK_CLOCK_BEFORE_RESET			(1<<0)
@@ -77,13 +77,25 @@ struct sdhci_host {
 #define SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN		(1<<25)
 /* Controller cannot support End Attribute in NOP ADMA descriptor */
 #define SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC		(1<<26)
-/* Controller has to treat card as non-removeble (eg eMMC card) */
-#define SDHCI_QUIRK_NONREMOVABLE_CARD			(1<<27)
+/* Controller is missing device caps. Use caps provided by host */
+#define SDHCI_QUIRK_MISSING_CAPS			(1<<27)
+/* Controller uses Auto CMD12 command to stop the transfer */
+#define SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12		(1<<28)
+/* Controller doesn't have HISPD bit field in HI-SPEED SD card */
+#define SDHCI_QUIRK_NO_HISPD_BIT			(1<<29)
+/* Controller treats ADMA descriptors with length 0000h incorrectly */
+#define SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC		(1<<30)
+/* The read-only detection via SDHCI_PRESENT_STATE register is unstable */
+#define SDHCI_QUIRK_UNSTABLE_RO_DETECT			(1<<31)
+/* Controller has to treat card as non-removable (eg eMMC card) */
+#define SDHCI_QUIRK_NONREMOVABLE_CARD			(1<<32)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
 
 	const struct sdhci_ops *ops;	/* Low level hw interface */
+
+	struct regulator *vmmc;	/* Power regulator */
 
 	/* Internal data */
 	struct mmc_host *mmc;	/* MMC structure */
@@ -101,11 +113,16 @@ struct sdhci_host {
 #define SDHCI_USE_ADMA		(1<<1)	/* Host is ADMA capable */
 #define SDHCI_REQ_USE_DMA	(1<<2)	/* Use DMA for this req. */
 #define SDHCI_DEVICE_DEAD	(1<<3)	/* Device unresponsive */
+#define SDHCI_SDR50_NEEDS_TUNING (1<<4)	/* SDR50 needs tuning */
+#define SDHCI_NEEDS_RETUNING	(1<<5)	/* Host needs retuning */
+#define SDHCI_AUTO_CMD12	(1<<6)	/* Auto CMD12 support */
+#define SDHCI_AUTO_CMD23	(1<<7)	/* Auto CMD23 support */
 
 	unsigned int version;	/* SDHCI spec. version */
 
 	unsigned int max_clk;	/* Max possible freq (MHz) */
 	unsigned int timeout_clk;	/* Timeout freq (KHz) */
+	unsigned int clk_mul;	/* Clock Muliplier value */
 
 	unsigned int clock;	/* Current clock (MHz) */
 	u8 pwr;			/* Current voltage */
@@ -130,6 +147,20 @@ struct sdhci_host {
 	struct tasklet_struct finish_tasklet;
 
 	struct timer_list timer;	/* Timer for timeouts */
+
+	unsigned int caps;	/* Alternative capabilities */
+
+	unsigned int            ocr_avail_sdio;	/* OCR bit masks */
+	unsigned int            ocr_avail_sd;
+	unsigned int            ocr_avail_mmc;
+
+	wait_queue_head_t	buf_ready_int;	/* Waitqueue for Buffer Read Ready interrupt */
+	unsigned int		tuning_done;	/* Condition flag set when CMD19 succeeds */
+
+	unsigned int		tuning_count;	/* Timer count for re-tuning */
+	unsigned int		tuning_mode;	/* Re-tuning mode supported by host */
+#define SDHCI_TUNING_MODE_1	0
+	struct timer_list	tuning_timer;	/* Timer for tuning */
 
 	unsigned long private[0] ____cacheline_aligned;
 };

@@ -425,8 +425,6 @@ static int sysconf_sysdev_resume(struct sys_device *dev)
 
 static struct sysdev_class sysconf_sysdev_class = {
 	.name = "sysconf",
-	.suspend = sysconf_sysdev_suspend,
-	.resume = sysconf_sysdev_resume,
 };
 
 struct sys_device sysconf_sysdev_dev = {

@@ -14,6 +14,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/spinlock.h>
@@ -58,7 +59,7 @@ struct timer_list      stm_rng_timer;
 static void __iomem   *stm_rng_base;
 static unsigned short *stm_rng_buffer;
 static unsigned long   stm_rng_bufcnt;
-static spinlock_t      stm_rng_spinlock = SPIN_LOCK_UNLOCKED;
+static DEFINE_SPINLOCK(stm_rng_spinlock);
 
 /*
  * The real work is done by the poll function below.

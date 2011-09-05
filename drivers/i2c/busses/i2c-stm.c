@@ -1190,8 +1190,8 @@ static int __init iic_stm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, i2c_stm);
 	i2c_stm->adapter.timeout = 2;
 	i2c_stm->adapter.retries = 0;
-	i2c_stm->adapter.class = I2C_CLASS_HWMON | I2C_CLASS_TV_ANALOG |
-		I2C_CLASS_TV_DIGITAL | I2C_CLASS_DDC | I2C_CLASS_SPD;;
+	i2c_stm->adapter.class = I2C_CLASS_HWMON | I2C_CLASS_DDC |
+				 I2C_CLASS_SPD;
 	sprintf(i2c_stm->adapter.name, "i2c-stm%d", pdev->id);
 	i2c_stm->adapter.nr = pdev->id;
 	i2c_stm->adapter.algo = &iic_stm_algo;

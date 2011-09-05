@@ -1,56 +1,26 @@
 #include <linux/module.h>
-#include <linux/smp.h>
-#include <linux/user.h>
-#include <linux/elfcore.h>
-#include <linux/sched.h>
-#include <linux/in6.h>
-#include <linux/interrupt.h>
-#include <linux/vmalloc.h>
-#include <linux/pci.h>
-#include <linux/irq.h>
-#include <asm/sections.h>
-#include <asm/processor.h>
-#include <asm/uaccess.h>
+#include <linux/string.h>
+#include <linux/uaccess.h>
+#include <linux/delay.h>
+#include <linux/mm.h>
 #include <asm/checksum.h>
-#include <asm/io.h>
-#include <asm/delay.h>
-#include <asm/tlbflush.h>
-#include <asm/cacheflush.h>
-#include <asm/ftrace.h>
+#include <asm/sections.h>
 
-extern int dump_fpu(struct pt_regs *, elf_fpregset_t *);
-
-/* platform dependent support */
-EXPORT_SYMBOL(dump_fpu);
-EXPORT_SYMBOL(kernel_thread);
-EXPORT_SYMBOL(strlen);
-
-/* PCI exports */
-#ifdef CONFIG_PCI
-EXPORT_SYMBOL(pci_alloc_consistent);
-EXPORT_SYMBOL(pci_free_consistent);
-#endif
-
-/* mem exports */
 EXPORT_SYMBOL(memchr);
 EXPORT_SYMBOL(memcpy);
 EXPORT_SYMBOL(memset);
 EXPORT_SYMBOL(memmove);
 EXPORT_SYMBOL(__copy_user);
-
-#ifdef CONFIG_FLATMEM
-#include <linux/bootmem.h>
-EXPORT_SYMBOL(min_low_pfn);	/* defined by bootmem.c, but not exported by generic code */
-EXPORT_SYMBOL(max_low_pfn);	/* defined by bootmem.c, but not exported by generic code */
-#endif
-
-#ifdef CONFIG_MMU
-EXPORT_SYMBOL(get_vm_area);
-#endif
-
 EXPORT_SYMBOL(__udelay);
 EXPORT_SYMBOL(__ndelay);
 EXPORT_SYMBOL(__const_udelay);
+EXPORT_SYMBOL(strlen);
+EXPORT_SYMBOL(csum_partial);
+EXPORT_SYMBOL(csum_partial_copy_generic);
+EXPORT_SYMBOL(copy_page);
+EXPORT_SYMBOL(__clear_user);
+EXPORT_SYMBOL(_ebss);
+EXPORT_SYMBOL(empty_zero_page);
 
 #define DECLARE_EXPORT(name)		\
 	extern void name(void);EXPORT_SYMBOL(name)
@@ -118,31 +88,6 @@ DECLARE_EXPORT(__sdivsi3_i4);
 DECLARE_EXPORT(__udivsi3_i4);
 DECLARE_EXPORT(__sdivsi3_i4i);
 DECLARE_EXPORT(__udivsi3_i4i);
-
-#if !defined(CONFIG_CACHE_OFF) && (defined(CONFIG_CPU_SH4) || \
-	defined(CONFIG_SH7705_CACHE_32KB))
-/* needed by some modules */
-EXPORT_SYMBOL(flush_cache_all);
-EXPORT_SYMBOL(flush_cache_range);
-EXPORT_SYMBOL(flush_cache_page);
-EXPORT_SYMBOL(flush_dcache_page);
-#endif
-
 #ifdef CONFIG_MCOUNT
 DECLARE_EXPORT(mcount);
-#endif
-EXPORT_SYMBOL(csum_partial);
-EXPORT_SYMBOL(csum_partial_copy_generic);
-#ifdef CONFIG_IPV6
-EXPORT_SYMBOL(csum_ipv6_magic);
-#endif
-EXPORT_SYMBOL(copy_page);
-EXPORT_SYMBOL(__clear_user);
-EXPORT_SYMBOL(_ebss);
-EXPORT_SYMBOL(empty_zero_page);
-
-#ifndef CONFIG_CACHE_OFF
-EXPORT_SYMBOL(__flush_purge_region);
-EXPORT_SYMBOL(__flush_wback_region);
-EXPORT_SYMBOL(__flush_invalidate_region);
 #endif

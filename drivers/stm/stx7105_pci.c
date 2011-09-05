@@ -233,7 +233,7 @@ void __init stx7105_configure_pci(struct stm_plat_pci_config *pci_conf)
 				BUG();
 			}
 
-			set_irq_type(ILC_EXT_IRQ(26), IRQ_TYPE_LEVEL_LOW);
+			irq_set_irq_type(ILC_EXT_IRQ(26), IRQ_TYPE_LEVEL_LOW);
 			stm_gpio_direction(STX7105_PIO_PCI_INTA_ALT,
 						STM_GPIO_DIRECTION_IN);
 
@@ -255,7 +255,8 @@ void __init stx7105_configure_pci(struct stm_plat_pci_config *pci_conf)
 						"%c pad!\n", 'A' + i);
 				BUG();
 			}
-			set_irq_type(ILC_EXT_IRQ(26 + i), IRQ_TYPE_LEVEL_LOW);
+			irq_set_irq_type(ILC_EXT_IRQ(26 + i),
+					 IRQ_TYPE_LEVEL_LOW);
 
 			if (i == 0) {
 				/* PCI_INT0_SRC_SEL:
@@ -285,7 +286,8 @@ void __init stx7105_configure_pci(struct stm_plat_pci_config *pci_conf)
 			stm_gpio_direction(STX7105_PIO_PCI_SERR,
 					STM_GPIO_DIRECTION_IN);
 			pci_conf->serr_irq = gpio_to_irq(STX7105_PIO_PCI_SERR);
-			set_irq_type(pci_conf->serr_irq, IRQ_TYPE_LEVEL_LOW);
+			irq_set_irq_type(pci_conf->serr_irq,
+					 IRQ_TYPE_LEVEL_LOW);
 		} else {
 			printk(KERN_WARNING "%s(): Failed to claim PCI SERR# "
 					"PIO!\n", __func__);

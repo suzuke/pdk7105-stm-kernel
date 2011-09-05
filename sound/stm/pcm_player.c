@@ -25,6 +25,7 @@
 #include <asm/cacheflush.h>
 #include <asm/clock.h>
 #include <linux/init.h>
+#include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>

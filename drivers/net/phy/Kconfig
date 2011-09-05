@@ -5,7 +5,7 @@
 menuconfig PHYLIB
 	tristate "PHY Device support and infrastructure"
 	depends on !S390
-	depends on NET_ETHERNET
+	depends on NETDEVICES
 	help
 	  Ethernet controllers are usually attached to PHY
 	  devices.  This option provides infrastructure for
@@ -78,7 +78,6 @@ config NATIONAL_PHY
 	  Currently supports the DP83865 PHY.
 
 config STE10XP
-	depends on PHYLIB
 	tristate "Driver for STMicroelectronics STe10Xp PHYs"
 	---help---
 	  This is the driver for the STe100p and STe101p PHYs.
@@ -119,5 +118,16 @@ config MDIO_GPIO
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called mdio-gpio.
+
+config MDIO_OCTEON
+	tristate "Support for MDIO buses on Octeon SOCs"
+	depends on  CPU_CAVIUM_OCTEON
+	default y
+	help
+
+	  This module provides a driver for the Octeon MDIO busses.
+	  It is required by the Octeon Ethernet device drivers.
+
+	  If in doubt, say Y.
 
 endif # PHYLIB

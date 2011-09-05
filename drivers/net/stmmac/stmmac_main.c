@@ -44,6 +44,8 @@
 #include <linux/phy.h>
 #include <linux/if_vlan.h>
 #include <linux/dma-mapping.h>
+#include <linux/slab.h>
+#include <linux/prefetch.h>
 #include "stmmac.h"
 
 #define STMMAC_RESOURCE_NAME	"stmmaceth"
@@ -66,8 +68,8 @@
 #define RX_DBG(fmt, args...)  do { } while (0)
 #endif
 
-#undef STMMAC_XMIT_DEBUG
-/*#define STMMAC_XMIT_DEBUG*/
+#undef STMMAC_TX_DEBUG
+/*#define STMMAC_TX_DEBUG */
 #ifdef STMMAC_TX_DEBUG
 #define TX_DBG(fmt, args...)  printk(fmt, ## args)
 #else
@@ -134,7 +136,6 @@ static const u32 default_msg_level = (NETIF_MSG_DRV | NETIF_MSG_PROBE |
 				      NETIF_MSG_IFDOWN | NETIF_MSG_TIMER);
 
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id);
-static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev);
 
 /**
  * stmmac_verify_args - verify the driver parameters.
@@ -157,19 +158,17 @@ static void stmmac_verify_args(void)
 		flow_ctrl = FLOW_OFF;
 	if (unlikely((pause < 0) || (pause > 0xffff)))
 		pause = PAUSE_TIME;
-
-	return;
 }
 
-#if defined(STMMAC_XMIT_DEBUG) || defined(STMMAC_RX_DEBUG)
+#if defined(STMMAC_TX_DEBUG) || defined(STMMAC_RX_DEBUG)
 static void print_pkt(unsigned char *buf, int len)
 {
 	int j;
-	printk("len = %d byte, buf addr: 0x%p", len, buf);
+	pr_info("len = %d byte, buf addr: 0x%p", len, buf);
 	for (j = 0; j < len; j++) {
 		if ((j % 16) == 0)
-			printk("\n %03x:", j);
-		printk(" %02x", buf[j]);
+			pr_info("\n %03x:", j);
+		pr_info(" %02x", buf[j]);
 	}
 	pr_info("\n");
 }
@@ -330,7 +329,7 @@ static int stmmac_init_phy(struct net_device *dev)
 		return -ENODEV;
 	}
 	pr_debug("stmmac_init_phy:  %s: attached to PHY (UID 0x%x)"
-		 " Link = %d\n", dev->name, phydev->phy_id, phydev->link);
+	       " Link = %d\n", dev->name, phydev->phy_id, phydev->link);
 
 	priv->phydev = phydev;
 
@@ -712,6 +711,7 @@ static void stmmac_no_timer_stopped(void *t)
  */
 static void stmmac_tx_err(struct stmmac_priv *priv)
 {
+
 	netif_stop_queue(priv->dev);
 
 	priv->hw->dma->stop_tx(priv->ioaddr);
@@ -823,6 +823,7 @@ static int stmmac_open(struct net_device *dev)
 		pr_info("stmmac: Rx Checksum Offload Engine supported\n");
 	if (priv->plat->tx_coe)
 		pr_info("\tTX Checksum insertion supported\n");
+	netdev_update_features(dev);
 
 	/* Initialise the MMC (if present) to disable all interrupts. */
 	writel(0xffffffff, priv->ioaddr + MMC_HIGH_INTR_MASK);
@@ -927,46 +928,6 @@ static int stmmac_release(struct net_device *dev)
 	return 0;
 }
 
-/*
- * To perform emulated hardware segmentation on skb.
- */
-static int stmmac_sw_tso(struct stmmac_priv *priv, struct sk_buff *skb)
-{
-	struct sk_buff *segs, *curr_skb;
-	int gso_segs = skb_shinfo(skb)->gso_segs;
-
-	/* Estimate the number of fragments in the worst case */
-	if (unlikely(stmmac_tx_avail(priv) < gso_segs)) {
-		netif_stop_queue(priv->dev);
-		TX_DBG(KERN_ERR "%s: TSO BUG! Tx Ring full when queue awake\n",
-		       __func__);
-		if (stmmac_tx_avail(priv) < gso_segs)
-			return NETDEV_TX_BUSY;
-
-		netif_wake_queue(priv->dev);
-	}
-	TX_DBG("\tstmmac_sw_tso: segmenting: skb %p (len %d)\n",
-	       skb, skb->len);
-
-	segs = skb_gso_segment(skb, priv->dev->features & ~NETIF_F_TSO);
-	if (IS_ERR(segs))
-		goto sw_tso_end;
-
-	do {
-		curr_skb = segs;
-		segs = segs->next;
-		TX_DBG("\t\tcurrent skb->len: %d, *curr %p,"
-		       "*next %p\n", curr_skb->len, curr_skb, segs);
-		curr_skb->next = NULL;
-		stmmac_xmit(curr_skb, priv->dev);
-	} while (segs);
-
-sw_tso_end:
-	dev_kfree_skb(skb);
-
-	return NETDEV_TX_OK;
-}
-
 static unsigned int stmmac_handle_jumbo_frames(struct sk_buff *skb,
 					       struct net_device *dev,
 					       int csum_insertion)
@@ -1035,7 +996,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	entry = priv->cur_tx % txsize;
 
-#ifdef STMMAC_XMIT_DEBUG
+#ifdef STMMAC_TX_DEBUG
 	if ((skb->len > ETH_FRAME_LEN) || nfrags)
 		pr_info("stmmac xmit:\n"
 		       "\tskb addr %p - len: %d - nopaged_len: %d\n"
@@ -1044,21 +1005,12 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		       !skb_is_gso(skb) ? "isn't" : "is");
 #endif
 
-	if (unlikely(skb_is_gso(skb)))
-		return stmmac_sw_tso(priv, skb);
-
-	if (likely((skb->ip_summed == CHECKSUM_PARTIAL))) {
-		if (unlikely((!priv->plat->tx_coe) ||
-			     (priv->no_csum_insertion)))
-			skb_checksum_help(skb);
-		else
-			csum_insertion = 1;
-	}
+	csum_insertion = (skb->ip_summed == CHECKSUM_PARTIAL);
 
 	desc = priv->dma_tx + entry;
 	first = desc;
 
-#ifdef STMMAC_XMIT_DEBUG
+#ifdef STMMAC_TX_DEBUG
 	if ((nfrags > 0) || (skb->len > ETH_FRAME_LEN))
 		pr_debug("stmmac xmit: skb len: %d, nopaged_len: %d,\n"
 		       "\t\tn_frags: %d, ip_summed: %d\n",
@@ -1105,7 +1057,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	priv->cur_tx++;
 
-#ifdef STMMAC_XMIT_DEBUG
+#ifdef STMMAC_TX_DEBUG
 	if (netif_msg_pktdata(priv)) {
 		pr_info("stmmac xmit: current=%d, dirty=%d, entry=%d, "
 		       "first=%p, nfrags=%d\n",
@@ -1235,7 +1187,7 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit)
 
 			if (unlikely(status == csum_none)) {
 				/* always for the old mac 10/100 */
-				skb->ip_summed = CHECKSUM_NONE;
+				skb_checksum_none_assert(skb);
 				netif_receive_skb(skb);
 			} else {
 				skb->ip_summed = CHECKSUM_UNNECESSARY;
@@ -1244,7 +1196,6 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit)
 
 			priv->dev->stats.rx_packets++;
 			priv->dev->stats.rx_bytes += frame_len;
-			priv->dev->last_rx = jiffies;
 		}
 		entry = next_entry;
 		p = p_next;	/* use prefetched values */
@@ -1370,18 +1321,29 @@ static int stmmac_change_mtu(struct net_device *dev, int new_mtu)
 		return -EINVAL;
 	}
 
+	dev->mtu = new_mtu;
+	netdev_update_features(dev);
+
+	return 0;
+}
+
+static u32 stmmac_fix_features(struct net_device *dev, u32 features)
+{
+	struct stmmac_priv *priv = netdev_priv(dev);
+
+	if (!priv->rx_coe)
+		features &= ~NETIF_F_RXCSUM;
+	if (!priv->plat->tx_coe)
+		features &= ~NETIF_F_ALL_CSUM;
+
 	/* Some GMAC devices have a bugged Jumbo frame support that
 	 * needs to have the Tx COE disabled for oversized frames
 	 * (due to limited buffer sizes). In this case we disable
 	 * the TX csum insertionin the TDES and not use SF. */
-	if ((priv->plat->bugged_jumbo) && (priv->dev->mtu > ETH_DATA_LEN))
-		priv->no_csum_insertion = 1;
-	else
-		priv->no_csum_insertion = 0;
+	if (priv->plat->bugged_jumbo && (dev->mtu > ETH_DATA_LEN))
+		features &= ~NETIF_F_ALL_CSUM;
 
-	dev->mtu = new_mtu;
-
-	return 0;
+	return features;
 }
 
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id)
@@ -1427,24 +1389,18 @@ static void stmmac_poll_controller(struct net_device *dev)
 static int stmmac_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
-	int ret = -EOPNOTSUPP;
+	int ret;
 
 	if (!netif_running(dev))
 		return -EINVAL;
 
-	switch (cmd) {
-	case SIOCGMIIPHY:
-	case SIOCGMIIREG:
-	case SIOCSMIIREG:
-		if (!priv->phydev)
-			return -EINVAL;
+	if (!priv->phydev)
+		return -EINVAL;
 
-		spin_lock(&priv->lock);
-		ret = phy_mii_ioctl(priv->phydev, if_mii(rq), cmd);
-		spin_unlock(&priv->lock);
-	default:
-		break;
-	}
+	spin_lock(&priv->lock);
+	ret = phy_mii_ioctl(priv->phydev, rq, cmd);
+	spin_unlock(&priv->lock);
+
 	return ret;
 }
 
@@ -1467,6 +1423,7 @@ static const struct net_device_ops stmmac_netdev_ops = {
 	.ndo_start_xmit = stmmac_xmit,
 	.ndo_stop = stmmac_release,
 	.ndo_change_mtu = stmmac_change_mtu,
+	.ndo_fix_features = stmmac_fix_features,
 	.ndo_set_multicast_list = stmmac_multicast_list,
 	.ndo_tx_timeout = stmmac_tx_timeout,
 	.ndo_do_ioctl = stmmac_ioctl,
@@ -1497,7 +1454,8 @@ static int stmmac_probe(struct net_device *dev)
 	dev->netdev_ops = &stmmac_netdev_ops;
 	stmmac_set_ethtool_ops(dev);
 
-	dev->features |= (NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_HIGHDMA);
+	dev->hw_features = NETIF_F_SG | NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM;
+	dev->features |= dev->hw_features | NETIF_F_HIGHDMA;
 	dev->watchdog_timeo = msecs_to_jiffies(watchdog);
 #ifdef STMMAC_VLAN_TAG_USED
 	/* Both mac100 and gmac support receive VLAN tag detection */
@@ -1530,7 +1488,7 @@ static int stmmac_probe(struct net_device *dev)
 
 	DBG(probe, DEBUG, "%s: Scatter/Gather: %s - HW checksums: %s\n",
 	    dev->name, (dev->features & NETIF_F_SG) ? "on" : "off",
-	    (dev->features & NETIF_F_HW_CSUM) ? "on" : "off");
+	    (dev->features & NETIF_F_IP_CSUM) ? "on" : "off");
 
 	return ret;
 }
@@ -1833,7 +1791,7 @@ static int stmmac_restore(struct device *dev)
 	return stmmac_open(ndev);
 }
 
-static struct dev_pm_ops stmmac_pm_ops = {
+static const struct dev_pm_ops stmmac_pm_ops = {
 	.suspend = stmmac_suspend,
 	.resume = stmmac_resume,
 	.freeze = stmmac_freeze,
@@ -1841,7 +1799,7 @@ static struct dev_pm_ops stmmac_pm_ops = {
 	.restore = stmmac_restore,
 };
 #else
-static struct dev_pm_ops stmmac_pm_ops;
+static const struct dev_pm_ops stmmac_pm_ops;
 #endif /* CONFIG_PM */
 
 static struct platform_driver stmmac_driver = {

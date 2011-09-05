@@ -674,10 +674,12 @@ static int fdma_load_elf(const struct firmware *fw, struct fdma *fdma)
 		return -ENODEV;
 
 	fdma->firmware_loaded = 1;
+	release_firmware(fw);
 	return 1;
 
 fail:
 	ELF_free(elfinfo);
+	release_firmware(fw);
 	return res;
 }
 
@@ -694,8 +696,8 @@ static int fdma_do_bootload(struct fdma *fdma)
 	fdma_dbg(fdma, "FDMA: Loading ELF Firmware (%s)...\n", fdma->fw_name);
 
 	err = request_firmware_nowait(THIS_MODULE, 1, fdma->fw_name,
-					&fdma->pdev->dev, (struct fdma *)fdma,
-					(void *)fdma_load_elf);
+			&fdma->pdev->dev, GFP_KERNEL,
+			(struct fdma *)fdma, (void *)fdma_load_elf);
 	if (err)
 		return -ENOMEM;
 

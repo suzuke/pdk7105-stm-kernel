@@ -49,6 +49,7 @@
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/uwb.h>
+#include <linux/slab.h>
 #include <linux/usb/wusb.h>
 #include <linux/scatterlist.h>
 
@@ -111,7 +112,7 @@ struct aes_ccm_b1 {
  *
  * CCM uses Ax blocks to generate a keystream with which the MIC and
  * the message's payload are encoded. A0 always encrypts/decrypts the
- * MIC. Ax (x>0) are used for the sucesive payload blocks.
+ * MIC. Ax (x>0) are used for the successive payload blocks.
  *
  * The x is the counter, and is increased for each block.
  */
@@ -179,7 +180,7 @@ static void bytewise_xor(void *_bo, const void *_bi1, const void *_bi2,
  *     using the 14 bytes of @a to fill up
  *     b1.{mac_header,e0,security_reserved,padding}.
  *
- * NOTE: The definiton of l(a) in WUSB1.0[6.5] vs the definition of
+ * NOTE: The definition of l(a) in WUSB1.0[6.5] vs the definition of
  *       l(m) is orthogonal, they bear no relationship, so it is not
  *       in conflict with the parameter's relation that
  *       WUSB1.0[6.4.2]) defines.
@@ -271,7 +272,7 @@ static int wusb_ccm_mac(struct crypto_blkcipher *tfm_cbc,
 
 	/* Now we crypt the MIC Tag (*iv) with Ax -- values per WUSB1.0[6.5]
 	 * The procedure is to AES crypt the A0 block and XOR the MIC
-	 * Tag agains it; we only do the first 8 bytes and place it
+	 * Tag against it; we only do the first 8 bytes and place it
 	 * directly in the destination buffer.
 	 *
 	 * POS Crypto API: size is assumed to be AES's block size.
