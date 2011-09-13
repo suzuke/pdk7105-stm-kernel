@@ -30,13 +30,10 @@
 #include <mach/soc-stih415.h>
 #include <mach/hardware.h>
 
-int ok_to_print = 0;
-
-static void __init stih415_veloce_map_io(void)
+static void __init b2000_map_io(void)
 {
 
 	stih415_map_io();
-	ok_to_print = 1;
 
 	printk("STMicroelectronics STiH415 (Orly) MBoard initialisation\n");
 
@@ -303,7 +300,7 @@ MACHINE_START(STM_B2000, "STMicroelectronics B2000 - STiH415 MBoard")
 	.phys_io	= STIH415_ASC0_BASE,
 	.io_pg_offst	= (IO_ADDRESS(STIH415_ASC0_BASE) >> 18) & 0xfffc,
 	.boot_params	= PHYS_OFFSET + 0x00000100,
-	.map_io		= stih415_veloce_map_io,
+	.map_io		= b2000_map_io,
 	.init_irq	= stih415_gic_init_irq,
 	.timer		= &stih415_timer,
 	.init_machine	= b2000_init,
