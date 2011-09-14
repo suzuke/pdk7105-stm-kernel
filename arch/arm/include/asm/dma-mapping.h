@@ -67,6 +67,7 @@ static inline dma_addr_t virt_to_dma(struct device *dev, void *addr)
  * Use the driver DMA support - see dma-mapping.h (dma_sync_*)
  */
 extern void dma_cache_maint(const void *kaddr, size_t size, int rw);
+extern void dma_cache_maint_unmap(const void *kaddr, size_t size, int rw);
 extern void dma_cache_maint_page(struct page *page, unsigned long offset,
 				 size_t size, int rw);
 
@@ -273,6 +274,9 @@ int dmabounce_sync_for_device(struct device *, dma_addr_t, unsigned long,
 static inline int dmabounce_sync_for_cpu(struct device *d, dma_addr_t addr,
 	unsigned long offset, size_t size, enum dma_data_direction dir)
 {
+	/* fix for speculative prefetching */
+	if (!arch_is_coherent())
+		dma_cache_maint_unmap(dma_to_virt(d, addr), size, dir);
 	return 1;
 }
 
@@ -350,7 +354,9 @@ static inline dma_addr_t dma_map_page(struct device *dev, struct page *page,
 static inline void dma_unmap_single(struct device *dev, dma_addr_t handle,
 		size_t size, enum dma_data_direction dir)
 {
-	/* nothing to do */
+	/* fix for speculative prefetching */
+	if (!arch_is_coherent())
+		dma_cache_maint_unmap(dma_to_virt(dev, handle), size, dir);
 }
 #endif /* CONFIG_DMABOUNCE */
 

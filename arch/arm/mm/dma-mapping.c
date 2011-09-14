@@ -567,7 +567,17 @@ void dma_cache_maint(const void *start, size_t size, int direction)
 	outer_op(__pa(start), __pa(start) + size);
 }
 EXPORT_SYMBOL(dma_cache_maint);
+void dma_cache_maint_unmap(const void *start, size_t size, int dir)
+{
 
+	BUG_ON(!virt_addr_valid(start) || !virt_addr_valid(start + size - 1));
+
+	if(dir != DMA_TO_DEVICE) {
+		outer_inv_range(__pa(start), __pa(start) + size);
+		dmac_inv_range(start, start + size);
+	}
+}
+EXPORT_SYMBOL(dma_cache_maint_unmap);
 static void dma_cache_maint_contiguous(struct page *page, unsigned long offset,
 				       size_t size, int direction)
 {
