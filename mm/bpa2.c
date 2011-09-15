@@ -75,6 +75,26 @@
 #include <linux/bpa2.h>
 
 
+/* The arm specific init tells us that "max_low_pfn and max_pfn reflect
+ * the number of _pages_ in the system, not the maximum PFN"
+ * (arch/arm/mm/init.c). It also mentions, as an ambition, the desire
+ * to remove these variables completely.
+ *
+ * Anyhow this is not a world view shared by the other architectures
+ * (no other architecture even includes PHYS_PFN_OFFSET) and therefore
+ * we need ARM specific code in order to convert these page counts into
+ * page frame numbers.
+ *
+ * Note in recent ARM kernels (those from ~May 2010 and later)
+ * almost all uses of reserve_bootmem() have been replaced with
+ * memblock_reserve(). BPA2 should probably follow suit when the
+ * kernel is upgraded.
+ */
+#ifdef PHYS_PFN_OFFSET
+#define PAGECOUNT_TO_PFN(x) ((x) + PHYS_PFN_OFFSET)
+#else
+#define PAGECOUNT_TO_PFN(x) (x)
+#endif
 
 #define BPA2_MAX_NAME_LEN 20
 #define BPA2_RES_PREFIX "bpa2:"
@@ -234,9 +254,11 @@ static int __init bpa2_add_part(const char **names, int names_cnt,
 	end_pfn = PFN_DOWN(start + size);
 	if (start == 0) {
 		result = bpa2_alloc_low(part, size, &start);
-	} else if ((start_pfn >= min_low_pfn) && (end_pfn <= max_low_pfn)) {
+	} else if ((start_pfn >= PAGECOUNT_TO_PFN(min_low_pfn)) &&
+		   (end_pfn <= PAGECOUNT_TO_PFN(max_low_pfn))) {
 		result = bpa2_reserve_low(part, start, size);
-	} else if ((start_pfn > max_low_pfn) || (end_pfn < min_low_pfn)) {
+	} else if ((start_pfn > PAGECOUNT_TO_PFN(max_low_pfn)) ||
+		   (end_pfn < PAGECOUNT_TO_PFN(min_low_pfn))) {
 		result = bpa2_init_high(part, start, size);
 	} else {
 		printk(KERN_ERR "bpa2: partition spans low memory boundary\n");
