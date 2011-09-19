@@ -15,10 +15,6 @@
 #include <linux/io.h>
 #include <asm-generic/div64.h>
 
-#include "clock-utils.h"
-#include "clock-oslayer.h"
-#include "clock-common.h"
-
 static void __iomem *clkgena_base;
 static void __iomem *clkgenc_base;
 

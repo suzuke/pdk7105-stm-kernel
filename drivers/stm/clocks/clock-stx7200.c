@@ -15,7 +15,6 @@
 #include <linux/stm/clk.h>
 
 #include "clock-common.h"
-#include "clock-utils.h"
 #include "clock-oslayer.h"
 
 #include "clock-stx7200.h"

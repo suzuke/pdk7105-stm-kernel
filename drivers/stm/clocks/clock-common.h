@@ -165,4 +165,5 @@ int clk_fs660_get_rate(unsigned long input, unsigned long pe,
 int clk_fs660_vco_get_rate(unsigned long input, unsigned long ndiv,
 			   unsigned long *rate);
 
+int clk_register_table(struct clk *clks, int num, int enable);
 #endif /* #ifndef __CLKLLA_COMMON_H */

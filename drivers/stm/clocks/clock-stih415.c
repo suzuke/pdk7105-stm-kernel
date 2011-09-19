@@ -37,7 +37,6 @@
 #include <linux/stm/sysconf.h>
 #include <linux/io.h>
 #include <linux/delay.h>
-#include "clock-utils.h"
 
 /*
  * This function is used in the clock-MPE file

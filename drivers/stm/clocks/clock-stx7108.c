@@ -51,7 +51,6 @@
 
 #include "clock-oslayer.h"
 #include "clock-common.h"
-#include "clock-utils.h"
 
 static int clkgena1_observe(clk_t *clk_p, unsigned long *div_p);
 static int clkgena0_observe(clk_t *clk_p, unsigned long *div_p);

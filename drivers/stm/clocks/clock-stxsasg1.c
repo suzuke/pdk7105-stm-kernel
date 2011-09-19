@@ -38,7 +38,6 @@
 #include <linux/stm/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
-#include "clock-utils.h"
 
 #endif
 

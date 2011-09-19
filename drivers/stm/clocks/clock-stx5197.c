@@ -35,7 +35,6 @@
 
 #include "clock-oslayer.h"
 #include "clock-common.h"
-#include "clock-utils.h"
 
 #define CRYSTAL  30000000
 

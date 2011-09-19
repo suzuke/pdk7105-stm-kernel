@@ -59,7 +59,6 @@
 
 #include "clock-oslayer.h"
 #include "clock-common.h"
-#include "clock-utils.h"
 
 static int clkgena_observe(clk_t *clk_p, unsigned long *div_p);
 static int clkgenb_observe(clk_t *clk_p, unsigned long *div_p);
