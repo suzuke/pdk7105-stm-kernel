@@ -72,7 +72,8 @@
 #define FLI7610_PIO(x) \
 	(((x) < 100) ? (x) : ((x)-100+19))
 
-#define LPM_SYSCONF_BANK	(6)
+#define LPM_SYSCONF_BANK	(8)
+#define LPM_SYSCONF(x) LPM_SYSCONF_BANK, x
 
 
 struct fli7610_pio_config {
