@@ -204,7 +204,7 @@ static int __init b2000_devices_init(void)
  */
 
 /* GMAC0 */
-#if !defined(CONFIG_STM_GMAC0_NONE)
+#if !defined(CONFIG_STM_CN22_NONE)
 	stih415_configure_ethernet(0, &(struct stih415_ethernet_config) {
 #ifdef CONFIG_STM_GMAC0_B2035_CARD
 			.mode = stih415_ethernet_mode_rmii,
@@ -224,10 +224,10 @@ static int __init b2000_devices_init(void)
 			.phy_bus = 0,
 			.phy_addr = -1,
 			.mdio_bus_data = &stmmac0_mdio_bus, });
-#endif /* CONFIG_STM_GMAC0_NONE */
+#endif /* CONFIG_STM_CN22_NONE */
 
 /* GMAC1 */
-#if !defined(CONFIG_STM_GMAC1_NONE)
+#if !defined(CONFIG_STM_CN23_NONE)
 	stih415_configure_ethernet(1, &(struct stih415_ethernet_config) {
 #ifdef CONFIG_STM_GMAC1_B2035_CARD
 			.mode = stih415_ethernet_mode_rmii,
@@ -247,7 +247,7 @@ static int __init b2000_devices_init(void)
 			.phy_bus = 1,
 			.phy_addr = -1,
 			.mdio_bus_data = &stmmac1_mdio_bus, });
-#endif /* CONFIG_STM_GMAC0_NONE */
+#endif /* CONFIG_STM_CN23_NONE */
 
 	stih415_configure_usb(0);
 	stih415_configure_usb(1);
@@ -272,8 +272,17 @@ static int __init b2000_devices_init(void)
 			.pwm = stih415_sbc_pwm,
 			.out0_enabled = 1, });
 
-#ifdef STM_GMAC0_B2035_CARD
+#if defined(CONFIG_STM_GMAC0_B2035_CARD) || defined(CONFIG_STM_MMC_B2048A_CARD)
+#ifdef CONFIG_STM_B2048A_MMC_EMMC
+	/* eMMC on board */
+	stih415_configure_mmc(1);
+#else
+	/*
+	 * In case of B2035 or B2048A without eMMC, we actually have the
+	 * MMC/SD slot on the daughter board.
+	 */
 	stih415_configure_mmc(0);
+#endif
 #endif
 
 	return platform_add_devices(b2000_devices,
