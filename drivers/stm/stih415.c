@@ -923,7 +923,6 @@ void __init stih415_early_device_init(void)
 		     0, 0, stih415_pio_config);
 
 	/* Version information in SYSTEM_STATUS427 */
->>>>>>> 67540da... stm: Add more STiH415 infrastructure
 }
 
 /* Internal temperature sensor resources ---------------------------------- */
