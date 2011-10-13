@@ -478,6 +478,141 @@ static void __init fli7610_pio_init(void)
 			     &fli7610_pio_retime_offset);
 }
 
+/* FDMA resources --------------------------------------------------------- */
+
+static struct stm_plat_fdma_fw_regs fli7610_fdma_fw = {
+	.rev_id    = 0x10000,
+	.cmd_statn = 0x10200,
+	.req_ctln  = 0x10240,
+	.ptrn      = 0x10800,
+	.cntn      = 0x10808,
+	.saddrn    = 0x1080c,
+	.daddrn    = 0x10810,
+	.node_size = 128,
+};
+
+static struct stm_plat_fdma_hw fli7610_fdma_hw = {
+	.slim_regs = {
+		.id       = 0x0000 + (0x000 << 2), /* 0x0000 */
+		.ver      = 0x0000 + (0x001 << 2), /* 0x0004 */
+		.en       = 0x0000 + (0x002 << 2), /* 0x0008 */
+		.clk_gate = 0x0000 + (0x003 << 2), /* 0x000c */
+	},
+	.dmem = {
+		.offset = 0x10000,
+		.size   = 0xc00 << 2, /* 3072 * 4 = 12K */
+	},
+	.periph_regs = {
+		.sync_reg = 0x17f88,
+		.cmd_sta  = 0x17fc0,
+		.cmd_set  = 0x17fc4,
+		.cmd_clr  = 0x17fc8,
+		.cmd_mask = 0x17fcc,
+		.int_sta  = 0x17fd0,
+		.int_set  = 0x17fd4,
+		.int_clr  = 0x17fd8,
+		.int_mask = 0x17fdc,
+	},
+	.imem = {
+		.offset = 0x18000,
+		.size   = 0x1800 << 2, /* 6144 * 4 = 24K (18K populated) */
+	},
+};
+
+static struct stm_plat_fdma_data fli7610_mpe_fdma_platform_data = {
+	.hw = &fli7610_fdma_hw,
+	.fw = &fli7610_fdma_fw,
+	.xbar = 0,
+};
+
+static struct platform_device fli7610_mpe_fdma_devices[] = {
+	{
+		/* FDMA_0_MPE: */
+		.name = "stm-fdma",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfd600000, 0x20000),
+			FLI7610_RESOURCE_IRQ(10),
+		},
+		.dev.platform_data = &fli7610_mpe_fdma_platform_data,
+	}, {
+		/* FDMA_1_MPE: */
+		.name = "stm-fdma",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfd620000, 0x20000),
+			FLI7610_RESOURCE_IRQ(18),
+		},
+		.dev.platform_data = &fli7610_mpe_fdma_platform_data,
+	}, {
+		/* FDMA_2_MPE: */
+		.name = "stm-fdma",
+		.id = 2,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfd640000, 0x20000),
+			FLI7610_RESOURCE_IRQ(26),
+		},
+		.dev.platform_data = &fli7610_mpe_fdma_platform_data,
+	}
+};
+
+/* FDMA_MUX_MPE: 96 way */
+static struct platform_device fli7610_mpe_fdma_xbar_device = {
+	.name = "stm-fdma-xbar",
+	.id = 0,
+	.num_resources = 1,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM(0xfd6df000, 0x1000),
+	},
+};
+
+/* TAE_FDMA  */
+
+static struct stm_plat_fdma_data fli7610_tae_fdma_platform_data = {
+	.hw = &fli7610_fdma_hw,
+	.fw = &fli7610_fdma_fw,
+	.xbar = 1,
+};
+
+static struct platform_device fli7610_tae_fdma_devices[] = {
+	{
+		/* FDMA_100: TAE FDMA 0 */
+		.name = "stm-fdma",
+		.id = 3,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfea00000, 0x20000),
+			FLI7610_RESOURCE_IRQ(121),
+		},
+		.dev.platform_data = &fli7610_tae_fdma_platform_data,
+	}, {
+		/* FDMA_101: TAE FDMA 1 */
+		.name = "stm-fdma",
+		.id = 4,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfea20000, 0x20000),
+			FLI7610_RESOURCE_IRQ(129),
+		},
+		.dev.platform_data = &fli7610_tae_fdma_platform_data,
+	}
+};
+
+/* FDMA_MUX_TAE: 96 way */
+static struct platform_device fli7610_tae_fdma_xbar_device = {
+	.name = "stm-fdma-xbar",
+	.id = 1,
+	.num_resources = 1,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM(0xfee61000, 0x1000),
+	},
+};
+
+
+
 
 
 /* NOTE: SYSCONFIG0
@@ -713,8 +848,14 @@ void __init fli7610_early_device_init(void)
 }
 
 /* Late initialisation ---------------------------------------------------- */
-
 static struct platform_device *fli7610_devices[] __initdata = {
+	&fli7610_mpe_fdma_devices[0],
+	&fli7610_mpe_fdma_devices[1],
+	&fli7610_mpe_fdma_devices[2],
+	&fli7610_mpe_fdma_xbar_device,
+	&fli7610_tae_fdma_devices[0],
+	&fli7610_tae_fdma_devices[1],
+	&fli7610_tae_fdma_xbar_device,
 };
 
 static int __init fli7610_devices_setup(void)
