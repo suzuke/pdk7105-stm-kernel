@@ -17,7 +17,7 @@
 #define NAME_MAX_LEN 22 /* "fdma_<cpu_subtype>_X.elf" */
 #define CHAN_ALL_ENABLE 				3
 
-#define NODE_DATA_OFFSET				0x40
+#define LEGACY_NODE_DATA_SIZE				0x40
 #define CMD_STAT_OFFSET       				0x04
 
 /**cmd stat vals*/
@@ -131,6 +131,7 @@ struct fdma_regs {
 	unsigned long cntn;
 	unsigned long saddrn;
 	unsigned long daddrn;
+	unsigned long node_size;
 	unsigned long req_ctln;
 	unsigned long sync_reg;
 	unsigned long cmd_sta;
@@ -184,6 +185,7 @@ struct fdma {
 
 	struct stm_plat_fdma_hw *hw;
 	struct stm_plat_fdma_fw_regs *fw;
+	u8 xbar; /* which crossbar is this FDMA attached to? */
 #ifdef CONFIG_HIBERNATION
 	struct fdma_segment_pm segment_pm[2]; /* saved segment (text/data) */
 #endif
@@ -193,6 +195,8 @@ struct fdma {
 struct fdma_req_router {
 	int (*route)(struct fdma_req_router *router, int input_req_line,
 			int fdma, int fdma_req_line);
+	struct list_head list;
+	u8 xbar_id;
 };
 
 int fdma_register_req_router(struct fdma_req_router *router);

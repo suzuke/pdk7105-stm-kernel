@@ -20,10 +20,12 @@
 #include <linux/ioport.h>
 #include <linux/bitops.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/sysdev.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/pio.h>
@@ -482,7 +484,7 @@ struct stpio_pin *__stpio_request_pin(unsigned int port_no,
 	if (__set_value)
 		__stm_gpio_set(port, pin_no, value);
 
-	stm_pad_configure_gpio(stm_gpio(port_no, pin_no), direction);
+	__stm_gpio_direction(port, pin_no, direction);
 
 	gpio_pin->stpio.port_no = port_no;
 	gpio_pin->stpio.pin_no = pin_no;
@@ -499,7 +501,10 @@ EXPORT_SYMBOL(stpio_free_pin);
 
 void stpio_configure_pin(struct stpio_pin *pin, int direction)
 {
-	stm_pad_configure_gpio(stm_gpio(pin->port_no, pin->pin_no), direction);
+	struct stm_gpio_port *port = &stm_gpio_ports[pin->port_no];
+	int pin_no = pin->pin_no;
+
+	__stm_gpio_direction(port, pin_no, direction);
 }
 EXPORT_SYMBOL(stpio_configure_pin);
 
@@ -739,6 +744,8 @@ void __init stm_gpio_early_init(struct platform_device pdevs[], int num,
 		struct platform_device *pdev = &pdevs[port_no];
 		struct resource *memory;
 		struct stm_gpio_port *port = &stm_gpio_ports[port_no];
+		struct stm_plat_pio_data *data = dev_get_platdata(&pdev->dev);
+		void __iomem *regs;
 
 		/* Skip non existing ports */
 		if (!pdev->name)
@@ -748,10 +755,15 @@ void __init stm_gpio_early_init(struct platform_device pdevs[], int num,
 		if (!memory)
 			panic("stm_gpio: Can't find memory resource!\n");
 
-		port->base = ioremap(memory->start,
+		regs = NULL;
+		if (data)
+			regs = data->regs;
+		if (!regs)
+			regs = ioremap(memory->start,
 				memory->end - memory->start + 1);
-		if (!port->base)
+		if (!regs)
 			panic("stm_gpio: Can't get IO memory mapping!\n");
+		port->base = regs;
 		port->gpio_chip.request = stm_gpio_request;
 		port->gpio_chip.free = stm_gpio_free;
 		port->gpio_chip.get = stm_gpio_get;

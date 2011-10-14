@@ -869,6 +869,19 @@ config PLAT_SPEAR
 	help
 	  Support for ST's SPEAr platform (SPEAr3xx, SPEAr6xx and SPEAr13xx).
 
+config ARCH_STM
+	bool "STMicroelectronics Consumer Electronics family"
+	select CPU_V7
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	select CLKDEV_LOOKUP
+	select HAVE_ARM_GT
+	select STM_DRIVERS
+	help
+	  This enables support for STMicroelectronics Digital Consumer
+	  Electronics family of parts, primarily targetted at set-top-box
+	  and other digital audio/video applications.
+
 config ARCH_VT8500
 	bool "VIA/WonderMedia 85xx"
 	select CPU_ARM926T
@@ -965,6 +978,8 @@ source "arch/arm/plat-s3c24xx/Kconfig"
 source "arch/arm/plat-s5p/Kconfig"
 
 source "arch/arm/plat-spear/Kconfig"
+
+source "arch/arm/mach-stm/Kconfig"
 
 source "arch/arm/plat-tcc/Kconfig"
 
@@ -1311,7 +1326,7 @@ config SMP
 	depends on REALVIEW_EB_ARM11MP || REALVIEW_EB_A9MP || \
 		 MACH_REALVIEW_PB11MP || MACH_REALVIEW_PBX || ARCH_OMAP4 || \
 		 ARCH_EXYNOS4 || ARCH_TEGRA || ARCH_U8500 || ARCH_VEXPRESS_CA9X4 || \
-		 ARCH_MSM_SCORPIONMP || ARCH_SHMOBILE
+		 ARCH_MSM_SCORPIONMP || ARCH_SHMOBILE || ARCH_STM
 	select USE_GENERIC_SMP_HELPERS
 	select HAVE_ARM_SCU if !ARCH_MSM_SCORPIONMP
 	help
@@ -1356,6 +1371,11 @@ config HAVE_ARM_TWD
 	select TICK_ONESHOT
 	help
 	  This options enables support for the ARM timer and watchdog unit
+
+config HAVE_ARM_GT
+	bool
+	help
+	  This options enables support for the ARM global timer unit
 
 choice
 	prompt "Memory split"

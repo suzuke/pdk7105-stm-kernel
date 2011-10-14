@@ -373,7 +373,7 @@ config SPI_STMP3XXX
 
 config SPI_STM
 	tristate "STMicroelectronics SPI SSC-based driver"
-	depends on CPU_SUBTYPE_ST40
+	depends on STM_DRIVERS
 	select SPI_BITBANG
 	help
 	  STMicroelectronics SoCs support for SPI.

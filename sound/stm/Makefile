@@ -12,6 +12,12 @@ snd-stm-pcm-reader-y := pcm_reader.o
 obj-$(CONFIG_SND_STM_SPDIF_PLAYER) += snd-stm-spdif-player.o
 snd-stm-spdif-player-y := spdif_player.o
 
+obj-$(CONFIG_SND_STM_UNIPERIF_PLAYER) += snd-stm-uniperif-player.o
+snd-stm-uniperif-player-y := uniperif_player.o
+
+obj-$(CONFIG_SND_STM_UNIPERIF_READER) += snd-stm-uniperif-reader.o
+snd-stm-uniperif-reader-y := uniperif_reader.o
+
 obj-$(CONFIG_SND_STM_CONV_I2S_TO_SPDIF) += snd-stm-conv-i2sspdif.o
 snd-stm-conv-i2sspdif-y := conv_i2sspdif.o
 
@@ -46,9 +52,15 @@ snd-stm-stx7141-y := stx7141.o
 obj-$(CONFIG_SND_STM_STX7200) += snd-stm-stx7200.o
 snd-stm-stx7200-y := stx7200.o
 
+obj-$(CONFIG_SND_STM_STIH415) += snd-stm-stih415.o
+snd-stm-stih415-y := stih415.o
+
 
 
 # External converters
+
+obj-$(CONFIG_SND_STM_CONV_BIPHASE) += snd-stm-conv-biphase.o
+snd-stm-conv-biphase-y := conv_biphase.o
 
 obj-$(CONFIG_SND_STM_CONV_DUMMY) += snd-stm-conv-dummy.o
 snd-stm-conv-dummy-y := conv_dummy.o

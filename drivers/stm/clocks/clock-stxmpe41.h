@@ -1,0 +1,167 @@
+/*****************************************************************************
+ *
+ * File name   : clock-stxMPE41.h
+ * Description : Low Level API - Clocks identifiers
+ *
+ * COPYRIGHT (C) 2009 STMicroelectronics - All Rights Reserved
+ * May be copied or modified under the terms of the GNU General Public
+ * License.  See linux/COPYING for more information.
+ *
+ *****************************************************************************/
+
+enum {
+	/* Clockgen A10 */
+	CLKM_A0_REF,		/* OSC clock */
+	CLKM_A0_PLL0,		/* FVCOby2 output */
+	CLKM_A0_PLL1,		/* FVCOby2 output */
+	CLKM_A0_PLL0_PHI0,	/* PHI0 (FVCOBY2/ODF0) */
+	CLKM_A0_PLL0_PHI1,	/* PHI1 (FVCOBY2/ODF1) */
+	CLKM_A0_PLL0_PHI2,	/* PHI2 (FVCOBY2/ODF2) */
+	CLKM_A0_PLL0_PHI3,	/* PHI3 (FVCOBY2/ODF3) */
+	CLKM_A0_PLL1_PHI0,	/* PHI0 (FVCOBY2/ODF0) */
+	CLKM_A0_PLL1_PHI1,	/* PHI1 (FVCOBY2/ODF1) */
+	CLKM_A0_PLL1_PHI2,	/* PHI2 (FVCOBY2/ODF2) */
+	CLKM_A0_PLL1_PHI3,	/* PHI3 (FVCOBY2/ODF3) */
+
+	CLKM_APB_PM,
+	CLKM_A0_SPARE_1,
+	CLKM_A0_SPARE_2,
+	CLKM_A0_SPARE_3,
+	CLKM_PP_DMU0,
+	CLKM_PP_DMU1,
+	CLKM_NOC_DISP,
+	CLKM_A0_SPARE_7,
+	CLKM_A0_SPARE_8,
+	CLKM_A0_SPARE_9,
+	CLKM_EXT2F_A9,
+	CLKM_ST40RT,
+	CLKM_ST231DMU0,
+	CLKM_ST231DMU1,
+	CLKM_ST231AUD,
+	CLKM_ST231GP0,
+	CLKM_ST231GP1,
+	CLKM_NOC_CPU,
+	CLKM_IC_STAC,
+	CLKM_IC_DMU0,
+	CLKM_IC_DMU1,
+	CLKM_A0_SPARE_21,
+	CLKM_A0_SPARE_22,
+	CLKM_A0_SPARE_23,
+	CLKM_A0_SPARE_24,
+	CLKM_A0_SPARE_25,
+	CLKM_A0_SPARE_26,
+	CLKM_A0_SPARE_27,
+	CLKM_A0_SPARE_28,
+	CLKM_A0_SPARE_29,
+	CLKM_IC_ERAM,
+	CLKM_TRACE_A9,
+	CLKM_EXT2F_A9_DIV2,	/* CLKM_EXT2F_A9 divided by 2 */
+
+	/* Clockgen A11 */
+	CLKM_A1_REF,		/* OSC clock */
+	CLKM_A1_PLL0,		/* FVCOby2 output */
+	CLKM_A1_PLL1,		/* FVCOby2 output */
+	CLKM_A1_PLL0_PHI0,
+	CLKM_A1_PLL0_PHI1,
+	CLKM_A1_PLL0_PHI2,
+	CLKM_A1_PLL0_PHI3,
+	CLKM_A1_PLL1_PHI0,
+	CLKM_A1_PLL1_PHI1,
+	CLKM_A1_PLL1_PHI2,
+	CLKM_A1_PLL1_PHI3,
+
+	CLKM_FDMA12,
+	CLKM_FDMA10,
+	CLKM_FDMA11,
+	CLKM_NOC_LMI,
+	CLKM_PROC_SC,
+	CLKM_PROC_TP,
+	CLKM_NOC_GPU,
+	CLKM_NOC_TV,
+	CLKM_IC_TV_MCTI,
+	CLKM_IC_TV,
+	CLKM_IC_TV_SC_STR,
+	CLKM_PRV_T1_BUS,
+	CLKM_IC_TARG_DEINT,
+	CLKM_IC_REG,
+	CLKM_A1_SPARE_14,
+	CLKM_A1_SPARE_15,
+	CLKM_A1_DIV16,		/* To mux for CLKM_PROC_VID */
+
+	/* Clockgen A12 */
+	CLKM_A2_REF,		/* OSC clock */
+	CLKM_A2_PLL0,		/* FVCOby2 output */
+	CLKM_A2_PLL1,		/* FVCOby2 output */
+	CLKM_A2_PLL0_PHI0,
+	CLKM_A2_PLL0_PHI1,
+	CLKM_A2_PLL0_PHI2,
+	CLKM_A2_PLL0_PHI3,
+	CLKM_A2_PLL1_PHI0,
+	CLKM_A2_PLL1_PHI1,
+	CLKM_A2_PLL1_PHI2,
+	CLKM_A2_PLL1_PHI3,
+
+	CLKM_VTAC_MAIN_PHY,
+	CLKM_VTAC_AUX_PHY,
+	CLKM_STAC_PHY,
+	CLKM_STAC_SYS,
+	CLKM_MPESTAC_PG,
+	CLKM_MPESTAC_WC,
+	CLKM_MPEVTACAUX_PG,
+	CLKM_MPEVTACMAIN_PG,
+	CLKM_MPEVTACRX0_WC,
+	CLKM_MPEVTACRX1_WC,
+	CLKM_PROC_COMPO_MAIN,
+	CLKM_PROC_COMPO_AUX,
+	CLKM_PROC_BDISP0,
+	CLKM_PROC_BDISP1,
+	CLKM_IC_BDISP0,
+	CLKM_IC_BDISP1,
+	CLKM_A2_SPARE_16,
+	CLKM_A2_SPARE_17,
+	CLKM_IC_COMPO,
+	CLKM_IC_VDPAUX,
+	CLKM_IC_TS,
+	CLKM_IC_REG_LP,
+	CLKM_DCEPHY_IMPCTRL,
+
+	/* Clockgen E (Internal video sources DMA) */
+	CLKM_E_REF,
+	CLKM_E_FS_VCO,		/* FS embedded PLL VCOCLK output */
+	CLKM_PIX_MDTP1,		/* FS out 0 */
+	CLKM_PIX_MDTP2,		/* FS out 1 */
+	CLKM_E_FS_2,		/* FS out 2 = SPARE */
+	CLKM_MPELPC,		/* FS out 3 = CLKM_MPE_THERMAL_SENS */
+
+	/* Clockgen F (Video post processing) */
+	CLKM_F_REF,
+	CLKM_F_FS_VCO,		/* FS embedded PLL VCOCLK output */
+	CLKM_PIX_MAIN_VIDFS,	/* FS out 0 = clk_hd VCC input */
+	CLKM_PIX_AUX_VIDFS,	/* FS out 1 = clk_sd VCC input */
+	CLKM_VCPU,		/* FS out 2 = clk_vcpu */
+	CLKM_F_FS_3,		/* FS out 3. To mux for CLKM_PROC_VID */
+
+	CLKM_PIX_MAIN_SAS,	/* PIX_HD from SAS = clk_hd_ext VCC input */
+	CLKM_PIX_AUX_SAS,	/* PIX_SD from SAS = clk_sd_ext VCC input */
+	CLKM_PIX_MAIN_OUT,	/* VCC out 0 */
+	CLKM_PIX_AUX_OUT,	/* VCC out 1 */
+
+	CLKM_PROC_VID,		/* Mux output. Inputs=CLKM_A1_DIV16 or CLKM_F_FS0_3 */
+
+	/* Clockgen DDR */
+	CLKM_DDR_REF,
+	CLKM_DDR_IC_LMI0,	/* PHI0 (FVCOBY2/ODF0) */
+	CLKM_DDR_IC_LMI1,	/* PHI1 (FVCOBY2/ODF1) */
+	CLKM_DDR_DDR0,		/* DDR0 clock (IC_LMIx4) */
+	CLKM_DDR_DDR1,		/* DDR0 clock (IC_LMIx4) */
+
+	/* CA9 PLL3200 */
+	CLKM_A9_REF,
+	CLKM_A9_PHI0,		/* PLL3200 FVCOBY2/ODF0 */
+	CLKM_A9,		/* CA9 clock */
+
+	/* MALI PLL1200 */
+	CLKM_MALI_REF,		/* CLK_REF_GPUPLL */
+	CLKM_MALI_PLL,		/* PLL1200 FVCO (no output)*/
+	CLKM_PHI_GPUPLL		/* PLL1200 PHI output (FVCO/ODF) */
+};

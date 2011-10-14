@@ -7,6 +7,7 @@
  * License. See linux/COPYING for more information.
  */
 
+#include <linux/err.h>
 #include <linux/interrupt.h>
 #include <linux/device.h>
 #include <linux/firmware.h>
@@ -27,7 +28,7 @@
 
 #define FDMA_MIN_CHANNEL 0
 #define FDMA_MAX_CHANNEL 15
-#define FDMA_MAX_DEVICES 3
+#define FDMA_MAX_DEVICES 5
 
 static char *fdma_channels[FDMA_MAX_DEVICES];
 module_param_array_named(channels, fdma_channels, charp, NULL, S_IRUGO);
@@ -245,7 +246,7 @@ static void fdma_start_channel(struct fdma_channel *channel,
 
 	/* See comment in fdma_get_residue() for why we do this. */
 	writel(initial_count, fdma->io_base + (channel->chan_num *
-			NODE_DATA_OFFSET) + fdma->regs.cntn);
+			fdma->regs.node_size) + fdma->regs.cntn);
 
 	writel(cmd_sta_value, CMD_STAT_REG(channel->chan_num));
 	writel(MBOX_CMD_START_CHANNEL << (channel->chan_num * 2),
@@ -371,20 +372,33 @@ static irqreturn_t fdma_irq(int irq, void *dev_id)
 
 /* Request lines management */
 
-static struct fdma_req_router *fdma_req_router;
+static LIST_HEAD(fdma_req_routers);
 
 int fdma_register_req_router(struct fdma_req_router *router)
 {
-	BUG_ON(fdma_req_router);
-
-	fdma_req_router = router;
+	list_add(&router->list, &fdma_req_routers);
 
 	return 0;
 }
 
 void fdma_unregister_req_router(struct fdma_req_router *router)
 {
-	fdma_req_router = NULL;
+	struct fdma_req_router *tmp, *next = NULL;
+
+	list_for_each_entry_safe(tmp, next, &fdma_req_routers, list)
+		if (tmp->xbar_id == router->xbar_id)
+			list_del(&tmp->list);
+}
+
+struct fdma_req_router *fdma_get_router(struct fdma *fdma)
+{
+	struct fdma_req_router *tmp, *router  = NULL;
+
+	list_for_each_entry(tmp, &fdma_req_routers, list)
+		if (tmp->xbar_id == fdma->xbar)
+			router = tmp;
+
+	return router;
 }
 
 static struct stm_dma_req *fdma_req_allocate(struct fdma_channel *channel,
@@ -393,16 +407,19 @@ static struct stm_dma_req *fdma_req_allocate(struct fdma_channel *channel,
 	struct fdma *fdma = channel->fdma;
 	struct stm_dma_req *req = NULL;
 	int req_line = -EINVAL;
+	struct fdma_req_router *router = NULL;
 
 	spin_lock(&fdma->reqs_lock);
 
-	if (fdma_req_router) {
+	router = fdma_get_router(fdma);
+
+	if (router) {
 		/* There is a request lines crossbar registered - we can
 		 * use any of the available "local" request lines... */
 		if (fdma->reqs_used_mask < ~0UL) {
 			req_line = ffz(fdma->reqs_used_mask);
 
-			if (fdma_req_router->route(fdma_req_router,
+			if (router->route(router,
 						soc_req_line, fdma->pdev->id,
 						req_line) == 0)
 				fdma->reqs_used_mask |= (1 << req_line);
@@ -412,7 +429,6 @@ static struct stm_dma_req *fdma_req_allocate(struct fdma_channel *channel,
 	} else {
 		/* No crossbar - request lines are connected directly then */
 		unsigned long mask = 1 << soc_req_line;
-
 		BUG_ON(soc_req_line < 0 || soc_req_line >= FDMA_REQ_LINES);
 
 		if ((fdma->reqs_used_mask & mask) == 0) {
@@ -689,7 +705,7 @@ static int fdma_do_bootload(struct fdma *fdma)
 	int result;
 
 	result = snprintf(fdma->fw_name, sizeof(fdma->fw_name),
-			  "fdma_%s_%d.elf", get_cpu_subtype(&current_cpu_data),
+			  "fdma_%s_%d.elf", stm_soc(),
 			  (fdma->pdev->id == -1) ? 0 : fdma->pdev->id);
 	BUG_ON(result >= sizeof(fdma->fw_name)); /* was the string truncated? */
 
@@ -764,7 +780,7 @@ static int fdma_get_residue(struct dma_channel *dma_chan)
 		struct fdma_xfer_descriptor *desc =
 			(struct fdma_xfer_descriptor *)params->priv;
 		void __iomem *chan_base = fdma->io_base +
-				(channel->chan_num * NODE_DATA_OFFSET);
+				(channel->chan_num * fdma->regs.node_size);
 		unsigned long current_node_phys;
 		unsigned long stat1, stat2;
 		struct fdma_llu_node *current_node;
@@ -1306,11 +1322,11 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	fdma->phys_mem = request_mem_region(res->start,
-			res->end - res->start + 1, pdev->name);
+				resource_size(res), pdev->name);
 	if (fdma->phys_mem == NULL)
 		return -EBUSY;
 
-	fdma->io_base = ioremap_nocache(res->start, res->end - res->start + 1);
+	fdma->io_base = ioremap_nocache(res->start, resource_size(res));
 	if (fdma->io_base == NULL)
 		return -EINVAL;
 
@@ -1323,6 +1339,7 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 
 	fdma->fw = plat_data->fw;
 	fdma->hw = plat_data->hw;
+	fdma->xbar = plat_data->xbar;
 
 	fdma->regs.id = fdma->hw->slim_regs.id;
 	fdma->regs.ver = fdma->hw->slim_regs.ver;
@@ -1335,6 +1352,7 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 	fdma->regs.cntn = fdma->fw->cntn;
 	fdma->regs.saddrn = fdma->fw->saddrn;
 	fdma->regs.daddrn = fdma->fw->daddrn;
+	fdma->regs.node_size = fdma->fw->node_size ? : LEGACY_NODE_DATA_SIZE;
 	fdma->regs.sync_reg = fdma->hw->periph_regs.sync_reg;
 	fdma->regs.cmd_sta = fdma->hw->periph_regs.cmd_sta;
 	fdma->regs.cmd_set = fdma->hw->periph_regs.cmd_set;

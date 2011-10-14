@@ -28,6 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/bpa2.h>
 #include <linux/stm/stm-dma.h>
+#include <linux/stm/platform.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/info.h>
@@ -62,7 +63,7 @@ static int snd_stm_card_registered;
 int snd_stm_card_register(void)
 {
 	int result;
-	const char *soc_type = get_cpu_subtype(cpu_data);
+	const char *soc_type = stm_soc();
 
 	BUG_ON(!soc_type);
 	BUG_ON(!snd_stm_card);
@@ -74,15 +75,15 @@ int snd_stm_card_register(void)
 	strlcpy(snd_stm_card->driver, soc_type, sizeof(snd_stm_card->driver));
 	snprintf(snd_stm_card->shortname, sizeof(snd_stm_card->shortname),
 			"%s audio subsystem", soc_type);
-	if (cpu_data->cut_minor < 0)
+	if (stm_soc_version_minor() < 0)
 		snprintf(snd_stm_card->longname, sizeof(snd_stm_card->longname),
-				"STMicroelectronics %s cut %d.x SOC audio "
-				"subsystem", soc_type, cpu_data->cut_major);
+				"STMicroelectronics %s cut %lu.x SOC audio "
+				"subsystem", soc_type, stm_soc_version_major());
 	else
 		snprintf(snd_stm_card->longname, sizeof(snd_stm_card->longname),
-				"STMicroelectronics %s cut %d.%d SOC audio "
-				"subsystem", soc_type, cpu_data->cut_major,
-				cpu_data->cut_minor);
+				"STMicroelectronics %s cut %lu.%lu SOC audio "
+				"subsystem", soc_type, stm_soc_version_major(),
+				stm_soc_version_minor());
 
 	result = snd_card_register(snd_stm_card);
 
@@ -210,6 +211,31 @@ int snd_stm_fdma_request(struct platform_device *pdev, int *channel)
 	return 0;
 }
 
+
+int snd_stm_fdma_request_by_name(struct platform_device *pdev, int *channel,
+		const char *fdma_name)
+{
+	static const char *fdmac_id[] = { NULL, NULL };
+	static const char *fdma_cap_lb[] = { STM_DMA_CAP_LOW_BW, NULL };
+	static const char *fdma_cap_hb[] = { STM_DMA_CAP_HIGH_BW, NULL };
+
+	BUG_ON(!fdma_name);
+
+	fdmac_id[0] = fdma_name;
+
+	*channel = request_dma_bycap(fdmac_id, fdma_cap_lb, pdev->name);
+	if (*channel < 0) {
+		*channel = request_dma_bycap(fdmac_id, fdma_cap_hb, pdev->name);
+		if (*channel < 0) {
+			snd_stm_printe("Failed to request_dma_bycap()==%d!\n",
+					*channel);
+			return -ENODEV;
+		}
+	}
+	snd_stm_printd(0, "FDMA channel: %d\n", *channel);
+
+	return 0;
+}
 
 
 /*

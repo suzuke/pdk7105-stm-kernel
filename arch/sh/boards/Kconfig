@@ -373,6 +373,14 @@ config SH_ST_ADI7108
 	  Select SH_ST_ADI7108 if configuring for a
 	  STMicroelectronics STi7108-ADI Reference Board.
 
+config SH_ST_B2000
+	bool "B2000: STiH415 (Orly) processor module board"
+	depends on CPU_SUBTYPE_STIH415
+	default n
+	help
+	  Select SH_ST_B2000 if configuring for a
+	  STMicroelectronics STiH415 (Orly) processor module board.
+
 config SH_ST_CAB5197
 	bool "CAB5197: STx5197 CAB reference board"
 	depends on CPU_SUBTYPE_STX5197
@@ -417,6 +425,23 @@ config SH_ST_HDK5289
 	  Select this if configuring for an
 	  STMicroelectronics STi5289 HDK Reference Board.
 
+config SH_ST_DTT5250
+	bool "DTT5250 : STx5250 DTT Reference board"
+	depends on CPU_SUBTYPE_STX5206
+	default n
+	help
+	  Select this if configuring for an
+	  STMicroelectronics STi5250 DTT Reference Board.
+
+config SH_ST_HDK5250
+	bool "HDK5250 : STx5250 HDK Reference board"
+	depends on CPU_SUBTYPE_STX5206
+	select SYS_SUPPORTS_PCI
+	default n
+	help
+	  Select this if configuring for an
+	  STMicroelectronics STi5250 HDK Reference Board.
+
 config SH_ST_HDK7105
 	bool "HDK7105 : STx7105 HDK Reference board"
 	depends on CPU_SUBTYPE_STX7105
@@ -425,6 +450,14 @@ config SH_ST_HDK7105
 	help
 	  Select HDK7105 if configuring for an
 	  STMicroelectronics STi7105 HDK Reference Board.
+
+config SH_ST_HDKH246
+	bool "HDKH246 : STi235/236/246 Reference boards"
+	depends on CPU_SUBTYPE_STX7105
+	default n
+	help
+	  Select HDKH246 if configuring for an
+	  STMicroelectronics STiH235/H236/H246 Reference Boards.
 
 config SH_ST_HDKH251
 	bool "HDKH251 : STiH251 HDK Reference board"
@@ -798,6 +831,8 @@ source "arch/sh/boards/mach-mb837/Kconfig"
 source "arch/sh/boards/mach-mb671/Kconfig"
 source "arch/sh/boards/mach-hdk7106/Kconfig"
 source "arch/sh/boards/mach-hdk7108/Kconfig"
+source "arch/sh/boards/mach-adi7108/Kconfig"
+source "arch/sh/boards/mach-b2000/Kconfig"
 
 if SH_MAGIC_PANEL_R2
 

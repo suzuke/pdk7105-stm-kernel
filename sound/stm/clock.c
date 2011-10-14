@@ -22,7 +22,7 @@
  */
 
 #include <linux/slab.h>
-#include <asm/clock.h>
+#include <linux/stm/clk.h>
 #include <asm/div64.h>
 #include <sound/core.h>
 

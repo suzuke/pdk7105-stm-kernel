@@ -551,9 +551,11 @@ static void free_dma_desc_resources(struct stmmac_priv *priv)
  */
 static void stmmac_dma_operation_mode(struct stmmac_priv *priv)
 {
-	if (likely((priv->plat->tx_coe) && (!priv->no_csum_insertion))) {
-		/* In case of GMAC, SF mode has to be enabled
-		 * to perform the TX COE. This depends on:
+	if (likely(priv->plat->force_sf_dma_mode ||
+		((priv->plat->tx_coe) && (!priv->no_csum_insertion)))) {
+		/*
+		 * In case of GMAC, SF mode can be enabled
+		 * to perform the TX COE in HW. This depends on:
 		 * 1) TX COE if actually supported
 		 * 2) There is no bugged Jumbo frame support
 		 *    that needs to not insert csum in the TDES.
@@ -573,6 +575,8 @@ static void stmmac_dma_operation_mode(struct stmmac_priv *priv)
 static void stmmac_tx(struct stmmac_priv *priv)
 {
 	unsigned int txsize = priv->dma_tx_size;
+
+	spin_lock(&priv->tx_lock);
 
 	while (priv->dirty_tx != priv->cur_tx) {
 		int last;
@@ -637,6 +641,7 @@ static void stmmac_tx(struct stmmac_priv *priv)
 		}
 		netif_tx_unlock(priv->dev);
 	}
+	spin_unlock(&priv->tx_lock);
 }
 
 static inline void stmmac_enable_irq(struct stmmac_priv *priv)
@@ -1005,7 +1010,15 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		       !skb_is_gso(skb) ? "isn't" : "is");
 #endif
 
-	csum_insertion = (skb->ip_summed == CHECKSUM_PARTIAL);
+	spin_lock(&priv->tx_lock);
+
+	if (likely((skb->ip_summed == CHECKSUM_PARTIAL))) {
+		if (unlikely((!priv->plat->tx_coe) ||
+			     (priv->no_csum_insertion)))
+			skb_checksum_help(skb);
+		else
+			csum_insertion = 1;
+	}
 
 	desc = priv->dma_tx + entry;
 	first = desc;
@@ -1077,6 +1090,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	priv->hw->dma->enable_dma_transmission(priv->ioaddr);
 
+	spin_unlock(&priv->tx_lock);
 	return NETDEV_TX_OK;
 }
 
@@ -1478,6 +1492,7 @@ static int stmmac_probe(struct net_device *dev)
 			"please, use ifconfig or nwhwconfig!\n");
 
 	spin_lock_init(&priv->lock);
+	spin_lock_init(&priv->tx_lock);
 
 	ret = register_netdev(dev);
 	if (ret) {

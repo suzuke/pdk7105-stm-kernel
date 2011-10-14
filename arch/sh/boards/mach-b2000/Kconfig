@@ -1,0 +1,101 @@
+if SH_ST_B2000
+
+menu "B2000: STiH415 Mboard options"
+
+choice
+	prompt "B2000: card selection on CN22 connector"
+	default STM_CN22_NONE
+	help
+	  Select the appropriate version of the GMAC0 Ethernet card.
+	  This controls the way Ethernet connection mode with PHY.
+
+config STM_CN22_NONE
+       bool "None"
+       help
+         No Ethernet card is plugged into CN22 of the B2000.
+
+config STM_GMAC0_B2032_CARD
+	bool "B2032A Card on GMAC0"
+	help
+	  B2032A Ethernet card on CN22 of B2000,
+
+config STM_GMAC0_B2032_CARD_GMII_MODE
+	bool "B2032A GMII modified Card on GMAC0"
+	help
+	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
+
+config STM_GMAC0_B2035_CARD
+	bool "B2035 on GMAC0"
+	help
+	  B2035 connected to CN22 of B2000
+
+config STM_MMC_B2048A_CARD
+	bool "B2048A - eMMC/MMC Module"
+	help
+	  B2048A connected to CN22 of B2000.
+	  There are two versions of this modules:
+	  a card with the embedded MMC and onther one
+	  with the MMC/SD slot.
+
+endchoice
+
+choice
+	prompt  "B2048A slot/eMMC selection"
+	depends on STM_MMC_B2048A_CARD
+	default STM_B2048A_MMC_EMMC
+	help
+	  Select if the board has the eMMC or the MMC/SD slot.
+
+config	STM_B2048A_MMC_SLOT
+	bool "Multi Media Card slot on daughter board"
+	depends on STM_MMC_B2048A_CARD
+	help
+	  Select this option if the board has an MMC card slot.
+
+config	STM_B2048A_MMC_EMMC
+	bool "Embedded Multi Media Card (eMMC) on daughter board"
+	help
+	  Select this option if the board has an eMMC device.
+
+endchoice
+
+choice
+	prompt "B2000: card selection on CN23 connector"
+	default STM_GMAC1_B2032_CARD
+	help
+	  Select the appropriate version of the GMAC1 Ethernet card.
+	  This controls the way Ethernet connection mode with PHY.
+
+config STM_CN23_NONE
+       bool "None"
+       help
+         No Ethernet card is plugged into CN23 of the B2000.
+
+config STM_GMAC1_B2032_CARD
+	bool "B2032A Card on GMAC1"
+	help
+	  B2032A Ethernet card on CN23 of B2000.
+
+config STM_GMAC1_B2032_CARD_GMII_MODE
+	bool "B2032A GMII modified Card on GMAC0"
+	help
+	  B2032A modified (add R26) Ethernet card on CN23 of B2000.
+
+config STM_GMAC1_B2035_CARD
+	bool "B2035 on GMAC1"
+	help
+	  B2035 connected to CN23 of B2000
+
+endchoice
+
+
+config STM_B2000_MALI_OS_MEMORY_SIZE
+	hex "Maximum Mali GPU OS memory size"
+	default "0x5000000"
+	help
+	  Specify the size of memory which the Mali driver is allowed to allocate
+	  from Linux kernel.
+
+endmenu
+
+endif

@@ -184,7 +184,7 @@ void __cpuinit cpu_probe(void)
 		boot_cpu_data.flags |= CPU_HAS_FPU;
 		boot_cpu_data.flags &= ~CPU_HAS_PTEA;
 		break;
-	case 0x9090 ... 0x9093:
+	case 0x9090 ... 0x9094:
 		/* ST40-300 core */
 		switch (prr_all) {
 		case 0x0010:
@@ -230,6 +230,9 @@ void __cpuinit cpu_probe(void)
 			break;
 		case 0xa500 ... 0xa5ff:
 			boot_cpu_data.type = CPU_FLI7520;
+			break;
+		case 0xa800 ... 0xa8ff:
+			boot_cpu_data.type = CPU_STIH415;
 			break;
 		default:
 			boot_cpu_data.type = CPU_SH_NONE;

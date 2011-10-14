@@ -26,6 +26,24 @@ void __iomem *twd_base;
 
 static unsigned long twd_timer_rate;
 
+static int __init twd_timer_rate_setup(char *str)
+{
+	char* units;
+	twd_timer_rate = simple_strtoul(str,&units,0);
+	switch (*units) {
+	case 'm':
+	case 'M':
+		twd_timer_rate *= 1000000;
+		break;
+	case 'k':
+	case 'K':
+		twd_timer_rate *= 1000;
+		break;
+	}
+	return 1;
+}
+__setup("twd_timer_rate=", twd_timer_rate_setup);
+
 static void twd_set_mode(enum clock_event_mode mode,
 			struct clock_event_device *clk)
 {

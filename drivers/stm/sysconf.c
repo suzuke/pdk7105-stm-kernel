@@ -68,7 +68,7 @@ static DEFINE_SPINLOCK(sysconf_registers_lock);
 
 
 /* We need a small stash of allocations before kmalloc becomes available */
-#define NUM_EARLY_FIELDS	128
+#define NUM_EARLY_FIELDS	256
 #define EARLY_BITS_MAPS_SIZE	DIV_ROUND_UP(NUM_EARLY_FIELDS, BITS_PER_LONG)
 
 static struct sysconf_field early_fields[NUM_EARLY_FIELDS];
@@ -632,10 +632,14 @@ void __init sysconf_early_init(struct platform_device *pdevs, int pdevs_num)
 		BUG_ON(!mem);
 
 		block->size = mem->end - mem->start + 1;
-		block->base = ioremap(mem->start, block->size);
-		if (!block->base)
-			panic("Unable to ioremap %s registers!",
-			      dev_name(&block->pdev->dev));
+		if (data->regs)
+			block->base = data->regs;
+		else {
+			block->base = ioremap(mem->start, block->size);
+			if (!block->base)
+				panic("Unable to ioremap %s registers!",
+				      dev_name(&block->pdev->dev));
+		}
 
 		sysconf_groups_num += data->groups_num;
 	}

@@ -32,9 +32,6 @@
 #include <linux/stm/sysconf.h>
 #include <asm/irq-ilc.h>
 
-#undef GMAC_RGMII_MODE
-/*#define GMAC_RGMII_MODE*/
-
 /*
  * The FLASH devices are configured according to the boot-mode:
  *
@@ -530,6 +527,14 @@ static int __init device_init(void)
 			});
 	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
 	stx7108_configure_sata(1, &(struct stx7108_sata_config) { });
+
+#elif defined(CONFIG_SH_ST_HDK7108_VER2_2_BOARD)
+	/* PCIe + 1 SATA */
+	stx7108_configure_miphy(&(struct stx7108_miphy_config) {
+			.modes = (enum miphy_mode[2]) {
+				SATA_MODE, PCIE_MODE },
+			});
+	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
 #endif
 
 
@@ -551,7 +556,7 @@ static int __init device_init(void)
 	 *
 	 * On the HDK7108V1/2: remove R31 and place it at R39.
 	 *
-	 * RGMII more requires the following HW change (on both
+	 * RGMII mode requires the following HW change (on both
 	 * HDK7108V1 and HDK7108V2): remove R29 and place it at R37
 	 *
 	 */

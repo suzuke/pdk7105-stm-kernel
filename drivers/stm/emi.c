@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/err.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/device.h>
 #include <linux/stm/clk.h>

@@ -77,6 +77,7 @@
 #include <linux/interrupt.h>
 #include <linux/wait.h>
 #include <linux/errno.h>
+#include <linux/err.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/ssc.h>
 #include "i2c-stm.h"
@@ -981,9 +982,9 @@ static void iic_stm_setup_timing(struct iic_ssc *adap)
 #endif
 	unsigned long ns_per_clk, clock ;
 
-	dbg_print("Assuming %lu MHz for the Timing Setup\n", clock / 1000000);
 
 	clock = clk_get_rate(adap->clk) + 500000; /* +0.5 Mhz for rounding */
+	dbg_print("Assuming %lu MHz for the Timing Setup\n", clock / 1000000);
 	ns_per_clk = NANOSEC_PER_SEC / clock;
 
 	if (check_fastmode(adap)) {
@@ -1197,9 +1198,9 @@ static int __init iic_stm_probe(struct platform_device *pdev)
 	i2c_stm->adapter.algo = &iic_stm_algo;
 	i2c_stm->adapter.dev.parent = &(pdev->dev);
 	i2c_stm->clk = clk_get(&(pdev->dev), "comms_clk");
-	if (!i2c_stm->clk) {
+	if (IS_ERR(i2c_stm->clk)) {
 		dev_err(&pdev->dev, "Comms clock not found!\n");
-		return -ENODEV;
+		return PTR_ERR(i2c_stm->clk);
 	}
 
 	clk_enable(i2c_stm->clk);

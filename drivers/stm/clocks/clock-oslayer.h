@@ -16,6 +16,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/gpio.h>
 #include <linux/stm/pio.h>
+#include <linux/stm/platform.h>
 #include <asm-generic/errno-base.h>
 
 #define clk_t	struct clk
@@ -37,6 +38,23 @@
 
 #define SYSCONF_WRITE(type, num, lsb, msb, value)	\
 	sysconf_write(sys_##type##_##num##_##lsb##_##msb, value)
+
+/*
+ * New ST chips use a unique ID number for all the sysconf registers
+ * On these chips (to maintain the sysconf API Linus has) the
+ * platform_sys_claim and call_platform_sys_claim are used
+ *
+ *
+ * The platform_sys_claim is used to be able to compile
+ * file __without__ any include chip based
+ * the platform_sys_claim has to be implemented
+ * in a chip-oriented file
+ */
+struct sysconf_field *platform_sys_claim(int nr, int lsb, int msb);
+
+#define call_platform_sys_claim(_nr, _lsb, _msb)		\
+	sys_0_##_nr##_##_lsb##_##_msb =				\
+		platform_sys_claim(_nr, _lsb, _msb)
 
 static inline
 void PIO_SET_MODE(unsigned long bank, unsigned long line, long mode)
@@ -85,6 +103,13 @@ static struct clk_ops  _name = {					\
 		.rate = (_rate),					\
 }
 
+#define _CLK_FIXED(_id, _rate, _flags)					\
+[_id] = (clk_t) {							\
+		.name = #_id,						\
+		.id = (_id),						\
+		.rate = (_rate),					\
+		.flags = (_flags),					\
+}
 
 /* Low level API errors */
 enum clk_err {
@@ -97,7 +122,7 @@ enum clk_err {
 /* Retrieving chip cut (major) */
 static inline unsigned long chip_major_version(void)
 {
-	return cpu_data->cut_major;
+	return stm_soc_version_major();
 }
 
 #endif /* #ifndef __CLKLLA_OSLAYER_H */

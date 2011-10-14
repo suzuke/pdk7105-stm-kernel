@@ -25,7 +25,6 @@
 
 #include "clock-oslayer.h"
 #include "clock-common.h"
-#include "clock-utils.h"
 
 static int clkgena_set_parent(clk_t *clk_p, clk_t *src_p);
 static int clkgena_set_rate(clk_t *clk_p, unsigned long freq);

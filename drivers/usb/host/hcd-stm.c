@@ -172,6 +172,7 @@ static struct platform_device
 
 	pdev->dev.parent = &parent->dev;
 	pdev->dev.dma_mask = parent->dev.dma_mask;
+	pdev->dev.coherent_dma_mask = parent->dev.coherent_dma_mask;
 
 	retval = platform_device_add(pdev);
 	if (retval)

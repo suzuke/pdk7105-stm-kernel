@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
+#include <linux/clkdev.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/nand.h>
 #include <linux/stmmac.h>
@@ -59,9 +60,22 @@
 			.flags = IORESOURCE_IRQ, \
 		}
 
-#else
+#elif defined(CONFIG_ARCH_ST200)
 
-#error Unknown architecture
+#define STM_PLAT_RESOURCE_IRQ(_st40, _st200) \
+		{ \
+			.start = (_st200), \
+			.end = (_st200), \
+			.flags = IORESOURCE_IRQ, \
+		}
+
+#define STM_PLAT_RESOURCE_IRQ_NAMED(_name, _st40, _st200) \
+		{ \
+			.start = (_st200), \
+			.end = (_st200), \
+			.name = (_name), \
+			.flags = IORESOURCE_IRQ, \
+		}
 
 #endif
 
@@ -87,7 +101,9 @@
 struct stm_plat_asc_data {
 	int hw_flow_control:1;
 	int txfifo_bug:1;
+	int force_m1:1;
 	struct stm_pad_config *pad_config;
+	void __iomem *regs;
 };
 
 extern int stm_asc_console_device;
@@ -98,7 +114,6 @@ extern struct platform_device *stm_asc_configured_devices[];
 struct stm_plat_rtc_lpc {
 	unsigned int no_hw_req:1;	/* iomem in sys/serv 5197 */
 	unsigned int need_wdt_reset:1;	/* W/A on 7141 */
-	unsigned int need_wdt_start:1;	/* W/A on 7108 */
 	unsigned char irq_edge_level;
 	char *clk_id;
 };
@@ -243,6 +258,10 @@ struct stm_plat_sata_data {
 
 /*** PIO platform data ***/
 
+struct stm_plat_pio_data {
+	void __iomem *regs;
+};
+
 struct stm_plat_pio_irqmux_data {
 	int port_first;
 	int ports_num;
@@ -269,6 +288,7 @@ struct stm_plat_sysconf_group {
 struct stm_plat_sysconf_data {
 	int groups_num;
 	struct stm_plat_sysconf_group *groups;
+	void __iomem *regs;
 };
 
 
@@ -353,11 +373,18 @@ struct stm_plat_fdma_fw_regs {
 	unsigned long cntn;
 	unsigned long saddrn;
 	unsigned long daddrn;
+	unsigned long node_size;
 };
 
 struct stm_plat_fdma_data {
 	struct stm_plat_fdma_hw *hw;
 	struct stm_plat_fdma_fw_regs *fw;
+	u8 xbar;
+};
+
+struct stm_plat_fdma_xbar_data {
+	u8 first_fdma_id;
+	u8 last_fdma_id;
 };
 
 
@@ -504,5 +531,66 @@ struct stm_mali_config {
 	int num_ext_resources;
 	struct stm_mali_resource *ext_mem;
 };
+
+#ifdef CONFIG_SUPERH
+#include <asm/processor.h>
+static inline const char* stm_soc(void)
+{
+	return get_cpu_subtype(&current_cpu_data);
+}
+
+static inline unsigned long stm_soc_type(void)
+{
+	return cpu_data->type;
+}
+
+static inline unsigned long stm_soc_version_major(void)
+{
+	return cpu_data->cut_major;
+}
+
+static inline unsigned long stm_soc_version_minor(void)
+{
+	return cpu_data->cut_minor;
+}
+#else
+#define CPU_STIH415 0x57100415
+
+static inline const char* stm_soc(void)
+{
+	return "STiH415";
+}
+
+static inline unsigned long stm_soc_type(void)
+{
+	return CPU_STIH415;
+}
+
+static inline unsigned long stm_soc_version_major(void)
+{
+	return 1;
+}
+
+static inline unsigned long stm_soc_version_minor(void)
+{
+	return 0;
+}
+#endif
+
+static inline int clk_add_alias_platform_device(const char *alias,
+	struct platform_device *pdev, char *id, struct device *dev)
+{
+	char dev_name_buf[20];
+	const char* dev_name;
+
+	if (pdev->id == -1) {
+		dev_name = pdev->name;
+	} else {
+		snprintf(dev_name_buf, sizeof(dev_name_buf), "%s.%d",
+			pdev->name, pdev->id);
+		dev_name = dev_name_buf;
+	}
+	return clk_add_alias(alias, dev_name, id, dev);
+}
 
 #endif /* __LINUX_STM_PLATFORM_H */

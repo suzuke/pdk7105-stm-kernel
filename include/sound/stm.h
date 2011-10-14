@@ -224,6 +224,24 @@ struct snd_stm_conv_i2sspdif_info {
 
 
 /*
+ * Bi-phase formatter converter description (platform data)
+ */
+
+struct snd_stm_conv_biphase_info {
+	const char *source_bus_id;
+	int channel_from, channel_to;
+
+	struct {
+		int group;
+		int num;
+		int lsb;
+		int msb;
+	} enable;
+};
+
+
+
+/*
  * PCM Player description (platform data)
  */
 
@@ -236,6 +254,7 @@ struct snd_stm_pcm_player_info {
 
 	unsigned int channels;
 
+	const char *fdma_name;
 	unsigned char fdma_initiator;
 	unsigned int fdma_request_line;
 
@@ -256,6 +275,7 @@ struct snd_stm_pcm_reader_info {
 
 	int channels;
 
+	const char *fdma_name;
 	unsigned char fdma_initiator;
 	unsigned int fdma_request_line;
 
@@ -275,6 +295,38 @@ struct snd_stm_spdif_player_info {
 	int card_device;
 	const char *clock_name;
 
+	const char *fdma_name;
+	unsigned char fdma_initiator;
+	unsigned int fdma_request_line;
+
+	struct stm_pad_config *pad_config;
+};
+
+
+
+/*
+ * Uniperipheral player description (platform data)
+ */
+
+enum snd_stm_uniperif_player_type {
+	SND_STM_UNIPERIF_PLAYER_TYPE_NONE,
+	SND_STM_UNIPERIF_PLAYER_TYPE_HDMI,
+	SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
+	SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF
+};
+
+struct snd_stm_uniperif_player_info {
+	const char *name;
+	int ver;
+
+	int card_device;
+	enum snd_stm_uniperif_player_type player_type;
+
+	const char *clock_name;
+
+	unsigned int channels;
+
+	const char *fdma_name;
 	unsigned char fdma_initiator;
 	unsigned int fdma_request_line;
 

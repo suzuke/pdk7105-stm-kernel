@@ -63,6 +63,16 @@ static int adi7108_phy1_reset(void *bus)
 }
 
 
+static void adi7108_mii_txclk_select(int txclk_250_not_25_mhz)
+{
+	/* When 1000 speed is negotiated we have to set the PIO21[7]. */
+	if (txclk_250_not_25_mhz)
+		gpio_set_value(ADI7108_GPIO_MII1_SPEED_SEL, 1);
+	else
+		gpio_set_value(ADI7108_GPIO_MII1_SPEED_SEL, 0);
+}
+
+#ifdef CONFIG_SH_ST_ADI7108_STMMAC0
 static int adi7108_phy0_reset(void *bus)
 {
 	static int done;
@@ -77,20 +87,12 @@ static int adi7108_phy0_reset(void *bus)
 	return 1;
 }
 
-static void adi7108_mii_txclk_select(int txclk_250_not_25_mhz)
-{
-	/* When 1000 speed is negotiated we have to set the PIO21[7]. */
-	if (txclk_250_not_25_mhz)
-		gpio_set_value(ADI7108_GPIO_MII1_SPEED_SEL, 1);
-	else
-		gpio_set_value(ADI7108_GPIO_MII1_SPEED_SEL, 0);
-}
-
 static struct stmmac_mdio_bus_data stmmac0_mdio_bus = {
 	.bus_id = 0,
 	.phy_reset = adi7108_phy0_reset,
 	.phy_mask = 0,
 };
+#endif /* CONFIG_SH_ST_ADI7108_STMMAC0 */
 
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
 	.bus_id = 1,
@@ -260,6 +262,14 @@ static int __init device_init(void)
 	stx7108_configure_usb(1);
 	stx7108_configure_usb(2);
 
+/*-------------------------------------------------------------
+ * 		      |  Ver1.0    VerB    VerC      VerD
+ * SATA 0/1 connector | E-sata0+1 E-sata0 E-sata0 Sata on board
+ * PCI-e Connector    |		   √	   √
+ *-------------------------------------------------------------*/
+#if defined(CONFIG_SH_ST_ADI7108_VER_B_BOARD) || \
+	defined(CONFIG_SH_ST_ADI7108_VER_C_BOARD)
+
 	stx7108_configure_miphy(&(struct stx7108_miphy_config) {
 			.modes = (enum miphy_mode[2]) {
 				SATA_MODE, PCIE_MODE },
@@ -267,19 +277,32 @@ static int __init device_init(void)
 
 	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
 
-#if 0
+#elif defined(CONFIG_SH_ST_ADI7108_VER_D_BOARD) || \
+	defined(CONFIG_SH_ST_ADI7108_VER_1_0_BOARD)
+	stx7108_configure_miphy(&(struct stx7108_miphy_config) {
+			.modes = (enum miphy_mode[2]) {
+				SATA_MODE, SATA_MODE },
+			});
+
+	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
+	stx7108_configure_sata(1, &(struct stx7108_sata_config) { });
+#endif
+
+#ifdef CONFIG_SH_ST_ADI7108_STMMAC0
+	/* By default the RJ45 connector is removed on this board. */
+
 	gpio_request(ADI7108_PIO_POWER_ON_ETHERNET0, "POWER_ON_ETHERNET");
 	gpio_direction_output(ADI7108_PIO_POWER_ON_ETHERNET0, 0);
 
 
-	stx7108_configure_ethernet(&(struct stx7108_ethernet_config) {
+	stx7108_configure_ethernet(0, &(struct stx7108_ethernet_config) {
 			.mode = stx7108_ethernet_mode_mii,
 			.ext_clk = 1,
 			.phy_bus = 0,
 			.phy_addr = -1,
 			.mdio_bus_data = &stmmac0_mdio_bus,
 		});
-#else
+#endif /* CONFIG_SH_ST_ADI7108_STMMAC0 */
 	/* To use the MII/GMII mode.
 	 *
 	 *		RP1 	MII1_EN
@@ -303,8 +326,6 @@ static int __init device_init(void)
 			.phy_addr = 1,
 			.mdio_bus_data = &stmmac1_mdio_bus,
 		});
-
-#endif
 
 	stx7108_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_flex,
