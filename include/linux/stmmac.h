@@ -26,14 +26,16 @@
 #ifndef __STMMAC_PLATFORM_DATA
 #define __STMMAC_PLATFORM_DATA
 
+#include <linux/platform_device.h>
+
 /* Platfrom data for platform device structure's platform_data field */
 
 struct stmmac_mdio_bus_data {
 	int bus_id;
 	int (*phy_reset)(void *priv);
 	unsigned int phy_mask;
-	int *irqs;		/* List of IRQs, one per PHY */
-	int probed_phy_irq;	/* If irqs is NULL, use this for probed PHY */
+	int *irqs;
+	int probed_phy_irq;
 };
 
 struct plat_stmmacenet_data {

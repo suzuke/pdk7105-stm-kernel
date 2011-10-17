@@ -120,17 +120,22 @@ static void l2x0_cache_sync(void)
 	spin_unlock_irqrestore(&l2x0_lock, flags);
 }
 
+static void __l2x0_flush_all(void)
+{
+	debug_writel(0x03);
+	writel_relaxed(l2x0_way_mask, l2x0_base + L2X0_CLEAN_INV_WAY);
+	cache_wait_way(l2x0_base + L2X0_CLEAN_INV_WAY, l2x0_way_mask);
+	cache_sync();
+	debug_writel(0x00);
+}
+
 static void l2x0_flush_all(void)
 {
 	unsigned long flags;
 
 	/* clean all ways */
 	spin_lock_irqsave(&l2x0_lock, flags);
-	debug_writel(0x03);
-	writel_relaxed(l2x0_way_mask, l2x0_base + L2X0_CLEAN_INV_WAY);
-	cache_wait_way(l2x0_base + L2X0_CLEAN_INV_WAY, l2x0_way_mask);
-	cache_sync();
-	debug_writel(0x00);
+	__l2x0_flush_all();
 	spin_unlock_irqrestore(&l2x0_lock, flags);
 }
 
@@ -266,8 +271,29 @@ static void l2x0_disable(void)
 	unsigned long flags;
 
 	spin_lock_irqsave(&l2x0_lock, flags);
-	writel(0, l2x0_base + L2X0_CTRL);
+	__l2x0_flush_all();
+	writel_relaxed(0, l2x0_base + L2X0_CTRL);
+	dsb();
 	spin_unlock_irqrestore(&l2x0_lock, flags);
+}
+
+static void __init l2x0_unlock(__u32 cache_id)
+{
+	int lockregs;
+	int i;
+
+	if (cache_id == L2X0_CACHE_ID_PART_L310)
+		lockregs = 8;
+	else
+		/* L210 and unknown types */
+		lockregs = 1;
+
+	for (i = 0; i < lockregs; i++) {
+		writel_relaxed(0x0, l2x0_base + L2X0_LOCKDOWN_WAY_D_BASE +
+			       i * L2X0_LOCKDOWN_STRIDE);
+		writel_relaxed(0x0, l2x0_base + L2X0_LOCKDOWN_WAY_I_BASE +
+			       i * L2X0_LOCKDOWN_STRIDE);
+	}
 }
 
 void __init l2x0_init(void __iomem *base, __u32 aux_val, __u32 aux_mask)
@@ -321,6 +347,8 @@ void __init l2x0_init(void __iomem *base, __u32 aux_val, __u32 aux_mask)
 	 * accessing the below registers will fault.
 	 */
 	if (!(readl_relaxed(l2x0_base + L2X0_CTRL) & 1)) {
+		/* Make sure that I&D is not locked down when starting */
+		l2x0_unlock(cache_id);
 
 		/* l2x0 controller is disabled */
 		writel_relaxed(aux, l2x0_base + L2X0_AUX_CTRL);

@@ -196,8 +196,6 @@ config IBM_BSR
 	  of threads across a large system which avoids bouncing a cacheline
 	  between several cores on a system
 
-source "drivers/char/lirc/Kconfig"
-
 source "drivers/char/ipmi/Kconfig"
 
 config DS1620
@@ -618,11 +616,16 @@ config MSM_SMD_PKT
 	  Enables userspace clients to read and write to some packet SMD
 	  ports via device interface for MSM chipset.
 
-#KPROBE-SH
-config KPROBE_EXAMPLE
-        tristate "kprobe example"
-	depends on KPROBES
-#KPROBE-SH
+config TILE_SROM
+	bool "Character-device access via hypervisor to the Tilera SPI ROM"
+	depends on TILE
+	default y
+	---help---
+	  This device provides character-level read-write access
+	  to the SROM, typically via the "0", "1", and "2" devices
+	  in /dev/srom/.  The Tilera hypervisor makes the flash
+	  device appear much like a simple EEPROM, and knows
+	  how to partition a single ROM for multiple purposes.
 
 endmenu
 

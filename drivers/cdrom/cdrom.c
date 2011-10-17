@@ -1909,12 +1909,18 @@ static int dvd_read_manufact(struct cdrom_device_info *cdi, dvd_struct *s,
 		return ret;
 
 	s->manufact.len = cgc->buffer[0] << 8 | cgc->buffer[1];
-	if (s->manufact.len < 0 || s->manufact.len > 2048) {
+	if (s->manufact.len < 0) {
 		cdinfo(CD_WARNING, "Received invalid manufacture info length"
 				   " (%d)\n", s->manufact.len);
 		ret = -EIO;
 	} else {
-		memcpy(s->manufact.value, &cgc->buffer[4], s->manufact.len);
+		if (s->manufact.len > 2048) {
+			cdinfo(CD_WARNING, "Received invalid manufacture info "
+					"length (%d): truncating to 2048\n",
+					s->manufact.len);
+			s->manufact.len = 2048;
+		}
+		memcpy(s->manufact.value, &buf[4], s->manufact.len);
 	}
 
 	return ret;
