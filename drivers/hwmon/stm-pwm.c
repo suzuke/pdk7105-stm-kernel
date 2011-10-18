@@ -23,11 +23,11 @@ struct stm_pwm {
 	struct resource *mem;
 	void* base;
 	struct device *hwmon_dev;
+	struct stm_plat_pwm_data *platform_data;
 };
 
 /* PWM registers */
-#define PWM0_VAL		0x00
-#define PWM1_VAL		0x04
+#define PWM_VAL(x)		(0x00 + (4 * (x)))
 #define PWM_CTRL		0x50
 #define PWM_CTRL_PWM_EN			(1<<9)
 #define PWM_CTRL_PWM_CLK_VAL0_SHIFT	0
@@ -41,52 +41,71 @@ struct stm_pwm {
  * 0xff: divide by 256 */
 #define PWM_CLK_VAL		0
 
-static ssize_t show_pwm(struct device *dev, char * buf, int offset)
+static ssize_t show_pwm(struct device *dev, struct device_attribute *attr,
+			char *buf)
 {
+	int channel = to_sensor_dev_attr(attr)->index;
 	struct stm_pwm *pwm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%u\n", readl(pwm->base + offset));
+	return sprintf(buf, "%u\n", readl(pwm->base + PWM_VAL(channel)));
 }
 
-static ssize_t store_pwm(struct device *dev, const char * buf, size_t count,
-			 int offset)
+static ssize_t store_pwm(struct device *dev, struct device_attribute *attr,
+			 const char *buf, size_t count)
 {
+	int channel = to_sensor_dev_attr(attr)->index;
 	struct stm_pwm *pwm = dev_get_drvdata(dev);
 	char* p;
 	long val = simple_strtol(buf, &p, 10);
 
 	if (p != buf) {
 		val &= 0xff;
-		writel(val, pwm->base + offset);
+		writel(val, pwm->base + PWM_VAL(channel));
 		return p-buf;
 	}
 	return -EINVAL;
 }
 
-#define pwm_fns(n)							\
-static ssize_t								\
-show_pwm##n(struct device *dev,	struct device_attribute *attr,		\
-	    char *buf)							\
-{									\
-	return show_pwm(dev, buf, PWM##n##_VAL);			\
-}									\
-static ssize_t								\
-store_pwm##n(struct device *dev, struct device_attribute *attr,		\
-	     const char *buf, size_t count)				\
-{									\
-	return store_pwm(dev, buf, count, PWM##n##_VAL);		\
-}									\
-static DEVICE_ATTR(pwm##n, S_IRUGO| S_IWUSR, show_pwm##n, store_pwm##n);
+static mode_t stm_pwm_is_visible(struct kobject *kobj, struct attribute *attr,
+				int n)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct stm_pwm *pwm = dev_get_drvdata(dev);
+	struct device_attribute *devattr;
+	int channel;
 
-pwm_fns(0)
-pwm_fns(1)
+	devattr = container_of(attr, struct device_attribute, attr);
+	channel = to_sensor_dev_attr(devattr)->index;
+
+	if (!pwm->platform_data->channel_enabled[channel])
+		return 0;
+
+	return attr->mode;
+}
+
+static SENSOR_DEVICE_ATTR(pwm0, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 0);
+static SENSOR_DEVICE_ATTR(pwm1, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 1);
+static SENSOR_DEVICE_ATTR(pwm2, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 2);
+static SENSOR_DEVICE_ATTR(pwm3, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 3);
+
+static struct attribute *stm_pwm_attributes[] = {
+	&sensor_dev_attr_pwm0.dev_attr.attr,
+	&sensor_dev_attr_pwm1.dev_attr.attr,
+	&sensor_dev_attr_pwm2.dev_attr.attr,
+	&sensor_dev_attr_pwm3.dev_attr.attr,
+	NULL
+};
+
+static struct attribute_group stm_pwm_attr_group = {
+	.is_visible = stm_pwm_is_visible,
+	.attrs = stm_pwm_attributes,
+};
 
 static int
-stm_pwm_init(struct platform_device* pdev, struct stm_pwm *pwm,
-	     struct stm_plat_pwm_data *plat_data)
+stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
 {
-	int error;
 	u32 reg = 0;
+	int channel;
 
 	/* disable PWM if currently running */
 	reg = readl(pwm->base + PWM_CTRL);
@@ -109,43 +128,18 @@ stm_pwm_init(struct platform_device* pdev, struct stm_pwm *pwm,
 	reg |= PWM_CTRL_PWM_EN;
 	writel(reg, pwm->base + PWM_CTRL);
 
-	/* Initial value */
-	writel(0, pwm->base + PWM0_VAL);
-	writel(0, pwm->base + PWM1_VAL);
-
-	if (plat_data->channel_enabled[0]) {
-		if (!devm_stm_pad_claim(&pdev->dev,
-				plat_data->channel_pad_config[0],
-				dev_name(&pdev->dev))) {
-			error = -ENODEV;
-			goto error_pad_claim_0;
+	for (channel = 0; channel < STM_PLAT_PWM_NUM_CHANNELS; channel++) {
+		if (pwm->platform_data->channel_enabled[channel]) {
+			/* Initial value */
+			writel(0, pwm->base + PWM_VAL(channel));
+			if (!devm_stm_pad_claim(&pdev->dev,
+				pwm->platform_data->channel_pad_config[channel],
+				dev_name(&pdev->dev)))
+				return -ENODEV;
 		}
-		error = device_create_file(&pdev->dev, &dev_attr_pwm0);
-		if (error != 0)
-			goto error_create_file_0;
 	}
 
-	if (plat_data->channel_enabled[1]) {
-		if (!devm_stm_pad_claim(&pdev->dev,
-				plat_data->channel_pad_config[1],
-				dev_name(&pdev->dev))) {
-			error = -ENODEV;
-			goto error_pad_claim_1;
-		}
-		error = device_create_file(&pdev->dev, &dev_attr_pwm1);
-		if (error != 0)
-			goto error_create_file_1;
-	}
-
-	return 0;
-
-error_create_file_1:
-error_pad_claim_1:
-	if (plat_data->channel_enabled[0])
-		device_remove_file(&pdev->dev, &dev_attr_pwm0);
-error_create_file_0:
-error_pad_claim_0:
-	return error;
+	return sysfs_create_group(&pdev->dev.kobj, &stm_pwm_attr_group);
 }
 
 static int stm_pwm_probe(struct platform_device *pdev)
@@ -187,11 +181,13 @@ static int stm_pwm_probe(struct platform_device *pdev)
 		goto failed3;
 	}
 
+	pwm->platform_data = pdev->dev.platform_data;
+
 	platform_set_drvdata(pdev, pwm);
 	dev_info(&pdev->dev, "registers at 0x%x, mapped to 0x%p\n",
 		 res->start, pwm->base);
 
-	return stm_pwm_init(pdev, pwm, pdev->dev.platform_data);
+	return stm_pwm_init(pdev, pwm);
 
 failed3:
 	iounmap(pwm->base);
@@ -208,6 +204,8 @@ static int stm_pwm_remove(struct platform_device *pdev)
 
 	if (pwm) {
 		hwmon_device_unregister(pwm->hwmon_dev);
+		sysfs_remove_group(&pdev->dev.kobj, &stm_pwm_attr_group);
+		platform_set_drvdata(pdev, NULL);
 		iounmap(pwm->base);
 		release_resource(pwm->mem);
 		kfree(pwm);

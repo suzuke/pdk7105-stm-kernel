@@ -163,9 +163,10 @@ struct stm_plat_lirc_data {
 /*** PWM platform data ***/
 
 /* Private data for the PWM driver */
+#define STM_PLAT_PWM_NUM_CHANNELS 4
 struct stm_plat_pwm_data {
-	int channel_enabled[2];
-	struct stm_pad_config *channel_pad_config[2];
+	int channel_enabled[STM_PLAT_PWM_NUM_CHANNELS];
+	struct stm_pad_config *channel_pad_config[STM_PLAT_PWM_NUM_CHANNELS];
 };
 
 
