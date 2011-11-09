@@ -518,7 +518,7 @@ static int snd_stm_uniperif_player_prepare_hdmi(
 	case SNDRV_PCM_FORMAT_S32_LE:
 		/* Output 32-bits per sub-frame (not same as precision) */
 		set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
-		/* Set memory format 16/0 (evry 32-bits is single sub-frame) */
+		/* Set memory format 16/0 (every 32-bits is single sub-frame) */
 		set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(player);
 		/* Set 24-bit sample precision */
 		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_24(player);
@@ -584,9 +584,12 @@ static int snd_stm_uniperif_player_prepare_hdmi(
 	/* Set the spdif latency to not wait before starting player */
 	set__AUD_UNIPERIF_CTRL__SPDIF_LAT_OFF(player);
 
-	/* Turn spdif iec-60958 formatting on */
-	/*** This must be done when we set operation mode else doesn't work ***/
-	/*set__AUD_UNIPERIF_CTRL__SPDIF_FMT_ON(player);*/
+	/*
+	 * Ensure spdif iec-60958 formatting is off. It will be enabled in
+	 * snd_stm_uniperif_player_start at the same time as the operation mode
+	 * is set to work around a silicon issue.
+	 */
+	set__AUD_UNIPERIF_CTRL__SPDIF_FMT_OFF(player);
 
 
 	/*** Configure other registers ***/
@@ -877,7 +880,7 @@ static int snd_stm_uniperif_player_prepare_spdif(
 	case SNDRV_PCM_FORMAT_S32_LE:
 		/* Output 32-bits per sub-frame (not same as precision) */
 		set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
-		/* Set memory format 16/0 (evry 32-bits is single sub-frame) */
+		/* Set memory format 16/0 (every 32-bits is single sub-frame) */
 		set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(player);
 		/* Set 24-bit sample precision */
 		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_24(player);
@@ -944,10 +947,12 @@ static int snd_stm_uniperif_player_prepare_spdif(
 	/* Set the spdif latency to not wait before starting player */
 	set__AUD_UNIPERIF_CTRL__SPDIF_LAT_OFF(player);
 
-	/* Turn spdif iec-60958 formatting on */
-	/*** This must be done when we set operation mode else doesn't work ***/
-	/*set__AUD_UNIPERIF_CTRL__SPDIF_FMT_ON(player);*/
-
+	/*
+	 * Ensure spdif iec-60958 formatting is off. It will be enabled in
+	 * snd_stm_uniperif_player_start at the same time as the operation mode
+	 * is set to work around a silicon issue.
+	 */
+	set__AUD_UNIPERIF_CTRL__SPDIF_FMT_OFF(player);
 
 	/*** Configure other registers ***/
 
