@@ -480,6 +480,28 @@ error_buf_alloc:
 	return result;
 }
 
+static unsigned int snd_stm_uniperif_player_samples_per_period(
+		struct snd_pcm_runtime *runtime)
+{
+	unsigned int frames, samples;
+	int bits_per_sample;
+
+	/* Extract the required information from the runtime structure */
+	frames = runtime->period_size * runtime->channels;
+	bits_per_sample = snd_pcm_format_physical_width(runtime->format);
+	BUG_ON(bits_per_sample < 16);
+
+	/* uniperipheral samples are not the same as ALSA samples so we don't
+	 * use the ALSA framework's library functions for this conversion.
+	 */
+	samples = (frames * (bits_per_sample / 16)) / 2;
+
+	/* Account for out-by-one hardware period timer bug (RnDHV00031683) */
+	samples -= 1 * (bits_per_sample / 16);
+
+	return samples;
+}
+
 static int snd_stm_uniperif_player_prepare_hdmi(
 		struct snd_stm_uniperif_player *player,
 		struct snd_pcm_runtime *runtime)
@@ -576,7 +598,7 @@ static int snd_stm_uniperif_player_prepare_hdmi(
 
 	/* Set the number of samples to read */
 	set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(player,
-				runtime->period_size * runtime->channels);
+			snd_stm_uniperif_player_samples_per_period(runtime));
 
 	/* Set rounding to off */
 	set__AUD_UNIPERIF_CTRL__ROUNDING_OFF(player);
@@ -747,10 +769,6 @@ static int snd_stm_uniperif_player_prepare_pcm(
 			set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(player);
 		else
 			set__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(player);
-
-		/* One word of data is two samples (two channels...) */
-		set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(player,
-			runtime->period_size * runtime->channels / 2);
 		break;
 
 	case SNDRV_PCM_FORMAT_S32_LE:
@@ -764,17 +782,16 @@ static int snd_stm_uniperif_player_prepare_pcm(
 			set__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(player);
 		else
 			set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(player);
-
-		/* One word of data is one sample, so period size
-		 * times channels */
-		set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(player,
-			runtime->period_size * runtime->channels);
 		break;
 
 	default:
 		snd_BUG();
 		return -EINVAL;
 	}
+
+	/* Set the number of samples to read */
+	set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(player,
+			snd_stm_uniperif_player_samples_per_period(runtime));
 
 	/* Set up frequency synthesizer */
 	result = clk_enable(player->clock);
@@ -1075,7 +1092,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 
 	/* Set the number of samples to read */
 	set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(player,
-				runtime->period_size * runtime->channels);
+			snd_stm_uniperif_player_samples_per_period(runtime));
 
 	/* Set rounding to off */
 	set__AUD_UNIPERIF_CTRL__ROUNDING_OFF(player);
