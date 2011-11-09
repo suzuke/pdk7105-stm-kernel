@@ -737,11 +737,11 @@
 		offset__AUD_UNIPERIF_SPDIF_PAUSE_LAT(ip), \
 		shift__AUD_UNIPERIF_SPDIF_PAUSE_LAT__LAT(ip), \
 		mask__AUD_UNIPERIF_SPDIF_PAUSE_LAT(ip))
-#define set__AUD_UNIPERIF_SPDIF_PAUSE_LAT__LAT(ip) \
+#define set__AUD_UNIPERIF_SPDIF_PAUSE_LAT__LAT(ip, value) \
 	set__AUD_UNIPERIF_REG(ip, \
 		offset__AUD_UNIPERIF_SPDIF_PAUSE_LAT(ip), \
 		shift__AUD_UNIPERIF_SPDIF_PAUSE_LAT__LAT(ip), \
-		mask__AUD_UNIPERIF_SPDIF_PAUSE_LAT(ip))
+		mask__AUD_UNIPERIF_SPDIF_PAUSE_LAT(ip), value)
 
 
 /*
