@@ -230,19 +230,9 @@ static struct platform_device stih415_usb_devices[] = {
 
 void __init stih415_configure_usb(int port)
 {
-	static int osc_initialized;
 	static int configured[ARRAY_SIZE(stih415_usb_devices)];
-	struct sysconf_field *sc;
-
 	BUG_ON(port < 0 || port >= ARRAY_SIZE(stih415_usb_devices));
 
 	BUG_ON(configured[port]++);
-
-	if (!osc_initialized++) {
-		/* USB2TRIPPHY_OSCIOK */
-		sc = sysconf_claim(SYSCONF(332), 6, 6, "USB");
-		sysconf_write(sc, 1);
-	}
-
 	platform_device_register(&stih415_usb_devices[port]);
 }

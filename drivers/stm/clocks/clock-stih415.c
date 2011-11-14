@@ -55,6 +55,38 @@ extern int sasg1_clk_init(clk_t *);				/* SASG1 */
 #define SYS_CLKIN			30
 #define SYS_CLKALTIN			30   /* MPE only alternate input */
 
+static struct sysconf_field *usb2_triple_phy_sc;
+static int clk_usb_phy_init(struct clk *clk)
+{
+	usb2_triple_phy_sc = sysconf_claim(SYSCONFG_GROUP(332),
+					 SYSCONF_OFFSET(332), 6, 6, "USB");
+	return 0;
+}
+static int clk_usb_phy_enable(struct clk *clk)
+{
+	sysconf_write(usb2_triple_phy_sc, 1);
+	return 0;
+}
+static int clk_usb_phy_disable(struct clk *clk)
+{
+	sysconf_write(usb2_triple_phy_sc, 0);
+	return 0;
+}
+
+static struct clk_ops clk_usb_phy_clk_ops = {
+	.init = clk_usb_phy_init,
+	.enable = clk_usb_phy_enable,
+	.disable = clk_usb_phy_disable,
+};
+
+static struct clk usb2_triple_phy_clks[] = {
+	{
+		.name = "USB2_TRIPLE_PHY",
+		.id = 0,
+		.ops = &clk_usb_phy_clk_ops,
+		.rate = SYS_CLKIN*1000000,
+	}
+};
 static clk_t clk_clocks[] = {
 	/* Top level clocks */
 	_CLK_FIXED(CLK_SYSIN, SYS_CLKIN * 1000000,
@@ -74,6 +106,8 @@ int plat_clk_init(void)
 	clk_t *clk_main, *clk_aux;
 
 	clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
+	clk_register_table(usb2_triple_phy_clks,
+				 ARRAY_SIZE(usb2_triple_phy_clks), 0);
 
 	/* SASG1 clocks */
 	sasg1_clk_init(&clk_clocks[0]);
