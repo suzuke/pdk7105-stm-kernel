@@ -36,6 +36,15 @@ static int clkgena_enable(clk_t *clk_p);
 static int clkgena_disable(clk_t *clk_p);
 static int clkgena_init(clk_t *clk_p);
 
+
+static void *clksouth_base;
+static int clksouth_set_rate(clk_t *clk_p, unsigned long freq);
+static int clksouth_fsyn_recalc(clk_t *clk_p);
+static int clksouth_enable(clk_t *clk_p);
+static int clksouth_disable(clk_t *clk_p);
+static int clksouth_init(clk_t *clk_p);
+
+
 #define SYSA_CLKIN			30	/* FE osc */
 
 _CLK_OPS(clkgena,
@@ -46,6 +55,18 @@ _CLK_OPS(clkgena,
 	clkgena_recalc,
 	clkgena_enable,
 	clkgena_disable,
+	NULL,
+	NULL,
+	NULL
+);
+_CLK_OPS(clksouth,
+	"Clockgen South",
+	clksouth_init,
+	NULL,
+	clksouth_set_rate,
+	clksouth_fsyn_recalc,
+	clksouth_enable,
+	clksouth_disable,
 	NULL,
 	NULL,
 	NULL
@@ -83,6 +104,59 @@ _CLK(CLKA_IC_150, 	&clkgena, 150000000, 0),
 _CLK(CLKA_ETHERNET, 	&clkgena,  25000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKA_IC_200, 	&clkgena, 200000000, CLK_ALWAYS_ENABLED),
 
+};
+
+clk_t clksouth_clocks[] = {
+/* Clockgen A */
+_CLK(CLKSOUTH_REF, &clksouth, 30000000,
+	CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
+
+_CLK_P(CLK27_RECOVERY_1, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_SMARTCARD, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_NOUSED_0, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_VDAC */
+_CLK_P(CLK_DENC, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_NOTUSED_1, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_PIX_AUX */
+_CLK_P(CLK_NOTUSED_2, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_PIX_MDTP_1 */
+_CLK_P(CLK_NOTUSED_3, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK27_MCHI */
+_CLK_P(CLK27_RECOVERY_2, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+
+_CLK_P(CLK_CCSC, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_SECURE, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_SD_MS, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_NOTUSED_4, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_PIX_MDTP_2 */
+_CLK_P(CLK_NOTUSED_5, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_GPADC */
+_CLK_P(CLK_NOTUSED_6, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_RTC */
+
+_CLK_P(CLK_USB1_48, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_USB2_48, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_USB1_60, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_NOTUSED_7, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_USB2_60 */
+_CLK_P(CLK_NOTUSED_8, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* MCTI_VIP */
+_CLK_P(CLK_MCTI_MCTI, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]),
+_CLK_P(CLK_NOTUSED_9, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_EXT_USB_PHY  */
+_CLK_P(CLK_NOTUSED_10, &clksouth,
+	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_GDP_PROC */
 };
 
 
@@ -424,12 +498,215 @@ static int clkgena_init(clk_t *clk_p)
 	return err;
 }
 
+
+/* ========================================================================
+ * 				clkgen South
+ * ======================================================================== */
+
+struct clkgen_south_info {
+	int id;
+	int fsync;
+	int fsync_op;
+};
+static struct clkgen_south_info clkgen_south_data[] = {
+	{ CLK27_RECOVERY_1	, 1, 1},
+	{ CLK_SMARTCARD		, 1, 2},
+	{ CLK_NOUSED_0	 	, -1, -1}, /* CLK_VDAC */
+	{ CLK_DENC		, 1, 3},
+	{ CLK_NOTUSED_1		, -1, -1}, /* CLK_PIX_AUX */
+	{ CLK_NOTUSED_2 	, -1, -1}, /* CLK_PIX_MDTP_1 */
+	{ CLK_NOTUSED_3		, -1, -1}, /* CLK27_MCHI */
+	{ CLK27_RECOVERY_2	, 1, 2},
+
+	{ CLK_CCSC		, 2, 1},
+	{ CLK_SECURE		, 2, 2},
+	{ CLK_SD_MS		, 2, 3},
+	{ CLK_NOTUSED_4 	, -1, -1}, /* CLK_PIX_MDTP_2 */
+	{ CLK_NOTUSED_5		, -1, -1}, /* CLK_GPADC */
+	{ CLK_NOTUSED_6		, -1, -1}, /* CLK_RTC */
+
+	{ CLK_USB1_48		, 3, 1},
+	{ CLK_USB2_48		, 3, 1},
+	{ CLK_USB1_60		, 3, 2},
+	{ CLK_NOTUSED_7		, -1, -1}, /* CLK_USB2_60 */
+	{ CLK_NOTUSED_8		, -1, -1}, /* MCTI_VIP */
+	{ CLK_MCTI_MCTI		, 3, 3},
+	{ CLK_NOTUSED_9		, -1, -1}, /* CLK_EXT_USB_PHY  */
+	{ CLK_NOTUSED_10	, -1, -1}, /* CLK_GDP_PROC */
+};
+
+/* ========================================================================
+   Name:	clksouth_fsyn_recalc
+   Description: calculate hw params for request clock output.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clksouth_fsyn_recalc(clk_t *clk_p)
+{
+	unsigned long pe, md, sdiv, nsdv3, val;
+	int channel, enabled, err = 0;
+	int fsync, fsync_op;
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLK27_RECOVERY_1 || clk_p->id > CLK_NOTUSED_10)
+		return CLK_ERR_BAD_PARAMETER;
+
+
+	/* FSYN up & running.
+	   Computing frequency */
+	channel = clk_p->id - CLK27_RECOVERY_1;
+	enabled = CLK_READ(clksouth_base + CLGS_CTL_EN) & (1 << channel);
+
+	if (!enabled) { /* Clk not enabled */
+		clk_p->rate = 0;
+		return 0;
+	}
+	fsync_op = clkgen_south_data[channel].fsync_op;
+	fsync = clkgen_south_data[channel].fsync;
+
+	if (fsync < 0 || fsync_op < 0) {
+		clk_p->rate = 0;
+		return 0;
+	}
+
+	val = CLK_READ(clksouth_base + CLGS_FS_CTL_REG(fsync, fsync_op));
+
+	md = (val & 0x1F);
+	sdiv = ((val >> 5) & 0x7);
+	pe = ((val>>8) & 0xFFFF);
+	nsdv3 = (val & 0x04000000) ? 1 : 0;
+
+	if (clk_p->id > CLK_NOTUSED_6)
+		err = clk_4fs432_get_rate(clk_p->parent->rate, pe, md, sdiv,
+				nsdv3, &clk_p->rate);
+	else
+		err = clk_fsyn_get_rate(clk_p->parent->rate, pe, md, sdiv,
+			&clk_p->rate);
+
+
+
+	return err;
+}
+
+static int clksouth_fsyn_xable(clk_t *clk_p, unsigned long enable)
+{
+	unsigned long val;
+	int channel;
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLK27_RECOVERY_1 || clk_p->id > CLK_NOTUSED_10)
+		return CLK_ERR_BAD_PARAMETER;
+
+	val = CLK_READ(clksouth_base + CLGS_CTL_EN);
+	channel = clk_p->id - CLK27_RECOVERY_1;
+
+	if (enable)
+		val |= (1 << channel);
+	else
+		val &= ~(1 << channel);
+
+	CLK_WRITE(clksouth_base + CLGS_CTL_EN, val);
+	/* Freq recalc required only if a channel is enabled */
+	if (enable)
+		return clksouth_fsyn_recalc(clk_p);
+	else
+		clk_p->rate = 0;
+	return 0;
+}
+
+/* ========================================================================
+   Name:	clksouth_set_rate
+   Description: set the request clock output rate
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clksouth_set_rate(clk_t *clk_p, unsigned long freq)
+{
+	unsigned long md, pe, sdiv, sdiv3;
+	int channel;
+	unsigned long val;
+	int fsync, fsync_op;
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLK27_RECOVERY_1 || clk_p->id > CLK_NOTUSED_10)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Computing FSyn params. Should be common function with FSyn type */
+	if (clk_p->id > CLK_NOTUSED_6) {
+		if (clk_4fs432_get_params(clk_p->parent->rate, freq, &md,
+			&pe, &sdiv, &sdiv3))
+			return CLK_ERR_BAD_PARAMETER;
+	} else {
+		if (clk_fsyn_get_params(clk_p->parent->rate, freq, &md,
+			&pe, &sdiv))
+			return CLK_ERR_BAD_PARAMETER;
+	}
+
+
+	channel = clk_p->id - CLK27_RECOVERY_1;
+	fsync_op = clkgen_south_data[channel].fsync_op;
+	fsync = clkgen_south_data[channel].fsync;
+	val = CLK_READ(clksouth_base + CLGS_FS_CTL_REG(fsync, fsync_op));
+	val &= ~(0xFFFFFF);
+	val = val | (md | (sdiv << 5) | (pe << 8));
+
+	if (clk_p->id > CLK_NOTUSED_6)
+		val  = val | (sdiv3 << 26);
+
+	CLK_WRITE(clksouth_base + CLGS_FS_CTL_REG(fsync, fsync_op), val);
+
+	return clksouth_fsyn_recalc(clk_p);
+}
+
+/* ========================================================================
+   Name:	clksouth_enable
+   Description: enable the requested clock.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clksouth_enable(clk_t *clk_p)
+{
+	return clksouth_fsyn_xable(clk_p, 1);
+}
+
+/* ========================================================================
+   Name:	clksouth_disable
+   Description: disable the requested clock.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clksouth_disable(clk_t *clk_p)
+{
+	return clksouth_fsyn_xable(clk_p, 1);
+}
+
+/* ========================================================================
+   Name:	clksouth_init
+   Description: Initialize clockgen south clocks.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clksouth_init(clk_t *clk_p)
+{
+	int err;
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	/* Fixed Parent  */
+	err = clksouth_fsyn_recalc(clk_p);
+
+	return err;
+}
+
+
 int tae_clk_init(clk_t *_sys_clk_in)
 {
 	int ret = 0;
 	clk_clocks[CLKA_REF].parent = _sys_clk_in;
 	cga_base = ioremap_nocache(CKGA_BASE_ADDRESS , 0x1000);
+
 	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
+	clksouth_base = ioremap_nocache(CLGS_BASE_ADDRESS, 0x60);
+
+	ret = clk_register_table(clksouth_clocks,
+					ARRAY_SIZE(clksouth_clocks), 0);
+
 	if (ret)
 		return ret;
 	return ret;

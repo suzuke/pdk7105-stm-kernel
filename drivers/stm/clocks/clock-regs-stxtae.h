@@ -40,21 +40,8 @@
 
 #define  CLGS_CTL_SEL			0x00
 #define  CLGS_CTL_EN			0x04
-#define  CLGS_CTL_FS_SOUTH_1		0x08
-#define  CLGS_CTL_FS_SOUTH_1_1		0x0C
-#define  CLGS_CTL_FS_SOUTH_1_2		0x10
-#define  CLGS_CTL_FS_SOUTH_1_3		0x14
-#define  CLGS_CTL_FS_SOUTH_1_4		0x18
-#define  CLGS_CTL_FS_SOUTH_2		0x1C
-#define  CLGS_CTL_FS_SOUTH_2_1		0x20
-#define  CLGS_CTL_FS_SOUTH_2_2		0x24
-#define  CLGS_CTL_FS_SOUTH_2_3		0x28
-#define  CLGS_CTL_FS_SOUTH_2_4		0x2C
-#define  CLGS_CTL_FS_SOUTH_3		0x30
-#define  CLGS_CTL_FS_SOUTH_3_1		0x34
-#define  CLGS_CTL_FS_SOUTH_3_2		0x38
-#define  CLGS_CTL_FS_SOUTH_3_3		0x3C
-#define  CLGS_CTL_FS_SOUTH_3_4		0x40
+
+#define CLGS_FS_CTL_REG(fs, num)		(8 + ((fs - 1)*20) + (num*4))
 
 /*
  * The CKGA_SOURCE_CFG(..) replaces the
