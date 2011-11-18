@@ -529,6 +529,65 @@ int clk_fsyn_get_rate(unsigned long input, unsigned long pe,
 }
 
 /*
+ * 4FS432 Freq Syn support:
+ *
+ * 	 	   	 [32x2^15 x ndiv x Fin]
+ *  FOut = 	-----------------------------------------
+ *  		(sdiv x nsdiv3 x [33x2^15 + mdx2^15 - pe])
+ */
+
+int clk_4fs432_get_rate(unsigned long input, unsigned long pe,
+				unsigned long md, unsigned long sd,
+				unsigned long nsd3, unsigned long *rate)
+{
+	int md2 = md;
+	long long p, q, r, s, t, u;
+	if (md & 0x10)
+		md2 = md | 0xfffffff0;/* adjust the md sign */
+
+	if (input == 30000000)
+		input *= 16;
+	else
+		input *= 8;
+
+	p = 1048576ll * input;
+	q = 32768 * md2;
+	r = 1081344 - pe;
+	s = r + q;
+	u = nsd3 ? 1 : 3;
+	t = (1 << (sd + 1)) * s * u;
+
+	*rate =  div64_u64(p, t);
+	return 0;
+}
+
+int clk_4fs432_get_params(unsigned long input, unsigned long output,
+				unsigned long *md, unsigned long *pe,
+				unsigned long *sdiv, unsigned long *sdiv3)
+{
+	int md2;
+	unsigned long rate, pe2, sd, nsd3;
+	for (nsd3 = 1; nsd3 >= 0 ; nsd3--) {
+		for (sd = 0; sd < 8 ; sd++) {
+			for (md2 = -16 ; md2 < 0; md2++) {
+				for (pe2 = 0 ; pe2 < 32768; pe2++) {
+					clk_4fs432_get_rate(input, pe2,
+						md2 + 32, sd, nsd3, &rate);
+					if (rate == output) {
+						/* Match */
+						*sdiv = sd;
+						*md = md2 + 32;
+						*pe = pe2;
+						*sdiv3 = nsd3;
+						return 0;
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+/*
    FS660
    Based on C32_4FS_660MHZ_LR_EG_5U1X2T8X_um spec.
 

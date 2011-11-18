@@ -125,6 +125,27 @@ int clk_fsyn_get_rate(unsigned long input, unsigned long pe, unsigned long md,
 		      unsigned long sd, unsigned long *rate);
 
 /* ========================================================================
+   Name:        clk_4fs432_get_params()
+   Description: Freq to parameters computation for frequency synthesizers
+   Input:       input=input freq (Hz), output=output freq (Hz)
+   Output:      updated *md, *pe, *sdiv & *sdiv3
+   Return:      'clk_err_t' error code
+   ======================================================================== */
+
+int clk_4fs432_get_params(unsigned long input, unsigned long output,
+			unsigned long *md, unsigned long *pe,
+			unsigned long *sdiv, unsigned long *sdiv3);
+
+/* ========================================================================
+   Name:        clk_4fsf432_get_rate()
+   Description: Parameters to freq computation for frequency synthesizers.
+   ======================================================================== */
+
+int clk_4fs432_get_rate(unsigned long input, unsigned long pe,
+				unsigned long md, unsigned long sd,
+				unsigned long nsdv3, unsigned long *rate);
+
+/* ========================================================================
    Name:        clk_fs660_vco_get_params()
    Description: Compute params for embeded PLL660
    Input:       input=input freq (Hz), output=output freq (Hz)
