@@ -115,7 +115,7 @@ _mali_osk_lock_t *_mali_osk_lock_init( _mali_osk_lock_flags_t flags, u32 initial
 		}
 
 		/* Initially unlocked */
-		init_MUTEX( &lock->obj.sema );
+		sema_init( &lock->obj.sema, 1 );
 	}
 
 	MALI_DEBUG_CODE(

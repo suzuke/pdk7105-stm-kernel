@@ -54,7 +54,7 @@ _mali_osk_notification_queue_t *_mali_osk_notification_queue_init( void )
 	result = (_mali_osk_notification_queue_t *)kmalloc(sizeof(_mali_osk_notification_queue_t), GFP_KERNEL);
 	if (NULL == result) return NULL;
 
-	init_MUTEX(&result->mutex);
+	sema_init(&result->mutex, 1);
 	init_waitqueue_head(&result->receive_queue);
 	INIT_LIST_HEAD(&result->head);
 
