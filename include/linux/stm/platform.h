@@ -569,7 +569,12 @@ static inline unsigned long stm_soc_version_minor(void)
 
 static inline const char* stm_soc(void)
 {
+#ifdef CONFIG_CPU_SUBTYPE_STIH415
 	return "STiH415";
+#endif
+#ifdef CONFIG_CPU_SUBTYPE_FLI7610
+	return "FLI7610";
+#endif
 }
 
 static inline unsigned long stm_soc_type(void)
