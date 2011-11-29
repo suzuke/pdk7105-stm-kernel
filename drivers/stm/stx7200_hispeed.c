@@ -827,6 +827,9 @@ static struct stm_plat_sata_data stx7200_sata_platform_data = {
 	.host_restart = NULL,
 	.port_num = 0,
 	.miphy_num = 0,
+	.amba_config = &(struct amba_bridge_config) {
+		STM_DEFAULT_SATA_AMBA_PLUG_CONFIG
+	},
 	.device_config = &(struct stm_device_config) {
 			.sysconfs_num = 2,
 			.sysconfs = (struct stm_device_sysconf []) {

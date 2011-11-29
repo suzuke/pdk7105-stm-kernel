@@ -901,6 +901,10 @@ static void stx7141_sata_power(struct stm_device_state *device_state,
 	return ;
 }
 
+static struct stm_amba_bridge_config amba_config_sata = {
+	STM_DEFAULT_SATA_AMBA_PLUG_CONFIG
+};
+
 static struct platform_device stx7141_sata_device = {
 	.name = "sata-stm",
 	.id = -1,
@@ -911,6 +915,7 @@ static struct platform_device stx7141_sata_device = {
 		.host_restart = NULL,
 		.port_num = 0,
 		.miphy_num = 0,
+		.amba_config = &amba_config_sata,
 		.device_config = &(struct stm_device_config) {
 			.sysconfs_num = 2,
 			.sysconfs = (struct stm_device_sysconf []) {

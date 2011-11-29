@@ -38,6 +38,7 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
 #include <linux/stm/miphy.h>
+#include <linux/stm/amba_bridge.h>
 
 #define DRV_NAME			"sata-stm"
 #define DRV_VERSION			"0.8"
@@ -47,12 +48,6 @@
 #define SATA_AHBDMA_BASE			0x00000400
 #define SATA_AHBHOST_BASE			0x00000800
 
-/* AHB_STBus protocol converter */
-#define SATA_AHB2STBUS_STBUS_OPC		(SATA_AHB2STBUS_BASE + 0x0000)
-#define SATA_AHB2STBUS_MESSAGE_SIZE_CONFIG	(SATA_AHB2STBUS_BASE + 0x0004)
-#define SATA_AHB2STBUS_CHUNK_SIZE_CONFIG	(SATA_AHB2STBUS_BASE + 0x0008)
-#define SATA_AHB2STBUS_SW_RESET			(SATA_AHB2STBUS_BASE + 0x000c)
-#define SATA_AHB2STBUS_PC_STATUS		(SATA_AHB2STBUS_BASE + 0x0010)
 #define SATA_PC_GLUE_LOGIC			(SATA_AHB2STBUS_BASE + 0x0014)
 #define SATA_PC_GLUE_LOGICH			(SATA_AHB2STBUS_BASE + 0x0018)
 
@@ -263,6 +258,7 @@ struct stm_host_priv
 	void (*host_restart)(int port); /* Full reset of host and phy */
 	int port_num;			/* Parameter to host_restart */
 	struct stm_miphy *miphy_dev;	/* MiPHY Dev Struct */
+	struct stm_amba_bridge *amba_bridge; /* Amba convertor */
 };
 
 struct stm_port_priv
@@ -1129,30 +1125,9 @@ static int stm_sata_AHB_boot(struct device *dev)
 	struct ata_host *host = dev_get_drvdata(dev);
 	struct ata_port *ap = host->ports[0];
 	void __iomem *mmio_base = ap->ioaddr.cmd_addr;
+	struct stm_host_priv *hpriv = host->private_data;
 
-	/* AHB bus wrapper setup */
-
-	/* SATA_AHB2STBUS_STBUS_OPC
-	 * 2:0  -- 100 = Store64/Load64
-	 * 4    -- 1   = Enable write posting
-	 * DMA Read, write posting always = 0
-	 * opcode = Load4 |Store 4
-	 */
-	writel(3, mmio_base + SATA_AHB2STBUS_STBUS_OPC);
-
-	/* SATA_AHB2STBUS_MESSAGE_SIZE_CONFIG
-	 * 3:0  -- 0111 = 128 Packets
-	 * 3:0  -- 0110 =  64 Packets
-	 * WAS: Message size = 64 packet when 6 now 3
-	 */
-	writel(3, mmio_base + SATA_AHB2STBUS_MESSAGE_SIZE_CONFIG);
-
-	/* SATA_AHB2STBUS_CHUNK_SIZE_CONFIG
-	 * 3:0  -- 0110 = 64 Packets
-	 * 3:0  -- 0001 =  2 Packets
-	 * WAS Chunk size = 2 packet when 1, now 0
-	 */
-	writel(2, mmio_base + SATA_AHB2STBUS_CHUNK_SIZE_CONFIG);
+	stm_amba_bridge_init(hpriv->amba_bridge);
 
 	/* PC_GLUE_LOGIC
 	 * 7:0  -- 0xFF = Set as reset value, 256 STBus Clock Cycles
@@ -1271,6 +1246,15 @@ static int __devinit stm_sata_probe(struct platform_device *pdev)
 		printk(KERN_ERR DRV_NAME " Unable to claim MiPHY %d\n",
 			sata_private_info->miphy_num);
 		return -EBUSY;
+	}
+
+	hpriv->amba_bridge =
+	  stm_amba_bridge_create(dev, mmio_base + SATA_AHB2STBUS_BASE,
+			  sata_private_info->amba_config);
+
+	if (!hpriv->amba_bridge) {
+		dev_err(dev, " Unable to create amba plug\n");
+		return -ENOMEM;
 	}
 
 	stm_sata_AHB_boot(dev);

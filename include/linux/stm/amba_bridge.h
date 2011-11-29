@@ -114,4 +114,13 @@ void stm_amba_bridge_init(struct stm_amba_bridge *plug);
 	.packets_in_chunk			= 8,			\
 	.type2.threshold			= (thresh)
 
+/* SATA uses type 1 convertors */
+#define STM_DEFAULT_SATA_AMBA_PLUG_CONFIG				\
+	.type			=	stm_amba_type1,			\
+	.max_opcode		=	stm_amba_opc_LD32_ST32,		\
+	.write_posting		=	stm_amba_write_posting_disabled,\
+	.chunks_in_msg		=	8,				\
+	.packets_in_chunk 	=	4,				\
+	.type1.req_timeout	=	0
+
 #endif /* _STM_AMBA_BRIDGE_H */

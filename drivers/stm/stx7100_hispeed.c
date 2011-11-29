@@ -313,6 +313,9 @@ postcore_initcall(stx7100_miphy_postcore_setup);
 
 /* SATA resources --------------------------------------------------------- */
 static struct stm_plat_sata_data stx7100_sata_platform_data = {
+	.amba_config = &(struct stm_amba_plug_config) {
+		STM_DEFAULT_SATA_AMBA_PLUG_CONFIG
+	},
 	/* filled in stx7100_configure_sata() */
 	.device_config = &(struct stm_device_config){},
 };

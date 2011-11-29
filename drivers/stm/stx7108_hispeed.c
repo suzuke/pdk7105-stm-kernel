@@ -1121,6 +1121,9 @@ static void stx7108_sata1_power(struct stm_device_state *device_state,
 {
 	stx7108_sata_power(device_state, 1, power);
 }
+static struct stm_amba_bridge_config amba_config_sata = {
+	STM_DEFAULT_SATA_AMBA_PLUG_CONFIG
+};
 
 static struct platform_device stx7108_sata_devices[] = {
 	[0] = {
@@ -1133,6 +1136,7 @@ static struct platform_device stx7108_sata_devices[] = {
 			.oob_wa = 1,
 			.port_num = 0,
 			.miphy_num = 0,
+			.amba_config = &amba_config_sata,
 			.device_config = &(struct stm_device_config){
 				.power = stx7108_sata0_power,
 				.sysconfs_num = 1,
@@ -1159,6 +1163,7 @@ static struct platform_device stx7108_sata_devices[] = {
 			.oob_wa = 1,
 			.port_num = 1,
 			.miphy_num = 1,
+			.amba_config = &amba_config_sata,
 			.device_config = &(struct stm_device_config){
 				.power = stx7108_sata1_power,
 				.sysconfs_num = 1,
