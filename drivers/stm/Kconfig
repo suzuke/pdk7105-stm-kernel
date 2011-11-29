@@ -219,4 +219,9 @@ config PMS_DEBUG
 	help
 	  Enable this option to print out information about the PMS
 
+config STM_AMBA_BRIDGE
+	bool
+        depends on STM_DRIVERS
+	default y
+
 endmenu

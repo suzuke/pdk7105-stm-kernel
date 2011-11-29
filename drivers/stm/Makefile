@@ -21,6 +21,7 @@ obj-$(CONFIG_STM_COPROCESSOR)		+= stm-coprocessor.o
 obj-$(CONFIG_STM_COPROCESSOR_FRMW)	+= stm-coprocessor_frmw.o
 obj-$(CONFIG_STM_RNG)			+= rng.o
 obj-$(CONFIG_STM_MALI)			+= mali/
+obj-$(CONFIG_STM_AMBA_BRIDGE)		+= amba_bridge.o
 
 obj-$(CONFIG_PM)			+= wakeup_devices.o
 obj-$(CONFIG_PM)			+= pm_notify.o
