@@ -16,6 +16,7 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stih415.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/stm/stih415-periphs.h>
 #include <linux/delay.h>
 
@@ -65,10 +66,16 @@ static void stih415_usb_power(struct stm_device_state *device_state,
 	}
 }
 
+/* STBus Convertor config */
+static struct stm_amba_bridge_config stih415_amba_usb_config = {
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128),
+	.type2.sd_config_missing = 1,
+};
+
 static struct stm_plat_usb_data stih415_usb_platform_data[] = {
 	[0] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stih415_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stih415_usb_init,
 			.power = stih415_usb_power,
@@ -95,8 +102,8 @@ static struct stm_plat_usb_data stih415_usb_platform_data[] = {
 		},
 	},
 	[1] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stih415_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stih415_usb_init,
 			.power = stih415_usb_power,
@@ -123,8 +130,8 @@ static struct stm_plat_usb_data stih415_usb_platform_data[] = {
 		},
 	},
 	[2] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stih415_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stih415_usb_init,
 			.power = stih415_usb_power,
