@@ -45,7 +45,7 @@ static inline unsigned long get_uart_base(void)
 	if (machine_is_stm_b2000())
 		return STIH415_ASC2_BASE;
 #elif defined(CONFIG_MACH_STM_FLI7610)
-	if (machine_is_stm_fli7610())
+	if (machine_is_stm_nmhdk_fli7610())
 		return FLI7610_CONSOLE_BASE;
 #endif
 	return 0;
