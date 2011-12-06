@@ -1138,7 +1138,7 @@ static ssize_t iic_bus_store_fastmode(struct device *dev,
 static DEVICE_ATTR(fastmode, S_IRUGO | S_IWUSR, iic_bus_show_fastmode,
 		   iic_bus_store_fastmode);
 
-static int __init iic_stm_probe(struct platform_device *pdev)
+static int iic_stm_probe(struct platform_device *pdev)
 {
 	struct stm_plat_ssc_data *plat_data = pdev->dev.platform_data;
 	struct iic_ssc *i2c_stm;

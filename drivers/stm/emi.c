@@ -384,7 +384,7 @@ static int __init emi_sysdev_register(void)
 #define emi_sysdev_register()
 #endif
 
-static int __init emi_driver_probe(struct platform_device *pdev)
+static int emi_driver_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 

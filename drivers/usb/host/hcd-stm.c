@@ -144,14 +144,14 @@ error:
 	return ERR_PTR(retval);
 }
 
-static int __init stm_usb_probe(struct platform_device *pdev)
+static int stm_usb_probe(struct platform_device *pdev)
 {
 	struct stm_plat_usb_data *plat_data = pdev->dev.platform_data;
 	struct drv_usb_data *dr_data;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	int ret = 0, i;
-	static char __initdata *usb_clks_n[USB_CLKS_NR] = {
+	static char *usb_clks_n[USB_CLKS_NR] = {
 		[USB_48_CLK] = "usb_48_clk",
 		[USB_IC_CLK] = "usb_ic_clk",
 		[USB_PHY_CLK] = "usb_phy_clk"

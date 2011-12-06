@@ -676,7 +676,7 @@ void __init sysconf_early_init(struct platform_device *pdevs, int pdevs_num)
 
 
 
-static int __init sysconf_probe(struct platform_device *pdev)
+static int sysconf_probe(struct platform_device *pdev)
 {
 	int result = -EINVAL;
 	int i;
