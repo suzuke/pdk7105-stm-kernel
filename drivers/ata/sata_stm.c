@@ -1078,7 +1078,7 @@ static struct scsi_host_template stm_sht = {
 };
 
 static struct ata_port_operations stm_ops = {
-	.inherits		= &ata_sff_port_ops,
+	.inherits		= &ata_bmdma_port_ops,
 
 	.check_atapi_dma	= stm_check_atapi_dma,
 	.qc_defer		= sata_pmp_qc_defer_cmd_switch,
