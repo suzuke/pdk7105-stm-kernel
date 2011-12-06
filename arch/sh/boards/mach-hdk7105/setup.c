@@ -91,7 +91,7 @@ static struct stm_plat_pci_config hdk7105_pci_config = {
 	.pci_reset_gpio = HDK7105_PIO_PCI_RESET,
 };
 
-int pcibios_map_platform_irq(struct pci_dev *dev, u8 slot, u8 pin)
+int pcibios_map_platform_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {
         /* We can use the standard function on this board */
 	return stx7105_pcibios_map_platform_irq(&hdk7105_pci_config, pin);
