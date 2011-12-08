@@ -82,7 +82,7 @@ struct snd_stm_uniperif_spdif_settings {
  */
 
 struct snd_stm_uniperif_player {
-	/* System informations */
+	/* System information */
 	struct snd_stm_uniperif_player_info *info;
 	struct device *device;
 	struct snd_pcm *pcm;
@@ -155,6 +155,30 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_pcm_hw = {
 	 * Note 3: period_bytes_min defines minimum time between period
 	 * (NSAMPLE) interrupts... Keep it large enough not to kill
 	 * the system... */
+	.period_bytes_min = 4096, /* 1024 frames @ 32kHz, 16 bits, 2 ch. */
+	.period_bytes_max = 81920, /* 2048 frames @ 192kHz, 32 bits, 10 ch. */
+	.buffer_bytes_max = 81920 * 3, /* 3 worst-case-periods */
+};
+
+static struct snd_pcm_hardware snd_stm_uniperif_player_raw_hw = {
+	.info		= (SNDRV_PCM_INFO_MMAP |
+				SNDRV_PCM_INFO_MMAP_VALID |
+				SNDRV_PCM_INFO_INTERLEAVED |
+				SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				SNDRV_PCM_INFO_PAUSE),
+	.formats	= (SNDRV_PCM_FMTBIT_S32_LE),
+
+	.rates		= SNDRV_PCM_RATE_CONTINUOUS,
+	.rate_min	= 32000,
+	.rate_max	= 192000,
+
+	.channels_min	= 2,
+	.channels_max	= 2,
+
+	.periods_min	= 2,
+	.periods_max	= 1024,  /* TODO: sample, work out this somehow... */
+
+	/* See above... */
 	.period_bytes_min = 4096, /* 1024 frames @ 32kHz, 16 bits, 2 ch. */
 	.period_bytes_max = 81920, /* 2048 frames @ 192kHz, 32 bits, 10 ch. */
 	.buffer_bytes_max = 81920 * 3, /* 3 worst-case-periods */
@@ -256,32 +280,14 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 	player->stream_settings = player->default_settings;
 	spin_unlock(&player->default_settings_lock);
 
-	/* Set up constraints & pass hardware capabilities info to ALSA */
-	if (player->info->player_type == SND_STM_UNIPERIF_PLAYER_TYPE_PCM) {
-		static unsigned int channels_2_10[] = { 2, 4, 6, 8, 10 };
-		unsigned int i;
+	/* Set up channel constraints and inform ALSA */
 
-		BUG_ON(player->info->channels <= 0);
-		BUG_ON(player->info->channels > 10);
-		BUG_ON(player->info->channels % 2 != 0);
-
-		player->channels_constraint.list = channels_2_10;
-		player->channels_constraint.count =
-			player->info->channels / 2;
-
-		player->channels_constraint.mask = 0;
-		for (i = 0; i < player->channels_constraint.count; i++)
-			snd_stm_printd(0,
-				"Player capable of playing %u-channels PCM\n",
-				player->channels_constraint.list[i]);
-
-		result = snd_pcm_hw_constraint_list(runtime, 0,
+	result = snd_pcm_hw_constraint_list(runtime, 0,
 				SNDRV_PCM_HW_PARAM_CHANNELS,
 				&player->channels_constraint);
-		if (result < 0) {
-			snd_stm_printe("Can't set channels constraint!\n");
-			return result;
-		}
+	if (result < 0) {
+		snd_stm_printe("Can't set channels constraint!\n");
+		return result;
 	}
 
 	/* It is better when buffer size is an integer multiple of period
@@ -386,7 +392,6 @@ static int snd_stm_uniperif_player_hw_params(
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 	BUG_ON(!runtime);
-
 
 	/* This function may be called many times, so let's be prepared... */
 	if (snd_stm_buffer_is_allocated(player->buffer))
@@ -832,12 +837,14 @@ static int snd_stm_uniperif_player_prepare_pcm(
 	return 0;
 }
 
-static int snd_stm_uniperif_player_prepare_spdif(
+static int snd_stm_uniperif_player_prepare_iec958(
 		struct snd_stm_uniperif_player *player,
 		struct snd_pcm_runtime *runtime)
 {
 	int oversampling;
 	int result;
+	struct snd_aes_iec958 *iec958;
+	unsigned int status;
 
 	snd_stm_printd(1, "%s(player=0x%p)\n", __func__, player);
 
@@ -847,10 +854,14 @@ static int snd_stm_uniperif_player_prepare_spdif(
 
 	/* Get format & oversampling value from connected converter */
 	if (player->conv_group) {
-		int format = snd_stm_conv_get_format(player->conv_group);
+		if (player->info->player_type ==
+			SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF) {
+			int format = snd_stm_conv_get_format(
+					player->conv_group);
 
-		BUG_ON((format & SND_STM_FORMAT__MASK) !=
-		       SND_STM_FORMAT__SPDIF);
+			BUG_ON((format & SND_STM_FORMAT__MASK) !=
+				SND_STM_FORMAT__SPDIF);
+		}
 
 		oversampling =
 			snd_stm_conv_get_oversampling(player->conv_group);
@@ -868,39 +879,159 @@ static int snd_stm_uniperif_player_prepare_spdif(
 	BUG_ON(oversampling <= 0);
 	BUG_ON(oversampling % 128 != 0);
 
-	switch (runtime->format) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-		/* Output 32-bits per sub-frame (not same as precision) */
-		set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
-		/* Set memory format 16/16 */
-		set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_16(player);
-		/* Set 16-bit sample precision */
-		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_16(player);
-		break;
-	case SNDRV_PCM_FORMAT_S32_LE:
-		/* Output 32-bits per sub-frame (not same as precision) */
-		set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
-		/* Set memory format 16/0 (every 32-bits is single sub-frame) */
+	if (player->stream_settings.input_mode ==
+			SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL) {
+
+		snd_stm_printd(1, "- Normal input mode\n");
+
+		switch (runtime->format) {
+		case SNDRV_PCM_FORMAT_S16_LE:
+			snd_stm_printd(1, "- 16 bits per subframe\n");
+			/* 16/16 memory format */
+			set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_16(player);
+			/* 16-bits per sub-frame */
+			set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
+			/* Set 16-bit sample precision */
+			set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_16(player);
+			break;
+		case SNDRV_PCM_FORMAT_S32_LE:
+			snd_stm_printd(1, "- 32 bits per subframe\n");
+			/* 16/0 memory format */
+			set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(player);
+			/* 32-bits per sub-frame */
+			set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
+			/* Set 24-bit sample precision */
+			set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_24(player);
+			break;
+		default:
+			snd_BUG();
+			return -EINVAL;
+		}
+
+		/* Set parity to be calculated by the hardware */
+		set__AUD_UNIPERIF_CONFIG__PARITY_CNTR_BY_HW(player);
+
+		/* Set channel status bits to be inserted by the hardware */
+		set__AUD_UNIPERIF_CONFIG__CHANNEL_STA_CNTR_BY_HW(player);
+
+		/* Set user data bits to be inserted by the hardware */
+		set__AUD_UNIPERIF_CONFIG__USER_DAT_CNTR_BY_HW(player);
+
+		/* Set validity bits to be inserted by the hardware */
+		set__AUD_UNIPERIF_CONFIG__VALIDITY_DAT_CNTR_BY_HW(player);
+
+		/* Set full software control to disabled */
+		set__AUD_UNIPERIF_CONFIG__SPDIF_SW_CTRL_DISABLE(player);
+
+		set__AUD_UNIPERIF_CTRL__ZERO_STUFF_HW(player);
+
+		if (player->stream_settings.encoding_mode ==
+				SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_PCM) {
+
+			snd_stm_printd(1, "- PCM mode\n");
+
+			/* Clear user validity bits */
+			set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player,
+				0);
+			set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_RIGHT(player,
+				0);
+		} else {
+			struct snd_stm_uniperif_spdif_settings *settings =
+				&player->stream_settings;
+
+			snd_stm_printd(1, "- PCM encoded mode\n");
+
+			/* Configure number of frames for data/pause burst */
+			set__AUD_UNIPERIF_SPDIF_FRAMELEN_BURST__DAT_BURST(
+					player,
+					settings->iec61937_audio_repetition);
+			set__AUD_UNIPERIF_SPDIF_FRAMELEN_BURST__PAUSE_BURST(
+					player,
+					settings->iec61937_pause_repetition);
+
+			/* Select in bits */
+			set__AUD_UNIPERIF_CONFIG__PD_FMT_IN_BIT(player);
+
+			/* Configure iec61937 preamble */
+			set__AUD_UNIPERIF_SPDIF_PA_PB__PA(player,
+					settings->iec61937_preamble[0] |
+					settings->iec61937_preamble[1] << 8);
+			set__AUD_UNIPERIF_SPDIF_PA_PB__PB(player,
+					settings->iec61937_preamble[2] |
+					settings->iec61937_preamble[3] << 8);
+			set__AUD_UNIPERIF_SPDIF_PC_PD__PC(player,
+					settings->iec61937_preamble[4] |
+					settings->iec61937_preamble[5] << 8);
+			set__AUD_UNIPERIF_SPDIF_PC_PD__PD(player,
+					settings->iec61937_preamble[6] |
+					settings->iec61937_preamble[7] << 8);
+
+			/* Set user validity bits */
+			set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player,
+				1);
+			set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_RIGHT(player,
+				1);
+		}
+
+		/* Reset iec958 software formatting counters */
+		player->stream_iec958_status_cnt = 0;
+		player->stream_iec958_subcode_cnt = 0;
+
+		/* Configure channel status bits */
+		iec958 = &player->stream_settings.iec958;
+
+		status = iec958->status[0];
+		status |= iec958->status[1] << 8;
+		status |= iec958->status[2] << 16;
+		status |= iec958->status[3] << 24;
+		set__AUD_UNIPERIF_CHANNEL_STA_REG0(player, status);
+
+		status = iec958->status[4] & 0xf;
+		set__AUD_UNIPERIF_CHANNEL_STA_REG1(player, status);
+
+		set__AUD_UNIPERIF_CHANNEL_STA_REG2(player, 0x00000000);
+		set__AUD_UNIPERIF_CHANNEL_STA_REG3(player, 0x00000000);
+		set__AUD_UNIPERIF_CHANNEL_STA_REG4(player, 0x00000000);
+		set__AUD_UNIPERIF_CHANNEL_STA_REG5(player, 0x00000000);
+
+		/* Clear the user validity user bits */
+		set__AUD_UNIPERIF_USER_VALIDITY__USER_LEFT(player, 0);
+		set__AUD_UNIPERIF_USER_VALIDITY__USER_RIGHT(player, 0);
+
+		/* Update the channel status */
+		set__AUD_UNIPERIF_CONFIG__CHL_STS_UPDATE(player);
+
+	} else {
+
+		snd_stm_printd(1, "- Raw input mode\n");
+
+		/* 16/0 memory format */
 		set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(player);
+
+		/* 32-bits per sub-frame */
+		set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
+
 		/* Set 24-bit sample precision */
-		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_24(player);
-		break;
-	default:
-		snd_BUG();
-		return -EINVAL;
+		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_32(player);
+
+		/* Set parity to be calculated by the hardware */
+		set__AUD_UNIPERIF_CONFIG__PARITY_CNTR_BY_HW(player);
+
+		/* Set channel status bits to be inserted by the software */
+		set__AUD_UNIPERIF_CONFIG__CHANNEL_STA_CNTR_BY_SW(player);
+
+		/* Set user data bits to be inserted by the software */
+		set__AUD_UNIPERIF_CONFIG__USER_DAT_CNTR_BY_SW(player);
+
+		/* Set validity bits to be inserted by the software */
+		set__AUD_UNIPERIF_CONFIG__VALIDITY_DAT_CNTR_BY_SW(player);
+
+		/* Set full software control to enabled */
+		set__AUD_UNIPERIF_CONFIG__SPDIF_SW_CTRL_ENABLE(player);
+
+		/* Set zero stuff by hardware to stop glitch at end of audio */
+		set__AUD_UNIPERIF_CTRL__ZERO_STUFF_HW(player);
 	}
-
-	/* Set parity to be calculated by the hardware */
-	set__AUD_UNIPERIF_CONFIG__PARITY_CNTR_BY_HW(player);
-
-	/* Set channel status bits to be inserted by the hardware */
-	set__AUD_UNIPERIF_CONFIG__CHANNEL_STA_CNTR_BY_HW(player);
-
-	/* Set user data bits to be inserted by the hardware */
-	set__AUD_UNIPERIF_CONFIG__USER_DAT_CNTR_BY_HW(player);
-
-	/* Set validity bits to be inserted by the hardware */
-	set__AUD_UNIPERIF_CONFIG__VALIDITY_DAT_CNTR_BY_HW(player);
 
 	/* Disable one-bit audio mode */
 	set__AUD_UNIPERIF_CONFIG__ONE_BIT_AUD_DISABLE(player);
@@ -908,13 +1039,21 @@ static int snd_stm_uniperif_player_prepare_spdif(
 	/* Set repetition of Z preamble in consecutive frames disabled */
 	set__AUD_UNIPERIF_CONFIG__REPEAT_CHL_STS_DISABLE(player);
 
-	/* Set full software control to disabled */
-	set__AUD_UNIPERIF_CONFIG__SPDIF_SW_CTRL_DISABLE(player);
-
+	/* Change to SUF0_SUBF1 and left/right channels swap! */
 	set__AUD_UNIPERIF_CONFIG__SUBFRAME_SEL_SUBF1_SUBF0(player);
 
-	/* Set left-right clock polarity to left word when clock low */
-	set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(player);
+	/* Set left-right clock polarity depending on player type */
+	switch (player->info->player_type) {
+	case SND_STM_UNIPERIF_PLAYER_TYPE_HDMI:
+		set__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(player);
+		break;
+	case SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF:
+		set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(player);
+		break;
+	default:
+		snd_BUG();
+		return -EINVAL;
+	}
 
 	/* Set data output on rising edge */
 	set__AUD_UNIPERIF_I2S_FMT__SCLK_EDGE_RISING(player);
@@ -929,7 +1068,9 @@ static int snd_stm_uniperif_player_prepare_spdif(
 	set__AUD_UNIPERIF_I2S_FMT__ORDER_MSB(player);
 
 	/* Set the number of channels (maximum supported by spdif is 2) */
-	BUG_ON(runtime->channels != 2);
+	if (player->info->player_type == SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF)
+		BUG_ON(runtime->channels != 2);
+
 	set__AUD_UNIPERIF_I2S_FMT__NUM_CH(player, runtime->channels / 2);
 
 	/* Set the number of samples to read */
@@ -942,37 +1083,15 @@ static int snd_stm_uniperif_player_prepare_spdif(
 	/* Set clock divisor */
 	set__AUD_UNIPERIF_CTRL__DIVIDER(player, oversampling / 128);
 
-	set__AUD_UNIPERIF_CTRL__ZERO_STUFF_HW(player);
-
 	/* Set the spdif latency to not wait before starting player */
 	set__AUD_UNIPERIF_CTRL__SPDIF_LAT_OFF(player);
 
 	/*
-	 * Ensure spdif iec-60958 formatting is off. It will be enabled in
-	 * snd_stm_uniperif_player_start at the same time as the operation mode
-	 * is set to work around a silicon issue.
+	 * Ensure spdif iec-60958 formatting is off. It will be enabled
+	 * in function snd_stm_uniperif_player_start at the same time as
+	 * the operation mode is set to work around a silicon issue.
 	 */
 	set__AUD_UNIPERIF_CTRL__SPDIF_FMT_OFF(player);
-
-	/*** Configure other registers ***/
-
-	set__AUD_UNIPERIF_SPDIF_PA_PB__PA(player, 0);
-	set__AUD_UNIPERIF_SPDIF_PA_PB__PB(player, 0);
-
-	/* For PCM??? */
-	set__AUD_UNIPERIF_CHANNEL_STA_REG0(player, 0x02000400);
-	set__AUD_UNIPERIF_CHANNEL_STA_REG1(player, 0x0000000b);
-	set__AUD_UNIPERIF_CHANNEL_STA_REG2(player, 0x00000000);
-	set__AUD_UNIPERIF_CHANNEL_STA_REG3(player, 0x00000000);
-	set__AUD_UNIPERIF_CHANNEL_STA_REG4(player, 0x00000000);
-	set__AUD_UNIPERIF_CHANNEL_STA_REG5(player, 0x00000000);
-	set__AUD_UNIPERIF_CONFIG__CHL_STS_UPDATE(player);
-
-	/* Clear all user validity bits */
-	set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player, 0);
-	set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_RIGHT(player, 0);
-	set__AUD_UNIPERIF_USER_VALIDITY__USER_LEFT(player, 0);
-	set__AUD_UNIPERIF_USER_VALIDITY__USER_RIGHT(player, 0);
 
 	/* Enable clock */
 	result = clk_enable(player->clock);
@@ -1011,11 +1130,11 @@ static int snd_stm_uniperif_player_prepare(struct snd_pcm_substream *substream)
 	/* Uniperipheral setup is dependent on player type */
 	switch (player->info->player_type) {
 	case SND_STM_UNIPERIF_PLAYER_TYPE_HDMI:
-		return snd_stm_uniperif_player_prepare_hdmi(player, runtime);
+		return snd_stm_uniperif_player_prepare_iec958(player, runtime);
 	case SND_STM_UNIPERIF_PLAYER_TYPE_PCM:
 		return snd_stm_uniperif_player_prepare_pcm(player, runtime);
 	case SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF:
-		return snd_stm_uniperif_player_prepare_spdif(player, runtime);
+		return snd_stm_uniperif_player_prepare_iec958(player, runtime);
 	default:
 		snd_BUG();
 		return -EINVAL;
@@ -1314,8 +1433,9 @@ static struct snd_pcm_ops snd_stm_uniperif_player_pcm_ops = {
 };
 
 
+
 /*
- * ALSA controls
+ * ALSA uniperipheral spdif controls
  */
 
 static int snd_stm_uniperif_spdif_ctl_iec958_get(struct snd_kcontrol *kcontrol,
@@ -1341,8 +1461,6 @@ static int snd_stm_uniperif_spdif_ctl_iec958_put(struct snd_kcontrol *kcontrol,
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
-	unsigned int status;
-	struct snd_aes_iec958 *default_iec958, *user_iec958;
 
 	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
 		       __func__, kcontrol, ucontrol);
@@ -1350,26 +1468,10 @@ static int snd_stm_uniperif_spdif_ctl_iec958_put(struct snd_kcontrol *kcontrol,
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
-	default_iec958 = &(player->stream_settings.iec958);
-	user_iec958 = &(ucontrol->value.iec958);
 	spin_lock(&player->default_settings_lock);
-	if (!(memcmp(default_iec958->status, user_iec958->status,
-		    sizeof(default_iec958->status)))) {
-		/* undate channel status bit in uniperif register */
-		status = user_iec958->status[0] |
-			user_iec958->status[1] << 8 |
-			user_iec958->status[2] << 16 |
-			user_iec958->status[3] << 24;
-		set__AUD_UNIPERIF_CHANNEL_STA_REG0(player, status);
-		set__AUD_UNIPERIF_CHANNEL_STA_REG1(player,
-						user_iec958->status[4] & 0xf);
-		set__AUD_UNIPERIF_CONFIG__CHL_STS_UPDATE(player);
-	}
-
-	if (snd_stm_iec958_cmp(&player->stream_settings.iec958,
+	if (snd_stm_iec958_cmp(&player->default_settings.iec958,
 				&ucontrol->value.iec958) != 0) {
-		/* need to check for user and validity bit*/
-		player->stream_settings.iec958 = ucontrol->value.iec958;
+		player->default_settings.iec958 = ucontrol->value.iec958;
 		changed = 1;
 	}
 	spin_unlock(&player->default_settings_lock);
@@ -1395,7 +1497,7 @@ static int snd_stm_uniperif_spdif_ctl_raw_get(struct snd_kcontrol *kcontrol,
 
 	spin_lock(&player->default_settings_lock);
 	ucontrol->value.integer.value[0] =
-			(player->stream_settings.input_mode ==
+			(player->default_settings.input_mode ==
 			SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_RAW);
 	spin_unlock(&player->default_settings_lock);
 
@@ -1417,18 +1519,17 @@ static int snd_stm_uniperif_spdif_ctl_raw_put(struct snd_kcontrol *kcontrol,
 	BUG_ON(!snd_stm_magic_valid(player));
 
 	if (ucontrol->value.integer.value[0]) {
-		/*hardware = snd_stm_uniperif_player_spdif_raw_hw;*/
+		hardware = snd_stm_uniperif_player_raw_hw;
 		input_mode = SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_RAW;
-		BUG();
 	} else {
 		hardware = snd_stm_uniperif_player_pcm_hw;
 		input_mode = SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL;
 	}
 
 	spin_lock(&player->default_settings_lock);
-	changed = (input_mode != player->stream_settings.input_mode);
+	changed = (input_mode != player->default_settings.input_mode);
 	player->hardware = hardware;
-	player->stream_settings.input_mode = input_mode;
+	player->default_settings.input_mode = input_mode;
 	spin_unlock(&player->default_settings_lock);
 
 	return changed;
@@ -1451,7 +1552,7 @@ static int snd_stm_uniperif_spdif_ctl_encoded_get(struct snd_kcontrol *kcontrol,
 
 	spin_lock(&player->default_settings_lock);
 	ucontrol->value.integer.value[0] =
-			(player->stream_settings.encoding_mode ==
+			(player->default_settings.encoding_mode ==
 			SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_ENCODED);
 	spin_unlock(&player->default_settings_lock);
 
@@ -1478,8 +1579,8 @@ static int snd_stm_uniperif_spdif_ctl_encoded_put(struct snd_kcontrol *kcontrol,
 
 	spin_lock(&player->default_settings_lock);
 	changed = (encoding_mode !=
-			player->stream_settings.encoding_mode);
-	player->stream_settings.encoding_mode = encoding_mode;
+			player->default_settings.encoding_mode);
+	player->default_settings.encoding_mode = encoding_mode;
 	spin_unlock(&player->default_settings_lock);
 
 	return changed;
@@ -1512,7 +1613,7 @@ static int snd_stm_uniperif_spdif_ctl_preamble_get(
 
 	spin_lock(&player->default_settings_lock);
 	memcpy(ucontrol->value.bytes.data,
-			player->stream_settings.iec61937_preamble,
+			player->default_settings.iec61937_preamble,
 			SPDIF_PREAMBLE_BYTES);
 	spin_unlock(&player->default_settings_lock);
 
@@ -1525,7 +1626,6 @@ static int snd_stm_uniperif_spdif_ctl_preamble_put(
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
-	unsigned char *stream_preamble, *user_input_preamble;
 
 	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
 		       __func__, kcontrol, ucontrol);
@@ -1533,23 +1633,13 @@ static int snd_stm_uniperif_spdif_ctl_preamble_put(
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
-	stream_preamble = (player->stream_settings.iec61937_preamble);
-	user_input_preamble = (ucontrol->value.bytes.data);
-
 	spin_lock(&player->default_settings_lock);
-	if (memcmp(stream_preamble, user_input_preamble,
-		   SPDIF_PREAMBLE_BYTES) != 0) {
+	if (memcmp(player->default_settings.iec61937_preamble,
+			ucontrol->value.bytes.data,
+			SPDIF_PREAMBLE_BYTES) != 0) {
 		changed = 1;
-		memcpy(stream_preamble, user_input_preamble,
-		       SPDIF_PREAMBLE_BYTES);
-		set__AUD_UNIPERIF_SPDIF_PA_PB__PA(player,
-			(stream_preamble[0] | (stream_preamble[1] << 8)));
-		set__AUD_UNIPERIF_SPDIF_PA_PB__PB(player,
-			(stream_preamble[2] | (stream_preamble[3] << 8)));
-		set__AUD_UNIPERIF_SPDIF_PC_PD__PC(player,
-			(stream_preamble[4] | (stream_preamble[5] << 8)));
-		set__AUD_UNIPERIF_SPDIF_PC_PD__PD(player,
-			(stream_preamble[6] | (stream_preamble[7] << 8)));
+		memcpy(player->default_settings.iec61937_preamble,
+			ucontrol->value.bytes.data, SPDIF_PREAMBLE_BYTES);
 	}
 	spin_unlock(&player->default_settings_lock);
 
@@ -1579,7 +1669,7 @@ static int snd_stm_uniperif_spdif_ctl_audio_repetition_get(struct snd_kcontrol
 
 	spin_lock(&player->default_settings_lock);
 	ucontrol->value.integer.value[0] =
-		player->stream_settings.iec61937_audio_repetition;
+		player->default_settings.iec61937_audio_repetition;
 	spin_unlock(&player->default_settings_lock);
 
 	return 0;
@@ -1590,7 +1680,6 @@ static int snd_stm_uniperif_spdif_ctl_audio_repetition_put(struct snd_kcontrol
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
-       unsigned int user_input_data_burst;
 
 	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
 		       __func__, kcontrol, ucontrol);
@@ -1598,15 +1687,12 @@ static int snd_stm_uniperif_spdif_ctl_audio_repetition_put(struct snd_kcontrol
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
-	user_input_data_burst = ucontrol->value.integer.value[0];
 	spin_lock(&player->default_settings_lock);
-	if (player->stream_settings.iec61937_audio_repetition !=
-	    user_input_data_burst) {
+	if (player->default_settings.iec61937_audio_repetition !=
+			ucontrol->value.integer.value[0]) {
 		changed = 1;
-		player->stream_settings.iec61937_audio_repetition =
-			user_input_data_burst;
-		set__AUD_UNIPERIF_SPDIF_FRAMELEN_BURST__DAT_BURST(
-			player, user_input_data_burst);
+		player->default_settings.iec61937_audio_repetition =
+				ucontrol->value.integer.value[0];
 	}
 	spin_unlock(&player->default_settings_lock);
 
@@ -1626,7 +1712,7 @@ static int snd_stm_uniperif_spdif_ctl_pause_repetition_get(struct snd_kcontrol
 
 	spin_lock(&player->default_settings_lock);
 	ucontrol->value.integer.value[0] =
-		player->stream_settings.iec61937_pause_repetition;
+		player->default_settings.iec61937_pause_repetition;
 	spin_unlock(&player->default_settings_lock);
 
 	return 0;
@@ -1637,7 +1723,6 @@ static int snd_stm_uniperif_spdif_ctl_pause_repetition_put(struct snd_kcontrol
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
-       unsigned int user_input_pause_burst;
 
 	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
 		       __func__, kcontrol, ucontrol);
@@ -1645,15 +1730,12 @@ static int snd_stm_uniperif_spdif_ctl_pause_repetition_put(struct snd_kcontrol
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
-	user_input_pause_burst = ucontrol->value.integer.value[0];
 	spin_lock(&player->default_settings_lock);
-	if (player->stream_settings.iec61937_pause_repetition !=
-	    user_input_pause_burst) {
+	if (player->default_settings.iec61937_pause_repetition !=
+			ucontrol->value.integer.value[0]) {
 		changed = 1;
-		player->stream_settings.iec61937_pause_repetition =
-			user_input_pause_burst;
-		set__AUD_UNIPERIF_SPDIF_FRAMELEN_BURST__PAUSE_BURST(
-			player, user_input_pause_burst);
+		player->default_settings.iec61937_pause_repetition =
+				ucontrol->value.integer.value[0];
 	}
 	spin_unlock(&player->default_settings_lock);
 
@@ -1716,6 +1798,7 @@ static struct snd_kcontrol_new snd_stm_uniperif_spdif_ctls[] = {
 };
 
 
+
 /*
  * ALSA lowlevel device implementation
  */
@@ -1738,14 +1821,14 @@ static void snd_stm_uniperif_player_dump_registers(struct snd_info_entry *entry,
 	snd_iprintf(buffer, "base = 0x%p\n", player->base);
 
 	DUMP_REGISTER(SOFT_RST);
-	/*DUMP_REGISTER(FIFO_DATA);*/
+	/*DUMP_REGISTER(FIFO_DATA);*/ /* Register is write-only */
 	DUMP_REGISTER(STA);
 	DUMP_REGISTER(ITS);
-	/*DUMP_REGISTER(ITS_BCLR);*/
-	/*DUMP_REGISTER(ITS_BSET);*/
+	/*DUMP_REGISTER(ITS_BCLR);*/  /* Register is write-only */
+	/*DUMP_REGISTER(ITS_BSET);*/  /* Register is write-only */
 	DUMP_REGISTER(ITM);
-	/*DUMP_REGISTER(ITM_BCLR);*/
-	/*DUMP_REGISTER(ITM_BSET);*/
+	/*DUMP_REGISTER(ITM_BCLR);*/  /* Register is write-only */
+	/*DUMP_REGISTER(ITM_BSET);*/  /* Register is write-only */
 	DUMP_REGISTER(SPDIF_PA_PB);
 	DUMP_REGISTER(SPDIF_PC_PD);
 	DUMP_REGISTER(SPDIF_PAUSE_LAT);
@@ -1870,6 +1953,8 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 	int result = 0;
 	struct snd_stm_uniperif_player *player;
 	struct snd_card *card = snd_stm_card_get();
+	static unsigned int channels_2_10[] = { 2, 4, 6, 8, 10 };
+	unsigned int i;
 
 	snd_stm_printd(0, "%s('%s')\n", __func__, dev_name(&pdev->dev));
 
@@ -1899,6 +1984,8 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 	case SND_STM_UNIPERIF_PLAYER_TYPE_HDMI:
 		snd_stm_printd(0, "Player type is hdmi\n");
 		player->hardware = snd_stm_uniperif_player_pcm_hw;
+		player->stream_settings.input_mode =
+				SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL;
 		break;
 	case SND_STM_UNIPERIF_PLAYER_TYPE_PCM:
 		snd_stm_printd(0, "Player type is pcm\n");
@@ -1947,7 +2034,17 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 
 	/* Get player capabilities */
 
-	snd_stm_printd(0, "Player's name is '%s'\n", player->info->name);
+	BUG_ON(player->info->channels <= 0);
+	BUG_ON(player->info->channels > 10);
+	BUG_ON(player->info->channels % 2 != 0);
+
+	player->channels_constraint.list = channels_2_10;
+	player->channels_constraint.count = player->info->channels / 2;
+	player->channels_constraint.mask = 0;
+
+	for (i = 0; i < player->channels_constraint.count; i++)
+		snd_stm_printd(0, "Player capable of playing %u-channels PCM\n",
+				player->channels_constraint.list[i]);
 
 	/* Create ALSA lowlevel device */
 
