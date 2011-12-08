@@ -81,9 +81,8 @@ struct stih415_ethernet_config {
 	enum {
 		stih415_ethernet_mode_mii,
 		stih415_ethernet_mode_gmii,
-		stih415_ethernet_mode_gmii_gtx,
+		stih415_ethernet_mode_rgmii,
 		stih415_ethernet_mode_rmii,
-		stih415_ethernet_mode_rgmii_gtx,
 		stih415_ethernet_mode_reverse_mii
 	} mode;
 	int ext_clk;

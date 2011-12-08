@@ -19,14 +19,8 @@ config STM_GMAC0_B2032_CARD
 	help
 	  B2032A Ethernet card on CN22 of B2000,
 
-config STM_GMAC0_B2032_CARD_GMII_MODE
-	prompt "B2032A GMII modified Card on GMAC0"
-	depends on STM_GMAC0_B2032_CARD
-	help
-	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
-
 config STM_GMAC0_B2035_CARD
-	bool "B2035 on GMAC0"
+	bool "B2035 for GMAC0 and MMC/SD external slot"
 	help
 	  B2035 connected to CN22 of B2000
 
@@ -60,6 +54,36 @@ config	STM_B2048A_MMC_EMMC
 
 endchoice
 
+
+config	STM_GMAC0_B2032_GIGA_MODE
+	bool "B2032A: enable GMAC0 in GMII/RMII mode"
+	depends on STM_GMAC0_B2032_CARD
+	help
+	  Select this options to support the GMII/RGMII
+	  on GMAC0. The B2032A moudule has to be modified
+	  to support this modes.
+	  By default the GMAC0 works in MII mode.
+
+	  Do not select it if you want the GMAC in MII mode.
+choice
+	prompt  "Select GiGa mode"
+	default STM_GMAC1_B2032_CARD_GMII_MODE
+	depends on STM_GMAC0_B2032_GIGA_MODE
+
+config STM_GMAC0_B2032_CARD_GMII_MODE
+	bool "B2032A module modified for GMII mode"
+	depends on STM_GMAC0_B2032_GIGA_MODE
+	help
+	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
+
+config STM_GMAC0_B2032_CARD_RGMII_MODE
+	bool "B2032A module modified for RGMII mode"
+	depends on STM_GMAC0_B2032_GIGA_MODE
+	help
+	  B2032A modified (add R26) and J1 removed Ethernet card on CN22 of B2000.
+
+endchoice
+
 choice
 	prompt "B2000: card selection on CN23 connector"
 	default STM_GMAC1_B2032_CARD
@@ -77,11 +101,6 @@ config STM_GMAC1_B2032_CARD
 	help
 	  B2032A Ethernet card on CN23 of B2000.
 
-config STM_GMAC1_B2032_CARD_GMII_MODE
-	bool "B2032A GMII modified Card on GMAC0"
-	help
-	  B2032A modified (add R26) Ethernet card on CN23 of B2000.
-
 config STM_GMAC1_B2035_CARD
 	bool "B2035 on GMAC1"
 	help
@@ -89,6 +108,36 @@ config STM_GMAC1_B2035_CARD
 
 endchoice
 
+config	STM_GMAC1_B2032_GIGA_MODE
+	bool "B2032A: enable GMAC1 in GMII/RMII mode"
+	depends on STM_GMAC1_B2032_CARD
+	help
+	  Select this options to support the GMII/RGMII
+	  on GMAC1. The B2032A moudule has to be modified
+	  to support this modes.
+	  By default the GMAC1 works in MII mode.
+
+	  Do not select it if you want the GMAC in MII mode.
+choice
+	prompt  "Select GiGa mode"
+	default STM_GMAC1_B2032_CARD_GMII_MODE
+	depends on STM_GMAC1_B2032_GIGA_MODE
+
+config STM_GMAC1_B2032_CARD_GMII_MODE
+	bool "B2032A module modified for GMII mode"
+	depends on STM_GMAC1_B2032_GIGA_MODE
+	help
+	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
+	  Unplug CN26 and CN30 on the B2000.
+
+config STM_GMAC1_B2032_CARD_RGMII_MODE
+	bool "B2032A module modified for RGMII mode"
+	depends on STM_GMAC1_B2032_GIGA_MODE
+	help
+	  B2032A modified (add R26) and J1 removed Ethernet card on CN22 of B2000.
+	  Unplug CN26 and CN30 on the B2000.
+
+endchoice
 
 config STM_B2000_MALI_OS_MEMORY_SIZE
 	hex "Maximum Mali GPU OS memory size"

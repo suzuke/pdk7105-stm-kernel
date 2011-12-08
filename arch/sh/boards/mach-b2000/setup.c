@@ -32,8 +32,8 @@ static void __init b2000_setup(char **cmdline_p)
 	stih415_early_device_init();
 
 	stih415_configure_asc(2, &(struct stih415_asc_config) {
-			.hw_flow_control = 1,
-			.is_console = 1, });
+			.hw_flow_control = 0,
+			.is_console = 1 });
 }
 
 #define GMII0_PHY_NOT_RESET stm_gpio(25 /*106 -100 + 18 */, 2)
@@ -42,7 +42,7 @@ static void __init b2000_setup(char **cmdline_p)
 #define HDMI_HOTPLUG	GMII1_PHY_CLKOUT_NOT_TXCLK_SEL
 #define GMII0_PHY_CLKOUT_NOT_TXCLK_SEL stm_gpio(13, 4)
 
-#if defined(CONFIG_STM_GMAC1_NONE)
+#if defined(CONFIG_STM_CN23_NONE)
 static struct stm_pad_config stih415_hdmi_hp_pad_config = {
         .gpios_num = 1,
         .gpios = (struct stm_pad_gpio []) {
@@ -52,29 +52,18 @@ static struct stm_pad_config stih415_hdmi_hp_pad_config = {
 #endif
 
 
-static int b2000_gmii1_reset(void *bus)
-{
-	gpio_set_value(GMII1_PHY_NOT_RESET, 1);
-	gpio_set_value(GMII1_PHY_NOT_RESET, 0);
-	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
-	gpio_set_value(GMII1_PHY_NOT_RESET, 1);
-	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
-
-	return 1;
-}
-
-#ifdef CONFIG_STM_GMAC0_B2032_CARD_GMII_MODE
-static void b2000_gmac0_txclk_select(int txclk_250_not_25_mhz)
+#if defined(CONFIG_STM_GMAC0_B2032_GIGA_MODE)
+static void b2000_gmac0_txclk_select(int txclk_125_not_25_mhz)
 {
 	/* When 1000 speed is negotiated we have to set the PIO13[4]. */
-	if (txclk_250_not_25_mhz)
+	if (txclk_125_not_25_mhz)
 		gpio_set_value(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, 1);
 	else
 		gpio_set_value(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
 }
 #endif
 
-#ifdef CONFIG_STM_GMAC1_B2032_CARD_GMII_MODE
+#if defined(CONFIG_STM_GMAC1_B2032_GIGA_MODE)
 /*
  * On B2000B board PIO 2-5 conflicts with the HDMI hot-plug detection pin.
  * As we have a seperate 125clk pin in to the MAC, we might not need
@@ -84,10 +73,14 @@ static void b2000_gmac0_txclk_select(int txclk_250_not_25_mhz)
  * NOTE: This will be an issue if the B2032 is used with a 7108 as
  * 125clk comes from phy txclk, and so this signal is needed.
  */
-static void b2000_gmac1_txclk_select(int txclk_250_not_25_mhz)
+/* GMII and RGMII on GMAC1 NOT Yet Supported
+ * Noticed Packet drops with GMII &
+ * RGMII does not work even for validation.
+ */
+static void b2000_gmac1_txclk_select(int txclk_125_not_25_mhz)
 {
 	/* When 1000 speed is negotiated we have to set the PIO2[5]. */
-	if (txclk_250_not_25_mhz)
+	if (txclk_125_not_25_mhz)
 		gpio_set_value(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, 1);
 	else
 		gpio_set_value(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
@@ -114,12 +107,29 @@ static struct stmmac_mdio_bus_data stmmac0_mdio_bus = {
 };
 #endif
 
+#if defined(CONFIG_STM_GMAC1_B2035_CARD) || defined(CONFIG_STM_GMAC1_B2032_CARD)
+
+#if defined(CONFIG_STM_GMAC1_B2032_CARD_RGMII_MODE)
+#error "RGMII mode on GMAC1 is not functional"
+#endif
+static int b2000_gmii1_reset(void *bus)
+{
+	gpio_set_value(GMII1_PHY_NOT_RESET, 1);
+	gpio_set_value(GMII1_PHY_NOT_RESET, 0);
+	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
+	gpio_set_value(GMII1_PHY_NOT_RESET, 1);
+	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
+
+	return 1;
+}
+
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
 	/* GMII connector CN23 */
 	.bus_id = 1,
 	.phy_reset = &b2000_gmii1_reset,
 	.phy_mask = 0,
 };
+#endif
 
 static struct platform_device b2000_leds = {
 	.name = "leds-gpio",
@@ -172,10 +182,15 @@ static int __init b2000_devices_init(void)
 	gpio_request(GMII1_PHY_NOT_RESET, "GMII1_PHY_NOT_RESET");
 	gpio_direction_output(GMII1_PHY_NOT_RESET, 0);
 
-#if !defined(CONFIG_STM_GMAC1_NONE)
+#if !defined(CONFIG_STM_CN23_NONE)
 	/* Default to 100 Mbps */
 	gpio_request(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, "GMII1_TXCLK_SEL");
+
+#if defined(CONFIG_STM_GMAC1_B2032_GIGA_MODE)
+	gpio_direction_output(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, 1);
+#else
 	gpio_direction_output(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
+#endif
 	gpio_free(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL);
 #else
 	/* Default to HDMI HotPlug */
@@ -184,10 +199,15 @@ static int __init b2000_devices_init(void)
 
 #endif
 
-#if !defined(CONFIG_STM_GMAC0_NONE)
+#if !defined(CONFIG_STM_CN22_NONE)
 	/* Default to 100 Mbps */
 	gpio_request(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, "GMII0_TXCLK_SEL");
+	/* Can be ignored for RGMII on this PHY */
+#if defined(CONFIG_STM_GMAC0_B2032_GIGA_MODE)
+	gpio_direction_output(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, 1);
+#else
 	gpio_direction_output(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
+#endif
 	gpio_free(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL);
 #endif
 
@@ -196,6 +216,9 @@ static int __init b2000_devices_init(void)
  * GMII Mode on B2032A needs R26 to be fitted with 51R
  * On B2000B board, to get GMAC0 working make sure that jumper
  * on PIN 9-10 on CN35 and CN36 are removed.
+ *
+ * For RGMII: Remove the J1 Jumper.
+ * 100/10 Link: TXCLK_SELECTION can be ignored for this PHY.
  */
 
 /*
@@ -206,26 +229,33 @@ static int __init b2000_devices_init(void)
  * however we can connect it to GMAC1 for RMII testing.
  */
 
+
 /* GMAC0 */
 #if defined(CONFIG_STM_GMAC0_B2035_CARD) || defined(CONFIG_STM_GMAC0_B2032_CARD)
 	stih415_configure_ethernet(0, &(struct stih415_ethernet_config) {
 #ifdef CONFIG_STM_GMAC0_B2035_CARD
 			.mode = stih415_ethernet_mode_rmii,
 			.ext_clk = 0,
+			.phy_addr = 9,
 #endif /* CONFIG_STM_GMAC0_B2035_CARD */
 
 #ifdef CONFIG_STM_GMAC0_B2032_CARD
 /* B2032 modified to support GMII */
-#ifdef CONFIG_STM_GMAC0_B2032_CARD_GMII_MODE
-			.mode = stih415_ethernet_mode_gmii_gtx,
+#if defined(CONFIG_STM_GMAC0_B2032_GIGA_MODE)
 			.txclk_select = b2000_gmac0_txclk_select,
+#ifdef CONFIG_STM_GMAC0_B2032_CARD_GMII_MODE
+			.mode = stih415_ethernet_mode_gmii,
+#else
+			.mode = stih415_ethernet_mode_rgmii,
+#endif /* CONFIG_STM_GMAC0_B2032_CARD_GMII_MODE */
 #else
 			.mode = stih415_ethernet_mode_mii,
-#endif /* CONFIG_STM_GMAC0_B2032_CARD_GMII_MODE */
+#endif /* CONFIG_STM_GMAC0_B2032_GIGA_MODE */
 			.ext_clk = 1,
+			.phy_addr = 1,
 #endif /* CONFIG_STM_GMAC0_B2032_CARD */
+
 			.phy_bus = 0,
-			.phy_addr = -1,
 			.mdio_bus_data = &stmmac0_mdio_bus, });
 #endif
 
@@ -235,21 +265,28 @@ static int __init b2000_devices_init(void)
 #ifdef CONFIG_STM_GMAC1_B2035_CARD
 			.mode = stih415_ethernet_mode_rmii,
 			.ext_clk = 0,
+			.phy_addr = 9,
 #endif /* CONFIG_STM_GMAC1_B2035_CARD */
 
+/* RGMII on GMAC1 has problems with TX side
+ */
 #ifdef CONFIG_STM_GMAC1_B2032_CARD
+#if defined(CONFIG_STM_GMAC1_B2032_GIGA_MODE)
+			.txclk_select = b2000_gmac1_txclk_select,
+#ifdef CONFIG_STM_GMAC1_B2032_CARD_GMII_MODE
+			.mode = stih415_ethernet_mode_gmii,
+#else
+			.mode = stih415_ethernet_mode_rgmii,
+#endif /* CONFIG_STM_GMAC1_B2032_CARD_GMII_MODE */
+#else
 			.mode = stih415_ethernet_mode_mii,
+#endif /* CONFIG_STM_GMAC1_B2032_CARD */
 			.ext_clk = 1,
+			.phy_addr = 1,
 #endif /* CONFIG_STM_GMAC1_B2032_CARD */
 
-#ifdef CONFIG_STM_GMAC1_B2032_CARD_GMII_MODE
-			.mode = stih415_ethernet_mode_gmii_gtx,
-			.txclk_select = b2000_gmac1_txclk_select,
-			.ext_clk = 1,
-#endif /* CONFIG_STM_GMAC1_B2032_CARD_GMII_MODE */
 			.phy_bus = 1,
-			.phy_addr = -1,
-			.mdio_bus_data = &stmmac1_mdio_bus, });
+			.mdio_bus_data = &stmmac1_mdio_bus,});
 #endif /* CONFIG_STM_CN23_NONE */
 
 	stih415_configure_usb(0);
