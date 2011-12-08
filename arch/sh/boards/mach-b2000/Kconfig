@@ -20,7 +20,8 @@ config STM_GMAC0_B2032_CARD
 	  B2032A Ethernet card on CN22 of B2000,
 
 config STM_GMAC0_B2032_CARD_GMII_MODE
-	bool "B2032A GMII modified Card on GMAC0"
+	prompt "B2032A GMII modified Card on GMAC0"
+	depends on STM_GMAC0_B2032_CARD
 	help
 	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
 

@@ -52,25 +52,15 @@ static void __init b2000_init_early(void)
 #define HDMI_HOTPLUG	GMII1_PHY_CLKOUT_NOT_TXCLK_SEL
 #define GMII0_PHY_CLKOUT_NOT_TXCLK_SEL stm_gpio(13, 4)
 
+#if defined(CONFIG_STM_GMAC1_NONE)
 static struct stm_pad_config stih415_hdmi_hp_pad_config = {
         .gpios_num = 1,
         .gpios = (struct stm_pad_gpio []) {
                 STM_PAD_PIO_IN(2, 5, 1),      /* HDMI Hotplug */
         },
 };
+#endif
 
-
-
-static int b2000_gmii0_reset(void *bus)
-{
-	gpio_set_value(GMII0_PHY_NOT_RESET, 1);
-	gpio_set_value(GMII0_PHY_NOT_RESET, 0);
-	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
-	gpio_set_value(GMII0_PHY_NOT_RESET, 1);
-	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
-
-	return 1;
-}
 
 static int b2000_gmii1_reset(void *bus)
 {
@@ -114,12 +104,25 @@ static void b2000_gmac1_txclk_select(int txclk_250_not_25_mhz)
 }
 #endif
 
+#if defined(CONFIG_STM_GMAC0_B2035_CARD) || defined(CONFIG_STM_GMAC0_B2032_CARD)
+static int b2000_gmii0_reset(void *bus)
+{
+	gpio_set_value(GMII0_PHY_NOT_RESET, 1);
+	gpio_set_value(GMII0_PHY_NOT_RESET, 0);
+	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
+	gpio_set_value(GMII0_PHY_NOT_RESET, 1);
+	mdelay(10); /* 10 miliseconds is enough for everyone ;-) */
+
+	return 1;
+}
+
 static struct stmmac_mdio_bus_data stmmac0_mdio_bus = {
 	/* GMII connector CN22 */
 	.bus_id = 0,
 	.phy_reset = &b2000_gmii0_reset,
 	.phy_mask = 0,
 };
+#endif
 
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
 	/* GMII connector CN23 */
@@ -229,7 +232,7 @@ static void __init b2000_init(void)
  */
 
 /* GMAC0 */
-#if !defined(CONFIG_STM_CN22_NONE)
+#if defined(CONFIG_STM_GMAC0_B2035_CARD) || defined(CONFIG_STM_GMAC0_B2032_CARD)
 	stih415_configure_ethernet(0, &(struct stih415_ethernet_config) {
 #ifdef CONFIG_STM_GMAC0_B2035_CARD
 			.mode = stih415_ethernet_mode_rmii,
@@ -237,19 +240,20 @@ static void __init b2000_init(void)
 #endif /* CONFIG_STM_GMAC0_B2035_CARD */
 
 #ifdef CONFIG_STM_GMAC0_B2032_CARD
-			.mode = stih415_ethernet_mode_mii,
-			.ext_clk = 1,
-#endif /* CONFIG_STM_GMAC0_B2032_CARD */
-
+/* B2032 modified to support GMII */
 #ifdef CONFIG_STM_GMAC0_B2032_CARD_GMII_MODE
 			.mode = stih415_ethernet_mode_gmii_gtx,
 			.txclk_select = b2000_gmac0_txclk_select,
-			.ext_clk = 1,
+#else
+			.mode = stih415_ethernet_mode_mii,
 #endif /* CONFIG_STM_GMAC0_B2032_CARD_GMII_MODE */
+			.ext_clk = 1,
+#endif /* CONFIG_STM_GMAC0_B2032_CARD */
+
 			.phy_bus = 0,
 			.phy_addr = -1,
 			.mdio_bus_data = &stmmac0_mdio_bus, });
-#endif /* CONFIG_STM_CN22_NONE */
+#endif
 
 /* GMAC1 */
 #if !defined(CONFIG_STM_CN23_NONE)
