@@ -19,6 +19,7 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/emi.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/stm/stx7105.h>
 #include <linux/stm/device.h>
 #include <linux/delay.h>
@@ -526,10 +527,14 @@ static void stx7105_usb_power(struct stm_device_state *device_state,
 	}
 }
 
+static struct stm_amba_bridge_config stx7105_amba_usb_config = {
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128)
+};
+
 static struct stm_plat_usb_data stx7105_usb_platform_data[] = {
 	[0] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stx7105_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			/* .pad_config created in stx7105_configure_usb() */
 			.sysconfs_num = 3,
@@ -542,8 +547,8 @@ static struct stm_plat_usb_data stx7105_usb_platform_data[] = {
 		}
 	},
 	[1] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stx7105_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			/* .pad_config created in stx7105_configure_usb() */
 			.sysconfs_num = 3,

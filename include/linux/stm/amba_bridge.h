@@ -88,4 +88,30 @@ struct stm_amba_bridge *stm_amba_bridge_create(struct device *dev,
  */
 void stm_amba_bridge_init(struct stm_amba_bridge *plug);
 
+/* Macros to assist in building up the various data structures,
+ * there is a lot of commonality between the devices. If there
+ * should be as much is an interesting question
+ */
+#define STM_DEFAULT_TYPE2_AMBA_PLUG_CONFIG				\
+	.type			=	stm_amba_type2,			\
+	.max_opcode		=	stm_amba_opc_LD32_ST32,		\
+	.write_posting		=	stm_amba_write_posting_disabled,\
+	.chunks_in_msg		=	0, /* messaging disabled */	\
+	.packets_in_chunk	=	0,				\
+	.type2.req_notify	=	stm_amba_ahb_burst_based,	\
+	.type2.cont_on_error	=	stm_amba_complete_transaction,	\
+	.type2.msg_merge	=	stm_amba_msg_merge_disabled,	\
+	.type2.trigger_mode	=	stm_amba_stbus_threshold_based,	\
+	.type2.read_ahead	=	stm_amba_read_ahead_enabled,	\
+	.type2.threshold	=	32
+
+
+/* Same for USB, though different SOCs seem to use different threshold
+ * values. Again they can be overridden.
+ */
+#define STM_DEFAULT_USB_AMBA_PLUG_CONFIG(thresh)			\
+	STM_DEFAULT_TYPE2_AMBA_PLUG_CONFIG,				\
+	.packets_in_chunk			= 8,			\
+	.type2.threshold			= (thresh)
+
 #endif /* _STM_AMBA_BRIDGE_H */

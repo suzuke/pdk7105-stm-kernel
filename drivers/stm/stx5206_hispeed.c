@@ -19,6 +19,7 @@
 #include <linux/stm/device.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/stm/stx5206.h>
 #include <linux/clk.h>
 #include <asm/irq-ilc.h>
@@ -194,8 +195,10 @@ static void stx5206_usb_power(struct stm_device_state *device_state,
 static u64 stx5206_usb_dma_mask = DMA_BIT_MASK(32);
 
 static struct stm_plat_usb_data stx5206_usb_platform_data = {
-	.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-		STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+	.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+	.amba_config = &(struct stm_amba_bridge_config) {
+		STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128)
+	},
 	.device_config = &(struct stm_device_config) {
 		.pad_config = &(struct stm_pad_config) {
 			.sysconfs_num = 1,

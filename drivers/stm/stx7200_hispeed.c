@@ -20,6 +20,7 @@
 #include <linux/stm/device.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stx7200.h>
+#include <linux/stm/amba_bridge.h>
 #include <asm/irq-ilc.h>
 
 
@@ -298,11 +299,22 @@ static void stx7200_usb_release(struct stm_pad_state *state, void *priv)
 
 static u64 stx7200_usb_dma_mask = DMA_BIT_MASK(32);
 
+/* 7200 uses the old style type 1 amba convertors, rather
+ * than the updated one like all the later SOCs
+ */
+static struct stm_amba_bridge_config stx7200_amba_usb_config = {
+	.type 		  = stm_amba_type1,
+	.max_opcode	  = stm_amba_opc_LD32_ST32,
+	.write_posting	  = stm_amba_write_posting_disabled,
+	.chunks_in_msg	  = 4,
+	.packets_in_chunk = 4,
+};
+
 static struct stm_plat_usb_data stx7200_usb_platform_data[] = {
 	[0] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STRAP_PLL |
-				STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE,
+				STM_PLAT_USB_FLAGS_STRAP_PLL,
+		.amba_config = &stx7200_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.pad_config = &(struct stm_pad_config) {
 				.gpios_num = 2,
@@ -328,8 +340,8 @@ static struct stm_plat_usb_data stx7200_usb_platform_data[] = {
 	},
 	[1] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STRAP_PLL |
-				STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE,
+				STM_PLAT_USB_FLAGS_STRAP_PLL,
+		.amba_config = &stx7200_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.pad_config = &(struct stm_pad_config) {
 				.gpios_num = 2,
@@ -355,8 +367,8 @@ static struct stm_plat_usb_data stx7200_usb_platform_data[] = {
 	},
 	[2] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STRAP_PLL |
-				STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE,
+				STM_PLAT_USB_FLAGS_STRAP_PLL.
+		.amba_config = &stx7200_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.pad_config = &(struct stm_pad_config) {
 				.gpios_num = 2,

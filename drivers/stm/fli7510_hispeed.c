@@ -19,6 +19,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/device.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/stm/fli7510.h>
 #include <asm/irq-ilc.h>
 
@@ -343,10 +344,14 @@ static struct stm_pad_config fli7510_usb_pad_configs[] = {
 	}
 };
 
+static struct stm_amba_bridge_config amba_config_usb = {
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128)
+};
+
 static struct stm_plat_usb_data fli7510_usb_platform_data = {
 	.flags = STM_PLAT_USB_FLAGS_STRAP_16BIT |
-		STM_PLAT_USB_FLAGS_STRAP_PLL |
-		STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256,
+		 STM_PLAT_USB_FLAGS_STRAP_PLL,
+	.amba_config = &amba_config_usb,
 	.device_config = &(struct stm_device_config){
 		/* .pad_config set in fli7510_configure_usb() */
 	},
@@ -501,16 +506,16 @@ static struct stm_pad_config *fli7520_usb_pad_configs[] = {
 static struct stm_plat_usb_data fli7520_usb_platform_data[] = {
 	[0] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-			STM_PLAT_USB_FLAGS_STRAP_PLL |
-			STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+			STM_PLAT_USB_FLAGS_STRAP_PLL,
+		.amba_config = &amba_config_usb,
 		.device_config = &(struct stm_device_config){
 			/* .pad_config set in fli7510_configure_usb() */
 		},
 	},
 	[1] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-			STM_PLAT_USB_FLAGS_STRAP_PLL |
-			STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+			STM_PLAT_USB_FLAGS_STRAP_PLL,
+		.amba_config = &amba_config_usb,
 		.device_config = &(struct stm_device_config){
 			/* .pad_config set in fli7510_configure_usb() */
 		},

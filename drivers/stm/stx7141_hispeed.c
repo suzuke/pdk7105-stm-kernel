@@ -19,6 +19,7 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/device.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/stm/stx7141.h>
 #include <linux/delay.h>
 #include <asm/irq-ilc.h>
@@ -496,12 +497,23 @@ static void stx7141_usb_power(struct stm_device_state *device_state,
 		mdelay(10);
 	}
 }
+static struct stm_amba_bridge_config amba_config_usb20 = {
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(256)
+};
+
+static struct stm_amba_bridge_config amba_config_usb11 = {
+	.type 		  = stm_amba_type1,
+	.max_opcode	  = stm_amba_opc_LD32_ST32,
+	.write_posting	  = stm_amba_write_posting_disabled,
+	.chunks_in_msg	  = 4,
+	.packets_in_chunk = 4,
+};
 
 static struct stm_plat_usb_data stx7141_usb_platform_data[] = {
 	[0] = { /* USB 2.0 port */
 		.flags = STM_PLAT_USB_FLAGS_STRAP_16BIT |
-				STM_PLAT_USB_FLAGS_STRAP_PLL |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256,
+				STM_PLAT_USB_FLAGS_STRAP_PLL,
+		.amba_config = &amba_config_usb20,
 		.device_config = &(struct stm_device_config){
 			/* pad_config done in stx7141_configure_usb() */
 			.sysconfs_num = 3,
@@ -515,8 +527,8 @@ static struct stm_plat_usb_data stx7141_usb_platform_data[] = {
 	},
 	[1] = { /* USB 2.0 port */
 		.flags = STM_PLAT_USB_FLAGS_STRAP_16BIT |
-				STM_PLAT_USB_FLAGS_STRAP_PLL |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256,
+				STM_PLAT_USB_FLAGS_STRAP_PLL,
+		.amba_config = &amba_config_usb20,
 		.device_config = &(struct stm_device_config){
 			/* pad_config done in stx7141_configure_usb() */
 			.sysconfs_num = 3,
@@ -529,7 +541,7 @@ static struct stm_plat_usb_data stx7141_usb_platform_data[] = {
 		},
 	},
 	[2] = { /* USB 1.1 port */
-		.flags = STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE,
+		.amba_config = &amba_config_usb11,
 		.device_config = &(struct stm_device_config){
 			/* pad_config done in stx7141_configure_usb() */
 			.sysconfs_num = 3,
@@ -542,7 +554,7 @@ static struct stm_plat_usb_data stx7141_usb_platform_data[] = {
 		},
 	},
 	[3] = { /* USB 1.1 port */
-		.flags = STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE,
+		.amba_config = &amba_config_usb11,
 		.device_config = &(struct stm_device_config){
 			/* pad_config done in stx7141_configure_usb() */
 			.sysconfs_num = 3,

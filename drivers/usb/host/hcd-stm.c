@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
 #include <linux/usb.h>
@@ -68,8 +69,7 @@ static int stm_usb_boot(struct platform_device *pdev)
 	struct stm_plat_usb_data *pl_data = pdev->dev.platform_data;
 	struct drv_usb_data *usb_data = platform_get_drvdata(pdev);
 	void *wrapper_base = usb_data->ahb2stbus_wrapper_glue_base;
-	void *protocol_base = usb_data->ahb2stbus_protocol_base;
-	unsigned long reg, req_reg;
+	unsigned long reg;
 
 	if (pl_data->flags &
 		(STM_PLAT_USB_FLAGS_STRAP_8BIT |
@@ -94,40 +94,8 @@ static int stm_usb_boot(struct platform_device *pdev)
 		mdelay(30);
 	}
 
-	if (pl_data->flags & STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE) {
-		/* Set the STBus Opcode Config for load/store 32 */
-		writel(AHB2STBUS_STBUS_OPC_32BIT,
-			protocol_base + AHB2STBUS_STBUS_OPC_OFFSET);
+	stm_amba_bridge_init(usb_data->amba_bridge);
 
-		/* Set the Message Size Config to n packets per message */
-		writel(AHB2STBUS_MSGSIZE_4,
-			protocol_base + AHB2STBUS_MSGSIZE_OFFSET);
-
-		/* Set the chunksize to n packets */
-		writel(AHB2STBUS_CHUNKSIZE_4,
-			protocol_base + AHB2STBUS_CHUNKSIZE_OFFSET);
-	}
-
-	if (pl_data->flags &
-		(STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128 |
-		STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256)) {
-
-		req_reg = (1<<21) |  /* Turn on read-ahead */
-			  (5<<16) |  /* Opcode is store/load 32 */
-			  (0<<15) |  /* Turn off write posting */
-			  (1<<14) |  /* Enable threshold */
-			  (3<<9)  |  /* 2**3 Packets in a chunk */
-			  (0<<4)  ;  /* No messages */
-		req_reg |= ((pl_data->flags &
-			STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128) ?
-				(7<<0) :	/* 128 */
-				(8<<0));	/* 256 */
-		do {
-			writel(req_reg, protocol_base +
-				AHB2STBUS_MSGSIZE_OFFSET);
-			reg = readl(protocol_base + AHB2STBUS_MSGSIZE_OFFSET);
-		} while ((reg & 0x7FFFFFFF) != req_reg);
-	}
 	return 0;
 }
 
@@ -189,6 +157,7 @@ static int __init stm_usb_probe(struct platform_device *pdev)
 		[USB_PHY_CLK] = "usb_phy_clk"
 	};
 	resource_size_t len;
+	void __iomem *amba_base;
 
 	dgb_print("\n");
 	dr_data = devm_kzalloc(dev, sizeof(*dr_data), GFP_KERNEL);
@@ -233,11 +202,14 @@ static int __init stm_usb_probe(struct platform_device *pdev)
 	if (devm_request_mem_region(dev, res->start, len, pdev->name) < 0)
 		return -EBUSY;
 
-	dr_data->ahb2stbus_protocol_base =
-		devm_ioremap_nocache(dev, res->start, len);
-
-	if (!dr_data->ahb2stbus_protocol_base)
+	amba_base = devm_ioremap_nocache(dev, res->start, len);
+	if (!amba_base)
 		return -EFAULT;
+
+	dr_data->amba_bridge =  stm_amba_bridge_create(dev, amba_base,
+						       plat_data->amba_config);
+	if (IS_ERR(dr_data->amba_bridge))
+		return PTR_ERR(dr_data->amba_bridge);
 
 	stm_usb_boot(pdev);
 
@@ -284,7 +256,6 @@ static int stm_usb_suspend(struct device *dev)
 	struct drv_usb_data *dr_data = dev_get_drvdata(dev);
 	struct stm_plat_usb_data *pl_data = pdev->dev.platform_data;
 	void *wrapper_base = dr_data->ahb2stbus_wrapper_glue_base;
-	void *protocol_base = dr_data->ahb2stbus_protocol_base;
 	long reg;
 	dgb_print("\n");
 
@@ -301,14 +272,6 @@ static int stm_usb_suspend(struct device *dev)
 	}
 
 	writel(0, wrapper_base + AHB2STBUS_STRAP_OFFSET);
-	writel(0, protocol_base + AHB2STBUS_STBUS_OPC_OFFSET);
-	writel(0, protocol_base + AHB2STBUS_MSGSIZE_OFFSET);
-	writel(0, protocol_base + AHB2STBUS_CHUNKSIZE_OFFSET);
-	writel(0, protocol_base + AHB2STBUS_MSGSIZE_OFFSET);
-
-	writel(1, protocol_base + AHB2STBUS_SW_RESET);
-	mdelay(10);
-	writel(0, protocol_base + AHB2STBUS_SW_RESET);
 
 	stm_device_power(dr_data->device_state, stm_device_power_off);
 

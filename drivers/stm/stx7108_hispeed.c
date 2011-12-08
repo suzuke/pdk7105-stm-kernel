@@ -20,6 +20,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/stx7108.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <asm/irq-ilc.h>
@@ -711,10 +712,15 @@ static void stx7108_usb_power(struct stm_device_state *device_state,
 	}
 }
 
+/* STBus Convertor config */
+static struct stm_amba_bridge_config stx7108_amba_usb_config = {
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128)
+};
+
 static struct stm_plat_usb_data stx7108_usb_platform_data[] = {
 	[0] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stx7108_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stx7108_usb_init,
 			.power = stx7108_usb_power,
@@ -741,8 +747,8 @@ static struct stm_plat_usb_data stx7108_usb_platform_data[] = {
 		},
 	},
 	[1] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stx7108_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stx7108_usb_init,
 			.power = stx7108_usb_power,
@@ -769,8 +775,8 @@ static struct stm_plat_usb_data stx7108_usb_platform_data[] = {
 		},
 	},
 	[2] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stx7108_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stx7108_usb_init,
 			.power = stx7108_usb_power,

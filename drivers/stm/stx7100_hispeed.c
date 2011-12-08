@@ -20,6 +20,7 @@
 #include <linux/stm/device.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/stm/stx7100.h>
 #include <asm/irq-ilc.h>
 
@@ -214,10 +215,21 @@ static void stx7100_usb_power(struct stm_device_state *device_state,
 	mdelay(30);
 }
 
+/* 7100 uses the old style type 1 amba convertors, rather
+ * than the updated one like all the later SOCs
+ */
+static struct stm_amba_bridge_config amba_config_usb = {
+	.type 		  = stm_amba_type1,
+	.max_opcode	  = stm_amba_opc_LD32_ST32,
+	.write_posting	  = stm_amba_write_posting_disabled,
+	.chunks_in_msg	  = 4,
+	.packets_in_chunk = 4,
+};
+
 static struct stm_plat_usb_data stx7100_usb_platform_data = {
 	.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-			STM_PLAT_USB_FLAGS_STRAP_PLL |
-			STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE,
+			STM_PLAT_USB_FLAGS_STRAP_PLL,
+	.amba_config = &amba_config_usb,
 	.device_config = &(struct stm_device_config){
 		.pad_config = &(struct stm_pad_config) {
 			.gpios_num = 2,

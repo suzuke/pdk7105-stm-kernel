@@ -20,6 +20,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/device.h>
 #include <linux/stm/emi.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/stm/stx7111.h>
 #include <asm/irq-ilc.h>
 
@@ -165,10 +166,14 @@ static void stx7111_usb_power(struct stm_device_state *device_state,
 	}
 }
 
+static struct stm_amba_bridge_config amba_config_usb = {
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(256)
+};
+
 static struct stm_plat_usb_data stx7111_usb_platform_data = {
 	.flags = STM_PLAT_USB_FLAGS_STRAP_16BIT |
-		STM_PLAT_USB_FLAGS_STRAP_PLL |
-		STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256,
+		STM_PLAT_USB_FLAGS_STRAP_PLL,
+		.amba_config = &amba_config_usb,
 	.device_config = &(struct stm_device_config){
 		.pad_config = &(struct stm_pad_config) {
 			.gpios_num = 2,

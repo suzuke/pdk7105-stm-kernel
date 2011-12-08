@@ -25,6 +25,7 @@
 #include <linux/mmc/sdhci.h>
 #include <linux/sdhci-pltfm.h>
 #include <linux/stm/miphy.h>
+#include <linux/stm/amba_bridge.h>
 
 /*** Platform definition helpers ***/
 
@@ -187,12 +188,10 @@ struct plat_stm_temp_data {
 #define STM_PLAT_USB_FLAGS_STRAP_8BIT			(1<<0)
 #define STM_PLAT_USB_FLAGS_STRAP_16BIT			(2<<0)
 #define STM_PLAT_USB_FLAGS_STRAP_PLL			(1<<2)
-#define STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE	(1<<3)
-#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128	(1<<4)
-#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256	(2<<4)
 
 struct stm_plat_usb_data {
 	unsigned long flags;
+	struct stm_amba_bridge_config *amba_config;
 	struct stm_device_config *device_config;
 };
 
