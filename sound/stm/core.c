@@ -532,9 +532,6 @@ int snd_stm_buffer_mmap(struct snd_pcm_substream *substream,
 		return -EAGAIN;
 	}
 
-	/* Must be called implicitly here... */
-	snd_pcm_mmap_data_open(area);
-
 	return 0;
 }
 
