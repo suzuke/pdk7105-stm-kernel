@@ -369,6 +369,13 @@ static void __init b2000_init(void)
 
 	platform_add_devices(b2000_devices,
 		ARRAY_SIZE(b2000_devices));
+
+	/* 1 SATA + 1 PCIe*/
+	stih415_configure_miphy(&(struct stih415_miphy_config) {
+		.modes = (enum miphy_mode[2]) {
+			SATA_MODE, PCIE_MODE },
+		});
+	stih415_configure_sata(0, &(struct stih415_sata_config) { });
 	return;
 }
 

@@ -28,7 +28,7 @@
 #include "pio-control.h"
 
 /* --------------------------------------------------------------------
- *           Ethernet MAC resources (PAD and Retiming)
+ *	   Ethernet MAC resources (PAD and Retiming)
  * --------------------------------------------------------------------*/
 
 #define DATA_IN(_port, _pin, _func, _retiming) \
@@ -692,7 +692,7 @@ static struct platform_device stih415_ethernet_devices[] = {
 	}
 };
 
-#define GMAC_AHB_CONFIG         0x2000
+#define GMAC_AHB_CONFIG	 0x2000
 static void stih415_ethernet_bus_setup(void __iomem *ioaddr)
 {
 	/* Configure the bridge to generate more efficient STBus traffic.
@@ -817,4 +817,254 @@ void __init stih415_configure_ethernet(int port,
 	}
 
 	platform_device_register(&stih415_ethernet_devices[port]);
+}
+/* MiPHY resources -------------------------------------------------------- */
+
+#define MAX_PORTS		2
+#define PCIE_BASE		0xfe800000
+#define PCIE_UPORT_BASE		(PCIE_BASE + 0x4000)
+#define PCIE_UPORT_REG_SIZE	(0xFF)
+
+static enum miphy_mode stih415_miphy_modes[MAX_PORTS];
+static struct sysconf_field *sc_pcie_mp_select;
+static struct sysconf_field *sc_miphy_reset[MAX_PORTS];
+
+
+static void stih415_pcie_mp_select(int port)
+{
+	BUG_ON(port < 0 || port > 1);
+	sysconf_write(sc_pcie_mp_select, port);
+}
+
+struct stm_plat_pcie_mp_data stih415_pcie_mp_platform_data = {
+	.miphy_first = 0,
+	.miphy_count = MAX_PORTS,
+	.miphy_modes = stih415_miphy_modes,
+	.mp_select = stih415_pcie_mp_select,
+};
+static struct platform_device stih415_pcie_mp_device = {
+	.name   = "pcie-mp",
+	.id     = 0,
+	.num_resources = 1,
+	.resource = (struct resource[]) {
+		[0] = {
+			.start = PCIE_UPORT_BASE,
+			.end   = PCIE_UPORT_BASE + PCIE_UPORT_REG_SIZE,
+			.flags = IORESOURCE_MEM,
+		},
+	},
+	.dev = {
+		.platform_data = &stih415_pcie_mp_platform_data,
+	}
+};
+
+static int __init stih415_configure_miphy_uport(void)
+{
+	struct sysconf_field *sc_miphy1_ref_clk,
+			*sc_sata1_hc_reset, *sc_sata_pcie_sel,
+			*sc_sata0_hc_reset, *sc;
+
+	sc_pcie_mp_select = sysconf_claim(SYSCONF(335),
+					  0, 0, "pcie-mp");
+	BUG_ON(!sc_pcie_mp_select);
+
+	/* SATA0_SOFT_RST_N_SATA: sata0_soft_rst_n_sata. */
+	sc_sata0_hc_reset = sysconf_claim(SYSCONF(377), 7, 7, "MiPHY");
+	BUG_ON(!sc_sata0_hc_reset);
+
+	/* SELECT_SATA: select_sata. */
+	sc_sata_pcie_sel = sysconf_claim(SYSCONF(333), 1, 1, "MiPHY");
+	BUG_ON(!sc_sata_pcie_sel);
+
+	/* SATAPHY1_OSC_FORCE_EXT: SATAphy1_osc_force_ext. */
+	sc_miphy1_ref_clk = sysconf_claim(SYSCONF(333), 2, 2, "MiPHY");
+	BUG_ON(!sc_miphy1_ref_clk);
+
+	/*SATA1_SOFT_RST_N_SATA: sata1_soft_rst_n_sata  */
+	sc_sata1_hc_reset = sysconf_claim(SYSCONF(377), 3, 3, "SATA");
+	BUG_ON(!sc_sata1_hc_reset);
+	/* Deassert Soft Reset to SATA0 */
+	sysconf_write(sc_sata0_hc_reset, 1);
+	/* If the 100MHz xtal for PCIe is present, then the microport interface
+	* will already have a clock, so there is no need to flip to the 30MHz
+	* clock here. If it isn't then we have to switch miphy lane 1 to use
+	* the 30MHz clock, as otherwise we will not be able to talk to lane 0
+	* since the uport interface itself is clocked from lane1
+	*/
+	if (stih415_miphy_modes[1] != PCIE_MODE) {
+		/* Put MiPHY1 in reset - rst_per_n[32] */
+		sysconf_write(sc_miphy_reset[1], 0);
+		/* Put SATA1 HC in reset - rst_per_n[30] */
+		sysconf_write(sc_sata1_hc_reset, 0);
+		/* Now switch to Phy interface to SATA HC not PCIe HC */
+		sysconf_write(sc_sata_pcie_sel, 1);
+		/* Select the Uport to use MiPHY1 */
+		stih415_pcie_mp_select(1);
+		/* Take SATA1 HC out of reset - rst_per_n[30] */
+		sysconf_write(sc_sata1_hc_reset, 1);
+		/* MiPHY1 needs to be using the MiPHY0 reference clock */
+		sysconf_write(sc_miphy1_ref_clk, 1);
+		/* Take MiPHY1 out of reset - rst_per_n[32] */
+		sysconf_write(sc_miphy_reset[1], 1);
+	}
+
+	return platform_device_register(&stih415_pcie_mp_device);
+}
+
+void __init stih415_configure_miphy(struct stih415_miphy_config *config)
+{
+	int err = 0;
+
+	memcpy(stih415_miphy_modes, config->modes, sizeof(stih415_miphy_modes));
+
+	/*Reset to MIPHY0 */
+	sc_miphy_reset[0]  = sysconf_claim(SYSCONF(376), 18, 18, "SATA");
+	BUG_ON(!sc_miphy_reset[0]);
+
+	/* Reset to MIPHY1 */
+	sc_miphy_reset[1]  = sysconf_claim(SYSCONF(376), 19, 19, "SATA");
+	BUG_ON(!sc_miphy_reset[1]);
+
+	err = stih415_configure_miphy_uport();
+}
+/* SATA resources --------------------------------------------------------- */
+
+/* STBus Convertor config */
+static struct stm_amba_bridge_config stih415_amba_sata_config = {
+	.type			=	stm_amba_type2,
+	.chunks_in_msg		=	1,
+	.packets_in_chunk	=	2,
+	.write_posting		=	stm_amba_write_posting_disabled,
+	.max_opcode		=	stm_amba_opc_LD64_ST64,
+	.type2.threshold	=	128,
+	.type2.trigger_mode	=	stm_amba_stbus_threshold_based,
+	.type2.read_ahead	=	stm_amba_read_ahead_enabled,
+	.type2.req_notify	=	stm_amba_ahb_burst_based,
+	.type2.cont_on_error	=	stm_amba_complete_transaction,
+	.type2.msg_merge	=	stm_amba_msg_merge_disabled,
+};
+
+static struct sysconf_field *sc_sata_hc_pwr[MAX_PORTS];
+
+static void stih415_restart_sata(int port)
+{
+	/* This part of the code is executed for ESD recovery.*/
+	/* Reset the SATA Host and MiPHY */
+	sysconf_write(sc_sata_hc_pwr[port], 1);
+	sysconf_write(sc_miphy_reset[port], 0);
+
+	if (port == 1)
+		stih415_pcie_mp_select(1);
+	msleep(1);
+	sysconf_write(sc_sata_hc_pwr[port], 0);
+	sysconf_write(sc_miphy_reset[port], 1);
+}
+
+static void stih415_sata_power(struct stm_device_state *device_state,
+		int port, enum stm_device_power_state power)
+{
+	int value = (power == stm_device_power_on) ? 0 : 1;
+	int i;
+
+	sysconf_write(sc_sata_hc_pwr[port], value);
+
+	for (i = 100; i; --i) {
+		if (stm_device_sysconf_read(device_state, "SATA_ACK")
+				== value)
+			break;
+		mdelay(10);
+	}
+}
+static void stih415_sata0_power(struct stm_device_state *device_state,
+		enum stm_device_power_state power)
+{
+	stih415_sata_power(device_state, 0, power);
+}
+static void stih415_sata1_power(struct stm_device_state *device_state,
+		enum stm_device_power_state power)
+{
+	stih415_sata_power(device_state, 1, power);
+}
+
+static u64 stih415_sata_dma_mask = DMA_BIT_MASK(32);
+static struct platform_device stih415_sata_devices[] = {
+	[0] = {
+		.name = "sata-stm",
+		.id = 0,
+		.dev.dma_mask = &stih415_sata_dma_mask,
+		.dev.coherent_dma_mask = DMA_BIT_MASK(32),
+		.dev.platform_data = &(struct stm_plat_sata_data) {
+			.phy_init = 0,
+			.pc_glue_logic_init = 0,
+			.only_32bit = 0,
+			.oob_wa = 1,
+			.port_num = 0,
+			.miphy_num = 0,
+			.amba_config = &stih415_amba_sata_config,
+			.device_config = &(struct stm_device_config){
+				.power = stih415_sata0_power,
+				.sysconfs_num = 1,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYSCONF(SYSCONF(384), 3, 3,
+						"SATA_ACK"),
+				},
+			},
+		},
+		.num_resources = 3,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfe818000, 0x1000),
+			STIH415_RESOURCE_IRQ_NAMED("hostc", 161),
+			STIH415_RESOURCE_IRQ_NAMED("dmac", 162),
+			},
+	},
+	[1] = {
+		.name = "sata-stm",
+		.id = 1,
+		.dev.dma_mask = &stih415_sata_dma_mask,
+		.dev.coherent_dma_mask = DMA_BIT_MASK(32),
+		.dev.platform_data = &(struct stm_plat_sata_data) {
+			.phy_init = 0,
+			.pc_glue_logic_init = 0,
+			.only_32bit = 0,
+			.oob_wa = 1,
+			.port_num = 1,
+			.miphy_num = 1,
+			.amba_config = &stih415_amba_sata_config,
+			.device_config = &(struct stm_device_config){
+				.power = stih415_sata1_power,
+				.sysconfs_num = 1,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYSCONF(SYSCONF(384), 4, 4,
+						"SATA_ACK"),
+				},
+			},
+		},
+		.num_resources = 3,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfe819000, 0x1000),
+			STIH415_RESOURCE_IRQ_NAMED("hostc", 164),
+			STIH415_RESOURCE_IRQ_NAMED("dmac", 165),
+		},
+	}
+};
+
+void __init stih415_configure_sata(int port, struct stih415_sata_config *config)
+{
+	struct stm_plat_sata_data *sata_data;
+	static int initialized[2];
+	struct sysconf_field *sc;
+
+	sata_data = stih415_sata_devices[port].dev.platform_data;
+
+	BUG_ON(initialized[port]);
+
+	sc_sata_hc_pwr[port] = sysconf_claim(SYSCONF(336),
+					     3 + port, 3 + port, "SATA");
+	if (!sc_sata_hc_pwr[port]) {
+		BUG();
+		return;
+	}
+
+	sata_data->host_restart = stih415_restart_sata;
+	platform_device_register(&stih415_sata_devices[port]);
 }

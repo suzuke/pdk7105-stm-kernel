@@ -146,4 +146,14 @@ struct stih415_audio_config {
 };
 void stih415_configure_audio(struct stih415_audio_config *config);
 
+struct stih415_miphy_config {
+        int force_jtag;         /* Option available for CUT2.0 */
+        enum miphy_mode *modes;
+};
+void stih415_configure_miphy(struct stih415_miphy_config *config);
+
+struct stih415_sata_config {
+};
+void stih415_configure_sata(int port, struct stih415_sata_config *config);
+
 #endif
