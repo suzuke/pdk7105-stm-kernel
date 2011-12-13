@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -29,6 +29,8 @@
 static _mali_pmm_internal_state_t *pmm_state = NULL;
 /* Mali kernel subsystem id */
 static mali_kernel_subsystem_identifier mali_subsystem_pmm_id = -1;
+
+static u32 pmm_cores_registered_mask = 0;
 
 #define GET_PMM_STATE_PTR (pmm_state)
 
@@ -63,6 +65,10 @@ _mali_osk_errcode_t malipmm_kernel_load_complete( mali_kernel_subsystem_identifi
  */
 void malipmm_kernel_subsystem_terminate( mali_kernel_subsystem_identifier id );
 
+#if MALI_STATE_TRACKING
+u32 malipmm_subsystem_dump_state( char *buf, u32 size );
+#endif
+
 
 /* This will be one of the subsystems in the array of subsystems:
 	static struct mali_kernel_subsystem * subsystems[];
@@ -77,7 +83,10 @@ struct mali_kernel_subsystem mali_subsystem_pmm=
 	NULL,
 	NULL,
 	NULL,
-} ;
+#if MALI_STATE_TRACKING
+	malipmm_subsystem_dump_state,                       /* dump_state */
+#endif
+};
 
 #if PMM_OS_TEST
 
@@ -187,7 +196,7 @@ void _mali_ukk_pmm_event_message( _mali_uk_pmm_message_s *args )
 		{
 			/* Internal PMM message */
 			_mali_osk_notification_queue_send( pmm->iqueue, msg );
-			#if MALI_PMM_TRACE
+			#if (MALI_PMM_TRACE || MALI_STATE_TRACKING)
 				pmm->imessages_sent++;
 			#endif
 		}
@@ -195,7 +204,7 @@ void _mali_ukk_pmm_event_message( _mali_uk_pmm_message_s *args )
 		{
 			/* Real event */
 			_mali_osk_notification_queue_send( pmm->queue, msg );
-			#if MALI_PMM_TRACE
+			#if (MALI_PMM_TRACE || MALI_STATE_TRACKING)
 				pmm->messages_sent++;
 			#endif
 		}
@@ -288,7 +297,7 @@ _mali_osk_errcode_t _mali_pmm_get_policy( mali_pmm_policy *policy )
 	MALI_ERROR( _MALI_OSK_ERR_INVALID_ARGS );
 }
 
-#if MALI_PMM_TRACE
+#if ( MALI_PMM_TRACE || MALI_STATE_TRACKING )
 
 /* Event names - order must match mali_pmm_event_id enum */
 static char *pmm_trace_events[] = {
@@ -298,19 +307,6 @@ static char *pmm_trace_events[] = {
 	"JOB_QUEUED",
 	"JOB_FINISHED",
 	"TIMEOUT",
-};
-
-/* UK event names - order must match mali_pmm_event_id enum */
-static char *pmm_trace_events_uk[] = {
-	"UKS",
-	"UK_EXAMPLE",
-};
-
-/* Internal event names - order must match mali_pmm_event_id enum */
-static char *pmm_trace_events_internal[] = {
-	"INTERNALS",
-	"INTERNAL_POWER_UP_ACK",
-	"INTERNAL_POWER_DOWN_ACK",
 };
 
 /* State names - order must match mali_pmm_state enum */
@@ -326,6 +322,35 @@ static char *pmm_trace_policy[] = {
 	"NONE",
 	"ALWAYS ON",
 	"JOB CONTROL",
+};
+
+/* Status names - order must match mali_pmm_status enum */
+static char *pmm_trace_status[] = {
+	"MALI_PMM_STATUS_IDLE",                       /**< PMM is waiting next event */
+	"MALI_PMM_STATUS_POLICY_POWER_DOWN",          /**< Policy initiated power down */
+	"MALI_PMM_STATUS_POLICY_POWER_UP",            /**< Policy initiated power down */
+	"MALI_PMM_STATUS_OS_WAITING",                 /**< PMM is waiting for OS power up */
+	"MALI_PMM_STATUS_OS_POWER_DOWN",              /**< OS initiated power down */
+	"MALI_PMM_STATUS_RUNTIME_IDLE_IN_PROGRESS",
+	"MALI_PMM_STATUS_DVFS_PAUSE",                 /**< PMM DVFS Status Pause */
+	"MALI_PMM_STATUS_OS_POWER_UP",                /**< OS initiated power up */
+	"MALI_PMM_STATUS_OFF",                        /**< PMM is not active */
+};
+
+#endif /* MALI_PMM_TRACE || MALI_STATE_TRACKING */
+#if MALI_PMM_TRACE
+
+/* UK event names - order must match mali_pmm_event_id enum */
+static char *pmm_trace_events_uk[] = {
+	"UKS",
+	"UK_EXAMPLE",
+};
+
+/* Internal event names - order must match mali_pmm_event_id enum */
+static char *pmm_trace_events_internal[] = {
+	"INTERNALS",
+	"INTERNAL_POWER_UP_ACK",
+	"INTERNAL_POWER_DOWN_ACK",
 };
 
 void _mali_pmm_trace_hardware_change( mali_pmm_core_mask old, mali_pmm_core_mask newstate )
@@ -485,7 +510,7 @@ _mali_osk_errcode_t malipmm_create(_mali_osk_resource_t *resource)
 	if( !pmm_state->iqueue ) goto pmm_fail_cleanup;
 
 	/* We are creating an IRQ handler just for the worker thread it gives us */
-	pmm_state->irq = _mali_osk_irq_init( _MALI_OSK_IRQ_NUMBER_FAKE,
+	pmm_state->irq = _mali_osk_irq_init( _MALI_OSK_IRQ_NUMBER_PMM,
 		malipmm_irq_uhandler,
 		malipmm_irq_bhandler,
 		NULL,
@@ -540,6 +565,29 @@ _mali_osk_errcode_t malipmm_kernel_load_complete( mali_kernel_subsystem_identifi
 	return pmm_policy_init( pmm );
 }
 
+void malipmm_force_powerup( void )
+{
+	_mali_pmm_internal_state_t *pmm = GET_PMM_STATE_PTR;
+	MALI_DEBUG_ASSERT_POINTER(pmm);
+	MALI_PMM_LOCK(pmm);
+	pmm->status = MALI_PMM_STATUS_OFF;
+	pmm_cores_registered_mask = pmm->cores_registered;
+	MALI_PMM_UNLOCK(pmm);
+	
+	/* flush PMM workqueue */
+	_mali_osk_flush_workqueue( pmm->irq );
+
+	if (pmm->cores_powered == 0)
+	{
+		mali_platform_powerup(pmm_cores_registered_mask);
+	}
+}
+
+void malipmm_force_powerdown( void )
+{
+	mali_platform_powerdown(pmm_cores_registered_mask);
+}
+
 void malipmm_kernel_subsystem_terminate( mali_kernel_subsystem_identifier id )
 {
 	/* Check this is the right system */
@@ -554,14 +602,22 @@ void malipmm_kernel_subsystem_terminate( mali_kernel_subsystem_identifier id )
 #endif
 		/* Get the lock so we can shutdown */
 		MALI_PMM_LOCK(pmm_state);
+#if MALI_STATE_TRACKING
+		pmm_state->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
 		pmm_state->status = MALI_PMM_STATUS_OFF;
+#if MALI_STATE_TRACKING
+		pmm_state->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
 		MALI_PMM_UNLOCK(pmm_state);
+		_mali_osk_pmm_ospmm_cleanup();
 		pmm_policy_term(pmm_state);
 		_mali_osk_irq_term( pmm_state->irq );
 		_mali_osk_notification_queue_term( pmm_state->queue );
 		_mali_osk_notification_queue_term( pmm_state->iqueue );
 		if( pmm_state->pmu_initialized ) mali_platform_deinit(&t);
 		_mali_osk_atomic_term( &(pmm_state->messages_queued) );
+		MALI_PMM_LOCK_TERM(pmm_state);
 		_mali_osk_free(pmm_state);
 		pmm_state = NULL; 
 	}
@@ -587,6 +643,11 @@ _mali_osk_errcode_t malipmm_core_register( mali_pmm_core_id core )
 	}
 
 	MALI_PMM_LOCK(pmm);
+
+#if MALI_STATE_TRACKING
+	pmm->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
+
 
 	/* Check if the core is registered more than once in PMM */
 	MALI_DEBUG_ASSERT( (pmm->cores_registered & core) == 0 );
@@ -620,6 +681,10 @@ _mali_osk_errcode_t malipmm_core_register( mali_pmm_core_id core )
 								err, core, pmm_trace_get_core_name(core)) );
 	}
 
+#if MALI_STATE_TRACKING
+	pmm->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
+
 	MALI_PMM_UNLOCK(pmm);
 	
 	return err;
@@ -631,6 +696,10 @@ void malipmm_core_unregister( mali_pmm_core_id core )
 	MALI_DEBUG_ASSERT_POINTER(pmm);
 
 	MALI_PMM_LOCK(pmm);
+#if MALI_STATE_TRACKING
+	pmm->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
+
 
 	/* Check if the core is registered in PMM */
 	MALI_PMM_DEBUG_ASSERT_CORES_SUBSET( pmm->cores_registered, core );
@@ -641,16 +710,6 @@ void malipmm_core_unregister( mali_pmm_core_id core )
 #if MALI_PMM_TRACE
 		mali_pmm_core_mask old_power = pmm->cores_powered;
 #endif
-
-#if !MALI_PMM_NO_PMU
-		/* Turn off the core */
-		if( mali_platform_powerdown( core ) != _MALI_OSK_ERR_OK )
-		{
-			MALI_PRINT_ERROR( ("PMM: Error powering down unregistered core: (0x%x) %s\n", 
-									core, pmm_trace_get_core_name(core)) );
-		}
-#endif
-
 		/* Remove the core from the system */
 		pmm->cores_registered &= (~core);
 		pmm->cores_idle &= (~core);
@@ -666,6 +725,10 @@ void malipmm_core_unregister( mali_pmm_core_id core )
 		_mali_pmm_trace_hardware_change( old_power, pmm->cores_powered );
 #endif		
 	}
+
+#if MALI_STATE_TRACKING
+	pmm->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
 
 	MALI_PMM_UNLOCK(pmm);
 }
@@ -709,10 +772,18 @@ void malipmm_irq_bhandler(void *data)
 #endif
 
 	MALI_PMM_LOCK(pmm);
+#if MALI_STATE_TRACKING
+	pmm->mali_pmm_lock_acquired = 1;
+#endif /* MALI_STATE_TRACKING */
 
 	/* Quick out when we are shutting down */
 	if( pmm->status == MALI_PMM_STATUS_OFF )
 	{
+
+	#if MALI_STATE_TRACKING
+		pmm->mali_pmm_lock_acquired = 0;
+	#endif /* MALI_STATE_TRACKING */
+
 		MALI_PMM_UNLOCK(pmm);
 		return;
 	}
@@ -741,10 +812,12 @@ void malipmm_irq_bhandler(void *data)
 		}
 	}
 
+#if MALI_STATE_TRACKING
+	pmm->mali_pmm_lock_acquired = 0;
+#endif /* MALI_STATE_TRACKING */
+
 	MALI_PMM_UNLOCK(pmm);
 }
-
-#define MAX_PROCESS_EVENTS 5
 
 static void pmm_event_process( void )
 {
@@ -761,12 +834,11 @@ static void pmm_event_process( void )
 	 * processing the messages for a long time
 	 */
 	process_messages = _mali_osk_atomic_read( &(pmm->messages_queued) );
-	if( process_messages > MAX_PROCESS_EVENTS ) process_messages = MAX_PROCESS_EVENTS;
 
 	while( process_messages > 0 )
 	{
 		/* Check internal message queue first */
-		err = _mali_osk_notification_queue_receive( pmm->iqueue, 0, &msg );
+		err = _mali_osk_notification_queue_dequeue( pmm->iqueue, &msg );
 
 		if( err != _MALI_OSK_ERR_OK )
 		{
@@ -775,7 +847,7 @@ static void pmm_event_process( void )
 				if( pmm->waiting > 0 ) pmm->waiting--;
 
 				/* We aren't busy changing state, so look at real events */
-				err = _mali_osk_notification_queue_receive( pmm->queue, 0, &msg );
+				err = _mali_osk_notification_queue_dequeue( pmm->queue, &msg );
 
 				if( err != _MALI_OSK_ERR_OK )
 				{
@@ -785,10 +857,10 @@ static void pmm_event_process( void )
 					return;
 				}
 				else
-				{					
-					#if MALI_PMM_TRACE
+				{
+					#if (MALI_PMM_TRACE || MALI_STATE_TRACKING)
 						pmm->messages_received++;
-					#endif		
+					#endif
 				}
 			}
 			else
@@ -801,9 +873,9 @@ static void pmm_event_process( void )
 		}
 		else
 		{
-			#if MALI_PMM_TRACE
+			#if (MALI_PMM_TRACE || MALI_STATE_TRACKING)
 				pmm->imessages_received++;
-			#endif		
+			#endif
 		}
 
 		MALI_DEBUG_ASSERT_POINTER( msg );
@@ -821,6 +893,13 @@ static void pmm_event_process( void )
 		#endif
 		err = pmm_policy_process( pmm, event );
 
+		
+		if( err != _MALI_OSK_ERR_OK )
+		{
+			MALI_PRINT_ERROR( ("PMM: Error(%d) in policy %d when processing event message with id: %d", 
+					err, pmm->policy, event->id) );
+		}
+		
 		/* Delete notification */
 		_mali_osk_notification_delete ( msg );
 
@@ -830,11 +909,6 @@ static void pmm_event_process( void )
 			return;
 		}
 
-		if( err != _MALI_OSK_ERR_OK )
-		{
-			MALI_PRINT_ERROR( ("PMM: Error(%d) in policy %d when processing event message with id: %d", 
-					err, pmm->policy, event->id) );
-		}
 			
 		#if MALI_PMM_TRACE
 			MALI_PRINT( ("PMM Trace: Event processed, msgs (sent/read) = %d/%d, int msgs (sent/read) = %d/%d, no events = %d, waiting = %d\n", 
@@ -850,22 +924,37 @@ static void pmm_event_process( void )
 	}
 }
 
-#ifdef DEBUG
-void malipmm_state_dump()
+#if MALI_STATE_TRACKING
+u32 malipmm_subsystem_dump_state(char *buf, u32 size)
 {
+	int len = 0;
 	_mali_pmm_internal_state_t *pmm = GET_PMM_STATE_PTR;
 
 	if( !pmm )
 	{
-		MALI_PRINT(("PMM: Null state\n"));
+		len += _mali_osk_snprintf(buf + len, size + len, "PMM: Null state\n");
 	}
 	else
 	{
-		MALI_PRINT(("PMM state:\nstatus=%d\npolicy=%d\ncheck_policy=%d\nstate=%d\n", pmm->status, pmm->policy, pmm->check_policy, pmm->state));
-		MALI_PRINT(("PMM cores:\ncores_registered=%d\ncores_powered=%d\ncores_idle=%d\ncores_pend_down=%d\ncores_pend_up=%d\ncores_ack_down=%d\ncores_ack_up=%d\n", pmm->cores_registered, pmm->cores_powered, pmm->cores_idle, pmm->cores_pend_down, pmm->cores_pend_up, pmm->cores_ack_down, pmm->cores_ack_up));	
-		MALI_PRINT(("PMM misc:\npmu_init=%d\nmessages_queued=%d\nwaiting=%d\nno_events=%d\nmissed=%d\nfatal_power_err=%d\n", pmm->pmu_initialized, _mali_osk_atomic_read( &(pmm->messages_queued) ), pmm->waiting, pmm->no_events, pmm->missed, pmm->fatal_power_err));
+		len += _mali_osk_snprintf(buf+len, size+len, "Locks:\n  PMM lock acquired: %s\n",
+				pmm->mali_pmm_lock_acquired ? "true" : "false");
+		len += _mali_osk_snprintf(buf+len, size+len,
+				"PMM state:\n  Previous status: %s\n  Status: %s\n  Current event: %s\n  Policy: %s\n  Check policy: %s\n  State: %s\n",
+				pmm_trace_status[pmm->mali_last_pmm_status], pmm_trace_status[pmm->status],
+				pmm_trace_events[pmm->mali_new_event_status], pmm_trace_policy[pmm->policy],
+				pmm->check_policy ? "true" : "false", pmm_trace_state[pmm->state]);
+		len += _mali_osk_snprintf(buf+len, size+len,
+				"PMM cores:\n  Cores registered: %d\n  Cores powered: %d\n  Cores idle: %d\n"
+				"  Cores pending down: %d\n  Cores pending up: %d\n  Cores ack down: %d\n  Cores ack up: %d\n",
+				pmm->cores_registered, pmm->cores_powered, pmm->cores_idle, pmm->cores_pend_down,
+				pmm->cores_pend_up, pmm->cores_ack_down, pmm->cores_ack_up);
+		len += _mali_osk_snprintf(buf+len, size+len, "PMM misc:\n  PMU init: %s\n  Messages queued: %d\n"
+				"  Waiting: %d\n  No events: %d\n  Missed events: %d\n  Fatal power error: %s\n",
+				pmm->pmu_initialized ? "true" : "false", _mali_osk_atomic_read(&(pmm->messages_queued)),
+				pmm->waiting, pmm->no_events, pmm->missed, pmm->fatal_power_err ? "true" : "false");
 	}
+	return len;
 }
-#endif
+#endif /* MALI_STATE_TRACKING */
 
 #endif /* USING_MALI_PMM */

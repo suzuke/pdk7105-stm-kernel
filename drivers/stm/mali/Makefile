@@ -14,7 +14,7 @@ SVN_REV := $(shell [ -e $(MALI_DIR)/version ] && cat $(MALI_DIR)/version)
 API_VERSION := $(shell grep "\#define _MALI_API_VERSION" $(MALI_DIR)/common/mali_uk_types.h | cut -d' ' -f 3 )
 
 # Driver include paths
-ccflags-y := -I$(MALI_DIR) -I$(MALI_DIR)/common -I$(MALI_DIR)/linux -I$(MALI_DIR)/platform
+ccflags-y := -I$(MALI_DIR) -I$(MALI_DIR)/common -I$(MALI_DIR)/linux -I$(MALI_DIR)/platform 
 ccflags-y += -I$(MALI_DIR)/linux/license/gpl
 
 # Source files which always are included in a build
@@ -39,19 +39,21 @@ UKK_OBJS := $(addprefix ./linux/,\
 
 LINUX_OBJS := $(addprefix ./linux/, \
         mali_kernel_linux.o \
-        mali_osk_indir_mmap.o)
+        mali_osk_indir_mmap.o \
+        mali_ukk_vsync.o \
+        mali_kernel_sysfs.o)
 
 COMMON_OBJS := $(addprefix ./common/, \
         mali_kernel_core.o \
         mali_kernel_rendercore.o \
-        mali_kernel_descriptor_mapping.o)
+        mali_kernel_descriptor_mapping.o \
+        mali_kernel_vsync.o )
 
-PLATFORM_OBJS := $(addprefix ./platform/stm/, \
+PLATFORM_OBJS := $(addprefix ./platform/default/, \
         mali_platform.o )
 
-MALI_OBJS := $(OSK_OBJS) $(UKK_OBJS) $(COMMON_OBJS) $(LINUX_OBJS) $(PLATFORM_OBJS)
-
 ifeq ($(CONFIG_CPU_SUBTYPE_STIH415)$(CONFIG_CPU_SUBTYPE_STX7108)$(CONFIG_CPU_SUBTYPE_FLI7510),y)
+
 ifeq ($(CONFIG_CPU_SUBTYPE_STIH415),y)
 SOC                      := stih415
 endif
@@ -61,6 +63,7 @@ endif
 ifeq ($(CONFIG_CPU_SUBTYPE_FLI7510),y)
 SOC                      := fli75x0
 endif
+
 USING_MMU                := 1
 USING_UMP                := 0
 USING_MALI200            := 0
@@ -72,13 +75,17 @@ USING_GP2                := 1
 ONLY_ZBT                 := 0
 USING_ZBT                := 1
 USING_OS_MEMORY          := 0
-USING_PMM                := 1
+USING_PMM                := 0
 USING_MALI_RUN_TIME_PM 	 := 0
 USING_GPU_UTILIZATION  	 := 0
 USING_PROFILING        	 := 0
 TIMESTAMP              	 := default
 USING_MALI_PMM_TESTSUITE := 0
 
+# new for r2p2
+OS_MEMORY_KERNEL_BUFFER_SIZE_IN_MB := 6
+
+MALI_OBJS := $(OSK_OBJS) $(UKK_OBJS) $(COMMON_OBJS) $(LINUX_OBJS) $(PLATFORM_OBJS)
 MALI_OBJS += $(addprefix ./common/, \
         mali_kernel_MALI200.o \
         mali_kernel_GP2.o \
@@ -136,6 +143,15 @@ ccflags-y += 	-DUSING_ZBT=$(USING_ZBT) \
 		-DMALI_GPU_UTILIZATION=$(USING_GPU_UTILIZATION) \
 		-DMALI_TIMELINE_PROFILING_ENABLED=$(USING_PROFILING) \
 		-DMALI_POWER_MGMT_TEST_SUITE=$(USING_MALI_PMM_TESTSUITE)
+
+# Mali driver defines new for r2p2
+ccflags-y += 	-DMALI_OS_MEMORY_KERNEL_BUFFER_SIZE_IN_MB=$(OS_MEMORY_KERNEL_BUFFER_SIZE_IN_MB) 
+ifeq ($(shell test $(SUBLEVEL) -gt 32 && echo "OK"),OK)
+# MALI_STATE_TRACKING is only supported on Linux kernels from version 2.6.32.
+ccflags-y += -DMALI_STATE_TRACKING=1
+else
+ccflags-y += -DMALI_STATE_TRACKING=0
+endif
 
 ifeq ($(CONFIG_STM_MALI_DEBUG),y)
 ccflags-y += -DDEBUG

@@ -8,24 +8,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/**
- * @file mali_kernel_license.h
- * Defines for the macro MODULE_LICENSE.
- */
+#ifndef __MALI_TIMESTAMP_H__
+#define __MALI_TIMESTAMP_H__
 
-#ifndef __MALI_KERNEL_LICENSE_H__
-#define __MALI_KERNEL_LICENSE_H__
+#include "mali_osk.h"
 
-#ifdef __cplusplus
-extern "C"
+MALI_STATIC_INLINE _mali_osk_errcode_t _mali_timestamp_reset(void)
 {
-#endif
-
-#define MALI_KERNEL_LINUX_LICENSE     "GPL"
-#define MALI_LICENSE_IS_GPL 1
-
-#ifdef __cplusplus
+	return _MALI_OSK_ERR_OK;
 }
-#endif
 
-#endif /* __MALI_KERNEL_LICENSE_H__ */
+MALI_STATIC_INLINE u64 _mali_timestamp_get(void)
+{
+	return _mali_osk_time_get_ns();
+}
+
+#endif /* __MALI_TIMESTAMP_H__ */
