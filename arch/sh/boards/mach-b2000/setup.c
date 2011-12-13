@@ -18,6 +18,7 @@
 #include <linux/leds.h>
 #include <linux/phy.h>
 #include <linux/gpio.h>
+#include <linux/mdio-gpio.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/stih415.h>
 #include <asm/irq.h>
@@ -88,7 +89,7 @@ static void b2000_gmac1_txclk_select(int txclk_125_not_25_mhz)
 #endif
 
 #if defined(CONFIG_STM_GMAC0_B2035_CARD) || defined(CONFIG_STM_GMAC0_B2032_CARD)
-static int b2000_gmii0_reset(void *bus)
+static int b2000_gmii0_reset(struct mii_bus *bus)
 {
 	gpio_set_value(GMII0_PHY_NOT_RESET, 1);
 	gpio_set_value(GMII0_PHY_NOT_RESET, 0);
@@ -99,11 +100,25 @@ static int b2000_gmii0_reset(void *bus)
 	return 1;
 }
 
-static struct stmmac_mdio_bus_data stmmac0_mdio_bus = {
-	/* GMII connector CN22 */
-	.bus_id = 0,
-	.phy_reset = &b2000_gmii0_reset,
-	.phy_mask = 0,
+/*
+ * On GMAC0, it is noticed that some mdio register reads return value with
+ * bit 15 set, however the waveforms on board show that they are
+ * transmitted correctly. Which is a BUG at SOC level.
+ * Some SOC's behave different to others w.r.t which registers are returned
+ *  with 15 bit set
+ *
+ * Using mdio_gpio driver seems to solve the problem.
+ */
+#define STMMAC0_MDIO_GPIO_BUS	3
+static struct platform_device stmmac0_mdio_gpio_bus = {
+	.name = "mdio-gpio",
+	.id = STMMAC0_MDIO_GPIO_BUS,
+	.dev.platform_data = &(struct mdio_gpio_platform_data) {
+		/* GMAC0 SMI */
+		.mdc = stm_gpio(15, 5),
+		.mdio = stm_gpio(15, 4),
+		.reset = b2000_gmii0_reset,
+	},
 };
 #endif
 
@@ -255,8 +270,8 @@ static int __init b2000_devices_init(void)
 			.phy_addr = 1,
 #endif /* CONFIG_STM_GMAC0_B2032_CARD */
 
-			.phy_bus = 0,
-			.mdio_bus_data = &stmmac0_mdio_bus, });
+			.phy_bus = STMMAC0_MDIO_GPIO_BUS,});
+
 #endif
 
 /* GMAC1 */
@@ -329,6 +344,16 @@ static int __init b2000_devices_init(void)
 			ARRAY_SIZE(b2000_devices));
 }
 arch_initcall(b2000_devices_init);
+
+static int __init b2000_late_devices_setup(void)
+{
+#if defined(CONFIG_STM_GMAC0_B2035_CARD) || defined(CONFIG_STM_GMAC0_B2032_CARD)
+	return	platform_device_register(&stmmac0_mdio_gpio_bus);
+#else
+	return 0;
+#endif
+}
+late_initcall(b2000_late_devices_setup);
 
 struct sh_machine_vector mv_b2000 __initmv = {
 	.mv_name		= "b2000",
