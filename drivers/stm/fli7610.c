@@ -567,6 +567,10 @@ static struct platform_device fli7610_mpe_fdma_xbar_device = {
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfd6df000, 0x1000),
 	},
+	.dev.platform_data = &(struct stm_plat_fdma_xbar_data) {
+		.first_fdma_id = 0,
+		.last_fdma_id = 2,
+	},
 };
 
 /* TAE_FDMA  */
@@ -608,6 +612,10 @@ static struct platform_device fli7610_tae_fdma_xbar_device = {
 	.num_resources = 1,
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfee61000, 0x1000),
+	},
+	.dev.platform_data = &(struct stm_plat_fdma_xbar_data) {
+		.first_fdma_id = 3,
+		.last_fdma_id = 4,
 	},
 };
 
