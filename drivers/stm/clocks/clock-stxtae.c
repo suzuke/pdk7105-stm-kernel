@@ -44,6 +44,13 @@ static int clksouth_enable(clk_t *clk_p);
 static int clksouth_disable(clk_t *clk_p);
 static int clksouth_init(clk_t *clk_p);
 
+static void *clkaudio_base;
+static int clkaudio_set_rate(clk_t *clk_p, unsigned long freq);
+static int clkaudio_fsyn_recalc(clk_t *clk_p);
+static int clkaudio_enable(clk_t *clk_p);
+static int clkaudio_disable(clk_t *clk_p);
+static int clkaudio_init(clk_t *clk_p);
+
 
 #define SYSA_CLKIN			30	/* FE osc */
 
@@ -67,6 +74,18 @@ _CLK_OPS(clksouth,
 	clksouth_fsyn_recalc,
 	clksouth_enable,
 	clksouth_disable,
+	NULL,
+	NULL,
+	NULL
+);
+_CLK_OPS(clkaudio,
+	"Clockgen Audio",
+	clkaudio_init,
+	NULL,
+	clkaudio_set_rate,
+	clkaudio_fsyn_recalc,
+	clkaudio_enable,
+	clkaudio_disable,
 	NULL,
 	NULL,
 	NULL
@@ -159,7 +178,37 @@ _CLK_P(CLK_NOTUSED_10, &clksouth,
 	 0, 0, &clk_clocks[CLKSOUTH_REF]), /* CLK_GDP_PROC */
 };
 
+#define _CLKAUD_P(_id, _ops, _nominal, _flags, _parent, _divider)	\
+[_id] = (clk_t){ .name = #_id,  \
+		 .id = (_id),						\
+		 .ops = (_ops), \
+		 .flags = (_flags),					\
+		 .parent = (_parent),					\
+		 .private_data = (void *)(_divider)			\
+}
 
+clk_t clkaudio_clocks[] = {
+/* Clockgen A */
+_CLK(CLKAUDIO_REF, &clkaudio, 30000000,
+	CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
+
+_CLK_P(CLK_512FS_FREE_RUN, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+_CLK_P(CLK_256FS_FREE_RUN, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+_CLK_P(CLK_FS_FREE_RUN, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+_CLK_P(CLK_256FS_DEC_1, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+_CLK_P(CLK_FS_DEC_1, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+_CLK_P(CLK_SPDIF_RX, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+_CLK_P(CLK_256FS_DEC_2, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+_CLK_P(CLK_FS_DEC_2, &clkaudio,
+	0, 0, &clk_clocks[CLKAUDIO_REF]),
+};
 
 
 /******************************************************************************
@@ -695,19 +744,243 @@ static int clksouth_init(clk_t *clk_p)
 }
 
 
+/* ========================================================================
+ * 				clkgen Audio
+ * ======================================================================== */
+
+struct clkgen_audio_info {
+	int id;
+	int output;
+	int divider;
+};
+
+/* We assume the audio devices use 128 times oversampling */
+static struct clkgen_audio_info clkgen_audio_data[] = {
+	{ CLK_512FS_FREE_RUN, 1, 0},
+	{ CLK_256FS_FREE_RUN, 1, 2},
+	{ CLK_FS_FREE_RUN,    1, 0},
+	{ CLK_256FS_DEC_1,    2, 2},
+	{ CLK_FS_DEC_1,       2, 0},
+	{ CLK_SPDIF_RX,       3, 0},
+	{ CLK_256FS_DEC_2,    4, 2},
+	{ CLK_FS_DEC_2,       4, 0},
+};
+
+/* ========================================================================
+   Name:	clkaudio_fsyn_recalc
+   Description: calculate hw params for request clock output.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clkaudio_fsyn_recalc(clk_t *clk_p)
+{
+	unsigned long pe, md, sdiv, val;
+	int channel, enabled, err = 0;
+	int output;
+	int divider;
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLK_512FS_FREE_RUN || clk_p->id > CLK_FS_DEC_2)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Check if the clock output is enabled */
+	channel = clk_p->id - CLK_512FS_FREE_RUN;
+	enabled = CLK_READ(clkaudio_base + CLGA_CTL_EN) & (1 << channel);
+
+	if (!enabled) { /* Clk not enabled */
+		clk_p->rate = 0;
+		return 0;
+	}
+
+	/* Get the synth4x output */
+	output = clkgen_audio_data[channel].output;
+
+	if (output < 0) {
+		clk_p->rate = 0;
+		return 0;
+	}
+
+	/* Decode md, sdiv and pe */
+	val = CLK_READ(clkaudio_base + CLGA_CTL_SYNTH4X_AUD_n(output));
+
+	md = (val & MD__MASK) >> MD;
+	sdiv = (val & SDIV__MASK) >> SDIV;
+	pe = (val & PE__MASK) >> PE;
+
+	err = clk_fsyn_get_rate(clk_p->parent->rate, pe, md, sdiv,
+			&clk_p->rate);
+
+	if (!err) {
+		divider = clkgen_audio_data[channel].divider;
+
+		if (divider)
+			clk_p->rate /= divider;
+	}
+
+	return err;
+}
+
+static int clkaudio_fsyn_xable(clk_t *clk_p, unsigned long enable)
+{
+	unsigned long value;
+	int channel;
+	int output;
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLK_512FS_FREE_RUN || clk_p->id > CLK_FS_DEC_2)
+		return CLK_ERR_BAD_PARAMETER;
+
+	value = CLK_READ(clkaudio_base + CLGA_CTL_EN);
+	channel = clk_p->id - CLK_512FS_FREE_RUN;
+
+	if (enable)
+		value |= (1 << channel);
+	else
+		value &= ~(1 << channel);
+
+	CLK_WRITE(clkaudio_base + CLGA_CTL_EN, value);
+
+	output = clkgen_audio_data[channel].output;
+
+	value = CLK_READ(clkaudio_base + CLGA_CTL_SYNTH4X_AUD_n(output));
+	value &= ~NSB__MASK;
+
+	if (enable)
+		value |= NSB__ACTIVE;
+	else
+		value |= NSB__STANDBY;
+
+	CLK_WRITE(clkaudio_base + CLGA_CTL_SYNTH4X_AUD_n(output), value);
+
+	/* Freq recalc required only if a channel is enabled */
+	if (enable)
+		return clkaudio_fsyn_recalc(clk_p);
+	else
+		clk_p->rate = 0;
+
+	return 0;
+}
+
+/* ========================================================================
+   Name:	clkaudio_set_rate
+   Description: set the request clock output rate
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clkaudio_set_rate(clk_t *clk_p, unsigned long freq)
+{
+	int divider;
+	unsigned long md, pe, sdiv;
+	int channel;
+	int output;
+	unsigned long val;
+
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLK_512FS_FREE_RUN || clk_p->id > CLK_FS_DEC_2)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Identify synth4x output */
+	channel = clk_p->id - CLK_512FS_FREE_RUN;
+	output = clkgen_audio_data[channel].output;
+	divider = clkgen_audio_data[channel].divider;
+
+	if (divider)
+		freq *= divider;
+
+	/* Compute FSyn params */
+	if (clk_fsyn_get_params(clk_p->parent->rate, freq, &md,
+			&pe, &sdiv))
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* Set the new synth4x value */
+	val = CLK_READ(clkaudio_base + CLGA_CTL_SYNTH4X_AUD_n(output));
+
+	val &= ~MD__MASK;
+	val |= MD__(md);
+
+	val &= ~SDIV__MASK;
+	val |= SDIV__(sdiv);
+
+	val &= ~PE__MASK;
+	val |= PE__(pe);
+
+	CLK_WRITE(clkaudio_base + CLGA_CTL_SYNTH4X_AUD_n(output), val);
+
+	return clkaudio_fsyn_recalc(clk_p);
+}
+
+/* ========================================================================
+   Name:	clkaudio_enable
+   Description: enable the requested clock.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clkaudio_enable(clk_t *clk_p)
+{
+	return clkaudio_fsyn_xable(clk_p, 1);
+}
+
+/* ========================================================================
+   Name:	clkaudio_disable
+   Description: disable the requested clock.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clkaudio_disable(clk_t *clk_p)
+{
+	return clkaudio_fsyn_xable(clk_p, 1);
+}
+
+/* ========================================================================
+   Name:	clkaudio_init
+   Description: Initialize clockgen audio clocks.
+   Returns:     0 on success and error code for any errors.
+   ======================================================================== */
+static int clkaudio_init(clk_t *clk_p)
+{
+	int err;
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+
+	/* CLKAUD has a fixed audio clock parent, so no need to identify */
+
+	err = clkaudio_fsyn_recalc(clk_p);
+
+	return err;
+}
+
+
 int tae_clk_init(clk_t *_sys_clk_in)
 {
 	int ret = 0;
+	unsigned long value;
+
 	clk_clocks[CLKA_REF].parent = _sys_clk_in;
 	cga_base = ioremap_nocache(CKGA_BASE_ADDRESS , 0x1000);
 
 	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
+	if (ret)
+		return ret;
+
 	clksouth_base = ioremap_nocache(CLGS_BASE_ADDRESS, 0x60);
 
 	ret = clk_register_table(clksouth_clocks,
 					ARRAY_SIZE(clksouth_clocks), 0);
-
 	if (ret)
 		return ret;
+
+	clkaudio_base = ioremap_nocache(CLGA_BASE_ADDRESS, 0x30);
+
+	value =  SYNTH4X_AUD_NDIV__30_MHZ;
+	value |= SYNTH4X_AUD_SELCLKIN__CLKIN1V2;
+	value |= SYNTH4X_AUD_SELBW__VERY_GOOD_REFERENCE;
+	value |= SYNTH4X_AUD_NPDA__ACTIVE;
+	value |= SYNTH4X_AUD_NRST__NORMAL;
+	CLK_WRITE(clkaudio_base + CLGA_CTL_SYNTH4X_AUD, value);
+
+	ret = clk_register_table(clkaudio_clocks,
+					ARRAY_SIZE(clkaudio_clocks), 0);
+
 	return ret;
 }
