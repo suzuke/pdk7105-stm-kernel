@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
+#include <linux/mtd/partitions.h>
 #include <linux/err.h>
 #include <linux/dma-mapping.h>
 #include <linux/mtd/nand_ecc.h>
@@ -37,10 +38,8 @@
 #define NAME	"stm-nand-afm"
 
 
-#ifdef CONFIG_MTD_PARTITIONS
 #include <linux/mtd/partitions.h>
 static const char *part_probes[] = { "cmdlinepart", NULL };
-#endif
 
 #ifdef CONFIG_STM_NAND_AFM_BOOTMODESUPPORT
 /*
@@ -103,11 +102,8 @@ struct stm_nand_afm_device {
 	struct ecc_params	ecc_boot;
 	struct ecc_params	ecc_afm;
 #endif
-
-#ifdef CONFIG_MTD_PARTITIONS
 	int			nr_parts;
 	struct mtd_partition	*parts;
-#endif
 
 };
 
@@ -2978,7 +2974,6 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 		 boot_part_name, nbootpart ? "command line" : "kernel config");
 #endif
 
-#ifdef CONFIG_MTD_PARTITIONS
 	/* Try probing for MTD partitions */
 	data->nr_parts = parse_mtd_partitions(&data->mtd,
 					      part_probes,
@@ -2992,7 +2987,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 
 	/* Add any partitions that were found */
 	if (data->nr_parts) {
-		err = add_mtd_partitions(&data->mtd, data->parts,
+		err = mtd_device_register(&data->mtd, data->parts,
 					 data->nr_parts);
 		if (err)
 			goto err3;
@@ -3046,19 +3041,15 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 		}
 #endif
 	} else
-#endif
-
-		err = add_mtd_device(&data->mtd);
+		err = mtd_device_register(&data->mtd, NULL, 0);
 
 	/* Success! */
 	if (!err)
 		return data;
 
-#ifdef CONFIG_MTD_PARTITIONS
  err3:
 	if (data->parts && data->parts != bank->partitions)
 		kfree(data->parts);
-#endif
  err2:
 	kfree(data);
  err1:
