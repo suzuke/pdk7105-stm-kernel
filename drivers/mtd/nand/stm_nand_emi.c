@@ -29,6 +29,7 @@
 #include <linux/completion.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
+#include <linux/mtd/partitions.h>
 #include <linux/dma-mapping.h>
 #include <linux/clk.h>
 #include <linux/gpio.h>
@@ -37,10 +38,6 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
 #include <asm/dma.h>
-
-#ifdef CONFIG_MTD_PARTITIONS
-#include <linux/mtd/partitions.h>
-#endif
 
 #define NAME	"stm-nand-emi"
 
@@ -65,11 +62,8 @@ struct stm_nand_emi {
 	void __iomem		*io_addr;	/* ADDR output (emi_addr(17)) */
 
 	spinlock_t		lock; /* save/restore IRQ flags */
-
-#ifdef CONFIG_MTD_PARTITIONS
 	int			nr_parts;	/* Partition Table	      */
 	struct mtd_partition	*parts;
-#endif
 
 #ifdef CONFIG_STM_NAND_EMI_FDMA
 	unsigned long		nand_phys_addr;
@@ -89,9 +83,7 @@ struct stm_nand_emi_group {
 	struct stm_nand_emi *banks[0];
 };
 
-#ifdef CONFIG_MTD_PARTITIONS
 static const char *part_probes[] = { "cmdlinepart", NULL };
-#endif
 
 /*
  * Routines for FDMA transfers.
@@ -696,19 +688,18 @@ static struct stm_nand_emi * __init nand_probe_bank(
 		goto out6;
 	}
 
-#ifdef CONFIG_MTD_PARTITIONS
 	res = parse_mtd_partitions(&data->mtd, part_probes, &data->parts, 0);
 	if (res > 0) {
-		add_mtd_partitions(&data->mtd, data->parts, res);
-		return data;
+		res = mtd_device_register(&data->mtd, data->parts, res);
+	} else {
+		if (bank->partitions) {
+			data->parts = bank->partitions;
+			res = mtd_device_register(&data->mtd, data->parts,
+						  bank->nr_partitions);
+		} else
+			res = mtd_device_register(&data->mtd, NULL, 0);
 	}
-	if (bank->partitions) {
-		data->parts = bank->partitions;
-		res = add_mtd_partitions(&data->mtd, data->parts,
-					 bank->nr_partitions);
-	} else
-#endif
-		res = add_mtd_device(&data->mtd);
+
 	if (!res)
 		return data;
 
