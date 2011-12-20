@@ -609,6 +609,9 @@ extern int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 			   int allowbbt);
 extern int nand_do_read(struct mtd_info *mtd, loff_t from, size_t len,
 			size_t *retlen, uint8_t *buf);
+extern int nand_get_device(struct nand_chip *chip,
+			   struct mtd_info *mtd, int new_state);
+extern void nand_release_device(struct mtd_info *mtd);
 
 /**
  * struct platform_nand_chip - chip level device structure
