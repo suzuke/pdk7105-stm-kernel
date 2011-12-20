@@ -68,6 +68,8 @@ struct stih415_pio_config {
 
 void stih415_early_device_init(void);
 
+void stih415_configure_nand(struct stm_nand_config *config);
+
 struct stih415_asc_config {
 	int hw_flow_control;
 	int is_console;

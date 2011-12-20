@@ -34,8 +34,43 @@
 
 #include "pio-control.h"
 
+/* NAND Resources --------------------------------------------------------- */
 
+static struct platform_device stih415_nandi_device = {
+	.num_resources          = 2,
+	.resource               = (struct resource[]) {
+	STM_PLAT_RESOURCE_MEM_NAMED("flex_mem", 0xFE901000, 0x1000),
+		STIH415_RESOURCE_IRQ(146),
+	},
+	.dev.platform_data      = &(struct stm_plat_nand_flex_data) {
+	},
+};
 
+void __init stih415_configure_nand(struct stm_nand_config *config)
+{
+	struct stm_plat_nand_flex_data *flex_data;
+	struct stm_plat_nand_emi_data *emi_data;
+
+	switch (config->driver) {
+	case stm_nand_emi:
+		/* Not supported */
+		BUG();
+		break;
+	case stm_nand_flex:
+	case stm_nand_afm:
+		/* Configure device for stm-nand-flex/afm driver */
+		flex_data = stih415_nandi_device.dev.platform_data;
+		flex_data->nr_banks = config->nr_banks;
+		flex_data->banks = config->banks;
+		flex_data->flex_rbn_connected = config->rbn.flex_connected;
+		stih415_nandi_device.name = (config->driver == stm_nand_afm) ?
+					"stm-nand-afm" : "stm-nand-flex";
+		platform_device_register(&stih415_nandi_device);
+		break;
+	default:
+		return;
+	}
+}
 
 
 /* ASC resources ---------------------------------------------------------- */
