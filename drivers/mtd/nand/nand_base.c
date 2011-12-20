@@ -3262,7 +3262,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 			id5 = chip->read_byte(mtd);
 
 			/* Do we have a 5-byte ID ? */
-			if (!(id4 == *maf_id && id5 == dev_id))
+			if (!(id4 == *maf_id && id5 == *dev_id))
 				/* ECC level in id4[1:0] */
 				if ((id4 & 0x3) == 0x2)
 					chip->ecc.mode = NAND_ECC_4BITONDIE;
