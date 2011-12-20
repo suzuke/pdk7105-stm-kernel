@@ -103,5 +103,49 @@
 #define AFM_SEQ_CFG_DIR_WRITE			(0x1 << 24)
 
 
+/* The ARM memcpy_toio routines are totally unoptimised and simply
+ * do a byte loop. This causes a problem in that the NAND controller
+ * can only support 32 bit reads and writes. On the SH4 memcpy_toio
+ * is fully optimised and will always write as efficiently as possible,
+ * using some cache optimisations so it is worth using
+ */
+
+static inline void stm_nand_memcpy_toio(volatile void __iomem *dst,
+					const void *src, size_t count)
+{
+	BUG_ON(count & 3);
+	BUG_ON((unsigned long)dst & 3);
+	BUG_ON((unsigned long)src & 3);
+#ifdef __arm__
+	while (count) {
+		writel_relaxed(*(u32 *)src, dst);
+		src += 4;
+		dst += 4;
+		count -= 4;
+	}
+	mb();
+#else
+	memcpy_toio(dst, src, count);
+#endif
+}
+
+static inline void stm_nand_memcpy_fromio(void *dst,
+				const volatile void __iomem *src, int count)
+{
+	BUG_ON(count & 3);
+	BUG_ON((unsigned long)dst & 3);
+	BUG_ON((unsigned long)src & 3);
+#ifdef __arm__
+	while (count) {
+		*(u32 *)dst = readl_relaxed(src);
+		src += 4;
+		dst += 4;
+		count -= 4;
+	}
+	mb();
+#else
+	memcpy_fromio(dst, src, count);
+#endif
+}
 
 #endif /* STM_NANDC_REGS_H */

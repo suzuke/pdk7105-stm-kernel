@@ -1609,7 +1609,7 @@ static void afm_read_buf_cached(struct mtd_info *mtd, uint8_t *buf, int len)
 		spin_lock_irqsave(&(afm->lock), irq_flags);
 		invalidate_ioremap_region(afm->fifo_phys, afm->fifo_cached,
 					  0, L1_CACHE_BYTES);
-		memcpy_fromio(buf, afm->fifo_cached, L1_CACHE_BYTES);
+		stm_nand_memcpy_fromio(buf, afm->fifo_cached, L1_CACHE_BYTES);
 		spin_unlock_irqrestore(&(afm->lock), irq_flags);
 
 		buf += L1_CACHE_BYTES;
@@ -1680,7 +1680,7 @@ static void afm_erase_cmd(struct mtd_info *mtd, int page)
 	prog->extra_reg	= page;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	/* Wait for sequence to finish */
 	ret = wait_for_completion_timeout(&afm->seq_completed, 2*HZ);
@@ -1832,7 +1832,7 @@ static int afm_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 	prog->addr_reg = afm->page << 8;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	/* Wait for data to become available */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
@@ -1883,7 +1883,7 @@ static int afm_read_oob_chip(struct mtd_info *mtd, struct nand_chip *chip,
 	}
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	/* Wait for data to become available */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
@@ -1931,7 +1931,7 @@ static void afm_write_page_ecc_sp(struct mtd_info *mtd,
 	prog->addr_reg	= afm->page << 8;
 
 	/*    Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	/*    Write page data */
 	chip->write_buf(mtd, buf, mtd->writesize);
@@ -2034,7 +2034,7 @@ static void afm_write_page_ecc_lp(struct mtd_info *mtd,
 	prog->addr_reg	= afm->page << 8;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	/* Write page and oob data */
 	chip->write_buf(mtd, buf, mtd->writesize);
@@ -2077,7 +2077,7 @@ static void afm_write_page_raw_lp(struct mtd_info *mtd, struct nand_chip *chip,
 	prog->addr_reg	= afm->page << 8;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	/* Write page and OOB data */
 	chip->write_buf(mtd, buf, 2048);
@@ -2118,7 +2118,7 @@ static void afm_write_page_raw_sp(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* 1. Write page data to chip's page buffer */
 	prog->addr_reg	= afm->page << 8;
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	chip->write_buf(mtd, buf, mtd->writesize);
 
@@ -2201,7 +2201,7 @@ static int afm_write_oob_chip_lp(struct mtd_info *mtd, struct nand_chip *chip,
 
 	prog->addr_reg	= (page << 8) | (2048 >> 8);
 
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	stm_nand_memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
 
 	/* Write OOB */
 	chip->write_buf(mtd, chip->oob_poi, 64);

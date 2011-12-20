@@ -276,7 +276,7 @@ static void flex_read_buf_cached(struct mtd_info *mtd, uint8_t *buf, int len)
 		invalidate_ioremap_region(flex->data_phys,
 					  flex->data_cached, 0, L1_CACHE_BYTES);
 
-		memcpy_fromio(p, flex->data_cached,
+		stm_nand_memcpy_fromio(p, flex->data_cached,
 			      min(lenaligned, (int)L1_CACHE_BYTES));
 		spin_unlock_irqrestore(&(flex->lock), irq_flags);
 
