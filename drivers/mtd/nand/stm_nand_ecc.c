@@ -182,7 +182,7 @@ void stm_ecc_gen(const uint8_t *p_data, uint8_t *ecc, enum ecc_size size)
 	reg32 = parity_bits[12] ^ parity_bits[13];
 
 	p_byt = (uint8_t *)&reg32;
-#if __LITTLE_ENDIAN__
+#ifdef __LITTLE_ENDIAN
 	byte_a = p_byt[3];
 	byte_b = p_byt[2];
 	byte_c = p_byt[1];
