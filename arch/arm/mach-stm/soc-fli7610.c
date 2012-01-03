@@ -154,14 +154,17 @@ void __init fli7610_gic_init_irq(void)
 static void __init fli7610_timer_init(void)
 {
 
+	struct clk *a9_clk;
 	plat_clk_init();
 	plat_clk_alias_init();
-#define A9CLK		800000000
-#define PERIPHCLK	(A9CLK/2)
+
+	a9_clk = clk_get(NULL, "CLKM_A9");
+	if (IS_ERR(a9_clk))
+		panic("Unable to determine Cortex A9 clock frequency\n");
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(FLI7610_GLOBAL_TIMER_BASE),
-			  IRQ_GLOBALTIMER, PERIPHCLK);
+			IRQ_GLOBALTIMER, clk_get_rate(a9_clk)/2);
 #endif
 
 #ifdef CONFIG_HAVE_ARM_TWD
