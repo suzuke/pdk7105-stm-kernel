@@ -936,6 +936,12 @@ void stih415_configure_mali(struct stm_mali_config *priv_data)
 	platform_device_register(&stih415_mali_device);
 }
 
+void stih415_reset(char mode)
+{
+	struct sysconf_field *sc = sysconf_claim(SYSCONF(11),
+							0, 0, "LPM_SW_RST_N");
+	sysconf_write(sc, 0);
+}
 
 /* Early initialisation-----------------------------------------------------*/
 

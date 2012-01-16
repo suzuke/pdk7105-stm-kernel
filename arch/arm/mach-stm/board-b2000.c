@@ -405,6 +405,9 @@ static void __init b2000_init(void)
 	stih415_configure_audio(&(struct stih415_audio_config) {
 			.spdif_player_output_enabled = 1, });
 
+	/* reset */
+	stm_board_reset = stih415_reset;
+
 	platform_add_devices(b2000_devices,
 		ARRAY_SIZE(b2000_devices));
 
