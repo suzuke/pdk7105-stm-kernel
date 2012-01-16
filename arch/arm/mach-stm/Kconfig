@@ -185,4 +185,10 @@ config MACH_STM_B2000_MALI_OS_MEMORY_SIZE
 
 endif
 
+config MACH_STM_FLI76XXHDK01
+	bool "Support FLI76XX HDK01 (Newman) Board"
+	select MACH_STM_FLI7610
+	help
+	  Include support for a FLI76XX HDK01 (Newman) Board.
+
 endmenu
