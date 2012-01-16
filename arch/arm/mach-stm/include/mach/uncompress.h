@@ -25,6 +25,8 @@
 #include <mach/soc-stih415.h>
 #elif defined(CONFIG_MACH_STM_STX7108)
 #include <mach/soc-stx7108.h>
+#elif defined(CONFIG_MACH_STM_FLI7610)
+#include <mach/soc-fli7610.h>
 #endif
 
 #define ASC_TX_BUF(base)	(*(volatile unsigned int*)((base) + 0x04))
@@ -42,6 +44,9 @@ static inline unsigned long get_uart_base(void)
 #ifdef CONFIG_MACH_STM_STIH415
 	if (machine_is_stm_b2000())
 		return STIH415_ASC2_BASE;
+#elif defined(CONFIG_MACH_STM_FLI7610)
+	if (machine_is_stm_fli7610())
+		return FLI7610_CONSOLE_BASE;
 #endif
 	return 0;
 }

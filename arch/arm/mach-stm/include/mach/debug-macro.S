@@ -11,10 +11,20 @@
  * published by the Free Software Foundation.
  */
 
+#ifdef CONFIG_MACH_STM_STIH415
 #include <mach/soc-stih415.h>
 
 //#define DEBUG_LL_UART_OFFSET	(STIH415_ASC0_BASE & 0x03ffffff)
 #define DEBUG_LL_UART_OFFSET	(STIH415_SBC_ASC0_BASE & 0x03ffffff)
+#endif
+
+
+#ifdef CONFIG_MACH_STM_FLI7610
+#include <mach/soc-fli7610.h>
+#define DEBUG_LL_UART_OFFSET	(FLI7610_CONSOLE_BASE & 0x03ffffff)
+#endif
+
+
 
 #ifndef DEBUG_LL_UART_OFFSET
 #error "Unknown platform"
