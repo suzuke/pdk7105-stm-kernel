@@ -91,4 +91,15 @@ struct fli7610_asc_config {
 };
 void fli7610_configure_asc(int asc, struct fli7610_asc_config *config);
 void fli7610_configure_usb(int port);
+
+#define FLI7610_SBC_SSC(num)		(num + 3)
+#define FLI7610_SSC(num)		(num)
+
+struct fli7610_ssc_config {
+	void (*spi_chipselect)(struct spi_device *spi, int is_on);
+};
+/* Use the above macros while passing SSC number. */
+int fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config);
+int fli7610_configure_ssc_i2c(int ssc);
+void fli7610_configure_lirc(void);
 #endif
