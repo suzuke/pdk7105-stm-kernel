@@ -105,6 +105,7 @@ struct stm_plat_asc_data {
 	int force_m1:1;
 	struct stm_pad_config *pad_config;
 	void __iomem *regs;
+	char *clk_id;
 };
 
 extern int stm_asc_console_device;
