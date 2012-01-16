@@ -24,3 +24,4 @@ obj-$(CONFIG_IR_REDRAT3) += redrat3.o
 obj-$(CONFIG_IR_STREAMZAP) += streamzap.o
 obj-$(CONFIG_IR_WINBOND_CIR) += winbond-cir.o
 obj-$(CONFIG_RC_LOOPBACK) += rc-loopback.o
+obj-$(CONFIG_LIRC_STM) += stm_ir.o

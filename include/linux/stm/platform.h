@@ -14,7 +14,7 @@
 #define __LINUX_STM_PLATFORM_H
 
 #include <linux/gpio.h>
-#include <linux/lirc.h>
+#include <media/lirc.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>

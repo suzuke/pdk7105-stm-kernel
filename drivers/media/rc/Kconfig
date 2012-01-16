@@ -237,4 +237,78 @@ config RC_LOOPBACK
 	   To compile this driver as a module, choose M here: the module will
 	   be called rc_loopback.
 
+config LIRC_STM
+                tristate "STM Driver"
+                depends on LIRC && STM_DRIVERS
+		help
+		 The IR and UHF RX processors are identical and independent,
+		 except that the IR receiver does not use the noise and
+		 SCD filters. Not all ST platforms support both type of
+		 receivers.
+		 IR RX receiver is the default mode.
+
+		config LIRC_STM_UHF
+			bool "UHF RX receiver processor"
+			depends on LIRC_STM
+			help
+			  Set this option to enable UHF instead of IR remote control input.
+
+			  Note this option has no direct effect in the LiRC driver. It is used by
+			  some boards which have support for both UHF and IR support to set the
+			  configuration parameters passed into the driver. Not all boards have
+			  support for both modes of operation, so this option may have no effect,
+			  and hardware changes (such as changing jumpers) may be required.
+
+	        config LIRC_STM_UHF_SCD
+		        bool "Start Code Detector - SCD"
+			depends on LIRC_STM_UHF
+			default n
+			help
+			  This causes the driver to use SCD on UHF RX mode.
+			  The start code detector detects any programmable start
+			  code on UHF RX input. It works on a time unit called
+			  symbol time. One graphical example to understand how to
+			  configure properly the code, code length and nominal time
+			  values based on Remote Control signals train can be found in
+			  drivers/media/rc/lirc_ir.c driver.
+
+	        config LIRC_STM_UHF_SCD_CODE
+			hex "Normal code to be detected"
+			default "0x3FFFC028"
+			depends on LIRC_STM_UHF_SCD
+			help
+			 The primary RC to be detected.
+			 Default value for Futarque RC is 0x3FFFC028.
+
+	        config LIRC_STM_UHF_SCD_ALTCODE
+			hex "Alternative code to be detected"
+			default "0x0"
+			depends on LIRC_STM_UHF_SCD
+			help
+			 The second RC to be detected as alternative of the primary.
+			 The primary must be always setup before the use this.
+
+	        config LIRC_STM_UHF_SCD_NTIME
+			hex "Nominal time for a symbol"
+				default "0x1f4"
+			depends on LIRC_STM_UHF_SCD
+			help
+			 Default value for Futarque RC is 0x1f4. The nominal time
+			 is the same for normal and alternative symbols calculation.
+
+		config LIRC_STM_TX
+			depends on LIRC_STM
+			bool "IRB TX transmitter processor"
+			default n
+			help
+			 Say yes if you want enable IR transmission. The IR TX processor is
+			 independent of IR RX mode.
+
+	config LIRC_STM_DEBUG
+		depends on LIRC_STM
+		bool "Driver debug"
+		default n
+		help
+		  Say yes if you want enable some debug printk information
+
 endif #RC_CORE
