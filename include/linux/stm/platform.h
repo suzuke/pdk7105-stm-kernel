@@ -610,4 +610,8 @@ static inline int clk_add_alias_platform_device(const char *alias,
 	return clk_add_alias(alias, dev_name, id, dev);
 }
 
+
+extern void (*stm_board_reset)(char mode);
+
+
 #endif /* __LINUX_STM_PLATFORM_H */

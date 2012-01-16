@@ -15,6 +15,8 @@
 #include <linux/io.h>
 #include <mach/hardware.h>
 
+void (*stm_board_reset)(char mode);
+
 static inline void arch_idle(void)
 {
 	/*
@@ -26,11 +28,13 @@ static inline void arch_idle(void)
 
 static inline void arch_reset(char mode, const char *cmd)
 {
-	/*
-	 * Should we tie this to the A9's watchdog or something at
-	 * SOC level?
-	 */
-	while (1) ;
+
+	if (stm_board_reset)
+		stm_board_reset(mode);
+	else
+		/* Not-supported */
+		while (1)
+			;
 }
 
 #endif
