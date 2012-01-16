@@ -54,6 +54,7 @@ config USB_ARCH_HAS_OHCI
 	default y if CPU_SUBTYPE_SH7763
 	default y if CPU_SUBTYPE_SH7786
 	default y if CPU_SUBTYPE_FLI7510
+	default y if CPU_SUBTYPE_FLI7610
 	default y if CPU_SUBTYPE_STIH415
 	default y if CPU_SUBTYPE_STX5197
 	default y if CPU_SUBTYPE_STX5206
@@ -85,6 +86,7 @@ config USB_ARCH_HAS_EHCI
 	default y if MICROBLAZE
 	default y if SPARC_LEON
 	default y if CPU_SUBTYPE_FLI7510
+	default y if CPU_SUBTYPE_FLI7610
 	default y if CPU_SUBTYPE_STIH415
 	default y if CPU_SUBTYPE_STX5197
 	default y if CPU_SUBTYPE_STX5206

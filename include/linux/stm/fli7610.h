@@ -89,4 +89,5 @@ struct fli7610_asc_config {
 	int force_m1;
 };
 void fli7610_configure_asc(int asc, struct fli7610_asc_config *config);
+void fli7610_configure_usb(int port);
 #endif
