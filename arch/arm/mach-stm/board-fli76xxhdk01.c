@@ -65,6 +65,8 @@ static void __init fli76xxhdk01_init(void)
 			.enabled[0] = 1,
 			.enabled[1] = 1,
 			.enabled[2] = 1, });
+	/* reset */
+	stm_board_reset = fli7610_reset;
 
 }
 

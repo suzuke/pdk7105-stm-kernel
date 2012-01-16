@@ -110,4 +110,7 @@ struct fli7610_pwm_config {
 	int enabled[STM_PLAT_PWM_NUM_CHANNELS];
 };
 void fli7610_configure_pwm(struct fli7610_pwm_config *config);
+
+void fli7610_reset(char mode);
+
 #endif
