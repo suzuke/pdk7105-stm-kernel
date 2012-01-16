@@ -49,6 +49,10 @@ static void __init fli76xxhdk01_init_early(void)
 
 static void __init fli76xxhdk01_init(void)
 {
+#ifdef CONFIG_CACHE_L2X0
+
+	l2x0_init(__io_address(FLI7610_PL310_BASE), 0x1<<22, 0xffbfffff);
+#endif
 	fli7610_configure_usb(0);
 	fli7610_configure_usb(1);
 	fli7610_configure_usb(2);
