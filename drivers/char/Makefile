@@ -58,7 +58,6 @@ obj-$(CONFIG_TELCLOCK)		+= tlclk.o
 obj-$(CONFIG_MWAVE)		+= mwave/
 obj-$(CONFIG_AGP)		+= agp/
 obj-$(CONFIG_PCMCIA)		+= pcmcia/
-obj-$(CONFIG_LIRC_SUPPORT)	+= lirc/
 obj-$(CONFIG_IPMI_HANDLER)	+= ipmi/
 
 obj-$(CONFIG_HANGCHECK_TIMER)	+= hangcheck-timer.o
