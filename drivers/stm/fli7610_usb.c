@@ -268,19 +268,10 @@ static struct platform_device fli7610_usb_devices[] = {
 
 void __init fli7610_configure_usb(int port)
 {
-	static int osc_initialized;
 	static int configured[ARRAY_SIZE(fli7610_usb_devices)];
-	struct sysconf_field *sc;
 
 	BUG_ON(port < 0 || port >= ARRAY_SIZE(fli7610_usb_devices));
 
 	BUG_ON(configured[port]++);
-
-	if (!osc_initialized++) {
-		/* USB2TRIPPHY_OSCIOK */
-		sc = sysconf_claim(TAE_SYSCONF(385), 6, 6, "USB");
-		sysconf_write(sc, 1);
-	}
-
 	platform_device_register(&fli7610_usb_devices[port]);
 }

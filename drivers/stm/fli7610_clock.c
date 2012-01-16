@@ -4,7 +4,7 @@
  * May be copied or modified under the terms of the GNU General Public
  * License.  See linux/COPYING for more information.
  *
- * Code to handle the clock aliases on the STx7108.
+ * Code to handle the clock aliases on the Fli7610.
  */
 
 #include <linux/init.h>
@@ -46,6 +46,13 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("fdma_low_clk", "stm-fdma.4", "CLKA_IC_100", NULL);
 	clk_add_alias("fdma_ic_clk", "stm-fdma.3", "CLKA_IC_200", NULL);
 	clk_add_alias("fdma_ic_clk", "stm-fdma.4", "CLKA_IC_200", NULL);
+
+	clk_add_alias("usb_48_clk", "stm-usb.0", "CLK_USB1_48", NULL);
+	clk_add_alias("usb_48_clk", "stm-usb.1", "CLK_USB2_48", NULL);
+	clk_add_alias("usb_48_clk", "stm-usb.2", "CLK_USB1_60", NULL);
+
+	clk_add_alias("usb_phy_clk", NULL, "USB2_TRIPLE_PHY", NULL);
+	clk_add_alias("usb_ic_clk", NULL, "CLKA_IC_200", NULL);
 
 	return 0;
 }
