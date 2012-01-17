@@ -96,7 +96,7 @@ static inline unsigned long phys_addr_mask(void)
 #ifdef CONFIG_SUPERH32
 #define CONSISTENT_BASE	(P3SEG)
 #define CONSISTENT_END	(P3SEG+0x01000000)
-#define VMALLOC_START	(P3SEG)
+#define VMALLOC_START	CONSISTENT_END
 #else
 #define VMALLOC_START	(0xf0000000)
 #endif
