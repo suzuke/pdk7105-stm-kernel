@@ -172,6 +172,8 @@ disable:
 #endif
 }
 
+#ifndef CONFIG_GENERIC_CALIBRATE_DELAY
+
 void __cpuinit calibrate_delay(void)
 {
 	struct clk *clk = clk_get(NULL, "cpu_clk");
@@ -187,6 +189,8 @@ void __cpuinit calibrate_delay(void)
 			 (loops_per_jiffy/(5000/HZ)) % 100,
 			 loops_per_jiffy);
 }
+
+#endif
 
 void __init __add_active_range(unsigned int nid, unsigned long start_pfn,
 						unsigned long end_pfn)
