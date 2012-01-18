@@ -135,6 +135,22 @@ extern struct cpu_cache_fns cpu_cache;
 #define dmac_unmap_area			cpu_cache.dma_unmap_area
 #define dmac_flush_range		cpu_cache.dma_flush_range
 
+/* Awful temporary bodge to re-introduce these older kernel
+ * APIs into the kernel again. We define them in terms of
+ * the above APIs rather than re-introducing the functions
+ * themselves. These are needed temporarily by SHARK until
+ * we can get something better defined
+ */
+
+#ifndef dmac_clean_range
+#include <linux/dma-direction.h>
+
+#define dmac_clean_range(start, end) dmac_map_area((const void *)(start),\
+		(size_t) ((end) - (start)), DMA_TO_DEVICE)
+#define dmac_inv_range(start, end) dmac_unmap_area((const void *)(start),\
+		(size_t) ((end) - (start)), DMA_FROM_DEVICE)
+#endif
+
 #else
 
 extern void __cpuc_flush_icache_all(void);
@@ -155,7 +171,7 @@ extern void dmac_map_area(const void *, size_t, int);
 extern void dmac_unmap_area(const void *, size_t, int);
 extern void dmac_flush_range(const void *, const void *);
 
-#endif
+#endif /* MULTI_CACHE */
 
 /*
  * Copy user data from/to a page which is mapped into a different
