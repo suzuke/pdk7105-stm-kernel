@@ -21,7 +21,7 @@
 
 /* Returns: 1 if being executed on the "HOST" (L2-cached) ST40,
  *          0 if executed on the "RT" ST40 */
-#define STX7108_HOST_CORE ((ctrl_inl(CCN_PRR) & (1 << 7)) == 0)
+#define STX7108_HOST_CORE ((__raw_readl(CCN_PRR) & (1 << 7)) == 0)
 
 
 /* Sysconfig groups */
