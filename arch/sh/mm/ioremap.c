@@ -41,12 +41,25 @@ __ioremap_caller(phys_addr_t phys_addr, unsigned long size,
 	struct vm_struct *area;
 	unsigned long offset, last_addr, addr, orig_addr;
 	void __iomem *mapped;
+	int simple = (pgprot_val(pgprot) == pgprot_val(PAGE_KERNEL)) ||
+		(pgprot_val(pgprot) == pgprot_val(PAGE_KERNEL_NOCACHE));
+	int cached = pgprot_val(pgprot) & _PAGE_CACHABLE;
 
 	/* Don't allow wraparound or zero size */
 	last_addr = phys_addr + size - 1;
 	if (!size || last_addr < phys_addr)
 		return NULL;
 
+	/* This code is shared with SH5, hence the ifdef. Respect if you
+	 * have an SH5
+	 */
+#ifdef P4SEG
+	/* If the address is in P4 and it is uncached we can just
+	 * use the address directly
+	 */
+	if ((PXSEG(phys_addr) == P4SEG) && simple && !cached)
+		return (void __iomem *) phys_addr;
+#endif
 	/*
 	 * If we can't yet use the regular approach, go the fixmap route.
 	 */
@@ -119,6 +132,14 @@ void __iounmap(void __iomem *addr)
 	 */
 	if (iounmap_fixed(addr) == 0)
 		return;
+
+#ifdef P4SEG
+	/* If in P4 we are using the address directly so there is
+	 * nothing else to do here
+	 */
+	if (PXSEG(addr) == P4SEG)
+		return;
+#endif
 
 	/*
 	 * If the PMB handled it, there's nothing else to do.
