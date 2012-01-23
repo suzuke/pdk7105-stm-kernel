@@ -39,7 +39,6 @@ struct stm_spi_fsm {
 
 	void __iomem	*base;
 	struct mutex	lock;
-	unsigned	partitioned;
 	uint8_t		page_buf[FLASH_PAGESIZE]__attribute__((aligned(4)));
 
 	uint32_t	read_mask;
@@ -954,6 +953,8 @@ static int __init stm_spi_fsm_probe(struct platform_device *pdev)
 	struct flash_info *info;
 	unsigned i;
 	uint32_t freq;
+	struct mtd_partition	*parts = NULL;
+	int			nr_parts = 0;
 
 	/* Allocate memory for the driver structure (and zero it) */
 	fsm = kzalloc(sizeof(struct stm_spi_fsm), GFP_KERNEL);
@@ -1044,53 +1045,42 @@ static int __init stm_spi_fsm_probe(struct platform_device *pdev)
 		 (long long)fsm->mtd.size, (long long)(fsm->mtd.size >> 20),
 		 fsm->mtd.erasesize, (fsm->mtd.erasesize >> 10));
 
-	/* Add partitions */
-	if (mtd_has_partitions()) {
-		struct mtd_partition	*parts = NULL;
-		int			nr_parts = 0;
 
-		if (mtd_has_cmdlinepart()) {
-			static const char *part_probes[]
-					= { "cmdlinepart", NULL, };
+	if (mtd_has_cmdlinepart()) {
+		static const char *part_probes[]
+			= { "cmdlinepart", NULL, };
 
-			nr_parts = parse_mtd_partitions(&fsm->mtd,
-							part_probes, &parts, 0);
-		}
+		nr_parts = parse_mtd_partitions(&fsm->mtd,
+				part_probes, &parts, 0);
+	}
 
-		if (nr_parts <= 0 && data && data->parts) {
-			parts = data->parts;
-			nr_parts = data->nr_parts;
-		}
+	if (nr_parts <= 0 && data && data->parts) {
+		parts = data->parts;
+		nr_parts = data->nr_parts;
+	}
 
-		if (nr_parts > 0) {
-			for (i = 0; i < nr_parts; i++) {
-				dev_dbg(fsm->dev, "partitions[%d] = "
+	if (nr_parts > 0) {
+		for (i = 0; i < nr_parts; i++) {
+			dev_dbg(fsm->dev, "partitions[%d] = "
 					"{.name = %s, .offset = 0x%llx, "
 					".size = 0x%llx (%lldKiB) }\n",
 					i, parts[i].name,
 					(long long)parts[i].offset,
 					(long long)parts[i].size,
 					(long long)(parts[i].size >> 10));
-			}
-			fsm->partitioned = 1;
-
-			if (add_mtd_partitions(&fsm->mtd, parts, nr_parts)) {
-				ret = -ENODEV;
-				goto out4;
-			}
-
-			/* Success :-) */
-			return 0;
+		}
+		if (mtd_device_register(&fsm->mtd, parts, nr_parts)) {
+			ret = -ENODEV;
+			goto out4;
 		}
 
-	} else if (data->nr_parts) {
-		dev_info(&pdev->dev, " ignoring %d default partitions on %s\n",
-			 data->nr_parts, data->name);
-	}
-
-	if (add_mtd_device(&fsm->mtd)) {
-		ret = -ENODEV;
-		goto out4;
+		/* Success :-) */
+		return 0;
+	} else {
+		if (mtd_device_register(&fsm->mtd, NULL, 0)) {
+			ret = -ENODEV;
+			goto out4;
+		}
 	}
 
 	/* Success :-) */
@@ -1112,11 +1102,11 @@ static int __init stm_spi_fsm_probe(struct platform_device *pdev)
 static int __devexit stm_spi_fsm_remove(struct platform_device *pdev)
 {
 	struct stm_spi_fsm *fsm = platform_get_drvdata(pdev);
+	int err;
 
-	if (mtd_has_partitions() && fsm->partitioned)
-		del_mtd_partitions(&fsm->mtd);
-	else
-		del_mtd_device(&fsm->mtd);
+	err = mtd_device_unregister(&fsm->mtd);
+	if (err)
+		return err;
 
 	fsm_exit(fsm);
 	iounmap(fsm->base);
