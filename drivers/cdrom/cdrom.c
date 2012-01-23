@@ -1920,7 +1920,7 @@ static int dvd_read_manufact(struct cdrom_device_info *cdi, dvd_struct *s,
 					s->manufact.len);
 			s->manufact.len = 2048;
 		}
-		memcpy(s->manufact.value, &buf[4], s->manufact.len);
+		memcpy(s->manufact.value, cgc->buffer + 4, s->manufact.len);
 	}
 
 	return ret;
