@@ -299,6 +299,21 @@ asmlinkage void __cpuinit cpu_init(void)
 {
 	current_thread_info()->cpu = hard_smp_processor_id();
 
+
+#if defined CONFIG_32BIT && defined CONFIG_PMB_ST
+	/* For the ST scheme of managing pmbs, we have to initialise
+	 * the pmb much earlier than in the Renesas scheme.
+	 */
+	pmb_init();
+#else
+	/*
+	 * Handle trivial transitions between cached and uncached
+	 * segments, making use of the 1:1 mapping relationship in
+	 * 512MB lowmem.
+	 */
+	cached_to_uncached = P2SEG - P1SEG;
+#endif
+
 	/* First, probe the CPU */
 	cpu_probe();
 

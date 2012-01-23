@@ -95,9 +95,34 @@ config PMB
 	  32-bits through the SH-4A PMB. If this is not set, legacy
 	  29-bit physical addressing will be used.
 
+choice
+	prompt "PMB implementation"
+	depends on PMB
+	default PMB_ST if CPU_SUBTYPE_ST40
+	default PMB_RENESAS if !CPU_SUBTYPE_ST40
+
+config PMB_ST
+	bool "STMicroelectronics"
+	help
+	  This selects the STMicroelectronics PMB implementation.
+	  This requires one uncached mapping to be present at boot time.
+	  It also uses more sophisticated algorithms to try to make optimal
+	  use of the PMBs. Ideally the ST and Renesas implementations should
+	  be merged, but this is tricky to do without testing on both platforms.
+
+config PMB_RENESAS
+	bool "Renesas"
+	help
+	  This selects the Renesas implementation of PMB support.
+	  This requires that two PMB mappings are present at boot,
+	  a cached and uncached mapping at 80000000 and A0000000 mirroring
+	  the 29 bit legacy setup.
+
+endchoice
+
 config PMB_64M_TILES
 	bool "Tile P1/P2 region with 64M PMB entries"
-	depends on PMB
+	depends on PMB_ST
 	help
 	  PMB lookups are architecturally defined such that if a miss
 	  occurs when accessing the P1/P2 region a reset will occur.

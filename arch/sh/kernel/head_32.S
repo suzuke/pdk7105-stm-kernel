@@ -85,7 +85,7 @@ ENTRY(_stext)
 	ldc	r0, r7_bank	! ... and initial thread_info
 #endif
 
-#ifdef CONFIG_PMB
+#ifdef CONFIG_PMB_RENESAS
 /*
  * Reconfigure the initial PMB mappings setup by the hardware.
  *

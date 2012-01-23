@@ -109,18 +109,18 @@ static __always_inline void __set_pmb_entry(unsigned long vpn,
 #ifdef CONFIG_PMB_64M_TILES
 	BUG_ON(pos != PMB_VIRT2POS(vpn));
 #endif
-	ctrl_outl(0, mk_pmb_addr(pos));
-	ctrl_outl(vpn, mk_pmb_addr(pos));
-	ctrl_outl(ppn | flags | PMB_V, mk_pmb_data(pos));
+	__raw_writel(0, mk_pmb_addr(pos));
+	__raw_writel(vpn, mk_pmb_addr(pos));
+	__raw_writel(ppn | flags | PMB_V, mk_pmb_data(pos));
 
 	/*
 	 * Read back the value just written. This shouldn't be necessary,
 	 * but when resuming from hibernation it appears to fix a problem.
 	 */
-	ctrl_inl(mk_pmb_addr(pos));
+	__raw_readl(mk_pmb_addr(pos));
 }
 
-static void __uses_jump_to_uncached set_pmb_entry(unsigned long vpn,
+static void  set_pmb_entry(unsigned long vpn,
 	unsigned long ppn, unsigned long flags, int pos)
 {
 	jump_to_uncached();
@@ -131,16 +131,16 @@ static void __uses_jump_to_uncached set_pmb_entry(unsigned long vpn,
 static __always_inline void __clear_pmb_entry(int pos)
 {
 #ifdef CONFIG_PMB_64M_TILES
-	ctrl_outl(0, mk_pmb_addr(pos));
-	ctrl_outl(PMB_POS2VIRT(pos), mk_pmb_addr(pos));
-	ctrl_outl((CONFIG_PMB_64M_TILES_PHYS & ~((1 << PMB_FIXED_SHIFT)-1)) |
+	__raw_writel(0, mk_pmb_addr(pos));
+	__raw_writel(PMB_POS2VIRT(pos), mk_pmb_addr(pos));
+	__raw_writel((CONFIG_PMB_64M_TILES_PHYS & ~((1 << PMB_FIXED_SHIFT)-1)) |
 		  PMB_SZ_64M | PMB_WT | PMB_UB | PMB_V, mk_pmb_data(pos));
 #else
-	ctrl_outl(0, mk_pmb_addr(pos));
+	__raw_writel(0, mk_pmb_addr(pos));
 #endif
 }
 
-static void __uses_jump_to_uncached clear_pmb_entry(int pos)
+static void  clear_pmb_entry(int pos)
 {
 	jump_to_uncached();
 	__clear_pmb_entry(pos);
@@ -539,16 +539,20 @@ failed_give_up:
 }
 #endif
 
-long pmb_remap(unsigned long phys,
-	       unsigned long size, unsigned long flags)
+/* Try to create a PMB at the requested phys/virt. req_virt of 0
+ * means map to any virtual address
+ */
+static struct pmb_mapping *get_pmb_map(unsigned long req_virt,
+				       unsigned long phys,
+				       unsigned long size,
+				       pgprot_t flags)
 {
 	struct pmb_mapping *mapping;
 	int pmb_flags;
-	unsigned long offset;
 
 	/* Convert typical pgprot value to the PMB equivalent */
-	if (flags & _PAGE_CACHABLE) {
-		if (flags & _PAGE_WT)
+	if (pgprot_val(flags) & _PAGE_CACHABLE) {
+		if (pgprot_val(flags) & _PAGE_WT)
 			pmb_flags = PMB_WT;
 		else
 			pmb_flags = PMB_C;
@@ -564,6 +568,7 @@ long pmb_remap(unsigned long phys,
 		DPRINTK("check against phys %08lx size %08lx flags %08lx\n",
 			mapping->phys, mapping->size, mapping->flags);
 		if ((phys >= mapping->phys) &&
+		    (req_virt && req_virt >= mapping->virt) &&
 		    (phys+size <= mapping->phys+mapping->size) &&
 		    (pmb_flags == mapping->flags))
 			break;
@@ -576,20 +581,43 @@ long pmb_remap(unsigned long phys,
 	} else if (size < MIN_PMB_MAPPING_SIZE) {
 		/* We spit upon small mappings */
 		write_unlock(&pmb_lock);
-		return 0;
+		return ERR_PTR(-EINVAL);
 	} else {
-		mapping = pmb_calc(phys, size, 0, NULL, pmb_flags);
+		mapping = pmb_calc(phys, size, req_virt, NULL, pmb_flags);
 		if (!mapping) {
 			write_unlock(&pmb_lock);
-			return 0;
+			return ERR_PTR(-ENOSPC);
 		}
 		pmb_mapping_set(mapping);
 	}
 
 	write_unlock(&pmb_lock);
 
-	offset = phys - mapping->phys;
-	return mapping->virt + offset;
+	return mapping;
+}
+
+void __iomem *pmb_remap_caller(phys_addr_t phys, unsigned long size,
+			     pgprot_t prot, void *caller)
+{
+	struct pmb_mapping *pmb;
+
+	pmb = get_pmb_map(0, phys, size, prot);
+	if (IS_ERR(pmb))
+		return NULL;
+	return (void *) (pmb->virt + (phys - pmb->phys));
+}
+
+int pmb_bolt_mapping(unsigned long vaddr, phys_addr_t phys,
+		     unsigned long size, pgprot_t prot)
+{
+	struct pmb_mapping *pmb;
+
+	pmb = get_pmb_map(vaddr, phys, size, prot);
+
+	if (IS_ERR(pmb))
+		return PTR_ERR(pmb);
+
+	return 0;
 }
 
 static struct pmb_mapping *pmb_mapping_find(unsigned long addr,
@@ -611,14 +639,14 @@ static struct pmb_mapping *pmb_mapping_find(unsigned long addr,
 	return mapping;
 }
 
-int pmb_unmap(unsigned long addr)
+int pmb_unmap(void __iomem *addr)
 {
 	struct pmb_mapping *mapping;
 	struct pmb_mapping **prev_mapping;
 
 	write_lock(&pmb_lock);
 
-	mapping = pmb_mapping_find(addr, &prev_mapping);
+	mapping = pmb_mapping_find((unsigned long)addr, &prev_mapping);
 
 	if (unlikely(!mapping)) {
 		write_unlock(&pmb_lock);
@@ -639,7 +667,7 @@ int pmb_unmap(unsigned long addr)
 	return 1;
 }
 
-static void noinline __uses_jump_to_uncached
+static noinline void
 apply_boot_mappings(struct pmb_mapping *uc_mapping, struct pmb_mapping *ram_mapping)
 {
 	register int i __asm__("r1");
@@ -651,7 +679,8 @@ apply_boot_mappings(struct pmb_mapping *uc_mapping, struct pmb_mapping *ram_mapp
 	__pmb_mapping_set(uc_mapping);
 
 	cached_to_uncached = uc_mapping->virt -
-		(((unsigned long)&__uncached_start) & ~(uc_mapping->entries->size-1));
+		(((unsigned long)&uncached_start) &
+		 ~(uc_mapping->entries->size - 1));
 
 	jump_to_uncached();
 
@@ -677,9 +706,9 @@ apply_boot_mappings(struct pmb_mapping *uc_mapping, struct pmb_mapping *ram_mapp
 	} while (entry);
 
 	/* Flush out the TLB */
-	i =  ctrl_inl(MMUCR);
+	i =  __raw_readl(MMUCR);
 	i |= MMUCR_TI;
-	ctrl_outl(i, MMUCR);
+	__raw_writel(i, MMUCR);
 
 	back_to_cached();
 }
@@ -691,6 +720,10 @@ void __init pmb_init(void)
 {
 	int i;
 	int entry;
+
+	/* Do nothing if we have already been called */
+	if (ram_mapping)
+		return;
 
 	/* Create the free list of mappings */
 	pmb_mappings_free = &pmbm[0];
@@ -704,8 +737,9 @@ void __init pmb_init(void)
 
 	/* Create the initial mappings */
 	entry = NR_PMB_ENTRIES-1;
-	uc_mapping = pmb_calc(__pa(&__uncached_start), &__uncached_end - &__uncached_start,
-		 P3SEG-pmb_sizes[0].size, &entry, PMB_WT | PMB_UB);
+	uc_mapping = pmb_calc(__pa(&uncached_start),
+			&uncached_end - &uncached_start,
+			P3SEG-pmb_sizes[0].size, &entry, PMB_WT | PMB_UB);
 	ram_mapping = pmb_calc(__MEMORY_START, __MEMORY_SIZE, P1SEG, 0, PMB_C);
 	apply_boot_mappings(uc_mapping, ram_mapping);
 }
@@ -757,8 +791,8 @@ static int pmb_seq_show(struct seq_file *file, void *iter)
 		unsigned int size;
 		char *sz_str = NULL;
 
-		addr = ctrl_inl(mk_pmb_addr(i));
-		data = ctrl_inl(mk_pmb_data(i));
+		addr = __raw_readl(mk_pmb_addr(i));
+		data = __raw_readl(mk_pmb_data(i));
 
 		size = data & PMB_SZ_MASK;
 		sz_str = (size == PMB_SZ_16M)  ? " 16MB":
@@ -796,7 +830,7 @@ static int __init pmb_debugfs_init(void)
 	struct dentry *dentry;
 
 	dentry = debugfs_create_file("pmb", S_IFREG | S_IRUGO,
-				     sh_debugfs_root, NULL, &pmb_debugfs_fops);
+				     arch_debugfs_dir, NULL, &pmb_debugfs_fops);
 	if (!dentry)
 		return -ENOMEM;
 	if (IS_ERR(dentry))
@@ -807,8 +841,8 @@ static int __init pmb_debugfs_init(void)
 subsys_initcall(pmb_debugfs_init);
 
 #ifdef CONFIG_PM
-static __uses_jump_to_uncached
-int pmb_sysdev_suspend(struct sys_device *dev, pm_message_t state)
+
+static int pmb_sysdev_suspend(struct sys_device *dev, pm_message_t state)
 {
 	static pm_message_t prev_state;
 	int idx;
@@ -837,8 +871,6 @@ static int pmb_sysdev_resume(struct sys_device *dev)
 }
 
 static struct sysdev_driver pmb_sysdev_driver = {
-	.suspend = pmb_sysdev_suspend,
-	.resume = pmb_sysdev_resume,
 };
 
 static int __init pmb_sysdev_init(void)
@@ -850,7 +882,7 @@ subsys_initcall(pmb_sysdev_init);
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY
 
-void __uses_jump_to_uncached stm_hom_pmb_init(void)
+void  stm_hom_pmb_init(void)
 {
 	apply_boot_mappings(uc_mapping, ram_mapping);
 
