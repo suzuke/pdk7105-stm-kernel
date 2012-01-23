@@ -65,28 +65,32 @@ int __devinit stm_pci_register_controller(struct platform_device *pdev,
 {
 	struct stm_pci_chan_info *info;
 	struct resource *res;
+	void *platdata = dev_get_platdata(&pdev->dev);
+	struct stm_pci_window_info *window;
 
 	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)
 		return -ENOMEM;
 
-	/* Set up the sh board channel to point at the platform data we have
-	 * passed in
-	 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
-					(type == STM_PCI_EXPRESS) ?
-					"pcie memory" : "pci memory");
+	res = devm_kzalloc(&pdev->dev, sizeof(*res), GFP_KERNEL);
 	if (!res)
-		return -ENXIO;
-	info->chan.mem_resource = res;
+		return -ENOMEM;
 
-	/* Same for IO channel */
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
-					(type == STM_PCI_EXPRESS) ?
-					"pcie io" : "pci io");
-	if (!res)
-		return -ENXIO;
-	info->chan.io_resource = res;
+	info->chan.resources = res;
+	info->chan.nr_resources = 1;
+
+	res->flags = IORESOURCE_MEM;
+	if (type == STM_PCI_EXPRESS) {
+		struct stm_plat_pcie_config *config = platdata;
+		window = &config->pcie_window;
+		res->name = "pcie memory";
+	} else {
+		struct stm_plat_pci_config *config = platdata;
+		window = &config->pci_window;
+		res->name = "pci memory";
+	}
+	res->start = window->start;
+	res->end = window->start + window->size - 1;
 
 	/* Put some none zero value here to stop the generic code whining
 	 * about not having io_map_base defined
@@ -122,7 +126,7 @@ enum stm_pci_type stm_pci_controller_type(struct pci_bus *bus)
 	return info->type;
 }
 
-int stm_pci_legacy_irq(struct pci_dev *dev)
+int stm_pci_legacy_irq(const struct pci_dev *dev)
 {
 	struct stm_pci_chan_info *info;
 

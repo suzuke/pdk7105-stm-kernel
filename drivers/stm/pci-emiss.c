@@ -448,10 +448,6 @@ static struct pci_ops pci_config_ops = {
 	.write = pci_stm_config_write,
 };
 
-static struct pci_channel stm_pci_controller = {
-	.pci_ops = &pci_config_ops
-};
-
 void pci_stm_pio_reset(void)
 {
 	/* Active low for PCI signals */
@@ -475,9 +471,7 @@ void pci_stm_pio_reset(void)
 	mdelay(10);
 }
 
-static void __devinit pci_stm_setup(struct stm_plat_pci_config *pci_config,
-		unsigned long pci_window_start,
-		unsigned long pci_window_size)
+static void __devinit pci_stm_setup(struct stm_plat_pci_config *pci_config)
 {
 	unsigned long lmi_base, lmi_end, mbar_size;
 	int fn;
@@ -540,10 +534,10 @@ static void __devinit pci_stm_setup(struct stm_plat_pci_config *pci_config,
 	/* Set up the window from the STBUS space to PCI space
 	 * We want a one to one physical mapping, anything else is far too
 	 * complicated (and pointless) */
-	writel(pci_window_start, emiss + PCI_FRAME_ADDR);
+	writel(pci_config->pci_window.start, emiss + PCI_FRAME_ADDR);
 	/* Largest PCI address will form the mask in effect.
 	 * Assumes pci_window_size is ^2 */
-	writel(pci_window_size  - 1, emiss + PCI_FRAMEADDR_MASK);
+	writel(pci_config->pci_window.size  - 1, emiss + PCI_FRAMEADDR_MASK);
 
 	/* Now setup the reverse mapping, using as many functions as we have
 	 * to. Each function maps 256Megs */
@@ -601,10 +595,7 @@ static void __devinit pci_stm_setup(struct stm_plat_pci_config *pci_config,
  * of emiss arbiter registers is done here */
 static int __devinit pci_stm_probe(struct platform_device *pdev)
 {
-	struct pci_channel *chan = &stm_pci_controller;
-	struct resource *res;
 	int ret, irq;
-	unsigned long pci_window_start, pci_window_size;
 	struct stm_plat_pci_config *pci_config = pdev->dev.platform_data;
 	struct clk *pci_clk;
 
@@ -672,29 +663,12 @@ static int __devinit pci_stm_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* Extract where the PCI memory window is supposed to be */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pci memory");
-	if (res == NULL)
-		return -ENXIO;
-
-	pci_window_start = res->start;
-	pci_window_size = res->end - res->start + 1 ;
-
-	/* Set up the sh board channel stuff to point at the platform data
-	 * we have passed in */
-	chan->mem_resource = res;
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_IO, "pci io");
-	if (res == NULL)
-		return -ENXIO;
-	chan->io_resource = res;
-
 	/* Copy over into globals used by config read/write code */
 	idsel_lo = pci_config->idsel_lo;
 	max_slot = pci_config->idsel_hi - idsel_lo;
 
 	/* Now do all the register poking */
-	pci_stm_setup(pci_config, pci_window_start, pci_window_size);
+	pci_stm_setup(pci_config);
 
 	ret = stm_pci_register_controller(pdev, &pci_config_ops, STM_PCI_EMISS);
 

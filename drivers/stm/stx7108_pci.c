@@ -64,34 +64,30 @@ static struct stm_plat_pcie_ops stx7108_pcie_ops = {
 	.disable_ltssm = stx7108_pcie_disable_ltssm,
 };
 
-static struct stm_plat_pcie_config stx7108_plat_pcie_config = {
-	.ahb_val = 0x264207,
-	.ops = &stx7108_pcie_ops,
-};
-
 /* PCI express support */
 #define PCIE_MEM_START 0x20000000
 #define PCIE_MEM_SIZE  0x20000000
+#define PCIE_CONFIG_SIZE (64*1024)
+
+static struct stm_plat_pcie_config stx7108_plat_pcie_config = {
+	.ahb_val = 0x264207,
+	.ops = &stx7108_pcie_ops,
+	.pcie_window.start = PCIE_MEM_START,
+	.pcie_window.size = PCIE_MEM_SIZE - PCIE_CONFIG_SIZE,
+};
+
 #define MSI_FIRST_IRQ 	(NR_IRQS - 33)
 #define MSI_LAST_IRQ 	(NR_IRQS - 1)
 
 static struct platform_device stx7108_pcie_device = {
 	.name = "pcie_stm",
 	.id = -1,
-	.num_resources = 8,
+	.num_resources = 7,
 	.resource = (struct resource[]) {
-		/* Main PCI window, 960 MB */
-		STM_PLAT_RESOURCE_MEM_NAMED("pcie memory",
-					    PCIE_MEM_START, PCIE_MEM_SIZE),
-		/* There actually is no IO for the PCI express cell, so this
-		 * is a dummy really. Must be disjoint from PCI
-		 */
-		{
-			.name = "pcie io",
-			.start = 0x1000,
-			.end = 0x1fff,
-			.flags = IORESOURCE_IO,
-		},
+		/* Place 64K Config window at end of memory block */
+		STM_PLAT_RESOURCE_MEM_NAMED("pcie config",
+			PCIE_MEM_START + PCIE_MEM_SIZE - PCIE_CONFIG_SIZE,
+			PCIE_CONFIG_SIZE),
 		STM_PLAT_RESOURCE_MEM_NAMED("pcie cntrl", 0xfe780000, 0x1000),
 		STM_PLAT_RESOURCE_MEM_NAMED("pcie ahb", 0xfe788000, 0x8),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pcie inta", ILC_IRQ(179), -1),
@@ -167,16 +163,8 @@ int stx7108_pcibios_map_platform_irq(struct stm_plat_pci_config *pci_config,
 static struct platform_device stx7108_pci_device = {
 	.name = "pci_stm",
 	.id = -1,
-	.num_resources = 7,
+	.num_resources = 5,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM_NAMED("pci memory", 0xc0000000,
-				960 * 1024 * 1024),
-		{
-			.name = "pci io",
-			.start = 0x0400,
-			.end = 0xffff,
-			.flags = IORESOURCE_IO,
-		},
 		STM_PLAT_RESOURCE_MEM_NAMED("pci emiss", 0xfdaa8000, 0x17fc),
 		STM_PLAT_RESOURCE_MEM_NAMED("pci ahb", 0xfea08000, 0xff),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pci dma", ILC_IRQ(126), -1),
@@ -249,6 +237,10 @@ void __init stx7108_configure_pci(struct stm_plat_pci_config *pci_conf)
 	struct sysconf_field *sc;
 	int i;
 
+	/* Fill in physical address of memory window */
+	pci_conf->pci_window.start = 0xc0000000;
+	pci_conf->pci_window.size = 960 * 1024 * 1024;
+
 	/* LLA clocks have these horrible names... */
 	pci_conf->clk_name = "CLKA_PCI";
 
@@ -312,7 +304,7 @@ void __init stx7108_configure_pci(struct stm_plat_pci_config *pci_conf)
 						'A' + i);
 				BUG();
 			}
-			set_irq_type(ILC_IRQ(122 + i), IRQ_TYPE_LEVEL_LOW);
+			irq_set_irq_type(ILC_IRQ(122 + i), IRQ_TYPE_LEVEL_LOW);
 			break;
 		case PCI_PIN_ALTERNATIVE:
 			/* There is no alternative here ;-) */
@@ -330,7 +322,8 @@ void __init stx7108_configure_pci(struct stm_plat_pci_config *pci_conf)
 		if (gpio_request(STX7108_PIO_PCI_SERR, "PCI_SERR#") == 0) {
 			gpio_direction_input(STX7108_PIO_PCI_SERR);
 			pci_conf->serr_irq = gpio_to_irq(STX7108_PIO_PCI_SERR);
-			set_irq_type(pci_conf->serr_irq, IRQ_TYPE_LEVEL_LOW);
+			irq_set_irq_type(pci_conf->serr_irq,
+					 IRQ_TYPE_LEVEL_LOW);
 		} else {
 			printk(KERN_WARNING "%s(): Failed to claim PCI SERR# "
 					"PIO!\n", __func__);

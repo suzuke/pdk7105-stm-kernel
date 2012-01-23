@@ -46,7 +46,7 @@ enum stm_pci_type stm_pci_controller_type(struct pci_bus *bus);
  * function. Will return -EINVAL if called on a non-express bus which doesn't
  * have the concept of a legacy interrupt
  */
-int stm_pci_legacy_irq(struct pci_dev *dev);
+int stm_pci_legacy_irq(const struct pci_dev *dev);
 
 
 #ifdef CONFIG_STM_PCI_EMISS
@@ -86,42 +86,21 @@ void pci_emiss_outsl(unsigned long port, const void *src,
 
 
 #ifdef CONFIG_SUPERH
-/*
- * Defines macros to plug in the EMISS IO functions into the
- * SH4 machine vector
+/* Later kernels have removed the indirection throught the
+ * machine vec for IO. This gives us a problem as there is
+ * no way to do IO on the ST without running some code, simply
+ * de-referencing a memory location is not possible.
  *
- * We have to hook all the in/out functions as they cannot be memory
- * mapped with the emiss PCI IP
+ * Disable IO for now until we figure out if there is another
+ * way we can support IO using some other mechanism or if we
+ * have to re-introduce the machine vec, which should be avoided
+ * if we can.
  *
- * Also, for PCI we use the generic iomap implementation, and so do
- * not need the ioport_map function, instead using the generic cookie
- * based implementation.
- *
+ * Previously this macro used to fill in the above functions for
+ * IO in the machine vec if PCI was enabled, now we just define it
+ * to do nothing in all cases.
  */
-#ifdef CONFIG_STM_PCI_EMISS
-
-#define STM_PCI_IO_MACHINE_VEC			\
-	.mv_inb = pci_emiss_inb,		\
-	.mv_inw = pci_emiss_inw,		\
-	.mv_inl = pci_emiss_inl,		\
-	.mv_outb = pci_emiss_outb,		\
-	.mv_outw = pci_emiss_outw,		\
-	.mv_outl = pci_emiss_outl,		\
-	.mv_inb_p = pci_emiss_inb_p,		\
-	.mv_inw_p = pci_emiss_inw,		\
-	.mv_inl_p = pci_emiss_inl,		\
-	.mv_outb_p = pci_emiss_outb_p,		\
-	.mv_outw_p = pci_emiss_outw,		\
-	.mv_outl_p = pci_emiss_outl,		\
-	.mv_insb = pci_emiss_insb,		\
-	.mv_insw = pci_emiss_insw,		\
-	.mv_insl = pci_emiss_insl,		\
-	.mv_outsb = pci_emiss_outsb,		\
-	.mv_outsw = pci_emiss_outsw,		\
-	.mv_outsl = pci_emiss_outsl,
-#else
 #define STM_PCI_IO_MACHINE_VEC
-#endif /* CONFIG_STM_PCI_EMISS */
 
 #endif /* CONFIG_SUPERH */
 

@@ -391,6 +391,14 @@ struct stm_plat_fdma_xbar_data {
 
 /*** PCI platform data ***/
 
+struct stm_pci_window_info {
+	phys_addr_t start; /* Start of memory window hole */
+	phys_addr_t size;
+	phys_addr_t io_start; /* Where IO addresses are */
+	phys_addr_t io_size; /* Zero for no IO region */
+};
+
+
 #define PCI_PIN_ALTERNATIVE -3 /* Use alternative PIO rather than default */
 #define PCI_PIN_DEFAULT     -2 /* Use whatever the default is for that pin */
 #define PCI_PIN_UNUSED	    -1 /* Pin not in use */
@@ -399,6 +407,7 @@ struct stm_plat_fdma_xbar_data {
  * if you have wired up your board that way. It has the advantage that the PIO
  * pins freed up can then be used for something else. */
 struct stm_plat_pci_config {
+	struct stm_pci_window_info pci_window;
 	/* PCI_PIN_DEFAULT/PCI_PIN_UNUSED. Other IRQ can be passed in */
 	int pci_irq[4];
 	/* As above for SERR */
@@ -461,6 +470,7 @@ struct stm_plat_pcie_ops {
 
 /* PCIe platform data */
 struct stm_plat_pcie_config {
+	struct stm_pci_window_info pcie_window;
 	/* Which PIO the PERST# signal is on.
 	 * If it is not connected, and you rely on the autonomous reset,
 	 * then specifiy -EINVAL here

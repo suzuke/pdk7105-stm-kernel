@@ -471,7 +471,6 @@ static int __devinit stm_msi_probe(struct platform_device *pdev) { return 0; }
 static int __devinit stm_pcie_probe(struct platform_device *pdev)
 {
 	struct resource *res;
-	unsigned long pci_window_start, pci_window_size;
 	struct stm_plat_pcie_config *config = dev_get_platdata(&pdev->dev);
 	unsigned long config_window_start;
 	struct stm_pcie_dev_data *priv;
@@ -490,31 +489,19 @@ static int __devinit stm_pcie_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
-	/* Extract where the PCI memory window is supposed to be */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pcie memory");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+					   "pcie config");
 	if (!res)
 		return -ENXIO;
 
-	pci_window_start = res->start;
+	/* Check that this has sensible values */
+	BUG_ON(resource_size(res) != CFG_REGION_SIZE);
+	BUG_ON(res->start & (CFG_REGION_SIZE - 1));
+	config_window_start = res->start;
 
-	/* We put the start of the configuration region at the very top of the
-	 * PCI window so we don't have an annoying 64K chunk at the bottom
-	 * destroying our nice alignment
-	 */
-	config_window_start =
-	    (res->end - (CFG_REGION_SIZE - 1)) & ~(CFG_REGION_SIZE - 1);
-	pci_window_size = config_window_start - pci_window_start;
-
-	/* Now remap the config region */
-	if (!devm_request_mem_region
-	    (&pdev->dev, config_window_start, CFG_REGION_SIZE, "pcie config"))
-		return -EBUSY;
-
-	priv->config_area =
-	    devm_ioremap_nocache(&pdev->dev, config_window_start,
-				 CFG_REGION_SIZE);
-	if (!priv->config_area)
-		return -ENOMEM;
+	err = remap_named_resource(pdev, "pcie config", &priv->config_area);
+	if (err)
+		return err;
 
 	serr_irq = platform_get_irq_byname(pdev, "pcie syserr");
 	if (serr_irq < 0)
@@ -550,8 +537,8 @@ static int __devinit stm_pcie_probe(struct platform_device *pdev)
 	}
 
 	/* Now do all the register poking */
-	err = stm_pcie_hw_setup(&pdev->dev, pci_window_start, pci_window_size,
-				config_window_start);
+	err = stm_pcie_hw_setup(&pdev->dev, config->pcie_window.start,
+				config->pcie_window.size, config_window_start);
 	if (err)
 		return err;
 
@@ -619,7 +606,7 @@ static void msi_irq_demux(unsigned int mux_irq, struct irq_desc *mux_desc)
 	u32 status;
 	u32 mask;
 	int irq;
-	struct stm_msi_info *msi = get_irq_desc_data(mux_desc);
+	struct stm_msi_info *msi = irq_desc_get_handler_data(mux_desc);
 
 	/* Run down the status registers looking for which one to take.
 	 * No need for any locks, we only ever read stuff here
@@ -639,9 +626,10 @@ static void msi_irq_demux(unsigned int mux_irq, struct irq_desc *mux_desc)
 	}
 }
 
-static inline void set_msi_bit(struct stm_msi_info *msi,
-			       unsigned int reg_base, unsigned int irq)
+static inline void set_msi_bit(struct irq_data *data, unsigned int reg_base)
 {
+	struct stm_msi_info *msi = irq_data_get_irq_handler_data(data);
+	int irq = data->irq;
 	int ep = irq_to_ep(msi, irq);
 	int val;
 	unsigned long flags;
@@ -658,9 +646,10 @@ static inline void set_msi_bit(struct stm_msi_info *msi,
 	spin_unlock_irqrestore(&msi->reg_lock, flags);
 }
 
-static inline void clear_msi_bit(struct stm_msi_info *msi,
-				 unsigned int reg_base, unsigned int irq)
+static inline void clear_msi_bit(struct irq_data *data, unsigned int reg_base)
 {
+	struct stm_msi_info *msi = irq_data_get_irq_handler_data(data);
+	int irq = data->irq;
 	int ep = irq_to_ep(msi, irq);
 	int val;
 	unsigned long flags;
@@ -677,11 +666,9 @@ static inline void clear_msi_bit(struct stm_msi_info *msi,
 	spin_unlock_irqrestore(&msi->reg_lock, flags);
 }
 
-static void stm_enable_msi_irq(unsigned int irq)
+static void stm_enable_msi_irq(struct irq_data *data)
 {
-	struct stm_msi_info *msi = get_irq_data(irq);
-
-	set_msi_bit(msi, MSI_INTERRUPT_ENABLE(0), irq);
+	set_msi_bit(data, MSI_INTERRUPT_ENABLE(0));
 	/* The generic code will have masked all interrupts for device that
 	 * support the optional Mask capability. Therefore  we have to unmask
 	 * interrupts on the device if the device supports the Mask capability.
@@ -689,43 +676,37 @@ static void stm_enable_msi_irq(unsigned int irq)
 	 * We do not have to this in the irq mask/unmask functions, as we can
 	 * mask at the MSI interrupt controller itself.
 	 */
-	unmask_msi_irq(irq);
+	unmask_msi_irq(data);
 }
 
-static void stm_disable_msi_irq(unsigned int irq)
+static void stm_disable_msi_irq(struct irq_data *data)
 {
-	struct stm_msi_info *msi = get_irq_data(irq);
-
 	/* Disable the msi irq on the device */
-	mask_msi_irq(irq);
+	mask_msi_irq(data);
 
-	clear_msi_bit(msi, MSI_INTERRUPT_ENABLE(0), irq);
+	clear_msi_bit(data, MSI_INTERRUPT_ENABLE(0));
 }
 
-static void stm_mask_msi_irq(unsigned int irq)
+static void stm_mask_msi_irq(struct irq_data *data)
 {
-	struct stm_msi_info *msi = get_irq_data(irq);
-
-	set_msi_bit(msi, MSI_INTERRUPT_MASK(0), irq);
+	set_msi_bit(data, MSI_INTERRUPT_MASK(0));
 }
 
-static void stm_unmask_msi_irq(unsigned int irq)
+static void stm_unmask_msi_irq(struct irq_data *data)
 {
-	struct stm_msi_info *msi = get_irq_data(irq);
-
-	clear_msi_bit(msi, MSI_INTERRUPT_MASK(0), irq);
+	clear_msi_bit(data, MSI_INTERRUPT_MASK(0));
 }
 
-static void stm_ack_msi_irq(unsigned int irq)
+static void stm_ack_msi_irq(struct irq_data *data)
 {
-	struct stm_msi_info *msi = get_irq_data(irq);
-	int ep = irq_to_ep(msi, irq);
+	struct stm_msi_info *msi = irq_data_get_irq_handler_data(data);
+	int ep = irq_to_ep(msi, data->irq);
 	int val;
 
 	/* Don't need to do a RMW cycle here, as
 	 * the hardware is sane
 	 */
-	val = (1 << irq_to_bitnum(msi, irq));
+	val = (1 << irq_to_bitnum(msi, data->irq));
 
 	writel(val, msi->regs + MSI_INTERRUPT_STATUS(ep));
 	/* Read back for write posting */
@@ -734,11 +715,11 @@ static void stm_ack_msi_irq(unsigned int irq)
 
 static struct irq_chip msi_chip = {
 	.name = "pcie",
-	.enable = stm_enable_msi_irq,
-	.disable = stm_disable_msi_irq,
-	.mask = stm_mask_msi_irq,
-	.unmask = stm_unmask_msi_irq,
-	.ack = stm_ack_msi_irq,
+	.irq_enable = stm_enable_msi_irq,
+	.irq_disable = stm_disable_msi_irq,
+	.irq_mask = stm_mask_msi_irq,
+	.irq_unmask = stm_unmask_msi_irq,
+	.irq_ack = stm_ack_msi_irq,
 };
 
 
@@ -809,16 +790,16 @@ static int __devinit stm_msi_probe(struct platform_device *pdev)
 	msi_init_one(msi);
 
 	/* Hook up the multiplexor */
-	set_irq_chained_handler(msi->mux_irq, msi_irq_demux);
-	set_irq_data(msi->mux_irq, msi);
+	irq_set_chained_handler(msi->mux_irq, msi_irq_demux);
+	irq_set_handler_data(msi->mux_irq, msi);
 
 	for (irq = msi->first_irq; irq <= msi->last_irq; irq++) {
-		if (get_irq_chip(irq) != &no_irq_chip)
+		if (irq_get_chip(irq) != &no_irq_chip)
 			dev_err(&pdev->dev, "MSI irq %d in use!!\n", irq);
 
-		set_irq_chip_and_handler_name(irq, &msi_chip,
+		irq_set_chip_and_handler_name(irq, &msi_chip,
 					      handle_level_irq, "msi");
-		set_irq_data(irq, msi);
+		irq_set_handler_data(irq, msi);
 	}
 
 	/* Set the private data, arch_setup_msi_irq() will always fail
@@ -890,7 +871,7 @@ int arch_setup_msi_irq(struct pci_dev *dev, struct msi_desc *desc)
 	 */
 	desc->msi_attrib.multiple = 0;
 
-	set_irq_msi(irq, desc);
+	irq_set_msi_desc(irq, desc);
 	write_msi_msg(irq, &msg);
 
 	return 0;
@@ -898,7 +879,7 @@ int arch_setup_msi_irq(struct pci_dev *dev, struct msi_desc *desc)
 
 void arch_teardown_msi_irq(unsigned int irq)
 {
-	struct stm_msi_info *msi = get_irq_data(irq);
+	struct stm_msi_info *msi = irq_get_handler_data(irq);
 	int ep = irq_to_ep(msi, irq);
 
 	spin_lock(&msi_alloc_lock);

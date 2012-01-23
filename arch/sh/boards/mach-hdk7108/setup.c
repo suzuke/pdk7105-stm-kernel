@@ -353,7 +353,7 @@ static struct stm_plat_pci_config hdk7108_pci_config = {
 
 #ifdef CONFIG_PCI
 
-int pcibios_map_platform_irq(struct pci_dev *dev, u8 slot, u8 pin)
+int pcibios_map_platform_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {
 	int irq;
 
@@ -636,23 +636,10 @@ static int __init device_init(void)
 }
 arch_initcall(device_init);
 
-
-static void __iomem *hdk7108_ioport_map(unsigned long port, unsigned int size)
-{
-	/* If we have PCI then this should never be called because we
-	 * are using the generic iomap implementation. If we don't
-	 * have PCI then there are no IO mapped devices, so it still
-	 * shouldn't be called. */
-	BUG();
-	return NULL;
-}
-
 struct sh_machine_vector mv_hdk7108 __initmv = {
 	.mv_name = "hdk7108",
 	.mv_setup = hdk7108_setup,
 	.mv_nr_irqs = NR_IRQS,
-	.mv_ioport_map = hdk7108_ioport_map,
-	STM_PCI_IO_MACHINE_VEC
 };
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY
