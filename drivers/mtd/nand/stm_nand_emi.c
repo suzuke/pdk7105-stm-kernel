@@ -771,9 +771,7 @@ static int __init stm_nand_emi_probe(struct platform_device *pdev)
 static int __devexit stm_nand_emi_remove(struct platform_device *pdev)
 {
 	struct stm_nand_emi_group *group = platform_get_drvdata(pdev);
-#ifdef CONFIG_MTD_PARTITIONS
 	struct stm_plat_nand_emi_data *pdata = pdev->dev.platform_data;
-#endif
 	int n;
 
 	for (n=0; n<group->nr_banks; n++) {
@@ -781,10 +779,8 @@ static int __devexit stm_nand_emi_remove(struct platform_device *pdev)
 
 		nand_release(&data->mtd);
 
-#ifdef CONFIG_MTD_PARTITIONS
 		if (data->parts && data->parts != pdata->banks[n].partitions)
 			kfree(data->parts);
-#endif
 
 		iounmap(data->io_addr);
 		iounmap(data->io_cmd);
