@@ -3096,11 +3096,8 @@ static int __devexit stm_afm_remove(struct platform_device *pdev)
 	for (n = 0; n < pdata->nr_banks; n++) {
 		struct stm_nand_afm_device *data = afm->devices[n];
 		nand_release(&data->mtd);
-
-#ifdef CONFIG_MTD_PARTITIONS
 		if (data->parts && data->parts != pdata->banks[n].partitions)
 			kfree(data->parts);
-#endif
 		kfree(data);
 	}
 
