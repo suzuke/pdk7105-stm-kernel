@@ -1135,7 +1135,7 @@ static int ir_stm_probe(struct platform_device *pdev)
 		rdev->open = stm_ir_open;
 		rdev->close = stm_ir_close;
 		rdev->driver_name = IR_STM_NAME;
-		rdev->map_name = RC_MAP_STM_PVR_1;
+		rdev->map_name = RC_MAP_EMPTY;
 		rdev->input_name = "STM Infrared Remote Receiver";
 
 #ifdef CONFIG_LIRC_STM_TX
@@ -1167,26 +1167,27 @@ error1:
 
 
 #ifdef CONFIG_PM
-static void ir_stm_rx_restore(struct stm_ir_device *dev)
+static void ir_stm_rx_restore(struct device *dev)
 {
-	ir_stm_scd_set(dev, 1);
+	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
+
+	ir_stm_scd_set(ir_dev, 1);
 	/* enable interrupts and receiver */
-	writel(LIRC_STM_ENABLE_IRQ, dev->rx_base + IRB_RX_INT_EN);
-	writel(0x01, dev->rx_base + IRB_RX_EN);
+	writel(LIRC_STM_ENABLE_IRQ, ir_dev->rx_base + IRB_RX_INT_EN);
+	writel(0x01, ir_dev->rx_base + IRB_RX_EN);
 	/* clean the buffer */
 }
 
 static int ir_stm_suspend(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct stm_ir_device *ir_dev = platform_get_drvdata(pdev);
+	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(&pdev->dev)) {
+	if (device_may_wakeup(dev)) {
 		/* need for the resuming phase */
 		ir_stm_rx_flush(ir_dev);
-		ir_stm_rx_calc_clocks(pdev, clk_get_rate(ir_dev->sys_clock));
+		ir_stm_rx_calc_clocks(ir_dev, clk_get_rate(ir_dev->sys_clock));
 		ir_stm_scd_config(ir_dev, clk_get_rate(ir_dev->sys_clock));
-		ir_stm_rx_restore(ir_dev);
+		ir_stm_rx_restore(dev);
 		ir_stm_scd_restart(ir_dev);
 	} else
 		clk_disable(ir_dev->sys_clock);
@@ -1196,14 +1197,13 @@ static int ir_stm_suspend(struct device *dev)
 
 static int ir_stm_resume(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct stm_ir_device *ir_dev = platform_get_drvdata(pdev);
+	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
-	if (!device_may_wakeup(&pdev->dev))
+	if (!device_may_wakeup(dev))
 		clk_enable(ir_dev->sys_clock);
 
-	ir_stm_hardware_init(pdev);
-	ir_stm_rx_restore(ir_dev);
+	ir_stm_hardware_init(ir_dev);
+	ir_stm_rx_restore(dev);
 	ir_stm_scd_restart(ir_dev);
 
 	return 0;
@@ -1211,8 +1211,7 @@ static int ir_stm_resume(struct device *dev)
 
 static int ir_stm_freeze(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct stm_ir_device *ir_dev = platform_get_drvdata(pdev);
+	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
 	/* disable IR RX/TX interrupts plus clear status */
 	writel(0x00, ir_dev->rx_base + IRB_RX_EN);
@@ -1226,14 +1225,13 @@ static int ir_stm_freeze(struct device *dev)
 
 static int ir_stm_restore(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct stm_ir_device *ir_dev = platform_get_drvdata(pdev);
+	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
 	clk_enable(ir_dev->sys_clock);
-	ir_stm_hardware_init(pdev);
+	ir_stm_hardware_init(ir_dev);
 	/* enable interrupts and receiver */
-	writel(LIRC_STM_ENABLE_IRQ, IRB_RX_INT_EN);
-	writel(0x01, ir_dev->rx_bse + IRB_RX_EN);
+	writel(LIRC_STM_ENABLE_IRQ, ir_dev->rx_base + IRB_RX_INT_EN);
+	writel(0x01, ir_dev->rx_base + IRB_RX_EN);
 
 	return 0;
 }
