@@ -31,6 +31,7 @@
 #include <linux/clockchips.h>
 #include <linux/sh_timer.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 
 struct sh_timer_priv {
 	void (*priv_handler) (void *data);

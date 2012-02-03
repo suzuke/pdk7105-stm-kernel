@@ -175,22 +175,23 @@ const char *dbg_key_str1(const struct ubifs_info *c,
 			 const union ubifs_key *key);
 
 /*
- * DBGKEY macros require @dbg_lock to be held, which it is in the dbg message
- * macros.
+ * TODO: these macros are now broken because there is no locking around them
+ * and we use a global buffer for the key string. This means that in case of
+ * concurrent execution we will end up with incorrect and messy key strings.
  */
 #define DBGKEY(key) dbg_key_str0(c, (key))
 #define DBGKEY1(key) dbg_key_str1(c, (key))
 
 extern spinlock_t dbg_lock;
 
-#define ubifs_dbg_msg(type, fmt, ...) do {                        \
-	spin_lock(&dbg_lock);                                     \
-	pr_debug("UBIFS DBG " type ": " fmt "\n", ##__VA_ARGS__); \
-	spin_unlock(&dbg_lock);                                   \
-} while (0)
+#define ubifs_dbg_msg(type, fmt, ...) \
+	pr_debug("UBIFS DBG " type ": " fmt "\n", ##__VA_ARGS__)
 
 /* Just a debugging messages not related to any specific UBIFS subsystem */
-#define dbg_msg(fmt, ...)   ubifs_dbg_msg("msg", fmt, ##__VA_ARGS__)
+#define dbg_msg(fmt, ...)                                                     \
+	printk(KERN_DEBUG "UBIFS DBG (pid %d): %s: " fmt "\n", current->pid,  \
+	       __func__, ##__VA_ARGS__)
+
 /* General messages */
 #define dbg_gen(fmt, ...)   ubifs_dbg_msg("gen", fmt, ##__VA_ARGS__)
 /* Additional journal messages */
@@ -269,6 +270,8 @@ void dbg_dump_lprop(const struct ubifs_info *c, const struct ubifs_lprops *lp);
 void dbg_dump_lprops(struct ubifs_info *c);
 void dbg_dump_lpt_info(struct ubifs_info *c);
 void dbg_dump_leb(const struct ubifs_info *c, int lnum);
+void dbg_dump_sleb(const struct ubifs_info *c,
+		   const struct ubifs_scan_leb *sleb, int offs);
 void dbg_dump_znode(const struct ubifs_info *c,
 		    const struct ubifs_znode *znode);
 void dbg_dump_heap(struct ubifs_info *c, struct ubifs_lpt_heap *heap, int cat);
@@ -386,6 +389,9 @@ static inline void dbg_dump_lprops(struct ubifs_info *c)          { return; }
 static inline void dbg_dump_lpt_info(struct ubifs_info *c)        { return; }
 static inline void dbg_dump_leb(const struct ubifs_info *c,
 				int lnum)                         { return; }
+static inline void
+dbg_dump_sleb(const struct ubifs_info *c,
+	      const struct ubifs_scan_leb *sleb, int offs)        { return; }
 static inline void
 dbg_dump_znode(const struct ubifs_info *c,
 	       const struct ubifs_znode *znode)                   { return; }

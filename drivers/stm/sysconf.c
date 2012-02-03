@@ -7,6 +7,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/bootmem.h>
 #include <linux/io.h>
 #include <linux/sysdev.h>

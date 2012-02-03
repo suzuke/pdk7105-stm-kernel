@@ -67,7 +67,7 @@ static struct stm_pad_config stih415_hdmi_hp_pad_config = {
 /* NAND Flash */
 static struct stm_nand_bank_data b2000_nand_flash = {
 	.csn            = 0,
-	.options        = NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT,
+	.options        = NAND_NO_AUTOINCR | NAND_BBT_USE_FLASH,
 	.nr_partitions  = 2,
 	.partitions     = (struct mtd_partition []) {
 		{
@@ -431,10 +431,10 @@ static int __init b2000_late_devices_setup(void)
 late_initcall(b2000_late_devices_setup);
 
 MACHINE_START(STM_B2000, "STMicroelectronics B2000 - STiH415 MBoard")
-	.boot_params	= PLAT_PHYS_OFFSET + 0x00000100,
+	.atag_offset	= 0x100,
 	.map_io		= b2000_map_io,
+	.init_early	= b2000_init_early,
 	.init_irq	= stih415_gic_init_irq,
 	.timer		= &stih415_timer,
 	.init_machine	= b2000_init,
-	.init_early	= b2000_init_early,
 MACHINE_END

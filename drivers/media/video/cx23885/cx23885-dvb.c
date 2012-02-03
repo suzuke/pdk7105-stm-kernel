@@ -844,7 +844,7 @@ static int dvb_register(struct cx23885_tsport *port)
 			static struct xc2028_ctrl ctl = {
 				.fname   = XC3028L_DEFAULT_FIRMWARE,
 				.max_len = 64,
-				.demod   = 5000,
+				.demod   = XC3028_FE_DIBCOM52,
 				/* This is true for all demods with
 					v36 firmware? */
 				.type    = XC2028_D2633,
@@ -940,6 +940,11 @@ static int dvb_register(struct cx23885_tsport *port)
 
 			fe = dvb_attach(xc4000_attach, fe0->dvb.frontend,
 					&dev->i2c_bus[1].i2c_adap, &cfg);
+			if (!fe) {
+				printk(KERN_ERR "%s/2: xc4000 attach failed\n",
+				       dev->name);
+				goto frontend_detach;
+			}
 		}
 		break;
 	case CX23885_BOARD_TBS_6920:
