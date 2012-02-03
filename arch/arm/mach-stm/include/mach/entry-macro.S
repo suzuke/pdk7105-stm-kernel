@@ -60,9 +60,6 @@
 		ldr	\tmp, =1021
 
 		bic     \irqnr, \irqstat, #0x1c00
-
-		cmp	\irqnr, #29
-		beq	1510f
 		cmp     \irqnr, #26
 		cmpcc	\irqnr, \irqnr
 		cmpne	\irqnr, \tmp
@@ -87,11 +84,3 @@
 
 		/* As above, this assumes that irqstat and base are preserved.. */
 
-		.macro test_for_ltirq, irqnr, irqstat, base, tmp
-		bic	\irqnr, \irqstat, #0x1c00
-		mov 	\tmp, #0
-		cmp	\irqnr, #29
-		moveq	\tmp, #1
-		streq	\irqstat, [\base, #GIC_CPU_EOI]
-		cmp	\tmp, #0
-		.endm

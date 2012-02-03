@@ -95,7 +95,7 @@ static void gt_compare_set(unsigned long delta, int periodic)
 static void gt_clockevent_set_mode(enum clock_event_mode mode,
 				   struct clock_event_device *clk)
 {
-	switch(mode) {
+	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
 		gt_compare_set(gt_periphclk/HZ, 1);
 		break;
@@ -124,19 +124,11 @@ static int gt_clockevent_set_next_event(unsigned long evt,
 
 /* clock_event used when non_SMP (or initial timer when SMP and global
  * timer is used as local timer???) */
-static struct clock_event_device gt_clockevent = {
-	.name		= "Global Timer CE",
-	.features	= CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
-	.set_mode	= gt_clockevent_set_mode,
-	.set_next_event	= gt_clockevent_set_next_event,
-	.rating		= 300,
-	.cpumask	= cpu_all_mask,
-};
 
+static DEFINE_PER_CPU(struct clock_event_device, gt_clockevent);
 static irqreturn_t gt_clockevent_interrupt(int irq, void *dev_id)
 {
-	struct clock_event_device *evt = dev_id;
-
+	struct clock_event_device *evt = *(struct clock_event_device **)dev_id;
 	writel(GT_INT_STATUS_EVENT_FLAG,
 	       gt_base + GT_INT_STATUS);
 
@@ -145,31 +137,39 @@ static irqreturn_t gt_clockevent_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static struct irqaction gt_clockevent_irq = {
-	.handler = gt_clockevent_interrupt,
-	.dev_id = &gt_clockevent,
-	.flags = IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
-};
-
-static void __init gt_clockevents_init(int timer_irq)
+static struct clock_event_device __percpu * *gt_evt;
+static void __init gt_clockevents_init(struct clock_event_device *clk)
 {
-	unsigned long flags;
+	struct clock_event_device **this_cpu_clk;
+	int err;
 
-	gt_clockevent.irq = timer_irq;
-	gt_clockevent.shift = 32;
-	gt_clockevent.mult =
-		div_sc(gt_periphclk, NSEC_PER_SEC, gt_clockevent.shift);
-	gt_clockevent.max_delta_ns =
-		clockevent_delta2ns(0xffffffff, &gt_clockevent);
-	gt_clockevent.min_delta_ns =
-		clockevent_delta2ns(0xf, &gt_clockevent);
+	gt_evt = alloc_percpu(struct clock_event_device *);
+	if (!gt_evt) {
+		printk(KERN_WARNING "smp-gt: can't allocate memory\n");
+		return;
+	}
+	err = request_percpu_irq(clk->irq, gt_clockevent_interrupt,
+				 "gt", gt_evt);
+	if (err) {
+		printk(KERN_WARNING "smp-gt: can't register interrupt %d (%d)\n",
+		       clk->irq, err);
+		return;
+	}
 
-	gt_clockevent_irq.name = gt_clockevent.name;
-	gt_clockevent_irq.irq = timer_irq;
+	clk->name		= "Global Timer CE";
+	clk->features	= CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT;
+	clk->set_mode	= gt_clockevent_set_mode;
+	clk->set_next_event	= gt_clockevent_set_next_event;
+	clk->shift = 32;
+	clk->mult = div_sc(gt_periphclk, NSEC_PER_SEC, clk->shift);
+	clk->max_delta_ns = clockevent_delta2ns(0xffffffff, clk);
+	clk->min_delta_ns = clockevent_delta2ns(0xf, clk);
 
-	setup_irq(timer_irq, &gt_clockevent_irq);
+	this_cpu_clk = __this_cpu_ptr(gt_evt);
+	*this_cpu_clk = clk;
 
-	clockevents_register_device(&gt_clockevent);
+	clockevents_register_device(clk);
+	enable_percpu_irq(clk->irq, IRQ_TYPE_NONE);
 }
 
 static cycle_t gt_clocksource_read(struct clocksource *cs)
@@ -203,9 +203,12 @@ static void __init gt_clocksource_init(void)
 void __init global_timer_init(void __iomem *base, unsigned int timer_irq,
 			      unsigned long freq)
 {
+	unsigned int cpu = smp_processor_id();
+	struct clock_event_device *evt = &per_cpu(gt_clockevent, cpu);
 	gt_base = base;
 	gt_periphclk = freq;
-
 	gt_clocksource_init();
-	gt_clockevents_init(timer_irq);
+	evt->irq = timer_irq;
+	evt->cpumask = cpumask_of(cpu);
+	gt_clockevents_init(evt);
 }
