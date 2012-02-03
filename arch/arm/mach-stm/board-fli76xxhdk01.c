@@ -77,6 +77,9 @@ static void __init fli76xxhdk01_init(void)
 MACHINE_START(STM_NMHDK_FLI7610, "STMicroelectronics Newman FLI76XXHDK01")
 	.atag_offset	= 0x100,
 	.map_io		= fli76xxhdk01_map_io,
+#ifdef CONFIG_SPARSE_IRQ
+	.nr_irqs	= NR_IRQS_LEGACY,
+#endif
 	.init_irq	= fli7610_gic_init_irq,
 	.timer		= &fli7610_timer,
 	.init_machine	= fli76xxhdk01_init,
