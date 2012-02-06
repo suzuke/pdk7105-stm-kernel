@@ -340,6 +340,7 @@ static int stm_gpio_irq_init(int port_no)
 		irq_set_chip_and_handler_name(pin_irq, &stm_gpio_irq_chip,
 				handle_simple_irq, "stm_gpio");
 		irq_set_chip_data(pin_irq, pin);
+		set_irq_flags(pin_irq, IRQF_VALID);
 		stm_gpio_irq_chip_type(data, IRQ_TYPE_LEVEL_HIGH);
 		pin++;
 		pin_irq++;

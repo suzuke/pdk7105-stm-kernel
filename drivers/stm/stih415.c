@@ -363,15 +363,6 @@ static struct platform_device stih415_pio_devices[27] = {
 	STIH415_PIO_ENTRY(26, 0xfd334000),
 };
 
-/* Interrupts
-PIO_RIGHT: 113
-PIO_LEFT 114
-PIO_SBC 180
-PIO_FRONT 181
-PIO_REAR 182
-Need to add 32 for A9
-*/
-
 #define STIH415_PIO_ENTRY_CONTROL(_num, _alt_num,				\
 		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
 		_rt)				\
@@ -478,6 +469,75 @@ static void __init stih415_pio_init(void)
 			     ARRAY_SIZE(stih415_pio_control_configs),
 			     &stih415_pio_retime_offset);
 }
+
+static struct platform_device stih415_pio_irqmux_devices[5] = {
+	{
+		/* PIO0-4: SBC_PIO (aka pio_sas_sbc, PIO_SBC) */
+		.name = "stm-gpio-irqmux",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfe61f080, 0x4),
+			STIH415_RESOURCE_IRQ(180),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 0,
+			.ports_num = 5,
+		}
+	}, {
+		/* PIO5-12: PIO_FRONT (aka pio_sas_front) */
+		.name = "stm-gpio-irqmux",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfee0f080, 0x4),
+			STIH415_RESOURCE_IRQ(181),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 5,
+			.ports_num = 8,
+		}
+	}, {
+		/* PIO13-18: PIO_REAR (aka pio_sas_rear) */
+		.name = "stm-gpio-irqmux",
+		.id = 2,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfe82f080, 0x4),
+			STIH415_RESOURCE_IRQ(182),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 13,
+			.ports_num = 6,
+		}
+	}, {
+		/* PIO100-102: PIO_RIGHT (aka MPE_PIO, PIO0_MPE) */
+		.name = "stm-gpio-irqmux",
+		.id = 3,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfd6bf080, 0x4),
+			STIH415_RESOURCE_IRQ(113),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 19,
+			.ports_num = 3,
+		}
+	}, {
+		/* PIO103-107: PIO_LEFT (aka PIO1_MPE) */
+		.name = "stm-gpio-irqmux",
+		.id = 4,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfd33f080, 0x4),
+			STIH415_RESOURCE_IRQ(114),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 22,
+			.ports_num = 5,
+		}
+	}
+};
 
 /* MMC/SD resources ------------------------------------------------------ */
 /* Custom PAD configuration for the MMC Host controller */
@@ -965,6 +1025,25 @@ void __init stih415_early_device_init(void)
 
 	/* Version information in SYSTEM_STATUS427 */
 }
+
+
+
+/* Pre-arch initialisation ------------------------------------------------ */
+
+static int __init stih415_postcore_setup(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(stih415_pio_devices); i++)
+		platform_device_register(&stih415_pio_devices[i]);
+	for (i = 0; i < ARRAY_SIZE(stih415_pio_irqmux_devices); i++)
+		platform_device_register(&stih415_pio_irqmux_devices[i]);
+
+	return 0;
+}
+postcore_initcall(stih415_postcore_setup);
+
+
 
 /* Internal temperature sensor resources ---------------------------------- */
 static void stih415_temp_power(struct stm_device_state *device_state,
