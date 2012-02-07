@@ -33,5 +33,8 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("usb_ic_clk", NULL, "CLKA_IC_IF_100", NULL);
 	/* usb_phy_clk got from external oscillator */
 
+	/* SDHCI clocks */
+	clk_add_alias(NULL, "sdhci-stm.0", "CLKS_CARD_MMC",  NULL);
+
 	return 0;
 }
