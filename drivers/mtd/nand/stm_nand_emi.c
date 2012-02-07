@@ -38,6 +38,7 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
 #include <asm/dma.h>
+#include "../mtdcore.h"
 
 #define NAME	"stm-nand-emi"
 
@@ -680,6 +681,7 @@ static struct stm_nand_emi * __init nand_probe_bank(
 
 	/* Copy chip options from platform data */
 	data->chip.options = bank->options;
+	data->chip.bbt_options = bank->bbt_options;
 
 	/* Scan to find existance of the device */
 	if (nand_scan(&data->mtd, 1)) {
@@ -688,18 +690,9 @@ static struct stm_nand_emi * __init nand_probe_bank(
 		goto out6;
 	}
 
-	res = parse_mtd_partitions(&data->mtd, part_probes, &data->parts, 0);
-	if (res > 0) {
-		res = mtd_device_register(&data->mtd, data->parts, res);
-	} else {
-		if (bank->partitions) {
-			data->parts = bank->partitions;
-			res = mtd_device_register(&data->mtd, data->parts,
-						  bank->nr_partitions);
-		} else
-			res = mtd_device_register(&data->mtd, NULL, 0);
-	}
-
+	res = mtd_device_parse_register(&data->mtd,
+			part_probes, 0,
+			bank->partitions, bank->nr_partitions);
 	if (!res)
 		return data;
 
@@ -778,9 +771,6 @@ static int __devexit stm_nand_emi_remove(struct platform_device *pdev)
 		struct stm_nand_emi *data = group->banks[n];
 
 		nand_release(&data->mtd);
-
-		if (data->parts && data->parts != pdata->banks[n].partitions)
-			kfree(data->parts);
 
 		iounmap(data->io_addr);
 		iounmap(data->io_cmd);

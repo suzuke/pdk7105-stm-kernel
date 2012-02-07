@@ -189,7 +189,8 @@ static struct platform_device mb628_nor_flash = {
 /* NAND Flash */
 static struct stm_nand_bank_data mb628_nand_flash = {
 	.csn		= 0,	/* updated in mb628_device_init() */
-	.options	= NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT,
+	.options        = NAND_NO_AUTOINCR,
+	.bbt_options	= NAND_BBT_USE_FLASH,
 	.nr_partitions	= 2,
 	.partitions	= (struct mtd_partition []) {
 		{

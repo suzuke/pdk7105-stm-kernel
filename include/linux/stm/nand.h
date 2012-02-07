@@ -34,6 +34,7 @@ struct stm_nand_bank_data {
 	int			nr_partitions;
 	struct mtd_partition	*partitions;
 	unsigned int		options;
+	unsigned int		bbt_options;
 	struct stm_nand_timing_data	*timing_data;
 
 	unsigned int		emi_withinbankoffset;

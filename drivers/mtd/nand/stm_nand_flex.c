@@ -570,14 +570,12 @@ static void flex_select_eccparams(struct mtd_info *mtd, loff_t offs)
 	if (offs >= data->boot_start &&
 	    offs < data->boot_end) {
 		if (chip->ecc.layout != data->ecc_boot.ecc_ctrl.layout) {
-			DEBUG(MTD_DEBUG_LEVEL0, NAME
-			      ": Switching to BOOT mode ECC\n");
+			pr_debug(": Switching to BOOT mode ECC\n");
 			flex_set_eccparams(mtd, &data->ecc_boot);
 		}
 	} else {
 		if (chip->ecc.layout != data->ecc_flex.ecc_ctrl.layout) {
-			DEBUG(MTD_DEBUG_LEVEL0, NAME
-			      ": Switching to FLEX mode ECC\n");
+			pr_debug(": Switching to FLEX mode ECC\n");
 			flex_set_eccparams(mtd, &data->ecc_flex);
 		}
 	}
@@ -658,7 +656,7 @@ static int nand_read_oob(struct mtd_info *mtd, loff_t from,
 
 	/* Do not allow reads past end of device */
 	if (ops->datbuf && (from + ops->len) > mtd->size) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 		      "Attempt read beyond end of device\n");
 		return -EINVAL;
 	}
@@ -744,7 +742,7 @@ static int nand_write_oob(struct mtd_info *mtd, loff_t to,
 
 	/* Do not allow writes past end of device */
 	if (ops->datbuf && (to + ops->len) > mtd->size) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 		      "Attempt read beyond end of device\n");
 		return -EINVAL;
 	}
@@ -810,7 +808,7 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->WE_to_RBn + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 24;
 
-	DEBUG(MTD_DEBUG_LEVEL0, "%s: CONTROL_TIMING = 0x%08x\n", NAME, reg);
+	pr_debug( "%s: CONTROL_TIMING = 0x%08x\n", NAME, reg);
 	flex_writereg(reg, EMINAND_CONTROL_TIMING);
 
 	/* WEN_TIMING */
@@ -820,7 +818,7 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->wr_off + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 8;
 
-	DEBUG(MTD_DEBUG_LEVEL0, "%s: WEN_TIMING = 0x%08x\n", NAME, reg);
+	pr_debug( "%s: WEN_TIMING = 0x%08x\n", NAME, reg);
 	flex_writereg(reg, EMINAND_WEN_TIMING);
 
 	/* REN_TIMING */
@@ -830,7 +828,7 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->rd_off + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 8;
 
-	DEBUG(MTD_DEBUG_LEVEL0, "%s: REN_TIMING = 0x%08x\n", NAME, reg);
+	pr_debug( "%s: REN_TIMING = 0x%08x\n", NAME, reg);
 	flex_writereg(reg, EMINAND_REN_TIMING);
 }
 
@@ -1068,6 +1066,7 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	/* Copy over chip specific platform data */
 	data->chip.chip_delay = data->timing_data->chip_delay;
 	data->chip.options = bank->options;
+	data->chip.bbt_options = bank->bbt_options;
 	data->chip.options |= NAND_NO_AUTOINCR;      /* Not tested, disable */
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
@@ -1133,22 +1132,10 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 
 #endif
 
-	/* Try parsing commandline paritions */
-	data->nr_parts = parse_mtd_partitions(&data->mtd, part_probes,
-					      &data->parts, 0);
-
-	/* Try platfotm data */
-	if (!data->nr_parts && bank->partitions) {
-		data->parts = bank->partitions;
-		data->nr_parts = bank->nr_partitions;
-	}
-
-	/* Add any partitions that were found */
-	if (data->nr_parts) {
-		res = mtd_device_register(&data->mtd,
-					 data->parts, data->nr_parts);
-		if (res)
-			goto out2;
+	res = mtd_device_parse_register(&data->mtd,
+			part_probes, 0,
+			bank->partitions, bank->nr_partitions);
+	if (res) {
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
 		/* Update boot-mode slave partition */
@@ -1179,14 +1166,9 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 		}
 #endif
 	} else
-		res = mtd_device_register(&data->mtd, NULL, 0);
-
-	if (!res)
 		return data;
 
  out2:
-	if (data->parts && data->parts != bank->partitions)
-		kfree(data->parts);
 
 	kfree(data);
  out1:
@@ -1230,10 +1212,6 @@ static int __devexit stm_nand_flex_remove(struct platform_device *pdev)
 	for (n=0; n<pdata->nr_banks; n++) {
 		struct stm_nand_flex_device *data = flex->devices[n];
 		nand_release(&data->mtd);
-
-		if (data->parts && data->parts != pdata->banks[n].partitions)
-			kfree(data->parts);
-
 		kfree(data);
 	}
 

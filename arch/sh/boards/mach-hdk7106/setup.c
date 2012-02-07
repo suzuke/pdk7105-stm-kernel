@@ -215,7 +215,8 @@ static struct platform_device hdk7106_nor_flash = {
 /* NAND Flash */
 struct stm_nand_bank_data hdk7106_nand_flash = {
 	.csn		= 1,
-	.options	= NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT,
+	.options        = NAND_NO_AUTOINCR,
+	.bbt_options	= NAND_BBT_USE_FLASH,
 	.nr_partitions	= 2,
 	.partitions	= (struct mtd_partition []) {
 		{

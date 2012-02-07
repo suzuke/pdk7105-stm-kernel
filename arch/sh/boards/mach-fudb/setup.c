@@ -95,7 +95,7 @@ static struct stm_plat_spifsm_data fudb_spifsm_flash = {
 /* NAND Flash */
 static struct stm_nand_bank_data fudb_nand_flash = {
 	.csn		= 0,
-	.options	= NAND_USE_FLASH_BBT,
+	.bbt_options	= NAND_BBT_USE_FLASH,
 	.nr_partitions	= 2,
 	.partitions	= (struct mtd_partition []) {
 		{

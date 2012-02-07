@@ -154,7 +154,8 @@ static struct stm_plat_spifsm_data adi7108_serial_flash =  {
 /* NAND FLASH */
 static struct stm_nand_bank_data adi7108_nand_flash = {
 	.csn		= 1,
-	.options	= NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT,
+	.options        = NAND_NO_AUTOINCR,
+	.bbt_options	= NAND_BBT_USE_FLASH,
 	.nr_partitions	= 2,
 	.partitions	= (struct mtd_partition []) {
 		{

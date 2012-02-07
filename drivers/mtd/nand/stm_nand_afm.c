@@ -857,12 +857,12 @@ static uint8_t *afm_transfer_oob(struct nand_chip *chip, uint8_t *oob,
 {
 	switch (ops->mode) {
 
-	case MTD_OOB_PLACE:
-	case MTD_OOB_RAW:
+	case MTD_OPS_PLACE_OOB:
+	case MTD_OPS_RAW:
 		memcpy(oob, chip->oob_poi + ops->ooboffs, len);
 		return oob + len;
 
-	case MTD_OOB_AUTO: {
+	case MTD_OPS_AUTO_OOB: {
 		struct nand_oobfree *free = chip->ecc.layout->oobfree;
 		uint32_t boffs = 0, roffs = ops->ooboffs;
 		size_t bytes = 0;
@@ -904,17 +904,17 @@ static int afm_do_read_oob(struct mtd_info *mtd, loff_t from,
 	int len;
 	uint8_t *buf = ops->oobbuf;
 
-	DEBUG(MTD_DEBUG_LEVEL3, "afm_do_read_oob: from = 0x%08Lx, len = %i\n",
+	pr_debug("afm_do_read_oob: from = 0x%08Lx, len = %i\n",
 	      (unsigned long long)from, readlen);
 
 
-	if (ops->mode == MTD_OOB_AUTO)
+	if (ops->mode == MTD_OPS_AUTO_OOB)
 		len = chip->ecc.layout->oobavail;
 	else
 		len = mtd->oobsize;
 
 	if (unlikely(ops->ooboffs >= len)) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 			"Attempt to start read outside oob\n");
 		return -EINVAL;
 	}
@@ -924,7 +924,7 @@ static int afm_do_read_oob(struct mtd_info *mtd, loff_t from,
 		     ops->ooboffs + readlen >
 		     ((mtd->size >> chip->page_shift) -
 		      (from >> chip->page_shift)) * len)) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 		      "Attempt read beyond end of device\n");
 		return -EINVAL;
 	}
@@ -995,7 +995,7 @@ static int afm_do_read_ops(struct mtd_info *mtd, loff_t from,
 	uint32_t oobreadlen = ops->ooblen;
 	uint8_t *bufpoi, *oob, *buf;
 
-	DEBUG(MTD_DEBUG_LEVEL3, "afm_do_read_ops: from = 0x%08Lx, len = %i\n",
+	pr_debug("afm_do_read_ops: from = 0x%08Lx, len = %i\n",
 	      (unsigned long long)from, readlen);
 
 	stats = mtd->ecc_stats;
@@ -1028,8 +1028,8 @@ static int afm_do_read_ops(struct mtd_info *mtd, loff_t from,
 			afm->page = page;
 			afm->col = 0;
 			/* Now read the page into the buffer, without ECC if
-			 * MTD_OOB_RAW */
-			if (unlikely(ops->mode == MTD_OOB_RAW))
+			 * MTD_OPS_RAW */
+			if (unlikely(ops->mode == MTD_OPS_RAW))
 				ret = chip->ecc.read_page_raw(mtd, chip,
 							      bufpoi, page);
 			else
@@ -1050,7 +1050,7 @@ static int afm_do_read_ops(struct mtd_info *mtd, loff_t from,
 			/* Done page data, now look at OOB... */
 			if (unlikely(oob)) {
 				/* Raw mode does data:oob:data:oob */
-				if (ops->mode != MTD_OOB_RAW) {
+				if (ops->mode != MTD_OPS_RAW) {
 					int toread = min(oobreadlen,
 						chip->ecc.layout->oobavail);
 					if (toread) {
@@ -1134,12 +1134,12 @@ static uint8_t *afm_fill_oob(struct nand_chip *chip, uint8_t *oob,
 
 	switch (ops->mode) {
 
-	case MTD_OOB_PLACE:
-	case MTD_OOB_RAW:
+	case MTD_OPS_PLACE_OOB:
+	case MTD_OPS_RAW:
 		memcpy(chip->oob_poi + ops->ooboffs, oob, len);
 		return oob + len;
 
-	case MTD_OOB_AUTO: {
+	case MTD_OPS_AUTO_OOB: {
 		struct nand_oobfree *free = chip->ecc.layout->oobfree;
 		uint32_t boffs = 0, woffs = ops->ooboffs;
 		size_t bytes = 0;
@@ -1176,23 +1176,23 @@ static int afm_do_write_oob(struct mtd_info *mtd, loff_t to,
 	int chipnr, page, status, len;
 	struct nand_chip *chip = mtd->priv;
 
-	DEBUG(MTD_DEBUG_LEVEL3, "nand_write_oob: to = 0x%08x, len = %i\n",
+	pr_debug("nand_write_oob: to = 0x%08x, len = %i\n",
 	      (unsigned int)to, (int)ops->ooblen);
 
-	if (ops->mode == MTD_OOB_AUTO)
+	if (ops->mode == MTD_OPS_AUTO_OOB)
 		len = chip->ecc.layout->oobavail;
 	else
 		len = mtd->oobsize;
 
 	/* Do not allow write past end of page */
 	if ((ops->ooboffs + ops->ooblen) > len) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_write_oob: "
+		pr_debug("nand_write_oob: "
 		      "Attempt to write past end of page\n");
 		return -EINVAL;
 	}
 
 	if (unlikely(ops->ooboffs >= len)) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 			"Attempt to start write outside oob\n");
 		return -EINVAL;
 	}
@@ -1202,7 +1202,7 @@ static int afm_do_write_oob(struct mtd_info *mtd, loff_t to,
 		     ops->ooboffs + ops->ooblen >
 			((mtd->size >> chip->page_shift) -
 			 (to >> chip->page_shift)) * len)) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 			"Attempt write beyond end of device\n");
 		return -EINVAL;
 	}
@@ -1324,7 +1324,7 @@ static int afm_do_write_ops(struct mtd_info *mtd, loff_t to,
 			oob = afm_fill_oob(chip, oob, ops);
 
 		ret = chip->write_page(mtd, chip, wbuf, page, cached,
-				       (ops->mode == MTD_OOB_RAW));
+				       (ops->mode == MTD_OPS_RAW));
 		if (ret)
 			break;
 
@@ -1396,7 +1396,7 @@ static int afm_block_markbad(struct mtd_info *mtd, loff_t offs)
 	chip->bbt[block >> 2] |= 0x01 << ((block & 0x03) << 1);
 
 	/* Update non-volatile marker... */
-	if (chip->options & NAND_USE_FLASH_BBT) {
+	if (chip->bbt_options & NAND_BBT_USE_FLASH) {
 		/* Update flash-resident BBT */
 		ret = nand_update_bbt(mtd, offs);
 	} else {
@@ -1406,17 +1406,18 @@ static int afm_block_markbad(struct mtd_info *mtd, loff_t offs)
 		 * failed ERASE) to prevent subsequent on-boot scans from
 		 * recognising an AFM block, instead of a marked-bad block.
 		 */
+		struct mtd_oob_ops ops;
 		memset(buf, 0, 16);
 		nand_get_device(chip, mtd, FL_WRITING);
 		offs += mtd->oobsize;
-		chip->ops.mode = MTD_OOB_PLACE;
-		chip->ops.len = 16;
-		chip->ops.ooblen = 16;
-		chip->ops.datbuf = NULL;
-		chip->ops.oobbuf = buf;
-		chip->ops.ooboffs = chip->badblockpos & ~0x01;
+		ops.mode = MTD_OPS_PLACE_OOB;
+		ops.len = 16;
+		ops.ooblen = 16;
+		ops.datbuf = NULL;
+		ops.oobbuf = buf;
+		ops.ooboffs = chip->badblockpos & ~0x01;
 
-		ret = afm_do_write_oob(mtd, offs, &chip->ops);
+		ret = afm_do_write_oob(mtd, offs, &ops);
 		nand_release_device(mtd);
 	}
 	if (ret == 0)
@@ -1431,6 +1432,7 @@ static int afm_read(struct mtd_info *mtd, loff_t from, size_t len,
 {
 	struct nand_chip *chip = mtd->priv;
 	int ret;
+	struct mtd_oob_ops ops;
 
 	/* Do not allow reads past end of device */
 	if ((from + len) > mtd->size)
@@ -1441,13 +1443,13 @@ static int afm_read(struct mtd_info *mtd, loff_t from, size_t len,
 	nand_get_device(chip, mtd, FL_READING);
 	afm_select_eccparams(mtd, from);
 
-	chip->ops.len = len;
-	chip->ops.datbuf = buf;
-	chip->ops.oobbuf = NULL;
+	ops.len = len;
+	ops.datbuf = buf;
+	ops.oobbuf = NULL;
 
-	ret = afm_do_read_ops(mtd, from, &chip->ops);
+	ret = afm_do_read_ops(mtd, from, &ops);
 
-	*retlen = chip->ops.retlen;
+	*retlen = ops.retlen;
 
 	nand_release_device(mtd);
 
@@ -1463,7 +1465,7 @@ static int afm_read_oob(struct mtd_info *mtd, loff_t from,
 
 	/* Do not allow reads past end of device */
 	if (ops->datbuf && (from + ops->len) > mtd->size) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 		      "Attempt read beyond end of device\n");
 		return -EINVAL;
 	}
@@ -1472,9 +1474,9 @@ static int afm_read_oob(struct mtd_info *mtd, loff_t from,
 	afm_select_eccparams(mtd, from);
 
 	switch (ops->mode) {
-	case MTD_OOB_PLACE:
-	case MTD_OOB_AUTO:
-	case MTD_OOB_RAW:
+	case MTD_OPS_PLACE_OOB:
+	case MTD_OPS_AUTO_OOB:
+	case MTD_OPS_RAW:
 		break;
 
 	default:
@@ -1497,6 +1499,7 @@ static int afm_write(struct mtd_info *mtd, loff_t to, size_t len,
 {
 	struct nand_chip *chip = mtd->priv;
 	int ret;
+	struct mtd_oob_ops ops;
 
 
 	/* Do not allow reads past end of device */
@@ -1508,13 +1511,13 @@ static int afm_write(struct mtd_info *mtd, loff_t to, size_t len,
 	nand_get_device(chip, mtd, FL_WRITING);
 	afm_select_eccparams(mtd, to);
 
-	chip->ops.len = len;
-	chip->ops.datbuf = (uint8_t *)buf;
-	chip->ops.oobbuf = NULL;
+	ops.len = len;
+	ops.datbuf = (uint8_t *)buf;
+	ops.oobbuf = NULL;
 
-	ret = afm_do_write_ops(mtd, to, &chip->ops);
+	ret = afm_do_write_ops(mtd, to, &ops);
 
-	*retlen = chip->ops.retlen;
+	*retlen = ops.retlen;
 
 	nand_release_device(mtd);
 
@@ -1530,7 +1533,7 @@ static int afm_write_oob(struct mtd_info *mtd, loff_t to,
 
 	/* Do not allow writes past end of device */
 	if (ops->datbuf && (to + ops->len) > mtd->size) {
-		DEBUG(MTD_DEBUG_LEVEL0, "nand_read_oob: "
+		pr_debug("nand_read_oob: "
 		      "Attempt read beyond end of device\n");
 		return -EINVAL;
 	}
@@ -1539,9 +1542,9 @@ static int afm_write_oob(struct mtd_info *mtd, loff_t to,
 	afm_select_eccparams(mtd, to);
 
 	switch (ops->mode) {
-	case MTD_OOB_PLACE:
-	case MTD_OOB_AUTO:
-	case MTD_OOB_RAW:
+	case MTD_OPS_PLACE_OOB:
+	case MTD_OPS_AUTO_OOB:
+	case MTD_OPS_RAW:
 		break;
 
 	default:
@@ -1563,7 +1566,7 @@ static void afm_sync(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
-	DEBUG(MTD_DEBUG_LEVEL3, "nand_sync: called\n");
+	pr_debug("nand_sync: called\n");
 
 	/* Grab the lock and see if the device is available */
 	nand_get_device(chip, mtd, FL_SYNCING);
@@ -2724,11 +2727,12 @@ static int afm_scan_tail(struct mtd_info *mtd)
 	struct nand_chip *chip = mtd->priv;
 
 	int ret;
-
-	if (!(chip->options & NAND_OWN_BUFFERS))
+	if (!(chip->options & NAND_OWN_BUFFERS)) {
 		chip->buffers = kmalloc(sizeof(*chip->buffers), GFP_KERNEL);
-	if (!chip->buffers)
+	}
+	if (!chip->buffers) {
 		return -ENOMEM;
+	}
 
 	/* Set the internal oob buffer location, just after the page data */
 	chip->oob_poi = chip->buffers->databuf + mtd->writesize;
@@ -2957,6 +2961,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	data->timing_data = bank->timing_data;
 
 	data->chip.options = bank->options;
+	data->chip.bbt_options = bank->bbt_options;
 	data->chip.options |= NAND_NO_AUTOINCR;
 
 	/* Scan to find existance of device */
@@ -2973,24 +2978,10 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	dev_info(afm->dev, "using boot partition name [%s] (from %s)\n",
 		 boot_part_name, nbootpart ? "command line" : "kernel config");
 #endif
-
-	/* Try probing for MTD partitions */
-	data->nr_parts = parse_mtd_partitions(&data->mtd,
-					      part_probes,
-					      &data->parts, 0);
-
-	/* Try platform data */
-	if (!data->nr_parts && bank->partitions) {
-		data->parts = bank->partitions;
-		data->nr_parts = bank->nr_partitions;
-	}
-
-	/* Add any partitions that were found */
-	if (data->nr_parts) {
-		err = mtd_device_register(&data->mtd, data->parts,
-					 data->nr_parts);
-		if (err)
-			goto err3;
+	err = mtd_device_parse_register(&data->mtd,
+			part_probes, 0,
+			bank->partitions, bank->nr_partitions);
+	if (err) {
 
 #ifdef CONFIG_STM_NAND_AFM_BOOTMODESUPPORT
 		/* Update boot-mode slave partition */
@@ -3041,15 +3032,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 		}
 #endif
 	} else
-		err = mtd_device_register(&data->mtd, NULL, 0);
-
-	/* Success! */
-	if (!err)
 		return data;
-
- err3:
-	if (data->parts && data->parts != bank->partitions)
-		kfree(data->parts);
  err2:
 	kfree(data);
  err1:
@@ -3096,8 +3079,6 @@ static int __devexit stm_afm_remove(struct platform_device *pdev)
 	for (n = 0; n < pdata->nr_banks; n++) {
 		struct stm_nand_afm_device *data = afm->devices[n];
 		nand_release(&data->mtd);
-		if (data->parts && data->parts != pdata->banks[n].partitions)
-			kfree(data->parts);
 		kfree(data);
 	}
 

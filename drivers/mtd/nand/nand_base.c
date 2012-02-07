@@ -551,8 +551,7 @@ static int nand_get_features(struct mtd_info *mtd, int feature,
 	/* read the 4 parameters */
 	chip->read_buf(mtd, parameters, 4);
 
-	DEBUG(MTD_DEBUG_LEVEL0,
-	      "%s: with FA=0x%02x, P1=0x%02x, P2=0x%02x, "
+	pr_debug("%s: with FA=0x%02x, P1=0x%02x, P2=0x%02x, "
 	      "P3=0x%02x, P4=0x%02x\n",
 	      __func__, feature,
 	      parameters[0], parameters[1], parameters[2], parameters[3]);
@@ -574,8 +573,7 @@ static int nand_set_features(struct mtd_info *mtd, int feature,
 {
 	struct nand_chip *chip = mtd->priv;
 
-	DEBUG(MTD_DEBUG_LEVEL0,
-	      "%s: with FA=0x%02x, P1=0x%02x, P2=0x%02x, "
+	pr_debug("%s: with FA=0x%02x, P1=0x%02x, P2=0x%02x, "
 	      "P3=0x%02x, P4=0x%02x\n",
 	      __func__, feature,
 	      parameters[0], parameters[1], parameters[2], parameters[3]);
@@ -1649,7 +1647,7 @@ int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 	oob = ops->oobbuf;
 
 	/* For 'RAW' reads, disable on-die ECC if necessary */
-	if (ops->mode == MTD_OOB_RAW && chip->ecc.mode == NAND_ECC_4BITONDIE) {
+	if (ops->mode == MTD_OPS_RAW && chip->ecc.mode == NAND_ECC_4BITONDIE) {
 		nand_micron_4bit_ondie_ecc(mtd, 0);
 		reenable_ondie_ecc = 1;
 	}
@@ -2439,7 +2437,7 @@ int nand_do_write_ops(struct mtd_info *mtd, loff_t to,
 		return -EINVAL;
 
 	/* For 'RAW' writes, disable on-die ECC if necessary */
-	if (ops->mode == MTD_OOB_RAW && chip->ecc.mode == NAND_ECC_4BITONDIE) {
+	if (ops->mode == MTD_OPS_RAW && chip->ecc.mode == NAND_ECC_4BITONDIE) {
 		nand_micron_4bit_ondie_ecc(mtd, 0);
 		reenable_ondie_ecc = 1;
 	}
