@@ -12,6 +12,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
@@ -89,7 +90,7 @@ static int __init pcie_mp_probe(struct platform_device *pdev)
 
 	return 0;
 }
-static int  pcie_mp_remove(struct platform_device *pdev)
+static int pcie_mp_remove(struct platform_device *pdev)
 {
 	miphy_if_unregister(&mp_dev->miphy_dev);
 	kfree(mp_dev->ops);

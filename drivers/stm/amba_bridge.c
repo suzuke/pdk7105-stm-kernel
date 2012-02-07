@@ -7,6 +7,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/module.h>
 #include <linux/stm/platform.h>
 #include <linux/list.h>
 #include <linux/delay.h>

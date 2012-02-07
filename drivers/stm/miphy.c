@@ -9,6 +9,7 @@
  * for more details.
  */
 
+#include <linux/module.h>
 #include <asm/processor.h>
 #include <linux/bug.h>
 #include <linux/delay.h>
