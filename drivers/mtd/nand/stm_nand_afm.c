@@ -3036,7 +3036,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 /*
  * stm-nand-afm device probe
  */
-static int __init stm_afm_probe(struct platform_device *pdev)
+static int __devinit stm_afm_probe(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
 	struct stm_nand_bank_data *bank;

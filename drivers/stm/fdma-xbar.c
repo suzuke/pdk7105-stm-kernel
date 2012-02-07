@@ -30,7 +30,7 @@ static int fdma_xbar_route(struct fdma_req_router *router, int input_req_line,
 	return 0;
 }
 
-static int __init fdma_xbar_probe(struct platform_device *pdev)
+static int __devinit fdma_xbar_probe(struct platform_device *pdev)
 {
 	struct fdma_xbar *xbar;
 	struct resource *memory;
@@ -88,7 +88,7 @@ static int __init fdma_xbar_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int fdma_xbar_remove(struct platform_device *pdev)
+static int __devexit fdma_xbar_remove(struct platform_device *pdev)
 {
 	struct fdma_xbar *xbar = platform_get_drvdata(pdev);
 

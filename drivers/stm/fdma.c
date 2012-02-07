@@ -1288,9 +1288,9 @@ static struct dma_ops fdma_ops = {
 	.extend		= fdma_extended,
 };
 
-static int __init fdma_driver_probe(struct platform_device *pdev)
+static int __devinit fdma_driver_probe(struct platform_device *pdev)
 {
-	static __initdata char *fdma_clks_n[FDMA_CLKS_NR] = {
+	static __devinitdata char *fdma_clks_n[FDMA_CLKS_NR] = {
 		[FDMA_SLIM_CLK] = "fdma_slim_clk",
 		[FDMA_HI_CLK] = "fdma_hi_clk",
 		[FDMA_LOW_CLK] = "fdma_low_clk",
@@ -1414,7 +1414,7 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int fdma_driver_remove(struct platform_device *pdev)
+static int __devexit fdma_driver_remove(struct platform_device *pdev)
 {
 	struct fdma *fdma = platform_get_drvdata(pdev);
 

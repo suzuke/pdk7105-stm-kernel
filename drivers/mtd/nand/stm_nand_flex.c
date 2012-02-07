@@ -1175,7 +1175,7 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	return ERR_PTR(res);
 }
 
-static int __init stm_nand_flex_probe(struct platform_device *pdev)
+static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
 	int res;

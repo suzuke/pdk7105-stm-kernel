@@ -53,7 +53,7 @@ static const struct miphy_if_ops stm_miphy_mp_ops = {
 	.reg_read = stm_pcie_mp_register_read,
 };
 
-static int __init pcie_mp_probe(struct platform_device *pdev)
+static int __devinit pcie_mp_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct stm_plat_pcie_mp_data *data =
