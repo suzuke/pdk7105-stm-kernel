@@ -22,10 +22,9 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/nand.h>
 #include <linux/stmmac.h>
-#include <linux/mmc/sdhci.h>
-#include <linux/sdhci-pltfm.h>
 #include <linux/stm/miphy.h>
 #include <linux/stm/amba_bridge.h>
+#include <linux/stm/mmc.h>
 
 /*** Platform definition helpers ***/
 
