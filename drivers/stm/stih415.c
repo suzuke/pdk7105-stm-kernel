@@ -49,7 +49,6 @@ static struct platform_device stih415_nandi_device = {
 void __init stih415_configure_nand(struct stm_nand_config *config)
 {
 	struct stm_plat_nand_flex_data *flex_data;
-	struct stm_plat_nand_emi_data *emi_data;
 
 	switch (config->driver) {
 	case stm_nand_emi:

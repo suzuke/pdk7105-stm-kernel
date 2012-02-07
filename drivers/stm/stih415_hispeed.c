@@ -862,7 +862,7 @@ static int __init stih415_configure_miphy_uport(void)
 {
 	struct sysconf_field *sc_miphy1_ref_clk,
 			*sc_sata1_hc_reset, *sc_sata_pcie_sel,
-			*sc_sata0_hc_reset, *sc;
+			*sc_sata0_hc_reset;
 
 	sc_pcie_mp_select = sysconf_claim(SYSCONF(335),
 					  0, 0, "pcie-mp");
@@ -1052,7 +1052,6 @@ void __init stih415_configure_sata(int port, struct stih415_sata_config *config)
 {
 	struct stm_plat_sata_data *sata_data;
 	static int initialized[2];
-	struct sysconf_field *sc;
 
 	sata_data = stih415_sata_devices[port].dev.platform_data;
 
