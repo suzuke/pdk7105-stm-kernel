@@ -440,13 +440,13 @@ static int mmc_pad_resources(struct sdhci_host *sdhci)
 	return 0;
 }
 
-static struct sdhci_pltfm_data stx5206_mmc_platform_data = {
-		.init = mmc_pad_resources,
-		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+static struct stm_mmc_platform_data stx5206_mmc_platform_data = {
+	.init = mmc_pad_resources,
+	.nonremovable = false,
 };
 
 static struct platform_device stx5206_mmc_device = {
-		.name = "sdhci",
+		.name = "sdhci-stm",
 		.id = 0,
 		.num_resources = 2,
 		.resource = (struct resource[]) {
