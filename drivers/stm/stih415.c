@@ -622,6 +622,9 @@ static struct stm_pad_config stih415_mmc_pad_config = {
 
 static int mmc_pad_resources(struct sdhci_host *sdhci)
 {
+
+	pr_debug("sdhci: init hw resources\n");
+
 	if (!devm_stm_pad_claim(sdhci->mmc->parent, &stih415_mmc_pad_config,
 				dev_name(sdhci->mmc->parent)))
 		return -ENODEV;
@@ -629,13 +632,13 @@ static int mmc_pad_resources(struct sdhci_host *sdhci)
 	return 0;
 }
 
-static struct sdhci_pltfm_data stih415_mmc_platform_data = {
+static struct stm_mmc_platform_data stih415_mmc_platform_data = {
 	.init = mmc_pad_resources,
-	.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+	.nonremovable = false,
 };
 
 static struct platform_device stih415_mmc_device = {
-	.name = "sdhci",
+	.name = "sdhci-stm",
 	.id = 0,
 	.num_resources = 2,
 	.resource = (struct resource[]) {
@@ -649,12 +652,12 @@ static struct platform_device stih415_mmc_device = {
 
 void __init stih415_configure_mmc(int emmc)
 {
-	struct sdhci_pltfm_data *plat_data;
+	struct stm_mmc_platform_data *plat_data;
 
 	plat_data = &stih415_mmc_platform_data;
 
-	if (unlikely(emmc))
-		plat_data->quirks |= SDHCI_QUIRK_NONREMOVABLE_CARD;
+	if (emmc)
+		plat_data->nonremovable = true;
 
 	platform_device_register(&stih415_mmc_device);
 }
