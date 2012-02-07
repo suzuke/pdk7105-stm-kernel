@@ -87,8 +87,6 @@ struct sdhci_host {
 #define SDHCI_QUIRK_BROKEN_ADMA_ZEROLEN_DESC		(1<<30)
 /* The read-only detection via SDHCI_PRESENT_STATE register is unstable */
 #define SDHCI_QUIRK_UNSTABLE_RO_DETECT			(1<<31)
-/* Controller has to treat card as non-removable (eg eMMC card) */
-#define SDHCI_QUIRK_NONREMOVABLE_CARD			(1<<32)
 
 	unsigned int quirks2;	/* More deviations from spec. */
 
