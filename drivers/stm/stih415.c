@@ -551,7 +551,7 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \
-				.od = 1, \
+				.od = 0, \
 			}, \
 			.retime = &(struct stm_pio_control_retime_config) { \
 				.retime = 0, \
@@ -572,8 +572,8 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 		.priv = &(struct stih415_pio_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
-				.pu = 1, \
-				.od = 1, \
+				.pu = 0, \
+				.od = 0, \
 			}, \
 		}, \
 	}
@@ -585,7 +585,7 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 		.priv = &(struct stih415_pio_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
-				.pu = 0, \
+				.pu = 1, \
 				.od = 0, \
 			}, \
 		}, \
@@ -594,7 +594,7 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
-		.function = 1, \
+		.function = 4, \
 	}
 
 static struct stm_pad_config stih415_mmc_pad_config = {
@@ -606,7 +606,7 @@ static struct stm_pad_config stih415_mmc_pad_config = {
 		STIH415_PIO_MMC_BIDIR(14, 6),	/* MMC Data[2]*/
 		STIH415_PIO_MMC_BIDIR(14, 7),	/* MMC Data[3]*/
 
-		STIH415_PIO_MMC_OUT(15, 1),	/* MMC command */
+		STIH415_PIO_MMC_BIDIR(15, 1),	/* MMC command */
 		STIH415_PIO_MMC_IN(15, 3),	/* MMC Write Protection */
 
 		STIH415_PIO_MMC_BIDIR(16, 4),	/* MMC Data[4]*/
