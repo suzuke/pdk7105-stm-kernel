@@ -822,13 +822,13 @@ static int mmc_pad_resources(struct sdhci_host *sdhci)
 	return 0;
 }
 
-static struct sdhci_pltfm_data stx7108_mmc_platform_data = {
-		.init = mmc_pad_resources,
-		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+static struct stm_mmc_platform_data stx7108_mmc_platform_data = {
+	.init = mmc_pad_resources,
+	.nonremovable = false,
 };
 
 static struct platform_device stx7108_mmc_device = {
-		.name = "sdhci",
+		.name = "sdhci-stm",
 		.id = 0,
 		.num_resources = 2,
 		.resource = (struct resource[]) {
@@ -845,12 +845,12 @@ static struct platform_device stx7108_mmc_device = {
 
 void __init stx7108_configure_mmc(int emmc)
 {
-	struct sdhci_pltfm_data *plat_data;
+	struct stm_mmc_platform_data *plat_data;
 
 	plat_data = &stx7108_mmc_platform_data;
 
 	if (unlikely(emmc))
-		plat_data->quirks |= SDHCI_QUIRK_NONREMOVABLE_CARD;
+		plat_data->nonremovable = true;
 
 	platform_device_register(&stx7108_mmc_device);
 }
