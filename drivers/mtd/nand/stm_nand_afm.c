@@ -994,6 +994,8 @@ static int afm_do_read_ops(struct mtd_info *mtd, loff_t from,
 	uint32_t readlen = ops->len;
 	uint32_t oobreadlen = ops->ooblen;
 	uint8_t *bufpoi, *oob, *buf;
+	uint32_t max_oobsize = ops->mode == MTD_OPS_AUTO_OOB ?
+		mtd->oobavail : mtd->oobsize;
 
 	pr_debug("afm_do_read_ops: from = 0x%08Lx, len = %i\n",
 	      (unsigned long long)from, readlen);
@@ -1049,21 +1051,15 @@ static int afm_do_read_ops(struct mtd_info *mtd, loff_t from,
 
 			/* Done page data, now look at OOB... */
 			if (unlikely(oob)) {
-				/* Raw mode does data:oob:data:oob */
-				if (ops->mode != MTD_OPS_RAW) {
-					int toread = min(oobreadlen,
-						chip->ecc.layout->oobavail);
-					if (toread) {
-						oob = afm_transfer_oob(chip,
-								       oob,
-								       ops,
-								       toread);
-						oobreadlen -= toread;
-					}
-				} else
-					buf = afm_transfer_oob(chip,
-							       buf, ops,
-							       mtd->oobsize);
+
+				int toread = min(oobreadlen, max_oobsize);
+
+				if (toread) {
+					oob = afm_transfer_oob(chip,
+							       oob, ops,
+							       toread);
+					oobreadlen -= toread;
+				}
 			}
 		} else {
 			memcpy(buf, chip->buffers->databuf + col, bytes);
