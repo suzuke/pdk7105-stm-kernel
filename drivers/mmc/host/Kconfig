@@ -155,6 +155,19 @@ config MMC_SDHCI_DOVE
 
 	  If unsure, say N.
 
+config MMC_SDHCI_STM
+	tristate "SDHCI support on STMicroelectronics SoC"
+	depends on ARCH_STM
+	depends on MMC_SDHCI_PLTFM
+	select MMC_SDHCI_IO_ACCESSORS
+	help
+	  This selects the Secure Digital Host Controller Interface in
+	  STMicroelectronics SoC.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
 config MMC_SDHCI_TEGRA
 	tristate "SDHCI platform support for the Tegra SD/MMC Controller"
 	depends on ARCH_TEGRA
