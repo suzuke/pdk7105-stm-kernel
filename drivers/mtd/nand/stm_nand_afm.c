@@ -2977,58 +2977,56 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	err = mtd_device_parse_register(&data->mtd,
 			part_probes, 0,
 			bank->partitions, bank->nr_partitions);
-	if (err) {
+	if (err)
+		goto err3;
 
 #ifdef CONFIG_STM_NAND_AFM_BOOTMODESUPPORT
-		/* Update boot-mode slave partition */
-		slave = get_mtd_partition_slave(&data->mtd, boot_part_name);
-		if (slave) {
-			dev_info(afm->dev, "found boot-mode partition "
-				 "updating ECC paramters\n");
+	/* Update boot-mode slave partition */
+	slave = get_mtd_partition_slave(&data->mtd, boot_part_name);
+	if (slave) {
+		dev_info(afm->dev, "found boot-mode partition updating ECC "
+			 "paramters\n");
 
-			part = PART(slave);
-			data->boot_start = part->offset;
-			data->boot_end = part->offset + slave->size;
+		part = PART(slave);
+		data->boot_start = part->offset;
+		data->boot_end = part->offset + slave->size;
 
 #ifdef CONFIG_STM_NAND_AFM_PBLBOOTBOUNDARY
-			/* Update 'boot_end' with value in PBL image */
-			if (pbl_boot_boundary(&data->mtd,
-					      &boundary) != 0) {
-				dev_info(afm->dev, "failed to get boot-mode "
-					 "boundary from PBL\n");
-			} else {
-				if (boundary < data->boot_start ||
-				    boundary > data->boot_end) {
-					dev_info(afm->dev,
-						 "PBL boot-mode "
-						 "boundary lies outside "
-						 "boot partition\n");
-				} else {
-					dev_info(afm->dev,
-						 "Updating boot-mode "
-						 "ECC boundary from PBL");
-					data->boot_end = boundary;
-				}
-			}
-#endif
-			slave->oobavail =
-				data->ecc_boot.ecc_ctrl.layout->oobavail;
-			slave->subpage_sft =
-				data->ecc_boot.subpage_sft;
-			slave->ecclayout =
-				data->ecc_boot.ecc_ctrl.layout;
-
-			dev_info(afm->dev, "boot-mode ECC: 0x%08x->0x%08x\n",
-				 (unsigned int)data->boot_start,
-				 (unsigned int)data->boot_end);
-
+		/* Update 'boot_end' with value in PBL image */
+		if (pbl_boot_boundary(&data->mtd, &boundary) != 0) {
+			dev_info(afm->dev, "failed to get boot-mode "
+				 "boundary from PBL\n");
 		} else {
-			dev_info(afm->dev, "failed to find boot "
-				 "partition [%s]\n", boot_part_name);
+			if (boundary < data->boot_start ||
+			    boundary > data->boot_end) {
+				dev_info(afm->dev, "PBL boot-mode boundary "
+					 "lies outside boot partition\n");
+			} else {
+				dev_info(afm->dev, "Updating boot-mode ECC "
+					 "boundary from PBL");
+				data->boot_end = boundary;
+			}
 		}
 #endif
-	} else
-		return data;
+		slave->oobavail = data->ecc_boot.ecc_ctrl.layout->oobavail;
+		slave->subpage_sft = data->ecc_boot.subpage_sft;
+		slave->ecclayout = data->ecc_boot.ecc_ctrl.layout;
+
+		dev_info(afm->dev, "boot-mode ECC: 0x%08x->0x%08x\n",
+			 (unsigned int)data->boot_start,
+			 (unsigned int)data->boot_end);
+	} else {
+		dev_info(afm->dev, "failed to find boot partition [%s]\n",
+			 boot_part_name);
+	}
+#endif
+
+	/* Success! */
+	return data;
+
+
+ err3:
+	nand_release(&data->mtd);
  err2:
 	kfree(data);
  err1:
