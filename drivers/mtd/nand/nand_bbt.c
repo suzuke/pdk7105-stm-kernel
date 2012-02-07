@@ -1347,9 +1347,6 @@ static struct nand_bbt_descr bbt_mirror_descr_ode = {
 	.pattern = mirror_pattern
 };
 
-#define BBT_SCAN_OPTIONS (NAND_BBT_SCANLASTPAGE | NAND_BBT_SCAN2NDPAGE | \
-		NAND_BBT_SCANBYTE1AND6)
-
 #define BADBLOCK_SCAN_MASK (~NAND_BBT_NO_OOB)
 /**
  * nand_create_badblock_pattern - [INTERN] Creates a BBT descriptor structure

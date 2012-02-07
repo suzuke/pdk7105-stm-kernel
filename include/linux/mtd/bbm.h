@@ -116,10 +116,9 @@ struct nand_bbt_descr {
 #define NAND_BBT_NO_OOB		0x00040000
 
 /* Handle STMicroelectronics H/W ECC schemes (boot-mode, AFM4) */
-#define NAND_BBT_SCANSTMBOOTECC	0x00050000
-#define NAND_BBT_SCANSTMAFMECC	0x00060000
-/* Chip stores bad block marker on BOTH 1st and 6th bytes of OOB */
-#define NAND_BBT_SCANBYTE1AND6 0x00100000
+#define NAND_BBT_SCANSTMBOOTECC	0x00080000
+#define NAND_BBT_SCANSTMAFMECC	0x00100000
+
 /*
  * Flag set by nand_create_default_bbt_descr(), marking that the nand_bbt_descr
  * was allocated dynamicaly and must be freed in nand_release(). Has no meaning
