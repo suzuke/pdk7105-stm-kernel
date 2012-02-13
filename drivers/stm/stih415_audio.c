@@ -28,7 +28,7 @@ static struct platform_device stih415_conv_dac = {
 	.name = "snd_conv_dac_sc",
 	.id = -1,
 	.dev.platform_data = &(struct snd_stm_conv_dac_sc_info) {
-		.source_bus_id = "snd_uniperif_player.2",
+		.source_bus_id = "snd_uniperif_player.2", /* DAC */
 		.channel_from = 0,
 		.channel_to = 1,
 		.nrst = { SYSCONF(329), 0, 0 },
@@ -40,7 +40,7 @@ static struct platform_device stih415_conv_dac = {
 	},
 };
 
-/* Bi-phase formatter */
+/* Bi-phase converter (outputs SPDIF) */
 
 static struct platform_device stih415_conv_biphase = {
 	.name = "snd_conv_biphase",
@@ -53,9 +53,9 @@ static struct platform_device stih415_conv_biphase = {
 	},
 };
 
-/* Uniperipheral PCM players */
+/* Uniperipheral players */
 
-static struct platform_device stih415_pcm_player_0 = {
+static struct platform_device stih415_uni_player_0 = {
 	.name = "snd_uniperif_player",
 	.id = 0,
 	.num_resources = 2,
@@ -64,7 +64,7 @@ static struct platform_device stih415_pcm_player_0 = {
 		STIH415_RESOURCE_IRQ(140),
 	},
 	.dev.platform_data = &(struct snd_stm_uniperif_player_info) {
-		.name = "PCM player #0 (HDMI)",
+		.name = "Uni Player #0 (HDMI)",
 		.ver = 1,
 		.card_device = 0,
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_HDMI,
@@ -76,8 +76,8 @@ static struct platform_device stih415_pcm_player_0 = {
 	},
 };
 
-static struct snd_stm_uniperif_player_info stih415_pcm_player_1_info = {
-	.name = "PCM player #1 (PIO)",
+static struct snd_stm_uniperif_player_info stih415_uni_player_1_info = {
+	.name = "Uni Player #1 (PIO)",
 	.ver = 1,
 	.card_device = 1,
 	.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
@@ -89,7 +89,7 @@ static struct snd_stm_uniperif_player_info stih415_pcm_player_1_info = {
 	/* .pad_config set by stih415_configure_audio() */
 };
 
-static struct stm_pad_config stih415_pcm_player_1_pad_config = {
+static struct stm_pad_config stih415_uni_player_1_pad_config = {
 	.gpios_num = 7,
 	.gpios = (struct stm_pad_gpio []) {
 		/* Pads shared with i2c-stm */
@@ -105,7 +105,7 @@ static struct stm_pad_config stih415_pcm_player_1_pad_config = {
 	},
 };
 
-static struct platform_device stih415_pcm_player_1 = {
+static struct platform_device stih415_uni_player_1 = {
 	.name = "snd_uniperif_player",
 	.id = 1,
 	.num_resources = 2,
@@ -113,10 +113,10 @@ static struct platform_device stih415_pcm_player_1 = {
 		STM_PLAT_RESOURCE_MEM(0xfe003000, 0x150),
 		STIH415_RESOURCE_IRQ(141),
 	},
-	.dev.platform_data = &stih415_pcm_player_1_info,
+	.dev.platform_data = &stih415_uni_player_1_info,
 };
 
-static struct platform_device stih415_pcm_player_2 = {
+static struct platform_device stih415_uni_player_2 = {
 	.name = "snd_uniperif_player",
 	.id = 2,
 	.num_resources = 2,
@@ -125,7 +125,7 @@ static struct platform_device stih415_pcm_player_2 = {
 		STIH415_RESOURCE_IRQ(142),
 	},
 	.dev.platform_data = &(struct snd_stm_uniperif_player_info) {
-		.name = "PCM player #2 (DAC)",
+		.name = "Uni Player #2 (DAC)",
 		.ver = 1,
 		.card_device = 2,
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
@@ -137,10 +137,8 @@ static struct platform_device stih415_pcm_player_2 = {
 	},
 };
 
-/* Uniperipheral SPDIF player */
-
-static struct snd_stm_uniperif_player_info stih415_spdif_player_info = {
-	.name = "SPDIF player",
+static struct snd_stm_uniperif_player_info stih415_uni_player_3_info = {
+	.name = "Uni Player #3 (SPDIF)",
 	.ver = 1,
 	.card_device = 3,
 	.clock_name = "CLKS_B_PCM_FSYN3",
@@ -152,14 +150,14 @@ static struct snd_stm_uniperif_player_info stih415_spdif_player_info = {
 	/* .pad_config set by stih415_configure_audio() */
 };
 
-static struct stm_pad_config stih415_spdif_player_pad_config = {
+static struct stm_pad_config stih415_uni_player_3_pad_config = {
 	.gpios_num = 1,
 	.gpios = (struct stm_pad_gpio []) {
 		STM_PAD_PIO_OUT(9, 7, 1),
 	},
 };
 
-static struct platform_device stih415_spdif_player = {
+static struct platform_device stih415_uni_player_3 = {
 	.name = "snd_uniperif_player",
 	.id = 3,
 	.num_resources = 2,
@@ -167,13 +165,13 @@ static struct platform_device stih415_spdif_player = {
 		STM_PLAT_RESOURCE_MEM(0xfe006000, 0x150),
 		STIH415_RESOURCE_IRQ(144),
 	},
-	.dev.platform_data = &stih415_spdif_player_info,
+	.dev.platform_data = &stih415_uni_player_3_info,
 };
 
-/* Uniperipheral PCM reader */
+/* Uniperipheral reader */
 
-static struct snd_stm_pcm_reader_info stih415_pcm_reader_info = {
-	.name = "PCM reader",
+static struct snd_stm_pcm_reader_info stih415_uni_reader_0_info = {
+	.name = "Uni Reader #0 (SPDIF)",
 	.ver = 1,
 	.card_device = 4,
 	.channels = 2,
@@ -183,19 +181,17 @@ static struct snd_stm_pcm_reader_info stih415_pcm_reader_info = {
 	/* .pad_config set by stih415_configure_audio() */
 };
 
-static struct stm_pad_config stih415_pcm_reader_pad_config = {
+static struct stm_pad_config stih415_uni_reader_0_pad_config = {
 	.gpios_num = 4,
 	.gpios = (struct stm_pad_gpio []) {
-		STM_PAD_PIO_BIDIR(13, 0, 7),	/* MCLK */
-		/*STM_PAD_PIO_IN(13, 1, 7),*/	/* LRCLK */
-		STM_PAD_PIO_IN(17, 7, 7),	/* LRCLK */
-		/*STM_PAD_PIO_IN(13, 2, 7),*/	/* SCLK */
-		STM_PAD_PIO_IN(17, 6, 7),	/* SCLK */
+		STM_PAD_PIO_OUT(13, 0, 7),	/* MCLK */
+		STM_PAD_PIO_IN(13, 1, 7),	/* LRCLK */
+		STM_PAD_PIO_IN(13, 2, 7),	/* SCLK */
 		STM_PAD_PIO_IN(17, 5, 7),	/* DATA0 */
 	},
 };
 
-static struct platform_device stih415_pcm_reader = {
+static struct platform_device stih415_uni_reader_0 = {
 	.name = "snd_uniperif_reader",
 	.id = 4,
 	.num_resources = 2,
@@ -203,7 +199,7 @@ static struct platform_device stih415_pcm_reader = {
 		STM_PLAT_RESOURCE_MEM(0xfe005000, 0x14c),
 		STIH415_RESOURCE_IRQ(143),
 	},
-	.dev.platform_data = &stih415_pcm_reader_info,
+	.dev.platform_data = &stih415_uni_reader_0_info,
 };
 
 /* Devices */
@@ -211,11 +207,12 @@ static struct platform_device stih415_pcm_reader = {
 static struct platform_device *stih415_audio_devices[] __initdata = {
 	&stih415_conv_dac,
 	&stih415_conv_biphase,
-	&stih415_pcm_player_0,
-	&stih415_pcm_player_1,
-	&stih415_pcm_player_2,
-	&stih415_spdif_player,
-	&stih415_pcm_reader,
+	&stih415_uni_player_0,  /* HDMI */
+	&stih415_uni_player_1,  /* PIO */
+	&stih415_uni_player_2,  /* DAC */
+	&stih415_uni_player_3,  /* SPDIF */
+
+	&stih415_uni_reader_0,  /* SPDIF */
 };
 
 static int __init stih415_audio_devices_setup(void)
@@ -239,23 +236,23 @@ void __init stih415_configure_audio(struct stih415_audio_config *config)
 	BUG_ON(configured);
 	configured = 1;
 
-	if (config->pcm_player_1_output >
-			stih415_pcm_player_1_output_disabled) {
-		int unused = 4 - config->pcm_player_1_output;
+	if (config->uni_player_1_pcm_mode >
+			stih415_uni_player_1_pcm_disabled) {
+		int unused = 4 - config->uni_player_1_pcm_mode;
 
-		stih415_pcm_player_1_info.pad_config =
-				&stih415_pcm_player_1_pad_config;
+		stih415_uni_player_1_info.pad_config =
+				&stih415_uni_player_1_pad_config;
 
-		stih415_pcm_player_1_pad_config.gpios_num -= unused;
+		stih415_uni_player_1_pad_config.gpios_num -= unused;
 	}
 
-	if (config->spdif_player_output_enabled) {
-		stih415_spdif_player_info.pad_config =
-				&stih415_spdif_player_pad_config;
+	if (config->uni_player_3_spdif_enabled) {
+		stih415_uni_player_3_info.pad_config =
+				&stih415_uni_player_3_pad_config;
 	}
 
-	if (config->pcm_reader_input_enabled) {
-		stih415_pcm_reader_info.pad_config =
-				&stih415_pcm_reader_pad_config;
+	if (config->uni_reader_0_spdif_enabled) {
+		stih415_uni_reader_0_info.pad_config =
+				&stih415_uni_reader_0_pad_config;
 	}
 }

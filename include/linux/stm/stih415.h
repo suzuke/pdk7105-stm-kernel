@@ -135,16 +135,16 @@ void stih415_configure_mali(struct stm_mali_config *config);
 
 struct stih415_audio_config {
 	enum {
-		stih415_pcm_player_1_output_disabled,
-		stih415_pcm_player_1_output_2_channels,
-		stih415_pcm_player_1_output_4_channels,
-		stih415_pcm_player_1_output_6_channels,
-		stih415_pcm_player_1_output_8_channels,
-	} pcm_player_1_output;
+		stih415_uni_player_1_pcm_disabled,
+		stih415_uni_player_1_pcm_2_channels,
+		stih415_uni_player_1_pcm_4_channels,
+		stih415_uni_player_1_pcm_6_channels,
+		stih415_uni_player_1_pcm_8_channels,
+	} uni_player_1_pcm_mode;
 
-	int spdif_player_output_enabled;
+	int uni_player_3_spdif_enabled;
 
-	int pcm_reader_input_enabled;
+	int uni_reader_0_spdif_enabled;
 };
 void stih415_configure_audio(struct stih415_audio_config *config);
 
