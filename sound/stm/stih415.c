@@ -106,7 +106,7 @@ static int __init snd_stm_stih415_init(void)
 		result = -EBUSY;
 		goto error_sysconf_claim_pcmp_valid_sel;
 	}
-	sysconf_write(snd_stm_stih415_pcmp_valid_sel, 3);
+	sysconf_write(snd_stm_stih415_pcmp_valid_sel, 1);
 
 	result = snd_stm_card_register();
 	if (result != 0) {

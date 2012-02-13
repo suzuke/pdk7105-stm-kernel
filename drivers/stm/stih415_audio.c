@@ -28,7 +28,7 @@ static struct platform_device stih415_conv_dac = {
 	.name = "snd_conv_dac_sc",
 	.id = -1,
 	.dev.platform_data = &(struct snd_stm_conv_dac_sc_info) {
-		.source_bus_id = "snd_uniperif_player.1",
+		.source_bus_id = "snd_uniperif_player.2",
 		.channel_from = 0,
 		.channel_to = 1,
 		.nrst = { SYSCONF(329), 0, 0 },
@@ -93,7 +93,7 @@ static struct stm_pad_config stih415_pcm_player_1_pad_config = {
 	.gpios_num = 7,
 	.gpios = (struct stm_pad_gpio []) {
 		/* Pads shared with i2c-stm */
-		STM_PAD_PIO_BIDIR(13, 0, 6),	/* MCLK */
+		STM_PAD_PIO_OUT(13, 0, 6),	/* MCLK */
 		STM_PAD_PIO_OUT(13, 1, 6),	/* LRCLK */
 		STM_PAD_PIO_OUT(13, 2, 6),	/* SCLK */
 		STM_PAD_PIO_OUT(13, 3, 6),	/* DATA0 */
@@ -107,7 +107,7 @@ static struct stm_pad_config stih415_pcm_player_1_pad_config = {
 
 static struct platform_device stih415_pcm_player_1 = {
 	.name = "snd_uniperif_player",
-	.id = 2,
+	.id = 1,
 	.num_resources = 2,
 	.resource = (struct resource []) {
 		STM_PLAT_RESOURCE_MEM(0xfe003000, 0x150),
@@ -118,7 +118,7 @@ static struct platform_device stih415_pcm_player_1 = {
 
 static struct platform_device stih415_pcm_player_2 = {
 	.name = "snd_uniperif_player",
-	.id = 1,
+	.id = 2,
 	.num_resources = 2,
 	.resource = (struct resource []) {
 		STM_PLAT_RESOURCE_MEM(0xfe004000, 0x150),
