@@ -23,6 +23,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/fli7610.h>
 #include <linux/stm/platform.h>
@@ -63,6 +64,90 @@ static struct sysconf_field *snd_stm_fli7610_spdif_out_sel;
 static struct sysconf_field *snd_stm_fli7610_main_i2s_sel;
 static struct sysconf_field *snd_stm_fli7610_sec_i2s_sel;
 
+static struct sysconf_field *snd_stm_fli7610_aud_reg_5;
+
+
+#ifdef CONFIG_MACH_STM_FLI76XXHDK01
+#define AATV_BASE_ADDRESS 0xfef80000 /* 512KB */
+
+static void __init snd_stm_fli7610_configure_aatv(void)
+{
+	void *aatv_base;
+
+	snd_stm_printd(0, "%s()\n", __func__);
+
+	/* Map the AATV registers into memory */
+	aatv_base = ioremap(AATV_BASE_ADDRESS, SZ_512K);
+	if (!aatv_base) {
+		snd_stm_printe("Failed to ioremap aatv base!\n");
+		goto error_ioremap;
+	}
+
+	/* Read anti-pop status to ensure everything is ready */
+	if ((readl(aatv_base + 0x77838) & 0x1e) == 0x1e) {
+		/* Set SCARTs, analog outputs and DACs to active and unmute */
+		writel(0x00, aatv_base + 0x77800);
+		writel(0x01, aatv_base + 0x77804);
+		writel(0x00, aatv_base + 0x77808);
+		writel(0x00, aatv_base + 0x77810);
+
+		/* Disable SCART matrix configuration clock */
+		writel(0x00, aatv_base + 0x77820);
+
+		/* Disable SCART 1/2/3 output */
+		writel(0x00, aatv_base + 0x77824);
+		writel(0x00, aatv_base + 0x77828);
+
+		/* Toggle SCART matrix configuration clock */
+		writel(0x01, aatv_base + 0x77820);
+		writel(0x00, aatv_base + 0x77820);
+
+		/* Enable SCART 1/2/3 output and load configuration */
+		writel(0x00, aatv_base + 0x77834);
+		udelay(200);
+		writel(0x15, aatv_base + 0x77834);
+		udelay(200);
+		writel(0x3f, aatv_base + 0x77834);
+		udelay(200);
+		writel(0x15, aatv_base + 0x77834);
+		udelay(200);
+	} else {
+		snd_stm_printe("Anti-pop status indicates not ready!\n");
+		goto error_anti_pop;
+	}
+
+	/* Update I2S mux (0=PCMP0, 1=HP, 2=AVOUT, 3=PCMP0 4=PCMP0) */
+	writel(0x00980, aatv_base + 0x76800);
+
+	/* DAC attenuation (coarse volume control) */
+	writel(0x50, aatv_base + 0x77818);
+	writel(0x01, aatv_base + 0x7781c);
+	writel(0x04, aatv_base + 0x77814);
+	writel(0x05, aatv_base + 0x77814);
+	writel(0x06, aatv_base + 0x77814);
+	writel(0x07, aatv_base + 0x77814);
+
+	/* DAC attenuation (coarse volume control) */
+	writel(0x37, aatv_base + 0x77818);
+	writel(0x01, aatv_base + 0x7781c);
+	writel(0x08, aatv_base + 0x77814);
+	writel(0x09, aatv_base + 0x77814);
+	writel(0x0a, aatv_base + 0x77814);
+	writel(0x0b, aatv_base + 0x77814);
+
+	/* Enable SCART 1/2 output for DAC */
+	writel(0x11, aatv_base + 0x77824);
+
+	/* Enable SCART matrix configuration clock */
+	writel(0x01, aatv_base + 0x77820);
+
+error_anti_pop:
+	iounmap(aatv_base);
+error_ioremap:
+	return;
+}
+#endif
+
 
 /*
  * Audio initialization
@@ -70,7 +155,7 @@ static struct sysconf_field *snd_stm_fli7610_sec_i2s_sel;
 
 static int __init snd_stm_fli7610_init(void)
 {
-	int result;
+	int result = 0;
 
 	snd_stm_printd(0, "%s()\n", __func__);
 
@@ -170,15 +255,30 @@ static int __init snd_stm_fli7610_init(void)
 	}
 	sysconf_write(snd_stm_fli7610_sec_i2s_sel, 0x0);
 
+	/* Take headphone amplifier out of standby */
+	snd_stm_fli7610_aud_reg_5 = sysconf_claim(TAE_SYSCONF(164), 0, 31,
+							"AUD_REG_5");
+	if (!snd_stm_fli7610_aud_reg_5) {
+		snd_stm_printe("Failed to claim sysconf (AUD_REG_5)\n");
+		goto error_sysconf_claim_aud_reg_5;
+	}
+	sysconf_write(snd_stm_fli7610_aud_reg_5, 0x00010000);
+
 	result = snd_stm_card_register();
 	if (result != 0) {
 		snd_stm_printe("Failed to register ALSA cards!\n");
 		goto error_card_register;
 	}
 
+#ifdef CONFIG_MACH_STM_FLI76XXHDK01
+	snd_stm_fli7610_configure_aatv();
+#endif
+
 	return 0;
 
 error_card_register:
+	sysconf_release(snd_stm_fli7610_aud_reg_5);
+error_sysconf_claim_aud_reg_5:
 	sysconf_release(snd_stm_fli7610_sec_i2s_sel);
 error_sysconf_claim_sec_i2s_sel:
 	sysconf_release(snd_stm_fli7610_main_i2s_sel);
@@ -204,6 +304,8 @@ error_soc_type:
 static void __exit snd_stm_fli7610_exit(void)
 {
 	snd_stm_printd(0, "%s()\n", __func__);
+
+	sysconf_release(snd_stm_fli7610_aud_reg_5);
 
 	/* Release I2S routing fields in audio configuration registers */
 
