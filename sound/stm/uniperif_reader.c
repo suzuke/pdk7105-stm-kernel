@@ -396,7 +396,7 @@ static int snd_stm_uniperif_reader_hw_params(
 			transfer_size);
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
 	BUG_ON(transfer_size > reader->fdma_max_transfer_size);
-	BUG_ON(transfer_size != 1 && transfer_size % 2 == 0);
+	BUG_ON(transfer_size != 1 && transfer_size % 2 != 0);
 	BUG_ON(transfer_size > mask__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(
 			reader));
 	set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(
@@ -560,14 +560,7 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 
 		/* In x/0 bits memory mode there is no problem with
 		 * L/R polarity */
-		if (lr_pol)
-			set__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(reader);
-		else
-			set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(reader);
-		/* One word of data is one sample, so period size
-		 * times channels */
-		set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(reader,
-				runtime->period_size * runtime->channels);
+		set__AUD_UNIPERIF_I2S_FMT__LR_POL(reader, lr_pol);
 		break;
 
 	default:
@@ -584,12 +577,8 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 
 	set__AUD_UNIPERIF_I2S_FMT__ORDER_MSB(reader);
 
-	/* Value FALLING of SCLK_EDGE bit in AUD_PCMOUT_FMT register that
-	 * actually means "data clocking (changing) on the falling edge"
-	 * (and we usually want this...) - STx7100 and cuts < 3.0 of
-	 * STx7109 have this bit inverted comparing to what their
-	 * datasheets claim... (specs say 1) */
-	set__AUD_UNIPERIF_I2S_FMT__SCLK_EDGE_RISING(reader);
+	/* Data clocking (changing) on the falling edge */
+	set__AUD_UNIPERIF_I2S_FMT__SCLK_EDGE_FALLING(reader);
 
 	/* Number of channels... */
 
@@ -598,12 +587,6 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 	BUG_ON(runtime->channels > 10);
 
 	set__AUD_UNIPERIF_I2S_FMT__NUM_CH(reader, runtime->channels / 2);
-
-	/*one bit audio format. For HDMI To Be Check */
-	set__AUD_UNIPERIF_CONFIG__ONE_BIT_AUD_DISABLE(reader);
-
-	/*for pcmp1 DAC output */
-	set__AUD_UNIPERIF_CTRL__SPDIF_FMT_OFF(reader);
 
 	return 0;
 }

@@ -102,10 +102,29 @@ static struct platform_device stih415_conv_biphase = {
 	.name = "snd_conv_biphase",
 	.id = -1,
 	.dev.platform_data = &(struct snd_stm_conv_biphase_info) {
-		.source_bus_id = "snd_uniperif_player.4",
+		.source_bus_id = "snd_uniperif_player.4", /* SPDIF */
 		.channel_from = 0,
 		.channel_to = 1,
 		.enable = { TAE_SYSCONF(161), 31, 31},
+	},
+};
+
+/* SPDIF RX converter (converts SPDIF into I2S) */
+
+static struct platform_device fli7610_conv_spdif_rx = {
+	.name = "snd_conv_spdif_rx",
+	.id = -1,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe012000, 0x5c),
+		FLI7610_RESOURCE_IRQ(175),
+	},
+	.dev.platform_data = &(struct snd_stm_conv_spdif_rx_info) {
+		.source_bus_id = "snd_uniperif_reader.5", /* SPDIF RX */
+		.channel_from = 0,
+		.channel_to = 1,
+		.clock_name = "CLK_SPDIF_RX",
+		.clock_rate = 48000,
 	},
 };
 
@@ -255,7 +274,150 @@ static struct platform_device fli7610_uni_player_4 = {
 	.dev.platform_data = &fli7610_uni_player_4_info,
 };
 
-/* Uniperipheral readers *** TBD *** */
+/* Uniperipheral readers */
+
+static struct snd_stm_pcm_reader_info fli7610_uni_reader_0_info = {
+	.name = "Uni Reader #0 (SPDIF)",
+	.ver = 1,
+	.card_device = 5,
+	.channels = 2,
+	.fdma_name = "fdma_dmac.3",
+	.fdma_initiator = 0,
+	.fdma_request_line = 46,
+	/* .pad_config set by fli7610_configure_audio() */
+};
+
+static struct stm_pad_config fli7610_uni_reader_0_pad_config = {
+	.gpios_num = 1,
+	.gpios = (struct stm_pad_gpio []) {
+		STM_PAD_PIO_IN(12, 0, 1),
+	},
+};
+
+static struct platform_device fli7610_uni_reader_0 = {
+	.name = "snd_uniperif_reader",
+	.id = 5,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe005000, 0x150),
+		FLI7610_RESOURCE_IRQ(190),
+	},
+	.dev.platform_data = &fli7610_uni_reader_0_info,
+};
+
+static struct platform_device fli7610_uni_reader_1 = {
+	.name = "snd_uniperif_reader",
+	.id = 6,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe00b000, 0x150),
+		FLI7610_RESOURCE_IRQ(191),
+	},
+	.dev.platform_data = &(struct snd_stm_pcm_reader_info) {
+		.name = "Uni Reader #1 (HDMI1)",
+		.ver = 1,
+		.card_device = 6,
+		.channels = 8,
+		.fdma_name = "fdma_dmac.3",
+		.fdma_initiator = 0,
+		.fdma_request_line = 47,
+	},
+};
+
+static struct platform_device fli7610_uni_reader_2 = {
+	.name = "snd_uniperif_reader",
+	.id = 7,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe00c000, 0x150),
+		FLI7610_RESOURCE_IRQ(192),
+	},
+	.dev.platform_data = &(struct snd_stm_pcm_reader_info) {
+		.name = "Uni Reader #2 (I2S)",
+		.ver = 1,
+		.card_device = 7,
+		.channels = 6,
+		.fdma_name = "fdma_dmac.3",
+		.fdma_initiator = 0,
+		.fdma_request_line = 48,
+	},
+};
+
+static struct platform_device fli7610_uni_reader_3 = {
+	.name = "snd_uniperif_reader",
+	.id = 8,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe00d000, 0x150),
+		FLI7610_RESOURCE_IRQ(193),
+	},
+	.dev.platform_data = &(struct snd_stm_pcm_reader_info) {
+		.name = "Uni Reader #3 (SIF)",
+		.ver = 1,
+		.card_device = 8,
+		.channels = 2,
+		.fdma_name = "fdma_dmac.3",
+		.fdma_initiator = 0,
+		.fdma_request_line = 49,
+	},
+};
+
+static struct platform_device fli7610_uni_reader_4 = {
+	.name = "snd_uniperif_reader",
+	.id = 9,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe00e000, 0x150),
+		FLI7610_RESOURCE_IRQ(194),
+	},
+	.dev.platform_data = &(struct snd_stm_pcm_reader_info) {
+		.name = "Uni Reader #4 (AV In)",
+		.ver = 1,
+		.card_device = 9,
+		.channels = 2,
+		.fdma_name = "fdma_dmac.3",
+		.fdma_initiator = 0,
+		.fdma_request_line = 50,
+	},
+};
+
+static struct platform_device fli7610_uni_reader_5 = {
+	.name = "snd_uniperif_reader",
+	.id = 10,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe00f000, 0x150),
+		FLI7610_RESOURCE_IRQ(197),
+	},
+	.dev.platform_data = &(struct snd_stm_pcm_reader_info) {
+		.name = "Uni Reader #5 (HDMI2)",
+		.ver = 1,
+		.card_device = 10,
+		.channels = 8,
+		.fdma_name = "fdma_dmac.3",
+		.fdma_initiator = 0,
+		.fdma_request_line = 45,
+	},
+};
+
+static struct platform_device fli7610_uni_reader_6 = {
+	.name = "snd_uniperif_reader",
+	.id = 11,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe010000, 0x150),
+		FLI7610_RESOURCE_IRQ(198),
+	},
+	.dev.platform_data = &(struct snd_stm_pcm_reader_info) {
+		.name = "Uni Reader #6 (DP1)",
+		.ver = 1,
+		.card_device = 11,
+		.channels = 8,
+		.fdma_name = "fdma_dmac.3",
+		.fdma_initiator = 0,
+		.fdma_request_line = 51,
+	},
+};
 
 /* Devices */
 
@@ -270,6 +432,15 @@ static struct platform_device *fli7610_audio_devices[] __initdata = {
 	&fli7610_uni_player_2,  /* HP */
 	&fli7610_uni_player_3,  /* AV Out */
 	&fli7610_uni_player_4,  /* SPDIF */
+
+	&fli7610_conv_spdif_rx,
+	&fli7610_uni_reader_0,  /* SPDIF */
+	&fli7610_uni_reader_1,  /* HDMI1 */
+	&fli7610_uni_reader_2,  /* I2S */
+	&fli7610_uni_reader_3,  /* SIF */
+	&fli7610_uni_reader_4,  /* AV In */
+	&fli7610_uni_reader_5,  /* HDMI2 */
+	&fli7610_uni_reader_6,  /* DP1 */
 };
 
 static int __init fli7610_audio_devices_setup(void)
@@ -315,5 +486,10 @@ void __init fli7610_configure_audio(struct fli7610_audio_config *config)
 	if (config->uni_player_4_spdif_enabled) {
 		fli7610_uni_player_4_info.pad_config =
 				&fli7610_uni_player_4_pad_config;
+	}
+
+	if (config->uni_reader_0_spdif_enabled) {
+		fli7610_uni_reader_0_info.pad_config =
+				&fli7610_uni_reader_0_pad_config;
 	}
 }

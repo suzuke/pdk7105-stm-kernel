@@ -242,6 +242,22 @@ struct snd_stm_conv_biphase_info {
 
 
 /*
+ * SPDIF RX converter description (platform data)
+ */
+
+struct snd_stm_conv_spdif_rx_info {
+	const char *source_bus_id;
+	int channel_from, channel_to;
+
+	const char *clock_name;
+	unsigned long clock_rate;
+
+	struct stm_pad_config *pad_config;
+};
+
+
+
+/*
  * PCM Player description (platform data)
  */
 

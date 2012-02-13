@@ -1263,12 +1263,12 @@
 	set__AUD_UNIPERIF_REG(ip, \
 		offset__AUD_UNIPERIF_CTRL(ip), \
 		shift__AUD_UNIPERIF_CTRL__READER_OUT_SEL(ip), \
-		mask__AUD_UNIPERIF_CTRL__READER_OUT_SEL(ip), 1)
+		mask__AUD_UNIPERIF_CTRL__READER_OUT_SEL(ip), 0)
 #define set__AUD_UNIPERIF_CTRL__READER_OUT_SEL_ON_I2S_LINE(ip) \
 	set__AUD_UNIPERIF_REG(ip, \
 		offset__AUD_UNIPERIF_CTRL(ip), \
 		shift__AUD_UNIPERIF_CTRL__READER_OUT_SEL(ip), \
-		mask__AUD_UNIPERIF_CTRL__READER_OUT_SEL(ip), 0)
+		mask__corAUD_UNIPERIF_CTRL__READER_OUT_SEL(ip), 1)
 
 
 /*
@@ -1349,16 +1349,17 @@
 		offset__AUD_UNIPERIF_I2S_FMT(ip), \
 		shift__AUD_UNIPERIF_I2S_FMT__LR_POL(ip), \
 		mask__AUD_UNIPERIF_I2S_FMT__LR_POL(ip))
+#define set__AUD_UNIPERIF_I2S_FMT__LR_POL(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_I2S_FMT(ip), \
+		shift__AUD_UNIPERIF_I2S_FMT__LR_POL(ip), \
+		mask__AUD_UNIPERIF_I2S_FMT__LR_POL(ip), value)
 #define set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(ip) \
-	set__AUD_UNIPERIF_REG(ip, \
-		offset__AUD_UNIPERIF_I2S_FMT(ip), \
-		shift__AUD_UNIPERIF_I2S_FMT__LR_POL(ip), \
-		mask__AUD_UNIPERIF_I2S_FMT__LR_POL(ip), 0)
+	set__AUD_UNIPERIF_I2S_FMT__LR_POL(ip, \
+		value__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(ip))
 #define set__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(ip) \
-	set__AUD_UNIPERIF_REG(ip, \
-		offset__AUD_UNIPERIF_I2S_FMT(ip), \
-		shift__AUD_UNIPERIF_I2S_FMT__LR_POL(ip), \
-		mask__AUD_UNIPERIF_I2S_FMT__LR_POL(ip), 1)
+	set__AUD_UNIPERIF_I2S_FMT__LR_POL(ip, \
+		value__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(ip))
 
 /* SCLK_EDGE */
 #define shift__AUD_UNIPERIF_I2S_FMT__SCLK_EDGE(ip) 5

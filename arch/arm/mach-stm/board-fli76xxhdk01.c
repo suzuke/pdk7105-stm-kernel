@@ -1,3 +1,4 @@
+
 /*
  * arch/arm/mach-stm/board-fli76xxhdk01.c
  *
@@ -75,7 +76,8 @@ static void __init fli76xxhdk01_init(void)
 					fli7610_uni_player_0_pcm_8_channels,
 			.uni_player_1_pcm_mode =
 					fli7610_uni_player_1_pcm_2_channels,
-			.uni_player_4_spdif_enabled = 1, });
+			.uni_player_4_spdif_enabled = 1,
+			.uni_reader_0_spdif_enabled = 1, });
 
 	/* reset */
 	stm_board_reset = fli7610_reset;

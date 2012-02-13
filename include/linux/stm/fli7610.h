@@ -126,6 +126,7 @@ struct fli7610_audio_config {
 		fli7610_uni_player_1_pcm_2_channels,
 	} uni_player_1_pcm_mode;
 	int uni_player_4_spdif_enabled;
+	int uni_reader_0_spdif_enabled;
 };
 void fli7610_configure_audio(struct fli7610_audio_config *config);
 

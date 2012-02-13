@@ -76,3 +76,6 @@ snd-stm-conv-gpio-y := conv_gpio.o
 
 obj-$(CONFIG_SND_STM_CONV_I2C) += snd-stm-conv-i2c.o
 snd-stm-conv-i2c-y := conv_i2c.o
+
+obj-$(CONFIG_SND_STM_CONV_SPDIF_RX) += snd-stm-conv-spdif-rx.o
+snd-stm-conv-spdif-rx-y := conv_spdif_rx.o
