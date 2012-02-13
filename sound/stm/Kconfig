@@ -99,6 +99,21 @@ config SND_STM_FLI7510
 		If you compile this driver as a module, it will be
 		called snd-stm-fli7510.ko
 
+config SND_STM_FLI7610
+	tristate "FLi7610 support"
+	depends on SND_STM
+	default y if CPU_SUBTYPE_FLI7610
+	select SND_STM_UNIPERIF_PLAYER
+	select SND_STM_UNIPERIF_READER
+	select SND_STM_CONV_BIPHASE
+	select SND_STM_CONV_DUMMY
+	select SND_STM_CONV_GPIO
+	help
+		Select this to get ALSA driver for FLi7610 chip.
+
+		If you compile this driver as a module, it will be
+		called snd-stm-stih415.ko
+
 config SND_STM_STX7100
 	tristate "STx7100 and STx7109 support"
 	depends on SND_STM

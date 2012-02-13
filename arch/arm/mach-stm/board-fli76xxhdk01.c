@@ -69,6 +69,14 @@ static void __init fli76xxhdk01_init(void)
 			.enabled[0] = 1,
 			.enabled[1] = 1,
 			.enabled[2] = 1, });
+
+	fli7610_configure_audio(&(struct fli7610_audio_config) {
+			.uni_player_0_pcm_mode =
+					fli7610_uni_player_0_pcm_8_channels,
+			.uni_player_1_pcm_mode =
+					fli7610_uni_player_1_pcm_2_channels,
+			.uni_player_4_spdif_enabled = 1, });
+
 	/* reset */
 	stm_board_reset = fli7610_reset;
 

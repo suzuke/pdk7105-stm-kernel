@@ -567,6 +567,7 @@ static inline unsigned long stm_soc_version_minor(void)
 }
 #else
 #define CPU_STIH415 0x57100415
+#define CPU_FLI7610 0x57107610
 
 static inline const char* stm_soc(void)
 {
@@ -580,7 +581,12 @@ static inline const char* stm_soc(void)
 
 static inline unsigned long stm_soc_type(void)
 {
+#ifdef CONFIG_CPU_SUBTYPE_STIH415
 	return CPU_STIH415;
+#endif
+#ifdef CONFIG_CPU_SUBTYPE_FLI7610
+	return CPU_FLI7610;
+#endif
 }
 
 static inline unsigned long stm_soc_version_major(void)

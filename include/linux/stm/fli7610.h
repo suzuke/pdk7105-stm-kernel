@@ -113,4 +113,20 @@ void fli7610_configure_pwm(struct fli7610_pwm_config *config);
 
 void fli7610_reset(char mode);
 
+struct fli7610_audio_config {
+	enum {
+		fli7610_uni_player_0_pcm_disabled,
+		fli7610_uni_player_0_pcm_2_channels,
+		fli7610_uni_player_0_pcm_4_channels,
+		fli7610_uni_player_0_pcm_6_channels,
+		fli7610_uni_player_0_pcm_8_channels,
+	} uni_player_0_pcm_mode;
+	enum {
+		fli7610_uni_player_1_pcm_disabled,
+		fli7610_uni_player_1_pcm_2_channels,
+	} uni_player_1_pcm_mode;
+	int uni_player_4_spdif_enabled;
+};
+void fli7610_configure_audio(struct fli7610_audio_config *config);
+
 #endif
