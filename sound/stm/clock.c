@@ -140,7 +140,14 @@ int snd_stm_clk_enable(struct clk *clk)
 	spin_lock(&snd_stm_clk_parents_lock);
 
 	if (snd_stm_clk->parent->ref_count++ == 0) {
-		result = clk_enable(clk->parent);
+		/* using the parent ops table directly avoids taking the clock
+		 * spinlock the current execution context already owns.
+		 */
+		if (likely(clk->parent->ops && clk->parent->ops->enable))
+			result = clk->parent->ops->enable(clk->parent);
+		else
+			result = 0;
+
 		if (result == 0)
 			snd_stm_clk->enabled = 1;
 		else
@@ -168,7 +175,12 @@ int snd_stm_clk_disable(struct clk *clk)
 	spin_lock(&snd_stm_clk_parents_lock);
 
 	if (--snd_stm_clk->parent->ref_count == 0) {
-		clk_disable(clk->parent);
+		/* using the parent ops table directly avoids taking the clock
+		 * spinlock the current execution context already owns.
+		 */
+		if (likely(clk->parent->ops && clk->parent->ops->disable))
+			clk->parent->ops->disable(clk->parent);
+
 		snd_stm_clk->enabled = 0;
 	}
 	BUG_ON(snd_stm_clk->parent->ref_count < 0);
@@ -183,6 +195,7 @@ int snd_stm_clk_set_rate(struct clk *clk, unsigned long rate)
 	struct snd_stm_clk *snd_stm_clk;
 	int rate_adjusted, rate_achieved;
 	int delta;
+	int res;
 
 	snd_stm_printd(1, "%s(clk=%p, rate=%lu)\n", __func__, clk, rate);
 
@@ -225,7 +238,13 @@ int snd_stm_clk_set_rate(struct clk *clk, unsigned long rate)
 			clk->parent->name, rate_adjusted);
 	/* adjusted rate should never be == 0 */
 	BUG_ON(rate_adjusted == 0);
-	if (clk_set_rate(snd_stm_clk->clk.parent, rate_adjusted) < 0) {
+
+
+	/* using the parent ops table directly avoids taking the clock
+	 * spinlock the current execution context already owns.
+	 */
+	if (likely(clk->parent->ops && clk->parent->ops->set_rate) &&
+	    clk->parent->ops->set_rate(clk->parent, rate_adjusted) < 0) {
 		snd_stm_printe("Failed to set rate %d on clock '%s'!\n",
 				rate_adjusted, clk->parent->name);
 		return -EINVAL;
