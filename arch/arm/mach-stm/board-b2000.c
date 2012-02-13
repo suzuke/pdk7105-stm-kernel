@@ -404,7 +404,7 @@ static void __init b2000_init(void)
 			.rbn.flex_connected = 1,});
 
 	stih415_configure_audio(&(struct stih415_audio_config) {
-			.spdif_player_output_enabled = 1, });
+			.uni_player_3_spdif_enabled = 1, });
 
 	/* reset */
 	stm_board_reset = stih415_reset;
