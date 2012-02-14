@@ -24,6 +24,7 @@
  */
 #include <asm/cacheflush.h>
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>

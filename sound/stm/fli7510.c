@@ -24,6 +24,7 @@
 #include <asm/clock.h>
 #include <asm/irq-ilc.h>
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <sound/core.h>
