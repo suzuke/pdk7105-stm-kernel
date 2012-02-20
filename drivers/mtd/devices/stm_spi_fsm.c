@@ -951,10 +951,7 @@ static int __init stm_spi_fsm_probe(struct platform_device *pdev)
 	struct resource *resource;
 	int ret = 0;
 	struct flash_info *info;
-	unsigned i;
 	uint32_t freq;
-	struct mtd_partition	*parts = NULL;
-	int			nr_parts = 0;
 
 	/* Allocate memory for the driver structure (and zero it) */
 	fsm = kzalloc(sizeof(struct stm_spi_fsm), GFP_KERNEL);
@@ -1046,45 +1043,11 @@ static int __init stm_spi_fsm_probe(struct platform_device *pdev)
 		 fsm->mtd.erasesize, (fsm->mtd.erasesize >> 10));
 
 
-	if (mtd_has_cmdlinepart()) {
-		static const char *part_probes[]
-			= { "cmdlinepart", NULL, };
-
-		nr_parts = parse_mtd_partitions(&fsm->mtd,
-				part_probes, &parts, 0);
-	}
-
-	if (nr_parts <= 0 && data && data->parts) {
-		parts = data->parts;
-		nr_parts = data->nr_parts;
-	}
-
-	if (nr_parts > 0) {
-		for (i = 0; i < nr_parts; i++) {
-			dev_dbg(fsm->dev, "partitions[%d] = "
-					"{.name = %s, .offset = 0x%llx, "
-					".size = 0x%llx (%lldKiB) }\n",
-					i, parts[i].name,
-					(long long)parts[i].offset,
-					(long long)parts[i].size,
-					(long long)(parts[i].size >> 10));
-		}
-		if (mtd_device_register(&fsm->mtd, parts, nr_parts)) {
-			ret = -ENODEV;
-			goto out4;
-		}
-
-		/* Success :-) */
+	ret = mtd_device_parse_register(&fsm->mtd, NULL, NULL,
+					data ? data->parts : NULL,
+					data ? data->nr_parts : 0);
+	if (!ret)
 		return 0;
-	} else {
-		if (mtd_device_register(&fsm->mtd, NULL, 0)) {
-			ret = -ENODEV;
-			goto out4;
-		}
-	}
-
-	/* Success :-) */
-	return 0;
 
  out4:
 	fsm_exit(fsm);
