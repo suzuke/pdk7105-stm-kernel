@@ -6,7 +6,7 @@ obj-y	:= intc/
 obj-$(CONFIG_HAVE_CLK)		+= clk/
 obj-$(CONFIG_MAPLE)		+= maple/
 obj-$(CONFIG_SUPERHYWAY)	+= superhyway/
-obj-$(CONFIG_GENERIC_GPIO)	+= pfc.o
+obj-$(CONFIG_SH_PFC)		+= pfc.o
 
 #
 # For the moment we only use this framework for ARM-based SH/R-Mobile
