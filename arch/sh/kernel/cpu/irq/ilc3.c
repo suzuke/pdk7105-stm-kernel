@@ -12,6 +12,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/export.h>
 #include <linux/sysdev.h>
 #include <linux/cpu.h>
 #include <linux/init.h>

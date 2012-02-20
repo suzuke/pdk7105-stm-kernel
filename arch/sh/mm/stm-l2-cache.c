@@ -12,6 +12,7 @@
  */
 
 #include <linux/init.h>
+#include <linux/export.h>
 #include <linux/mman.h>
 #include <linux/mm.h>
 #include <linux/threads.h>
