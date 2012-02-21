@@ -1092,6 +1092,75 @@ static int fdma_compile_params(struct fdma_channel *channel,
 	return res;
 }
 
+static int fdma_update_param(struct dma_channel *dma_chan, void *params)
+{
+	struct fdma_channel *channel = dma_chan->priv_data;
+
+	channel->params = (struct stm_dma_params *) params;
+
+	return 0;
+}
+
+static int fdma_get_node_ptr(struct dma_channel *dma_chan, void *fnode,
+		void *fparams)
+{
+	struct fdma_xfer_descriptor *desc;
+	struct fdma_channel *channel = dma_chan->priv_data;
+	struct fdma *fdma = channel->fdma;
+	struct stm_dma_node_addr *node = (struct stm_dma_node_addr *) fnode;
+	u32 count;
+	int nextnode, curnode;
+
+	nextnode = readl(fdma->io_base +
+				(channel->chan_num * fdma->regs.node_size) +
+					fdma->regs.ptrn);
+
+	count = readl(fdma->io_base +
+				(channel->chan_num * fdma->regs.node_size) +
+					fdma->regs.cntn);
+
+	curnode = readl(CMD_STAT_REG(channel->chan_num));
+	curnode &= ~0x1F;
+
+	node->curr_node = curnode;
+	node->next_node = nextnode;
+
+	if (fparams) {
+		struct stm_dma_params *params =
+			(struct stm_dma_params *) fparams;
+
+		desc = (struct fdma_xfer_descriptor *) params->priv;
+		node->node_dma_addr = desc->llu_nodes->dma_addr;
+	} else
+		node->node_dma_addr = (unsigned int) NULL;
+
+	return 0;
+}
+
+static int fdma_set_next_node(struct dma_channel *dma_chan, void *s_node,
+		void *d_node)
+{
+	struct fdma_xfer_descriptor *s_desc;
+	struct fdma_xfer_descriptor *d_desc;
+	struct fdma_llu_node *current_node;
+	int i;
+
+	s_desc = (struct fdma_xfer_descriptor *)
+			((struct stm_dma_params *) s_node)->priv;
+	d_desc = (struct fdma_xfer_descriptor *)
+			((struct stm_dma_params *) d_node)->priv;
+
+	/* Switch all nodes (effective on next (not pre-loaded) transition) */
+	current_node = s_desc->llu_nodes;
+	for (i = 0; i < s_desc->alloced_nodes; i++) {
+
+		(current_node+i)->virt_addr->next_item =
+			d_desc->llu_nodes->dma_addr;
+	}
+
+	return 0;
+}
+
 static void fdma_free(struct dma_channel *dma_chan)
 {
 	struct fdma_channel *channel = dma_chan->priv_data;
@@ -1286,6 +1355,9 @@ static struct dma_ops fdma_ops = {
 	.xfer		= fdma_xfer,
 	.configure	= fdma_configure,
 	.extend		= fdma_extended,
+	.set_next_node	= fdma_set_next_node,
+	.get_node_ptr	= fdma_get_node_ptr,
+	.reconfigure	= fdma_update_param,
 };
 
 static int __devinit fdma_driver_probe(struct platform_device *pdev)

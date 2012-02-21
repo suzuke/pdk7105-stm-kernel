@@ -67,6 +67,9 @@ struct dma_ops {
 		    unsigned long dar, size_t count, unsigned int mode);
 	int (*configure)(struct dma_channel *chan, unsigned long flags);
 	int (*extend)(struct dma_channel *chan, unsigned long op, void *param);
+	int (*set_next_node)(struct dma_channel *chan, void *from, void *to);
+	int (*get_node_ptr)(struct dma_channel *chan, void *addr, void *params);
+	int (*reconfigure)(struct dma_channel *chan, void *params);
 };
 
 struct dma_info;
@@ -148,6 +151,12 @@ extern struct dma_info *get_dma_info_by_name(const char *dmac_name);
 
 extern int dma_extend(unsigned int chan, unsigned long op, void *param);
 extern int register_chan_caps(const char *dmac, struct dma_chan_caps *capslist);
+
+extern int dma_set_next_node(unsigned int chan, void *from, void *to);
+
+extern int dma_get_node_ptr(unsigned int chan, void *addr, void *node);
+
+extern int dma_configure_node_params(unsigned int chan, void *node);
 
 /* arch/sh/drivers/dma/dma-sysfs.c */
 extern int dma_create_sysfs_files(struct dma_channel *, struct dma_info *);

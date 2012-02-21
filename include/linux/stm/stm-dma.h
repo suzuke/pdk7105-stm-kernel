@@ -110,6 +110,14 @@ struct params_ops {
 	int (*free_params)(struct stm_dma_params* params);
 };
 
+
+/* DMA node address */
+struct stm_dma_node_addr {
+	int node_dma_addr;		/* First node of the list */
+	int curr_node;			/* The current node */
+	int next_node;			/* The next node */
+};
+
 struct stm_dma_params {
 
 	/* Transfer mode eg MODE_DST_SCATTER */
@@ -226,6 +234,26 @@ static inline int dma_compile_list(unsigned int vchan,
 {
 	params->context = gfp_mask;
 	return dma_extend(vchan, STM_DMA_OP_COMPILE, params);
+}
+
+static inline void dma_next_node(unsigned int vchan,
+				struct stm_dma_params *s_params,
+				struct stm_dma_params *d_params)
+{
+	dma_set_next_node(vchan, s_params, d_params);
+}
+
+static inline void dma_get_node(unsigned int vchan,
+				void *node_addr,
+				struct stm_dma_params *params)
+{
+	dma_get_node_ptr(vchan, node_addr, params);
+}
+
+static inline void dma_configure_params(unsigned int vchan,
+				struct stm_dma_params *params)
+{
+	dma_configure_node_params(vchan, params);
 }
 
 static inline int dma_xfer_list(unsigned int vchan, struct stm_dma_params *p)

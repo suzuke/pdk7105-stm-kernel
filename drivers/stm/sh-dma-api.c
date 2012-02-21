@@ -306,6 +306,42 @@ void dma_configure_channel(unsigned int vchan, unsigned long flags)
 }
 EXPORT_SYMBOL(dma_configure_channel);
 
+int dma_set_next_node(unsigned int vchan, void *s_node, void *d_node)
+{
+	struct dma_info *info = get_dma_info(vchan);
+	struct dma_channel *channel = get_dma_channel(vchan);
+
+	if (info->ops->set_next_node)
+		return info->ops->set_next_node(channel, s_node, d_node);
+
+	return -ENOSYS;
+}
+EXPORT_SYMBOL(dma_set_next_node);
+
+int dma_get_node_ptr(unsigned int vchan, void *nodaddr, void *params)
+{
+	struct dma_info *info = get_dma_info(vchan);
+	struct dma_channel *channel = get_dma_channel(vchan);
+
+	if (info->ops->get_node_ptr)
+		return info->ops->get_node_ptr(channel, nodaddr, params);
+
+	return -ENOSYS;
+}
+EXPORT_SYMBOL(dma_get_node_ptr);
+
+int dma_configure_node_params(unsigned int vchan, void *params)
+{
+	struct dma_info *info = get_dma_info(vchan);
+	struct dma_channel *channel = get_dma_channel(vchan);
+
+	if (info->ops->reconfigure)
+		return info->ops->reconfigure(channel, params);
+
+	return -ENOSYS;
+}
+EXPORT_SYMBOL(dma_configure_node_params);
+
 int dma_xfer(unsigned int vchan, unsigned long from,
 	     unsigned long to, size_t size, unsigned int mode)
 {
