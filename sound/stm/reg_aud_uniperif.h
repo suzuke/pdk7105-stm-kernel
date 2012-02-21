@@ -1481,6 +1481,12 @@
  * AUD_UNIPERIF_CHANNEL_STA_REGn
  */
 
+#define offset__AUD_UNIPERIF_CHANNEL_STA_REGn(ip, n) (0x0060 + (4 * n))
+#define get__AUD_UNIPERIF_CHANNEL_STA_REGn(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_CHANNEL_STA_REGn(ip, n))
+#define set__AUD_UNIPERIF_CHANNEL_STA_REGn(ip, n, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_CHANNEL_STA_REGn(ip, n))
+
 #define offset__AUD_UNIPERIF_CHANNEL_STA_REG0(ip) 0x0060
 #define get__AUD_UNIPERIF_CHANNEL_STA_REG0(ip) \
 	readl(ip->base + offset__AUD_UNIPERIF_CHANNEL_STA_REG0(ip))

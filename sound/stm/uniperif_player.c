@@ -1050,14 +1050,98 @@ static int snd_stm_uniperif_player_prepare_pcm(
 	return 0;
 }
 
+static void snd_stm_uniperif_player_set_channel_status(
+		struct snd_stm_uniperif_player *player,
+		struct snd_pcm_runtime *runtime)
+{
+	int n;
+	unsigned int status;
+
+	snd_stm_printd(1, "%s(player=0x%p)\n", __func__, player);
+
+	BUG_ON(!player);
+	BUG_ON(!snd_stm_magic_valid(player));
+
+	/*
+	 * Some AVRs and TVs require the channel status to contain a correct
+	 * sampling frequency. If no sample rate is already specified, then
+	 * set one.
+	 */
+
+	if (runtime && (player->stream_settings.iec958.status[3] == 0x01)) {
+		switch (runtime->rate) {
+		case 22050:
+			player->stream_settings.iec958.status[3] = 0x04;
+			break;
+		case 44100:
+			player->stream_settings.iec958.status[3] = 0x00;
+			break;
+		case 88200:
+			player->stream_settings.iec958.status[3] = 0x08;
+			break;
+		case 176400:
+			player->stream_settings.iec958.status[3] = 0x0c;
+			break;
+		case 24000:
+			player->stream_settings.iec958.status[3] = 0x06;
+			break;
+		case 48000:
+			player->stream_settings.iec958.status[3] = 0x02;
+			break;
+		case 96000:
+			player->stream_settings.iec958.status[3] = 0x0a;
+			break;
+		case 192000:
+			player->stream_settings.iec958.status[3] = 0x0e;
+			break;
+		case 32000:
+			player->stream_settings.iec958.status[3] = 0x03;
+			break;
+		case 768000:
+			player->stream_settings.iec958.status[3] = 0x09;
+			break;
+		default:
+			/* Mark as sampling frequency not indicated */
+			player->stream_settings.iec958.status[3] = 0x01;
+			break;
+		}
+	}
+
+	/*
+	 * We expect the user to provide a valid channel status. Player2 will
+	 * correctly set the channel status for compressed pcm with a max word
+	 * size of 16-bits, but for linear pcm, it fails to set the max word
+	 * length to 24-bits. Here we do a quick check on the mode and set the
+	 * max word length.
+	 */
+
+	if (player->stream_settings.encoding_mode ==
+		SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_PCM)
+		player->stream_settings.iec958.status[4] = 0x0b;
+	else
+		player->stream_settings.iec958.status[4] = 0x02;
+
+	/* Program the new channel status */
+	for (n = 0; n < 6; ++n) {
+		status  = player->stream_settings.iec958.status[0+(n*4)] & 0xf;
+		status |= player->stream_settings.iec958.status[1+(n*4)] << 8;
+		status |= player->stream_settings.iec958.status[2+(n*4)] << 16;
+		status |= player->stream_settings.iec958.status[3+(n*4)] << 24;
+		snd_stm_printd(1, "- Channel Status Register %d: %08x\n",
+				n, status);
+		set__AUD_UNIPERIF_CHANNEL_STA_REGn(player, n, status);
+	}
+
+	/* Update the channel status */
+	set__AUD_UNIPERIF_CONFIG__CHL_STS_UPDATE(player);
+}
+
 static int snd_stm_uniperif_player_prepare_iec958(
 		struct snd_stm_uniperif_player *player,
 		struct snd_pcm_runtime *runtime)
 {
 	int oversampling;
 	int result;
-	struct snd_aes_iec958 *iec958;
-	unsigned int status;
 
 	snd_stm_printd(1, "%s(player=0x%p)\n", __func__, player);
 
@@ -1190,30 +1274,12 @@ static int snd_stm_uniperif_player_prepare_iec958(
 		player->stream_iec958_status_cnt = 0;
 		player->stream_iec958_subcode_cnt = 0;
 
-		/* Configure channel status bits */
-		iec958 = &player->stream_settings.iec958;
-
-		status = iec958->status[0];
-		status |= iec958->status[1] << 8;
-		status |= iec958->status[2] << 16;
-		status |= iec958->status[3] << 24;
-		set__AUD_UNIPERIF_CHANNEL_STA_REG0(player, status);
-
-		status = iec958->status[4] & 0xf;
-		set__AUD_UNIPERIF_CHANNEL_STA_REG1(player, status);
-
-		set__AUD_UNIPERIF_CHANNEL_STA_REG2(player, 0x00000000);
-		set__AUD_UNIPERIF_CHANNEL_STA_REG3(player, 0x00000000);
-		set__AUD_UNIPERIF_CHANNEL_STA_REG4(player, 0x00000000);
-		set__AUD_UNIPERIF_CHANNEL_STA_REG5(player, 0x00000000);
+		/* Update the channel status */
+		snd_stm_uniperif_player_set_channel_status(player, runtime);
 
 		/* Clear the user validity user bits */
 		set__AUD_UNIPERIF_USER_VALIDITY__USER_LEFT(player, 0);
 		set__AUD_UNIPERIF_USER_VALIDITY__USER_RIGHT(player, 0);
-
-		/* Update the channel status */
-		set__AUD_UNIPERIF_CONFIG__CHL_STS_UPDATE(player);
-
 	} else {
 
 		snd_stm_printd(1, "- Raw input mode\n");
@@ -1476,12 +1542,13 @@ static int snd_stm_uniperif_player_park(struct snd_pcm_substream *substream)
 {
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
-	unsigned int status;
+	struct snd_pcm_runtime *runtime = substream->runtime;
 
 	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
+	BUG_ON(!runtime);
 
 	BUG_ON(player->state != SND_STM_UNIPERIF_PLAYER_STATE_RUNNING);
 
@@ -1507,12 +1574,9 @@ static int snd_stm_uniperif_player_park(struct snd_pcm_substream *substream)
 			&player->parking_fdma_params[PARKING_NODE_ENTRY]);
 
 	/* Set channel status for linear pcm */
-	status = get__AUD_UNIPERIF_CHANNEL_STA_REG0(player);
-	status &= ~0x02;
+	player->stream_settings.iec958.status[0] &= ~0x02;
 	player->stream_settings.iec958.status[4] = 0x0b;
-	set__AUD_UNIPERIF_CHANNEL_STA_REG0(player, status);
-	set__AUD_UNIPERIF_CHANNEL_STA_REG1(player, 0x0b);
-	set__AUD_UNIPERIF_CONFIG__CHL_STS_UPDATE(player);
+	snd_stm_uniperif_player_set_channel_status(player, runtime);
 
 	/* Clear validity bits as linear pcm */
 	set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player, 0);
@@ -2363,6 +2427,19 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 
 	snd_stm_printd(0, "Parking is %s\n",
 			player->info->parking_enabled ? "enabled" : "disabled");
+
+	/* Set default iec958 status bits (I expect user to override!) */
+
+	/* Consumer, PCM, copyright, 2ch, mode 0 */
+	player->default_settings.iec958.status[0] = 0x00;
+	/* Broadcast reception category */
+	player->default_settings.iec958.status[1] = 0x04;
+	/* Do not take into account source or channel number */
+	player->default_settings.iec958.status[2] = 0x00;
+	/* Sampling frequency not indicated */
+	player->default_settings.iec958.status[3] = 0x01;
+	/* Max sample word 24-bit, sample word length not indicated */
+	player->default_settings.iec958.status[4] = 0x01;
 
 	/* Get resources */
 
