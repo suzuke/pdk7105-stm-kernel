@@ -28,6 +28,7 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
+#include <linux/semaphore.h>
 #include <linux/delay.h>
 #include <linux/stm/clk.h>
 #include <linux/stm/pad.h>
@@ -57,6 +58,14 @@ module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
 /* The sample count field (NSAMPLES in CTRL register) is 19 bits wide */
 #define MAX_SAMPLES_PER_PERIOD ((1 << 20) - 1)
 
+#define PARKING_NODE_ENTRY	0
+#define PARKING_NODE_LOOP	1
+#define PARKING_NODE_EXIT	2
+#define PARKING_NODE_COUNT	3
+
+#define PARKING_SUBBLOCKS	4
+#define PARKING_NBFRAMES	4
+#define PARKING_BUFFER_SIZE	128	/* Optimal FDMA transfer is 128-bytes */
 
 #define SPDIF_PREAMBLE_BYTES 8
 enum snd_stm_uniperif_spdif_input_mode {
@@ -123,6 +132,28 @@ struct snd_stm_uniperif_player {
 	int stream_iec958_status_cnt;
 	int stream_iec958_subcode_cnt;
 
+	/* Player state */
+	enum {
+		SND_STM_UNIPERIF_PLAYER_STATE_IDLE,
+		SND_STM_UNIPERIF_PLAYER_STATE_RUNNING,
+		SND_STM_UNIPERIF_PLAYER_STATE_XRUN,
+		SND_STM_UNIPERIF_PLAYER_STATE_PARKING,
+		SND_STM_UNIPERIF_PLAYER_STATE_STOP
+	} state;
+
+	/* Parking buffer */
+	struct semaphore parking_active;
+	struct snd_stm_buffer *parking_buffer;
+	unsigned char *parking_dma_area;
+	dma_addr_t parking_dma_addr;
+	int parking_dma_bytes;
+	struct stm_dma_params *parking_fdma_params;
+
+	/* Configuration */
+	unsigned int current_rate;
+	unsigned int current_format;
+	unsigned int current_channels;
+	unsigned char current_fmda_cnt;
 
 	snd_stm_magic_field;
 };
@@ -187,6 +218,13 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_raw_hw = {
 
 
 /*
+ * Uniperipheral player functions
+ */
+
+static int snd_stm_uniperif_player_stop(struct snd_pcm_substream *substream);
+
+
+/*
  * Uniperipheral player implementation
  */
 
@@ -207,26 +245,20 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 	set__AUD_UNIPERIF_ITS_BCLR(player, status);
 	preempt_enable();
 
-	/* Underflow? */
+	/* FIFO error? */
 	if (unlikely(status & mask__AUD_UNIPERIF_ITS__FIFO_ERROR(player))) {
-		snd_stm_printe("Underflow detected in player '%s'!\n",
+		snd_stm_printe("Player '%s' FIFO error detected!\n",
 				dev_name(player->device));
 
+		/* Disable interrupt so doesn't continually fire */
+		set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(player);
+
+		/* Indicate xrun and stop the player */
+		player->state = SND_STM_UNIPERIF_PLAYER_STATE_XRUN;
 		snd_pcm_stop(player->substream, SNDRV_PCM_STATE_XRUN);
 
 		result = IRQ_HANDLED;
-	} else if (likely(status &
-			  mask__AUD_UNIPERIF_ITS__MEM_BLK_READ(player))) {
-		/* Period successfully played */
-		do {
-			BUG_ON(!player->substream);
 
-			snd_stm_printd(2, "Period elapsed ('%s')\n",
-					dev_name(player->device));
-			snd_pcm_period_elapsed(player->substream);
-
-			result = IRQ_HANDLED;
-		} while (0);
 	} else if (unlikely(status &
 			    mask__AUD_UNIPERIF_ITS__PA_PB_SYNC_LOST(player))) {
 		snd_stm_printe("PA PB sync loss detected in player '%s'!\n",
@@ -234,10 +266,19 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 		player->stream_iec958_pa_pb_sync_lost = 1;
 		/* for pa pb sync loss we may handle later on */
 		/*snd_pcm_stop(player->substream, SNDRV_PCM_STATE_XRUN);*/
-	} else if (status & mask__AUD_UNIPERIF_ITS__DMA_ERROR(player)) {
-		snd_stm_printe("DMA error detected in player '%s'!\n",
+
+		result = IRQ_HANDLED;
+
+	} else if (unlikely(status &
+			    mask__AUD_UNIPERIF_ITS__DMA_ERROR(player))) {
+		snd_stm_printe("Player '%s' DMA error detected!\n",
 				dev_name(player->device));
 
+		/* Disable interrupt so doesn't continually fire */
+		set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(player);
+
+		/* Indicate xrun and stop the player */
+		player->state = SND_STM_UNIPERIF_PLAYER_STATE_XRUN;
 		snd_pcm_stop(player->substream, SNDRV_PCM_STATE_XRUN);
 
 		result = IRQ_HANDLED;
@@ -264,9 +305,13 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 
 	snd_pcm_set_sync(substream);  /* TODO: ??? */
 
-	/* Get attached converters handle */
+	/* Get attached converters handle (only if idle) */
 
-	player->conv_group = snd_stm_conv_request_group(player->conv_source);
+	if (player->state == SND_STM_UNIPERIF_PLAYER_STATE_IDLE) {
+		player->conv_group = snd_stm_conv_request_group(
+				player->conv_source);
+	}
+
 	if (player->conv_group)
 		snd_stm_printd(1, "'%s' is attached to '%s' converter(s)...\n",
 				dev_name(player->device),
@@ -328,12 +373,15 @@ static int snd_stm_uniperif_player_close(struct snd_pcm_substream *substream)
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
-	if (player->conv_group) {
-		snd_stm_conv_release_group(player->conv_group);
-		player->conv_group = NULL;
-	}
+	/* Don't do anything unless player is idle */
+	if (player->state == SND_STM_UNIPERIF_PLAYER_STATE_IDLE) {
+		if (player->conv_group) {
+			snd_stm_conv_release_group(player->conv_group);
+			player->conv_group = NULL;
+		}
 
-	player->substream = NULL;
+		player->substream = NULL;
+	}
 
 	return 0;
 }
@@ -350,23 +398,279 @@ static int snd_stm_uniperif_player_hw_free(struct snd_pcm_substream *substream)
 	BUG_ON(!snd_stm_magic_valid(player));
 	BUG_ON(!runtime);
 
-
 	/* This callback may be called more than once... */
 
 	if (snd_stm_buffer_is_allocated(player->buffer)) {
-		/* Let the FDMA stop */
-		dma_wait_for_completion(player->fdma_channel);
+		long jiffies = HZ;
 
-		/* Free buffer */
-		snd_stm_buffer_free(player->buffer);
+		switch (player->state) {
+		case SND_STM_UNIPERIF_PLAYER_STATE_PARKING:
+			/* Wait only 1 second for parking to start */
+			if (down_timeout(&player->parking_active, jiffies)) {
+				/* Parking failed to start */
+				snd_stm_uniperif_player_stop(substream);
+				snd_stm_uniperif_player_hw_free(substream);
+			} else {
+				/* Free playback buffer */
+				snd_stm_buffer_free(player->buffer);
 
-		/* Free FDMA parameters & configuration */
-		dma_params_free(player->fdma_params);
-		dma_req_free(player->fdma_channel, player->fdma_request);
-		kfree(player->fdma_params);
+				/* Free FDMA parameters */
+				dma_params_free(player->fdma_params);
+				kfree(player->fdma_params);
+			}
+			break;
+
+		case SND_STM_UNIPERIF_PLAYER_STATE_XRUN:
+			/* Goto stop state and recurse to free */
+			snd_stm_uniperif_player_stop(substream);
+			snd_stm_uniperif_player_hw_free(substream);
+			break;
+
+		case SND_STM_UNIPERIF_PLAYER_STATE_STOP:
+			/* Let the FDMA stop */
+			dma_wait_for_completion(player->fdma_channel);
+
+			/* Free playback buffer */
+			snd_stm_buffer_free(player->buffer);
+
+			/* Free FDMA parameters & configuration */
+			dma_params_free(player->fdma_params);
+			kfree(player->fdma_params);
+
+			if (snd_stm_buffer_is_allocated(
+				player->parking_buffer)) {
+				/* Restore parking buffer DMA data */
+				runtime->dma_area = player->parking_dma_area;
+				runtime->dma_addr = player->parking_dma_addr;
+				runtime->dma_bytes = player->parking_dma_bytes;
+
+				/* Free parking buffer */
+				snd_stm_buffer_free(player->parking_buffer);
+
+				/* Free FDMA parameters */
+				dma_params_free(player->parking_fdma_params);
+				kfree(player->parking_fdma_params);
+			}
+
+			/* Free FDMA request */
+			dma_req_free(player->fdma_channel,
+					player->fdma_request);
+
+			/* Player is now idle */
+			player->state = SND_STM_UNIPERIF_PLAYER_STATE_IDLE;
+			break;
+
+		default:
+			snd_stm_printe("Player '%s' unexpected state %d!\n",
+					dev_name(player->device),
+					player->state);
+		}
 	}
 
 	return 0;
+}
+
+static void snd_stm_uniperif_player_parking_comp_cb(unsigned long param)
+{
+	struct snd_stm_uniperif_player *player =
+			(struct snd_stm_uniperif_player *) param;
+	struct stm_dma_node_addr node_addr;
+
+	BUG_ON(!player);
+	BUG_ON(!snd_stm_magic_valid(player));
+
+	dma_get_node(player->fdma_channel, &node_addr, player->fdma_params);
+
+	/* Check if we are still executing parking loop node */
+	if (node_addr.curr_node != node_addr.next_node) {
+		/* Switch to playback FDMA parameters */
+		dma_configure_params(player->fdma_channel, player->fdma_params);
+
+		switch (player->state) {
+		case SND_STM_UNIPERIF_PLAYER_STATE_PARKING:
+			player->state = SND_STM_UNIPERIF_PLAYER_STATE_RUNNING;
+			break;
+
+		case SND_STM_UNIPERIF_PLAYER_STATE_STOP:
+			player->state = SND_STM_UNIPERIF_PLAYER_STATE_IDLE;
+			break;
+
+		default:
+			snd_stm_printe("Player '%s' unexpected state %d!\n",
+					dev_name(player->device),
+					player->state);
+		}
+	}
+}
+
+static int snd_stm_uniperif_player_parking_hw_params(
+		struct snd_pcm_substream *substream,
+		struct snd_pcm_hw_params *hw_params)
+{
+	struct snd_stm_uniperif_player *player =
+			snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	int frame_bytes;
+	unsigned char *dma_area;
+	dma_addr_t dma_addr;
+	int dma_bytes;
+	int result;
+	int i;
+
+	snd_stm_printd(1, "%s(substream=0x%p, hw_params=0x%p)\n",
+		       __func__, substream, hw_params);
+
+	BUG_ON(!player);
+	BUG_ON(!snd_stm_magic_valid(player));
+	BUG_ON(!runtime);
+
+	/* Calculate the number of bytes in a frame */
+	frame_bytes = snd_pcm_format_physical_width(params_format(hw_params)) *
+			params_channels(hw_params) / 8;
+
+	/* Ensure minimal parking buffer size is optimal for FDMA */
+	frame_bytes *= PARKING_NBFRAMES;
+	frame_bytes  = (frame_bytes < PARKING_BUFFER_SIZE) ?
+				PARKING_BUFFER_SIZE : frame_bytes;
+
+	/* Save playback buffer DMA data (snd_stm_buffer_alloc overwrites it) */
+	dma_area = runtime->dma_area;
+	dma_addr = runtime->dma_addr;
+	dma_bytes = runtime->dma_bytes;
+
+	/* Allocate parking buffer */
+	result = snd_stm_buffer_alloc(player->parking_buffer, substream,
+			frame_bytes);
+
+	/* Save parking buffer DMA data */
+	player->parking_dma_area = runtime->dma_area;
+	player->parking_dma_addr = runtime->dma_addr;
+	player->parking_dma_bytes = runtime->dma_bytes;
+
+	/* Restore playback buffer DMA data */
+	runtime->dma_area = dma_area;
+	runtime->dma_addr = dma_addr;
+	runtime->dma_bytes = dma_bytes;
+
+	/* Check result of parking buffer allocation */
+	if (result != 0) {
+		snd_stm_printe("Player '%s' can't allocate %d bytes buffer!\n",
+			       dev_name(player->device), frame_bytes);
+		result = -ENOMEM;
+		goto error_buf_alloc;
+	}
+
+	/* Clear the parking buffer */
+	memset(player->parking_dma_area, 0x00, player->parking_dma_bytes);
+
+	/* Allocate the FDMA parking nodes */
+	player->parking_fdma_params = kmalloc(
+		sizeof(*player->parking_fdma_params) * PARKING_NODE_COUNT,
+		GFP_KERNEL);
+
+	if (!player->parking_fdma_params) {
+		snd_stm_printe("Player '%s' can't allocate %d bytes for FDMA "
+				"parking parameters list!\n",
+				dev_name(player->device),
+				sizeof(*player->parking_fdma_params));
+		result = -ENOMEM;
+		goto error_params_alloc;
+	}
+
+	for (i = 0; i < PARKING_NODE_COUNT; ++i) {
+		/* Configure the FDMA parking nodes */
+		dma_params_init(&player->parking_fdma_params[i],
+				MODE_PACED, STM_DMA_LIST_CIRC);
+
+		dma_params_DIM_1_x_0(&player->parking_fdma_params[i]);
+
+		dma_params_req(&player->parking_fdma_params[i],
+			player->fdma_request);
+
+		dma_params_addrs(&player->parking_fdma_params[i],
+			player->parking_dma_addr,
+			player->fifo_phys_address,
+			player->parking_dma_bytes);
+
+		dma_params_comp_cb(&player->parking_fdma_params[i],
+			snd_stm_uniperif_player_parking_comp_cb,
+			(unsigned long) player, STM_DMA_CB_CONTEXT_ISR);
+
+		/* Get callback every time a node is completed */
+		if (i != PARKING_NODE_LOOP)
+			dma_params_interrupts(&player->parking_fdma_params[i],
+						STM_DMA_NODE_COMP_INT);
+
+		/* Compile the FDMA parking node */
+		result = dma_compile_list(player->fdma_channel,
+				&player->parking_fdma_params[i],
+				GFP_KERNEL);
+
+		if (result < 0) {
+			snd_stm_printe("Player '%s' can't compile FDMA parking "
+				       "parameters node %d!\n",
+				       dev_name(player->device), i);
+			goto error_compile_list;
+		}
+	}
+
+	return 0;
+
+error_compile_list:
+	kfree(player->parking_fdma_params);
+error_params_alloc:
+	snd_stm_buffer_free(player->parking_buffer);
+error_buf_alloc:
+	return result;
+}
+
+static void snd_stm_uniperif_player_comp_cb(unsigned long param)
+{
+	struct snd_stm_uniperif_player *player =
+			(struct snd_stm_uniperif_player *)param;
+	struct stm_dma_node_addr node_addr;
+
+	BUG_ON(!player);
+	BUG_ON(!snd_stm_magic_valid(player));
+
+	switch (player->state) {
+	case SND_STM_UNIPERIF_PLAYER_STATE_RUNNING:
+		/* Calculate period elapsed for playback */
+		BUG_ON(!player->substream);
+		snd_stm_printd(2, "Period elapsed ('%s')\n",
+		       dev_name(player->device));
+
+		snd_pcm_period_elapsed(player->substream);
+		break;
+
+	case SND_STM_UNIPERIF_PLAYER_STATE_PARKING:
+		/* Check if we are executing playback loop node */
+		dma_get_node(player->fdma_channel, &node_addr,
+			     &player->parking_fdma_params[PARKING_NODE_LOOP]);
+
+		if (node_addr.curr_node == node_addr.next_node) {
+			/* Switch to parking FDMA parameters */
+			dma_configure_params(player->fdma_channel,
+					     player->parking_fdma_params);
+			/* Signal parking active (can free playback buffers) */
+			up(&player->parking_active);
+		}
+		break;
+
+	case SND_STM_UNIPERIF_PLAYER_STATE_STOP:
+		/* Calculate period elapsed for playback */
+		BUG_ON(!player->substream);
+		snd_stm_printd(2, "Period elapsed ('%s')\n",
+		       dev_name(player->device));
+
+		snd_pcm_period_elapsed(player->substream);
+		break;
+
+	default:
+		snd_stm_printe("Player '%s' unexpected state %d!\n",
+				dev_name(player->device),
+				player->state);
+	}
 }
 
 static int snd_stm_uniperif_player_hw_params(
@@ -377,7 +681,7 @@ static int snd_stm_uniperif_player_hw_params(
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	int buffer_bytes, frame_bytes, transfer_bytes;
+	int buffer_bytes, frame_bytes, transfer_bytes, period_bytes, periods;
 	unsigned int transfer_size;
 	struct stm_dma_req_config fdma_req_config = {
 		.rw        = REQ_CONFIG_WRITE,
@@ -386,6 +690,7 @@ static int snd_stm_uniperif_player_hw_params(
 		.hold_off  = 0,
 		.initiator = player->info->fdma_initiator,
 	};
+	int i;
 
 	snd_stm_printd(1, "%s(substream=0x%p, hw_params=0x%p)\n",
 		       __func__, substream, hw_params);
@@ -401,6 +706,10 @@ static int snd_stm_uniperif_player_hw_params(
 	/* Allocate buffer */
 
 	buffer_bytes = params_buffer_bytes(hw_params);
+	periods = params_periods(hw_params);
+	period_bytes = buffer_bytes / periods;
+	BUG_ON(periods * period_bytes != buffer_bytes);
+
 	result = snd_stm_buffer_alloc(player->buffer, substream,
 			buffer_bytes);
 	if (result != 0) {
@@ -433,33 +742,61 @@ static int snd_stm_uniperif_player_hw_params(
 	set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(player, transfer_size);
 
 	/* Configure FDMA transfer */
-
-	player->fdma_request = dma_req_config(player->fdma_channel,
-			player->info->fdma_request_line, &fdma_req_config);
-	if (!player->fdma_request) {
-		snd_stm_printe("Can't configure FDMA pacing channel for player"
-				" '%s'!\n", dev_name(player->device));
-		result = -EINVAL;
-		goto error_req_config;
+	if (player->current_fmda_cnt !=  fdma_req_config.count) {
+		player->current_fmda_cnt = fdma_req_config.count;
+		player->fdma_request = dma_req_config(player->fdma_channel,
+					player->info->fdma_request_line,
+					&fdma_req_config);
+		if (!player->fdma_request) {
+			snd_stm_printe("Player '%s' can't configure FDMA pacing"
+				       " channel!\n", dev_name(player->device));
+			result = -EINVAL;
+			goto error_req_config;
+		}
 	}
 
-	player->fdma_params = kmalloc(sizeof(*player->fdma_params), GFP_KERNEL);
+	/* Allocate a FDMA playback nodes (one per sub-block per period) */
+	player->fdma_params = kmalloc(
+		(sizeof(*player->fdma_params) * periods * PARKING_SUBBLOCKS),
+		GFP_KERNEL);
+
 	if (!player->fdma_params) {
 		snd_stm_printe("Can't allocate %d bytes for FDMA parameters "
-				"list!\n", sizeof(*player->fdma_params));
+				"list!\n", sizeof(*player->fdma_params) *
+				periods * PARKING_SUBBLOCKS);
 		result = -ENOMEM;
 		goto error_params_alloc;
 	}
 
-	dma_params_init(player->fdma_params, MODE_PACED,
-			STM_DMA_LIST_CIRC);
+	for (i = 0; i < (periods * PARKING_SUBBLOCKS); i++) {
+		int sub_period_bytes = period_bytes / PARKING_SUBBLOCKS;
 
-	dma_params_DIM_1_x_0(player->fdma_params);
+		dma_params_init(&player->fdma_params[i], MODE_PACED,
+				STM_DMA_LIST_CIRC);
 
-	dma_params_req(player->fdma_params, player->fdma_request);
+		dma_params_DIM_1_x_0(&player->fdma_params[i]);
 
-	dma_params_addrs(player->fdma_params, runtime->dma_addr,
-			player->fifo_phys_address, buffer_bytes);
+		dma_params_req(&player->fdma_params[i], player->fdma_request);
+
+		dma_params_addrs(&player->fdma_params[i],
+				 runtime->dma_addr + i * sub_period_bytes,
+				 player->fifo_phys_address,
+				 sub_period_bytes);
+
+		if (i > 0)
+			dma_params_link(&player->fdma_params[i - 1],
+					&player->fdma_params[i]);
+
+		dma_params_comp_cb(&player->fdma_params[i],
+				   snd_stm_uniperif_player_comp_cb,
+				   (unsigned long) player,
+				   STM_DMA_CB_CONTEXT_ISR);
+
+		/* Get callback every time a node is completed */
+		if ((i % PARKING_SUBBLOCKS) == (PARKING_SUBBLOCKS-1))
+			dma_params_interrupts(&player->fdma_params[i],
+					      STM_DMA_NODE_COMP_INT);
+	}
 
 	result = dma_compile_list(player->fdma_channel,
 				player->fdma_params, GFP_KERNEL);
@@ -467,6 +804,21 @@ static int snd_stm_uniperif_player_hw_params(
 		snd_stm_printe("Can't compile FDMA parameters for player"
 				" '%s'!\n", dev_name(player->device));
 		goto error_compile_list;
+	}
+
+	if (player->info->parking_enabled) {
+		/* Setup parking parameters only when idle */
+		if (player->state == SND_STM_UNIPERIF_PLAYER_STATE_IDLE) {
+
+			result = snd_stm_uniperif_player_parking_hw_params(
+					substream, hw_params);
+			if (result < 0) {
+				snd_stm_printe("Player '%s' failed to setup "
+						"parking hw params!\n",
+						dev_name(player->device));
+				goto error_compile_list;
+			}
+		}
 	}
 
 	return 0;
@@ -988,6 +1340,28 @@ static int snd_stm_uniperif_player_prepare(struct snd_pcm_substream *substream)
 	BUG_ON(runtime->period_size * runtime->channels >=
 			MAX_SAMPLES_PER_PERIOD);
 
+	/* If not idle, only set new configuration if it differs from current */
+	if (player->state != SND_STM_UNIPERIF_PLAYER_STATE_IDLE) {
+		int changed = 0;
+
+		changed |= (player->current_rate != runtime->rate);
+		changed |= (player->current_format != runtime->format);
+		changed |= (player->current_channels != runtime->channels);
+
+		/* Return if new configuration is the same as current */
+		if (changed == 0)
+			return 0;
+
+		/* Stop the player so we can set new configuration */
+		player->state = SND_STM_UNIPERIF_PLAYER_STATE_STOP;
+		snd_stm_uniperif_player_stop(substream);
+	}
+
+	/* Store new configuration */
+	player->current_rate = runtime->rate;
+	player->current_format = runtime->format;
+	player->current_channels = runtime->channels;
+
 	/* Uniperipheral setup is dependent on player type */
 	switch (player->info->player_type) {
 	case SND_STM_UNIPERIF_PLAYER_TYPE_HDMI:
@@ -1014,8 +1388,22 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
+	if (player->state == SND_STM_UNIPERIF_PLAYER_STATE_PARKING) {
+		/* Link parking exit node to playback node */
+		dma_next_node(player->fdma_channel,
+			&player->parking_fdma_params[PARKING_NODE_EXIT],
+			player->fdma_params);
 
-	/* Reset uniperipheral player */
+		/* Link parking loop node to parking exit node */
+		dma_next_node(player->fdma_channel,
+			&player->parking_fdma_params[PARKING_NODE_LOOP],
+			&player->parking_fdma_params[PARKING_NODE_EXIT]);
+
+		/* FDMA will switch to parking exit node the playback node */
+		return 0;
+	}
+
+	/* Normal start from idle. Reset uniperipheral player */
 
 	set__AUD_UNIPERIF_SOFT_RST__SOFT_RST(player);
 	while (get__AUD_UNIPERIF_SOFT_RST__SOFT_RST(player))
@@ -1039,8 +1427,6 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 	enable_irq(player->irq);
 	set__AUD_UNIPERIF_ITS_BCLR__DMA_ERROR(player);
 	set__AUD_UNIPERIF_ITM_BSET__DMA_ERROR(player);
-	set__AUD_UNIPERIF_ITS_BCLR__MEM_BLK_READ(player);
-	set__AUD_UNIPERIF_ITM_BSET__MEM_BLK_READ(player);
 	set__AUD_UNIPERIF_ITS_BCLR__FIFO_ERROR(player);
 	set__AUD_UNIPERIF_ITM_BSET__FIFO_ERROR(player);
 
@@ -1080,6 +1466,98 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 		snd_stm_conv_unmute(player->conv_group);
 	}
 
+	/* Indicate we are now in the running state */
+	player->state = SND_STM_UNIPERIF_PLAYER_STATE_RUNNING;
+
+	return 0;
+}
+
+static int snd_stm_uniperif_player_park(struct snd_pcm_substream *substream)
+{
+	struct snd_stm_uniperif_player *player =
+			snd_pcm_substream_chip(substream);
+	unsigned int status;
+
+	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+
+	BUG_ON(!player);
+	BUG_ON(!snd_stm_magic_valid(player));
+
+	BUG_ON(player->state != SND_STM_UNIPERIF_PLAYER_STATE_RUNNING);
+
+	/* Ensure lock is not free */
+	while (!down_trylock(&player->parking_active))
+		;
+
+	/* Indicate switch to parking buffer */
+	player->state = SND_STM_UNIPERIF_PLAYER_STATE_PARKING;
+
+	/* Link parking entry node to parking loop node */
+	dma_next_node(player->fdma_channel,
+			&player->parking_fdma_params[PARKING_NODE_ENTRY],
+			&player->parking_fdma_params[PARKING_NODE_LOOP]);
+
+	/* Link parking loop node to itself (loops to itself whilst parked) */
+	dma_next_node(player->fdma_channel,
+			&player->parking_fdma_params[PARKING_NODE_LOOP],
+			&player->parking_fdma_params[PARKING_NODE_LOOP]);
+
+	/* Link playback node to parking entry node (transitions to parked) */
+	dma_next_node(player->fdma_channel, player->fdma_params,
+			&player->parking_fdma_params[PARKING_NODE_ENTRY]);
+
+	/* Set channel status for linear pcm */
+	status = get__AUD_UNIPERIF_CHANNEL_STA_REG0(player);
+	status &= ~0x02;
+	player->stream_settings.iec958.status[4] = 0x0b;
+	set__AUD_UNIPERIF_CHANNEL_STA_REG0(player, status);
+	set__AUD_UNIPERIF_CHANNEL_STA_REG1(player, 0x0b);
+	set__AUD_UNIPERIF_CONFIG__CHL_STS_UPDATE(player);
+
+	/* Clear validity bits as linear pcm */
+	set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player, 0);
+	set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_RIGHT(player, 0);
+
+	return 0;
+}
+
+static int snd_stm_uniperif_player_halt(struct snd_pcm_substream *substream)
+{
+	struct snd_stm_uniperif_player *player =
+			snd_pcm_substream_chip(substream);
+
+	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+
+	BUG_ON(!player);
+	BUG_ON(!snd_stm_magic_valid(player));
+
+	/* Mute & shutdown converter */
+	if (player->conv_group) {
+		snd_stm_conv_mute(player->conv_group);
+		snd_stm_conv_disable(player->conv_group);
+	}
+
+	/* Disable interrupts */
+	set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(player);
+	set__AUD_UNIPERIF_ITM_BCLR__PA_PB_SYNC_LOST(player);
+	set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(player);
+	disable_irq_nosync(player->irq);
+
+	/* Stop uniperipheral player */
+	clk_disable(player->clock);
+	set__AUD_UNIPERIF_CTRL__OPERATION_OFF(player);
+
+	/* Stop FDMA transfer */
+	dma_stop_channel(player->fdma_channel);
+
+	/* Reset current configuration */
+	player->current_rate = 0;
+	player->current_format = 0;
+	player->current_channels = 0;
+
+	/* Player should be in the stop state */
+	player->state = SND_STM_UNIPERIF_PLAYER_STATE_STOP;
+
 	return 0;
 }
 
@@ -1093,28 +1571,30 @@ static int snd_stm_uniperif_player_stop(struct snd_pcm_substream *substream)
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
-	/* Mute & shutdown converter */
+	switch (player->state) {
+	case SND_STM_UNIPERIF_PLAYER_STATE_RUNNING:
+		if (player->info->parking_enabled == 0)
+			snd_stm_uniperif_player_halt(substream);
+		else
+			snd_stm_uniperif_player_park(substream);
+		break;
 
-	if (player->conv_group) {
-		snd_stm_conv_mute(player->conv_group);
-		snd_stm_conv_disable(player->conv_group);
+	case SND_STM_UNIPERIF_PLAYER_STATE_XRUN:
+		snd_stm_uniperif_player_halt(substream);
+		break;
+
+	case SND_STM_UNIPERIF_PLAYER_STATE_PARKING:
+		snd_stm_uniperif_player_halt(substream);
+		break;
+
+	case SND_STM_UNIPERIF_PLAYER_STATE_STOP:
+		snd_stm_uniperif_player_halt(substream);
+		break;
+
+	default:
+		snd_stm_printe("Player '%s' unexpected state %d!\n",
+			       dev_name(player->device), player->state);
 	}
-
-	/* Disable interrupts */
-
-	set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(player);
-	set__AUD_UNIPERIF_ITM_BCLR__PA_PB_SYNC_LOST(player);
-	set__AUD_UNIPERIF_ITM_BCLR__MEM_BLK_READ(player);
-	set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(player);
-	disable_irq_nosync(player->irq);
-
-	/* Stop uniperipheral player */
-	clk_disable(player->clock);
-	set__AUD_UNIPERIF_CTRL__OPERATION_OFF(player);
-
-	/* Stop FDMA transfer */
-
-	dma_stop_channel(player->fdma_channel);
 
 	return 0;
 }
@@ -1238,7 +1718,23 @@ static snd_pcm_uframes_t snd_stm_uniperif_player_pointer(
 	BUG_ON(!snd_stm_magic_valid(player));
 	BUG_ON(!runtime);
 
-	residue = get_dma_residue(player->fdma_channel);
+	switch (player->state) {
+	case SND_STM_UNIPERIF_PLAYER_STATE_RUNNING:
+		/* Get the number of bytes remaining for current DMA node */
+		residue = get_dma_residue(player->fdma_channel);
+		break;
+
+	case SND_STM_UNIPERIF_PLAYER_STATE_PARKING:
+		/* Number of bytes remaining is always DMA size for parking */
+		residue = runtime->dma_bytes;
+		break;
+
+	default:
+		snd_stm_printe("Player '%s' unexpected state %d!\n",
+				dev_name(player->device), player->state);
+		return 0;
+	}
+
 	hwptr = (runtime->dma_bytes - residue) % runtime->dma_bytes;
 	pointer = bytes_to_frames(runtime, hwptr);
 
@@ -1836,6 +2332,7 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 	player->device = &pdev->dev;
 
 	spin_lock_init(&player->default_settings_lock);
+	sema_init(&player->parking_active, 0);
 
 	/* Set player specific options */
 
@@ -1863,6 +2360,9 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 		snd_stm_printe("Unknown player type\n");
 		goto error_player_type;
 	}
+
+	snd_stm_printd(0, "Parking is %s\n",
+			player->info->parking_enabled ? "enabled" : "disabled");
 
 	/* Get resources */
 
@@ -1937,6 +2437,18 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 			player->hardware.buffer_bytes_max);
 	if (!player->buffer) {
 		snd_stm_printe("Cannot initialize buffer!\n");
+		result = -ENOMEM;
+		goto error_buffer_init;
+	}
+
+	/* Initialize parking buffer */
+
+	player->parking_buffer = snd_stm_buffer_create(player->pcm,
+			player->device,
+			PARKING_BUFFER_SIZE);
+	if (!player->parking_buffer) {
+		snd_stm_printe("Player '%s' can't create parking buffer!\n",
+				dev_name(player->device));
 		result = -ENOMEM;
 		goto error_buffer_init;
 	}

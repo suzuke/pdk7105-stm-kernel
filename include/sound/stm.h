@@ -342,6 +342,8 @@ struct snd_stm_uniperif_player_info {
 
 	unsigned int channels;
 
+	int parking_enabled;
+
 	const char *fdma_name;
 	unsigned char fdma_initiator;
 	unsigned int fdma_request_line;

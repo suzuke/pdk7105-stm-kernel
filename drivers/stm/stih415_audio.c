@@ -70,6 +70,7 @@ static struct platform_device stih415_uni_player_0 = {
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_HDMI,
 		.clock_name = "CLKS_B_PCM_FSYN0",
 		.channels = 8,
+		.parking_enabled = 1,
 		.fdma_name = "fdma_dmac.3",
 		.fdma_initiator = 0,
 		.fdma_request_line = 23,
