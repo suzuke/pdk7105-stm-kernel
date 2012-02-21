@@ -1891,7 +1891,7 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 		goto error_fdma_request;
 	}
 
-	player->fdma_max_transfer_size = 30;
+	player->fdma_max_transfer_size = 40;
 
 	/* Get player capabilities */
 

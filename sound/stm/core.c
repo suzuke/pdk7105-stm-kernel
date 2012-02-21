@@ -577,7 +577,7 @@ int snd_stm_pcm_transfer_bytes(unsigned int bytes_per_frame,
 	unsigned int transfer_bytes;
 
 	for (transfer_bytes = bytes_per_frame;
-			transfer_bytes * 2 < max_transfer_bytes;
+			transfer_bytes * 2 <= max_transfer_bytes;
 			transfer_bytes *= 2)
 		;
 

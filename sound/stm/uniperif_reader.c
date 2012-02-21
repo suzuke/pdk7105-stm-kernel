@@ -889,7 +889,7 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 		goto error_fdma_request;
 	}
 
-	reader->fdma_max_transfer_size = 30;
+	reader->fdma_max_transfer_size = 40;
 
 	/* Get reader capabilities */
 
