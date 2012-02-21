@@ -1107,20 +1107,6 @@ static void snd_stm_uniperif_player_set_channel_status(
 		}
 	}
 
-	/*
-	 * We expect the user to provide a valid channel status. Player2 will
-	 * correctly set the channel status for compressed pcm with a max word
-	 * size of 16-bits, but for linear pcm, it fails to set the max word
-	 * length to 24-bits. Here we do a quick check on the mode and set the
-	 * max word length.
-	 */
-
-	if (player->stream_settings.encoding_mode ==
-		SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_PCM)
-		player->stream_settings.iec958.status[4] = 0x0b;
-	else
-		player->stream_settings.iec958.status[4] = 0x02;
-
 	/* Program the new channel status */
 	for (n = 0; n < 6; ++n) {
 		status  = player->stream_settings.iec958.status[0+(n*4)] & 0xf;
@@ -1225,7 +1211,10 @@ static int snd_stm_uniperif_player_prepare_iec958(
 		if (player->stream_settings.encoding_mode ==
 				SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_PCM) {
 
-			snd_stm_printd(1, "- PCM mode\n");
+			snd_stm_printd(1, "- Linear PCM mode\n");
+
+			/* Set 24-bit max word size (Player2 should do this) */
+			player->stream_settings.iec958.status[4] = 0x0b;
 
 			/* Clear user validity bits */
 			set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player,
@@ -1236,7 +1225,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 			struct snd_stm_uniperif_spdif_settings *settings =
 				&player->stream_settings;
 
-			snd_stm_printd(1, "- PCM encoded mode\n");
+			snd_stm_printd(1, "- Encoded mode\n");
 
 			/* Configure number of frames for data/pause burst */
 			set__AUD_UNIPERIF_SPDIF_FRAMELEN_BURST__DAT_BURST(
@@ -1508,12 +1497,25 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM)
 		ctrl |= (1 << shift__AUD_UNIPERIF_CTRL__SPDIF_FMT(player));
 
+	/*
+	 * For compatibility with Player2, we do not use encoded mode when it
+	 * is selected. Instead we use normal linear PCM mode, but with the
+	 * channel status set for encoded mode and the validity bits set. We do
+	 * this because Player2 will provide properly formatted data in the
+	 * same 32-bit data format. We are essentially only turning off some of
+	 * the useful hardware features (that may or may not work!) and Player2
+	 * is doing the work in software.
+	 */
+
 	if (player->stream_settings.encoding_mode ==
 			SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_ENCODED) {
+		/*
 		set__AUD_UNIPERIF_ITS_BCLR__PA_PB_SYNC_LOST(player);
 		set__AUD_UNIPERIF_ITM_BSET__PA_PB_SYNC_LOST(player);
 
 		ctrl |= (value__AUD_UNIPERIF_CTRL__OPERATION_ENC_DATA(player) <<
+		*/
+		ctrl |= (value__AUD_UNIPERIF_CTRL__OPERATION_PCM_DATA(player) <<
 			shift__AUD_UNIPERIF_CTRL__OPERATION(player));
 	} else {
 		ctrl |= (value__AUD_UNIPERIF_CTRL__OPERATION_PCM_DATA(player) <<
@@ -1733,7 +1735,15 @@ static inline int snd_stm_uniperif_player_release(struct snd_pcm_substream
 	/* "Unmute" player */
 	if (player->stream_settings.encoding_mode ==
 			SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_ENCODED) {
+		/*
+		 * Player2 provides us with properly formatted encoded data, so
+		 * we actually use linear pcm mode (but with channel status and
+		 * validity bits setup for encoded mode).
+		 */
+		/*
 		ctrl |= (value__AUD_UNIPERIF_CTRL__OPERATION_ENC_DATA(
+		*/
+		ctrl |= (value__AUD_UNIPERIF_CTRL__OPERATION_PCM_DATA(
 				 player) <<
 			shift__AUD_UNIPERIF_CTRL__OPERATION(player));
 	} else {
@@ -1859,7 +1869,7 @@ static struct snd_pcm_ops snd_stm_uniperif_player_pcm_ops = {
  * ALSA uniperipheral spdif controls
  */
 
-static int snd_stm_uniperif_spdif_ctl_iec958_get(struct snd_kcontrol *kcontrol,
+static int snd_stm_uniperif_player_ctl_iec958_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -1877,7 +1887,7 @@ static int snd_stm_uniperif_spdif_ctl_iec958_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_iec958_put(struct snd_kcontrol *kcontrol,
+static int snd_stm_uniperif_player_ctl_iec958_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -1890,11 +1900,37 @@ static int snd_stm_uniperif_spdif_ctl_iec958_put(struct snd_kcontrol *kcontrol,
 	BUG_ON(!snd_stm_magic_valid(player));
 
 	spin_lock(&player->default_settings_lock);
+
+	/* If user settings differ from the default, update default */
 	if (snd_stm_iec958_cmp(&player->default_settings.iec958,
 				&ucontrol->value.iec958) != 0) {
 		player->default_settings.iec958 = ucontrol->value.iec958;
 		changed = 1;
 	}
+
+	/* If user settings differ from the current, update current */
+	if (snd_stm_iec958_cmp(&player->stream_settings.iec958,
+				&ucontrol->value.iec958) != 0) {
+		player->stream_settings.iec958 = ucontrol->value.iec958;
+		changed = 1;
+
+		/*
+		 * Player2 fails to set the max word size to 24-bit for setting
+		 * the channel status for linear pcm. It does however set the
+		 * max word length correctly for encoded mode. So if we check
+		 * for the max word length being zero, then we know the channel
+		 * status is for linear pcm mode and the max word length should
+		 * be set to 24-bit.
+		 */
+
+		if (player->stream_settings.iec958.status[4] == 0)
+			player->stream_settings.iec958.status[4] = 0x0b;
+	}
+
+	/* If settings changed and uniperipheral in operation, update */
+	if (changed & get__AUD_UNIPERIF_CTRL__OPERATION(player))
+		snd_stm_uniperif_player_set_channel_status(player, NULL);
+
 	spin_unlock(&player->default_settings_lock);
 
 	return changed;
@@ -1905,7 +1941,7 @@ static int snd_stm_uniperif_spdif_ctl_iec958_put(struct snd_kcontrol *kcontrol,
  * this data will be added by driver according to setting passed in\
  * following controls So that play things in PCM mode*/
 
-static int snd_stm_uniperif_spdif_ctl_raw_get(struct snd_kcontrol *kcontrol,
+static int snd_stm_uniperif_player_ctl_raw_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -1925,7 +1961,7 @@ static int snd_stm_uniperif_spdif_ctl_raw_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_raw_put(struct snd_kcontrol *kcontrol,
+static int snd_stm_uniperif_player_ctl_raw_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -1956,11 +1992,15 @@ static int snd_stm_uniperif_spdif_ctl_raw_put(struct snd_kcontrol *kcontrol,
 	return changed;
 }
 
-/* "Encoded Data" switch selects linear PCM or encoded operation of
- * uniperif player - the difference is in generating mute data; PCM mode
- * will generate NULL data, encoded - pause bursts */
+/*
+ * The 'Encoded Data' switch should select between linear PCM and encoded
+ * operation of the uniperipheral. The main difference between the modes being
+ * how mute data is generated. In linear PCM mode null data is used and in
+ * encoded mode pause bursts are used.
+ */
 
-static int snd_stm_uniperif_spdif_ctl_encoded_get(struct snd_kcontrol *kcontrol,
+static int snd_stm_uniperif_player_ctl_encoded_get(
+		struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -1980,7 +2020,8 @@ static int snd_stm_uniperif_spdif_ctl_encoded_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_encoded_put(struct snd_kcontrol *kcontrol,
+static int snd_stm_uniperif_player_ctl_encoded_put(
+		struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -1999,9 +2040,27 @@ static int snd_stm_uniperif_spdif_ctl_encoded_put(struct snd_kcontrol *kcontrol,
 		encoding_mode = SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_PCM;
 
 	spin_lock(&player->default_settings_lock);
-	changed = (encoding_mode !=
-			player->default_settings.encoding_mode);
-	player->default_settings.encoding_mode = encoding_mode;
+
+	/* If user settings differ from the default, update default */
+	if (encoding_mode != player->default_settings.encoding_mode) {
+		player->default_settings.encoding_mode = encoding_mode;
+		changed = 1;
+	}
+
+	/* If user settings differ from the current, update current */
+	if (encoding_mode != player->stream_settings.encoding_mode) {
+		player->stream_settings.encoding_mode = encoding_mode;
+		changed = 1;
+	}
+
+	/* If settings changed and uniperipheral in operation, update */
+	if (changed && get__AUD_UNIPERIF_CTRL__OPERATION(player)) {
+		set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player,
+				ucontrol->value.integer.value[0]);
+		set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_RIGHT(player,
+				ucontrol->value.integer.value[0]);
+	}
+
 	spin_unlock(&player->default_settings_lock);
 
 	return changed;
@@ -2011,7 +2070,7 @@ static int snd_stm_uniperif_spdif_ctl_encoded_put(struct snd_kcontrol *kcontrol,
  * control IEC 61937 preamble and data burst periods (see mentioned
  * standard for more informations) */
 
-static int snd_stm_uniperif_spdif_ctl_preamble_info(
+static int snd_stm_uniperif_player_ctl_preamble_info(
 		struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_info *uinfo)
 {
@@ -2020,7 +2079,7 @@ static int snd_stm_uniperif_spdif_ctl_preamble_info(
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_preamble_get(
+static int snd_stm_uniperif_player_ctl_preamble_get(
 		struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
@@ -2041,7 +2100,7 @@ static int snd_stm_uniperif_spdif_ctl_preamble_get(
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_preamble_put(
+static int snd_stm_uniperif_player_ctl_preamble_put(
 		struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
@@ -2067,7 +2126,7 @@ static int snd_stm_uniperif_spdif_ctl_preamble_put(
 	return changed;
 }
 
-static int snd_stm_uniperif_spdif_ctl_repetition_info(struct snd_kcontrol
+static int snd_stm_uniperif_player_ctl_repetition_info(struct snd_kcontrol
 		*kcontrol, struct snd_ctl_elem_info *uinfo)
 {
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
@@ -2077,7 +2136,7 @@ static int snd_stm_uniperif_spdif_ctl_repetition_info(struct snd_kcontrol
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_audio_repetition_get(struct snd_kcontrol
+static int snd_stm_uniperif_player_ctl_audio_repetition_get(struct snd_kcontrol
 		*kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -2096,7 +2155,7 @@ static int snd_stm_uniperif_spdif_ctl_audio_repetition_get(struct snd_kcontrol
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_audio_repetition_put(struct snd_kcontrol
+static int snd_stm_uniperif_player_ctl_audio_repetition_put(struct snd_kcontrol
 		*kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -2120,7 +2179,7 @@ static int snd_stm_uniperif_spdif_ctl_audio_repetition_put(struct snd_kcontrol
 	return changed;
 }
 
-static int snd_stm_uniperif_spdif_ctl_pause_repetition_get(struct snd_kcontrol
+static int snd_stm_uniperif_player_ctl_pause_repetition_get(struct snd_kcontrol
 		*kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -2139,7 +2198,7 @@ static int snd_stm_uniperif_spdif_ctl_pause_repetition_get(struct snd_kcontrol
 	return 0;
 }
 
-static int snd_stm_uniperif_spdif_ctl_pause_repetition_put(struct snd_kcontrol
+static int snd_stm_uniperif_player_ctl_pause_repetition_put(struct snd_kcontrol
 		*kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
@@ -2163,13 +2222,13 @@ static int snd_stm_uniperif_spdif_ctl_pause_repetition_put(struct snd_kcontrol
 	return changed;
 }
 
-static struct snd_kcontrol_new snd_stm_uniperif_spdif_ctls[] = {
+static struct snd_kcontrol_new snd_stm_uniperif_player_ctls[] = {
 	{
 		.iface = SNDRV_CTL_ELEM_IFACE_PCM,
 		.name = SNDRV_CTL_NAME_IEC958("", PLAYBACK, DEFAULT),
 		.info = snd_stm_ctl_iec958_info,
-		.get = snd_stm_uniperif_spdif_ctl_iec958_get,
-		.put = snd_stm_uniperif_spdif_ctl_iec958_put,
+		.get = snd_stm_uniperif_player_ctl_iec958_get,
+		.put = snd_stm_uniperif_player_ctl_iec958_put,
 	}, {
 		.access = SNDRV_CTL_ELEM_ACCESS_READ,
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
@@ -2186,35 +2245,35 @@ static struct snd_kcontrol_new snd_stm_uniperif_spdif_ctls[] = {
 		.iface = SNDRV_CTL_ELEM_IFACE_PCM,
 		.name = SNDRV_CTL_NAME_IEC958("Raw Data ", PLAYBACK, DEFAULT),
 		.info = snd_stm_ctl_boolean_info,
-		.get = snd_stm_uniperif_spdif_ctl_raw_get,
-		.put = snd_stm_uniperif_spdif_ctl_raw_put,
+		.get = snd_stm_uniperif_player_ctl_raw_get,
+		.put = snd_stm_uniperif_player_ctl_raw_put,
 	}, {
 		.iface = SNDRV_CTL_ELEM_IFACE_PCM,
 		.name = SNDRV_CTL_NAME_IEC958("Encoded Data ",
 				PLAYBACK, DEFAULT),
 		.info = snd_stm_ctl_boolean_info,
-		.get = snd_stm_uniperif_spdif_ctl_encoded_get,
-		.put = snd_stm_uniperif_spdif_ctl_encoded_put,
+		.get = snd_stm_uniperif_player_ctl_encoded_get,
+		.put = snd_stm_uniperif_player_ctl_encoded_put,
 	}, {
 		.iface = SNDRV_CTL_ELEM_IFACE_PCM,
 		.name = SNDRV_CTL_NAME_IEC958("Preamble ", PLAYBACK, DEFAULT),
-		.info = snd_stm_uniperif_spdif_ctl_preamble_info,
-		.get = snd_stm_uniperif_spdif_ctl_preamble_get,
-		.put = snd_stm_uniperif_spdif_ctl_preamble_put,
+		.info = snd_stm_uniperif_player_ctl_preamble_info,
+		.get = snd_stm_uniperif_player_ctl_preamble_get,
+		.put = snd_stm_uniperif_player_ctl_preamble_put,
 	}, {
 		.iface = SNDRV_CTL_ELEM_IFACE_PCM,
 		.name = SNDRV_CTL_NAME_IEC958("Audio Burst Period ",
 				PLAYBACK, DEFAULT),
-		.info = snd_stm_uniperif_spdif_ctl_repetition_info,
-		.get = snd_stm_uniperif_spdif_ctl_audio_repetition_get,
-		.put = snd_stm_uniperif_spdif_ctl_audio_repetition_put,
+		.info = snd_stm_uniperif_player_ctl_repetition_info,
+		.get = snd_stm_uniperif_player_ctl_audio_repetition_get,
+		.put = snd_stm_uniperif_player_ctl_audio_repetition_put,
 	}, {
 		.iface = SNDRV_CTL_ELEM_IFACE_PCM,
 		.name = SNDRV_CTL_NAME_IEC958("Pause Burst Period ",
 				PLAYBACK, DEFAULT),
-		.info = snd_stm_uniperif_spdif_ctl_repetition_info,
-		.get = snd_stm_uniperif_spdif_ctl_pause_repetition_get,
-		.put = snd_stm_uniperif_spdif_ctl_pause_repetition_put,
+		.info = snd_stm_uniperif_player_ctl_repetition_info,
+		.get = snd_stm_uniperif_player_ctl_pause_repetition_get,
+		.put = snd_stm_uniperif_player_ctl_pause_repetition_put,
 	}
 };
 
@@ -2318,24 +2377,25 @@ static int snd_stm_uniperif_player_register(struct snd_device *snd_device)
 		return result;
 	}
 
-	/* Register the spdif controls */
+	/* Register the ALSA controls (unless we are of type PCM) */
 
-	if (player->info->player_type == SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF) {
+	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM) {
 		int i;
 
-		/* Create SPDIF ALSA controls */
-		for (i = 0; i < ARRAY_SIZE(snd_stm_uniperif_spdif_ctls); i++) {
-			snd_stm_uniperif_spdif_ctls[i].device =
+		snd_stm_printd(1, "Adding ALSA controls\n");
+
+		for (i = 0; i < ARRAY_SIZE(snd_stm_uniperif_player_ctls); i++) {
+			snd_stm_uniperif_player_ctls[i].device =
 				player->info->card_device;
 			result = snd_ctl_add(snd_device->card,
-				snd_ctl_new1(&snd_stm_uniperif_spdif_ctls[i],
+				snd_ctl_new1(&snd_stm_uniperif_player_ctls[i],
 					     player));
 			if (result < 0) {
 				snd_stm_printe(
-					"Failed to add SPDIF ALSA control!\n");
+					"Failed to add ALSA control!\n");
 				return result;
 			}
-			snd_stm_uniperif_spdif_ctls[i].index++;
+			snd_stm_uniperif_player_ctls[i].index++;
 		}
 	}
 
