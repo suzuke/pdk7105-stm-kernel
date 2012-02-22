@@ -142,6 +142,9 @@ static int read_symbol(FILE *in, struct sym_entry *s)
 	else if (stype == 'N')
 		return -1;
 
+	/* forcibly truncate the symbol if its name is too long */
+	str[KSYM_NAME_LEN-1] = '\0';
+
 	/* include the type field in the symbol name, so that it gets
 	 * compressed together */
 	s->len = strlen(str) + 1;
