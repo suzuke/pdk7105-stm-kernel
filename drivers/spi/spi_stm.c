@@ -35,6 +35,7 @@
 #include <linux/completion.h>
 #include <linux/uaccess.h>
 #include <linux/param.h>
+#include <linux/pm_runtime.h>
 #include <linux/gpio.h>
 #include <linux/err.h>
 #include <linux/spi/spi.h>
@@ -295,6 +296,8 @@ static int spi_stm_txrx_bufs(struct spi_device *spi, struct spi_transfer *t)
 
 	spi_stm = spi_master_get_devdata(spi->master);
 
+	pm_runtime_get_sync(&spi_stm->pdev->dev);
+
 	/* Setup transfer */
 	spi_stm->tx_ptr = t->tx_buf;
 	spi_stm->rx_ptr = t->rx_buf;
@@ -334,6 +337,8 @@ static int spi_stm_txrx_bufs(struct spi_device *spi, struct spi_transfer *t)
 	/* Restore SSC_CTL if necessary */
 	if (ctl)
 		ssc_store32(spi_stm, SSC_CTL, ctl);
+
+	pm_runtime_put(&spi_stm->pdev->dev);
 
 	return t->len;
 
@@ -459,6 +464,10 @@ static int spi_stm_probe(struct platform_device *pdev)
 	}
 
 	dev_info(&pdev->dev, "registered SPI Bus %d\n", master->bus_num);
+
+	/* by default the device is on */
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 
 	return status;
 
