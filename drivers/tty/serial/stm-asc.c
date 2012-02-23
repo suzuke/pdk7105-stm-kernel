@@ -416,8 +416,8 @@ static int __devinit asc_serial_probe(struct platform_device *pdev)
 		enable_irq_wake(pdev->resource[1].start);
 
 		pm_runtime_set_active(&pdev->dev);
-		pm_suspend_ignore_children(&pdev->dev, 1);
 		pm_runtime_enable(&pdev->dev);
+		pm_runtime_get(&pdev->dev); /* notify it's working */
 	}
 	return ret;
 }
