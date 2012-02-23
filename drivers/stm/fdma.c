@@ -32,6 +32,35 @@ MODULE_PARM_DESC(channels, "Limit channels to be used by each of the FDMA "
 		"devices: channels=ch_min-ch_max[,ch_min-ch_max[...]]");
 
 
+#ifdef CONFIG_PM_RUNTIME
+static void
+fdma_change_sw_status(struct fdma_channel *channel, enum fdma_state state)
+{
+	struct fdma *fdma = channel->fdma;
+
+	channel->sw_state = state;
+	switch (channel->sw_state) {
+	case FDMA_RUNNING:
+		pm_runtime_get_sync(&fdma->pdev->dev);
+		break;
+	case FDMA_IDLE:
+		pm_runtime_put(&fdma->pdev->dev);
+		break;
+	case FDMA_CONFIGURED:
+	case FDMA_STOPPING:
+	case FDMA_PAUSING:
+	case FDMA_PAUSED:
+		break;
+	}
+}
+
+#else
+static inline void
+fdma_change_sw_status(struct fdma_channel *channel, enum fdma_state state)
+{
+	channel->sw_state = state;
+}
+#endif
 
 static int fdma_setup_freerunning_node(struct stm_dma_params *params,
 		struct fdma_llu_entry *llu)
@@ -274,7 +303,7 @@ static inline void fdma_handle_fdma_err_irq(struct fdma_channel *channel)
 	 * clear and stop it explicitly now. */
 	writel(MBOX_CMD_PAUSE_CHANNEL << (channel->chan_num * 2),
 			fdma->io_base + fdma->regs.cmd_set);
-	channel->sw_state = FDMA_STOPPING;
+	fdma_change_sw_status(channel, FDMA_STOPPING);
 
 	spin_unlock(&fdma->channels_lock);
 
@@ -301,11 +330,11 @@ static inline void fdma_handle_fdma_completion_irq(struct fdma_channel *channel)
 		switch (channel->sw_state) {
 		case FDMA_RUNNING:	/* Hit a pause node */
 		case FDMA_PAUSING:
-			channel->sw_state = FDMA_PAUSED;
+			fdma_change_sw_status(channel, FDMA_PAUSED);
 			break;
 		case FDMA_STOPPING:
 			writel(0, CMD_STAT_REG(channel->chan_num));
-			channel->sw_state = FDMA_IDLE;
+			fdma_change_sw_status(channel, FDMA_IDLE);
 			break;
 		default:
 			BUG();
@@ -316,7 +345,7 @@ static inline void fdma_handle_fdma_completion_irq(struct fdma_channel *channel)
 		case FDMA_RUNNING:
 		case FDMA_PAUSING:
 		case FDMA_STOPPING:
-			channel->sw_state = FDMA_IDLE;
+			fdma_change_sw_status(channel, FDMA_IDLE);
 			break;
 		default:
 			BUG();
@@ -856,7 +885,8 @@ static int fdma_unpause(struct fdma_channel *channel)
 
 	writel(MBOX_CMD_START_CHANNEL << (channel->chan_num * 2),
 			fdma->io_base + fdma->regs.cmd_set);
-	channel->sw_state = FDMA_RUNNING;
+
+	fdma_change_sw_status(channel, FDMA_RUNNING);
 
 	spin_unlock_irqrestore(&fdma->channels_lock, irqflags);
 	return 0;
@@ -887,7 +917,7 @@ static int fdma_pause(struct fdma_channel *channel, int flush)
 	case FDMA_PAUSING:
 	case FDMA_STOPPING:
 		/* Hardware is pausing already, wait for interrupt */
-		channel->sw_state = FDMA_PAUSING;
+		fdma_change_sw_status(channel, FDMA_PAUSING);
 		spin_unlock_irqrestore(&fdma->channels_lock, irqflags);
 #if 0
 		/* In some cases this is called from a context which cannot
@@ -925,7 +955,7 @@ static int fdma_stop(struct fdma_channel *channel)
 	case FDMA_CONFIGURED:
 	case FDMA_PAUSED:
 		/* Hardware is already idle, simply change state */
-		channel->sw_state = FDMA_IDLE;
+		fdma_change_sw_status(channel, FDMA_IDLE);
 		writel(0, CMD_STAT_REG(channel->chan_num));
 		spin_unlock_irqrestore(&fdma->channels_lock, irqflags);
 		break;
@@ -936,7 +966,7 @@ static int fdma_stop(struct fdma_channel *channel)
 	case FDMA_PAUSING:
 	case FDMA_STOPPING:
 		/* Hardware is pausing already, wait for interrupt */
-		channel->sw_state = FDMA_STOPPING;
+		fdma_change_sw_status(channel, FDMA_STOPPING);
 		spin_unlock_irqrestore(&fdma->channels_lock, irqflags);
 #if 0
 		/* In some cases this is called from a context which cannot
@@ -1199,7 +1229,7 @@ static int fdma_configure(struct dma_channel *dma_chan,
 			(unsigned long)params->comp_cb_parm);
 	tasklet_init(&channel->fdma_error, params->err_cb,
 			(unsigned long)params->err_cb_parm);
-	channel->sw_state = FDMA_CONFIGURED;
+	fdma_change_sw_status(channel, FDMA_CONFIGURED);
 
 	spin_unlock_irqrestore(&fdma->channels_lock, irq_flags);
 
@@ -1227,9 +1257,10 @@ static int fdma_xfer(struct dma_channel *dma_chan,
 
 	BUG_ON(fdma_get_engine_status(channel) != FDMA_CHANNEL_IDLE);
 
+	fdma_change_sw_status(channel, FDMA_RUNNING);
+
 	fdma_start_channel(channel, desc->llu_nodes->dma_addr,
 			desc->llu_nodes->virt_addr->size_bytes);
-	channel->sw_state = FDMA_RUNNING;
 
 	spin_unlock_irqrestore(&fdma->channels_lock, irqflags);
 
@@ -1458,6 +1489,9 @@ static int __devinit fdma_driver_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, fdma);
 
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+
 	return 0;
 }
 
@@ -1546,6 +1580,8 @@ static struct dev_pm_ops fdma_pm_ops = {
 	.freeze_noirq = fdma_suspend_freeze_noirq,
 	.restore_noirq = fdma_restore_noirq,
 #endif
+	.runtime_suspend = fdma_suspend_freeze_noirq,
+	.runtime_resume = fdma_resume_noirq,
 };
 #else
 static struct dev_pm_ops fdma_pm_ops;
