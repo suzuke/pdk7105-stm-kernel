@@ -211,6 +211,51 @@ void dump_stack(void)
 
 EXPORT_SYMBOL(dump_stack);
 
+#ifdef CONFIG_KPTRACE
+int get_stack(char *buf, unsigned long *sp, size_t size, size_t depth)
+{
+	unsigned long addr;
+	char *modname;
+	const char *name;
+	unsigned long offset, symbolsize;
+	char namebuf[KSYM_NAME_LEN + 1];
+	int i = 0;
+	int pos = 0;
+
+	while (!kstack_end(sp) && i < depth) {
+		addr = *sp++;
+		if (kernel_text_address(addr)) {
+			pos += snprintf(buf + pos, size - pos, "[<%08lx>] ",
+					addr);
+
+			name = kallsyms_lookup(addr, &symbolsize, &offset,
+					       &modname, namebuf);
+			if (!name) {
+				pos += snprintf(buf + pos, size - pos,
+						"0x%lx", addr);
+			} else {
+				if (modname) {
+					pos += snprintf(buf + pos,
+							size - pos,
+							"%s+%#lx/%#lx [%s]\n",
+							name, offset,
+							symbolsize, modname);
+				} else {
+					pos += snprintf(buf + pos,
+							size - pos,
+							"%s+%#lx/%#lx\n", name,
+							offset, symbolsize);
+				}
+			}
+			i++;
+		}
+	}
+	return pos;
+}
+EXPORT_SYMBOL_GPL(get_stack);
+#endif /*CONFIG_KPTRACE*/
+
+
 void show_stack(struct task_struct *tsk, unsigned long *sp)
 {
 	dump_backtrace(NULL, tsk);

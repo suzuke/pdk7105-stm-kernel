@@ -493,7 +493,7 @@ config RING_BUFFER_BENCHMARK
 endif # FTRACE
 
 config KPTRACE
-	tristate "KPTrace (EXPERIMENTAL)"
+	bool "KPTrace"
 	depends on HAVE_KPTRACE
 	select KPROBES
 	select DEBUG_FS
