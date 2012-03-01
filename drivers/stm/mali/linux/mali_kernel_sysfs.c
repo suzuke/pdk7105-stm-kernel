@@ -17,6 +17,7 @@
 #include <linux/device.h>
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
+#include <linux/export.h>
 
 /* the mali kernel subsystem types */
 #include "mali_kernel_subsystem.h"
