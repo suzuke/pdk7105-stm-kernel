@@ -169,15 +169,18 @@ static inline u16 pcie_cap_readw(struct stm_pcie_dev_data *priv,
 	return dbi_readw(priv, CFG_PCIE_CAP + cap);
 }
 
-/* Time to wait between testing the link in usecs. There is a mystery
+/* Time to wait between testing the link in msecs. There is a mystery
  * here, in that if you reduce this time to say 10us, the link never
  * actually appears to come up. I cannot think of any explanation
  * for this behaviour
+ *
+ * I choose 12ms here because this is the frequency that the hardware
+ * polls from detect.quiet -> detect.active
  */
-#define LINK_LOOP_DELAY_USECS 8000
+#define LINK_LOOP_DELAY_MS 12
 /* Total amount of time to wait for the link to come up in msecs */
-#define LINK_WAIT_MSECS 80
-#define LINK_LOOP_COUNT ((LINK_WAIT_MSECS * 1000) / LINK_LOOP_DELAY_USECS)
+#define LINK_WAIT_MS 120
+#define LINK_LOOP_COUNT (LINK_WAIT_MS / LINK_LOOP_DELAY_MS)
 
 /* Function to test if the link is in an operational state or not. We must
  * ensure the link is operational before we try to do a configuration access,
@@ -201,6 +204,7 @@ static int link_up(struct stm_pcie_dev_data *priv)
 		 */
 		status = dbi_readl(priv, PORT_LOGIC_DEBUG_REG_0);
 		status &= DEBUG_REG_0_LTSSM_MASK;
+
 		link_up = (status == S_L0) || (status == S_L0S) ||
 			  (status == S_L1_IDLE);
 
@@ -211,7 +215,7 @@ static int link_up(struct stm_pcie_dev_data *priv)
 		 * allow sufficient time
 		 */
 		if (!link_up)
-			udelay(LINK_LOOP_DELAY_USECS);
+			mdelay(LINK_LOOP_DELAY_MS);
 
 	} while (!link_up  && ++count < LINK_LOOP_COUNT);
 
