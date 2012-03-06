@@ -68,12 +68,16 @@ static struct stm_plat_pcie_ops stx7108_pcie_ops = {
 #define PCIE_MEM_START 0x20000000
 #define PCIE_MEM_SIZE  0x20000000
 #define PCIE_CONFIG_SIZE (64*1024)
+#define LMI_START	0x40000000
+#define LMI_SIZE	0x80000000
 
 static struct stm_plat_pcie_config stx7108_plat_pcie_config = {
 	.ahb_val = 0x264207,
 	.ops = &stx7108_pcie_ops,
 	.pcie_window.start = PCIE_MEM_START,
 	.pcie_window.size = PCIE_MEM_SIZE - PCIE_CONFIG_SIZE,
+	.pcie_window.lmi_start = LMI_START,
+	.pcie_window.lmi_size = LMI_SIZE,
 };
 
 #define MSI_FIRST_IRQ 	(NR_IRQS - 33)

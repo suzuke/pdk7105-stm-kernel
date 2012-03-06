@@ -478,10 +478,12 @@ struct stm_plat_fdma_xbar_data {
 /*** PCI platform data ***/
 
 struct stm_pci_window_info {
-	phys_addr_t start; /* Start of memory window hole */
-	phys_addr_t size;
-	phys_addr_t io_start; /* Where IO addresses are */
-	phys_addr_t io_size; /* Zero for no IO region */
+	phys_addr_t start;	/* Start of PCI memory window hole */
+	unsigned long size;
+	phys_addr_t io_start;	/* Where IO addresses are */
+	unsigned long io_size;	/* Zero for no IO region */
+	phys_addr_t lmi_start;	/* Main memory physical start */
+	unsigned long lmi_size;
 };
 
 

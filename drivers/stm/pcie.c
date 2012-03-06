@@ -471,9 +471,9 @@ static int __devinit stm_pcie_hw_init(struct device *dev)
 }
 
 static int __devinit stm_pcie_hw_setup(struct device *dev,
-				       unsigned long pci_window_start,
-				       unsigned long pci_window_size,
-				       unsigned long config_window_start)
+				       phys_addr_t lmi_window_start,
+				       unsigned long lmi_window_size,
+				       phys_addr_t config_window_start)
 {
 	struct stm_plat_pcie_config *config = dev_get_platdata(dev);
 	struct stm_pcie_dev_data *priv = dev_get_drvdata(dev);
@@ -495,9 +495,10 @@ static int __devinit stm_pcie_hw_setup(struct device *dev,
 	 * They are base/limit registers so can be of arbitrary alignment
 	 * presumably
 	 */
-	dbi_writel(priv, CONFIG_MEMORY_START, IN0_MEM_ADDR_START);
-	dbi_writel(priv, CONFIG_MEMORY_START + CONFIG_MEMORY_SIZE - 1,
+	dbi_writel(priv, lmi_window_start, IN0_MEM_ADDR_START);
+	dbi_writel(priv, lmi_window_start + lmi_window_size - 1,
 		   IN0_MEM_ADDR_LIMIT);
+
 	/* Disable the 2nd region */
 	dbi_writel(priv, ~0, IN1_MEM_ADDR_START);
 	dbi_writel(priv, 0, IN1_MEM_ADDR_LIMIT);
@@ -638,8 +639,9 @@ static int __devinit stm_pcie_probe(struct platform_device *pdev)
 	}
 
 	/* Now do all the register poking */
-	err = stm_pcie_hw_setup(&pdev->dev, config->pcie_window.start,
-				config->pcie_window.size, config_window_start);
+	err = stm_pcie_hw_setup(&pdev->dev, config->pcie_window.lmi_start,
+				config->pcie_window.lmi_size,
+				config_window_start);
 	if (err)
 		return err;
 
