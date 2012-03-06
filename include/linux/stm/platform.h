@@ -19,6 +19,7 @@
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/clkdev.h>
+#include <linux/pci.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/nand.h>
 #include <linux/stmmac.h>
@@ -517,6 +518,9 @@ struct stm_plat_pci_config {
 	 * of power on reset. */
 	unsigned pci_reset_gpio;
 	void (*pci_reset)(void);
+
+	/* Maps the irqs for this bus */
+	int (*pci_map_irq)(const struct pci_dev *dev, u8 slot, u8 pin);
 
 	/* You may define a PCI clock name. If NULL it will fall
 	 * back to "pci" */

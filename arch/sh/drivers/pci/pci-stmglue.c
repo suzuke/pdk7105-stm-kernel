@@ -36,6 +36,7 @@ struct stm_pci_chan_info {
 	enum stm_pci_type type;
 	int legacy_irq;
 	struct platform_device *pdev;
+	int (*map_irq)(const struct pci_dev *dev, u8 slot, u8 pin);
 };
 
 
@@ -103,8 +104,11 @@ int __devinit stm_pci_register_controller(struct platform_device *pdev,
 		if (!res)
 			return -ENXIO;
 		info->legacy_irq = res->start;
-	} else
+	} else {
+		struct stm_plat_pci_config *config = platdata;
 		info->legacy_irq = -EINVAL;
+		info->map_irq = config->pci_map_irq;
+	}
 
 	info->type = type;
 	info->pdev = pdev;
@@ -126,13 +130,23 @@ enum stm_pci_type stm_pci_controller_type(struct pci_bus *bus)
 	return info->type;
 }
 
-int stm_pci_legacy_irq(const struct pci_dev *dev)
+/* This is a GLOBAL function for ALL pci controllers in the system. The
+ * assumption is that ALL controllers go through this glue layer. If you try
+ * and use a.n. other controller then very bad things will happen. In the
+ * incredibly unlikely event this does become a problem, then the container_of
+ * technique will have to be replaced with list searching to find out if this
+ * is an ST type controller. Cannot see that ever happening.
+ */
+int __init pcibios_map_platform_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {
 	struct stm_pci_chan_info *info;
 
 	info = bus_to_channel_info(dev->bus);
-	if (info == NULL)
+	if ((info->type == STM_PCI_EXPRESS) && (info->legacy_irq > 0))
+		return info->legacy_irq;
+
+	if (!info->map_irq)
 		return -EINVAL;
 
-	return info->legacy_irq;
+	return  info->map_irq(dev, slot, pin);
 }

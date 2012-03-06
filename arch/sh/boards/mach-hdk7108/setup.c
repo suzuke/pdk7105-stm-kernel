@@ -335,7 +335,7 @@ static struct platform_device *hdk7108_devices[] __initdata = {
 	&hdk7108_nor_flash,
 };
 
-
+static int hdk7108_pci_map_irq(const struct pci_dev *dev, u8 slot, u8 pin);
 
 static struct stm_plat_pci_config hdk7108_pci_config = {
 	.pci_irq = {
@@ -355,23 +355,15 @@ static struct stm_plat_pci_config hdk7108_pci_config = {
 	},
 	.pci_clk = 33333333,
 	.pci_reset_gpio = HDK7108_PIO_PCI_RESET,
+	.pci_map_irq = hdk7108_pci_map_irq,
 };
 
-#ifdef CONFIG_PCI
-
-int pcibios_map_platform_irq(const struct pci_dev *dev, u8 slot, u8 pin)
+static int hdk7108_pci_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {
-	int irq;
-
-	irq = stm_pci_legacy_irq(dev);
-	if (irq > 0)
-		return irq;
-
 	/* We can use the standard function on this board */
 	return stx7108_pcibios_map_platform_irq(&hdk7108_pci_config, pin);
 }
 
-#endif
 
 /* Mali parameters */
 
