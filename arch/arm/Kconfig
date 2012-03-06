@@ -965,6 +965,7 @@ config ARCH_STM
 	select ARM_GIC
 	select HAVE_ARM_GT
 	select STM_DRIVERS
+	select MIGHT_HAVE_PCI
 	help
 	  This enables support for STMicroelectronics Digital Consumer
 	  Electronics family of parts, primarily targetted at set-top-box

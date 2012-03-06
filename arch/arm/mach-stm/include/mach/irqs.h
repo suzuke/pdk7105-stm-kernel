@@ -20,7 +20,8 @@
 
 #define IRQ_GIC_START		32
 
-#define NR_PIO_IRQS (8*27)
-#define NR_IRQS			(IRQ_GIC_START + 224 + NR_PIO_IRQS)
+#define NR_PIO_IRQS	(8*27)
+#define NR_MSI_IRQS	32
+#define NR_IRQS		(IRQ_GIC_START + 224 + NR_PIO_IRQS + NR_MSI_IRQS)
 
 #endif
