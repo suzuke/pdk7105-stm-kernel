@@ -27,9 +27,14 @@
 #include <linux/cache.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
-#include <linux/interrupt.h>
-#include <asm/clock.h>
+#include <linux/irq.h>
 #include "pcie-regs.h"
+
+#ifdef CONFIG_ARM
+/* To get chained_irq_enter/exit */
+#include <asm/mach/irq.h>
+#endif
+
 
 struct stm_msi_info;
 
@@ -710,6 +715,16 @@ static void msi_irq_demux(unsigned int mux_irq, struct irq_desc *mux_desc)
 	u32 mask;
 	int irq;
 	struct stm_msi_info *msi = irq_desc_get_handler_data(mux_desc);
+	struct irq_chip *chip = irq_get_chip(mux_irq);
+
+#ifdef CONFIG_ARM
+	/* These functions exist on the ARM only, chained_irq_enter/exit() are
+	 * needed because the interrupts are fast_eoi rather than level. So
+	 * somehow we have to call the eoi function. These arm specific
+	 * functions will do this.
+	 */
+	chained_irq_enter(chip, mux_desc);
+#endif
 
 	/* Run down the status registers looking for which one to take.
 	 * No need for any locks, we only ever read stuff here
@@ -727,6 +742,11 @@ static void msi_irq_demux(unsigned int mux_irq, struct irq_desc *mux_desc)
 			}
 		} while (status);
 	}
+
+#ifdef CONFIG_ARM
+	chained_irq_exit(chip, mux_desc);
+#endif
+
 }
 
 static inline void set_msi_bit(struct irq_data *data, unsigned int reg_base)
@@ -903,6 +923,10 @@ static int __devinit stm_msi_probe(struct platform_device *pdev)
 		irq_set_chip_and_handler_name(irq, &msi_chip,
 					      handle_level_irq, "msi");
 		irq_set_handler_data(irq, msi);
+#ifdef CONFIG_ARM
+		/* Horrible, why is the ARM it's own universe? */
+		set_irq_flags(irq, IRQF_VALID);
+#endif
 	}
 
 	/* Set the private data, arch_setup_msi_irq() will always fail
