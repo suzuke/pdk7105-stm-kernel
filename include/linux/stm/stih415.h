@@ -58,7 +58,7 @@
 	(((x) < 100) ? (x) : ((x)-100+19))
 
 #define LPM_SYSCONF_BANK	(6)
-
+#define LPM_CONFIG(x)		LPM_SYSCONF_BANK, (x)
 
 struct stih415_pio_config {
         struct stm_pio_control_mode_config *mode;
@@ -132,6 +132,8 @@ void stih415_configure_pwm(struct stih415_pwm_config *config);
 void stih415_configure_mmc(int emmc);
 
 void stih415_configure_mali(struct stm_mali_config *config);
+
+void stih415_configure_keyscan(const struct stm_keyscan_config *config);
 
 struct stih415_audio_config {
 	enum {

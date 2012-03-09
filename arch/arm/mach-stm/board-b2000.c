@@ -409,6 +409,19 @@ static void __init b2000_init(void)
 	/* reset */
 	stm_board_reset = stih415_reset;
 
+	stih415_configure_keyscan(&(struct stm_keyscan_config) {
+			.num_out_pads = 4,
+			.num_in_pads = 4,
+			.debounce_us = 5000,
+			.keycodes = {
+				/* in0 ,   in1  ,   in2 ,  in3  */
+				KEY_F13, KEY_F9,  KEY_F5, KEY_F1,  /* out0 */
+				KEY_F14, KEY_F10, KEY_F6, KEY_F2,  /* out1 */
+				KEY_F15, KEY_F11, KEY_F7, KEY_F3,  /* out2 */
+				KEY_F16, KEY_F12, KEY_F8, KEY_F4   /* out3 */
+			},
+		});
+
 	platform_add_devices(b2000_devices,
 		ARRAY_SIZE(b2000_devices));
 

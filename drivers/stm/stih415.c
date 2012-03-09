@@ -998,6 +998,66 @@ void stih415_configure_mali(struct stm_mali_config *priv_data)
 	platform_device_register(&stih415_mali_device);
 }
 
+
+/* Keyscan resources -------------------------------------------------------*/
+
+static struct stm_pad_config stih415_keyscan_pad_config = {
+	.gpios_num = 8,
+	.gpios = (struct stm_pad_gpio []) {
+		STM_PAD_PIO_IN(0, 2, 2),	/* KEYSCAN_IN[0] */
+		STM_PAD_PIO_IN(0, 3, 2),	/* KEYSCAN_IN[1] */
+		STM_PAD_PIO_IN(0, 4, 2),	/* KEYSCAN_IN[2] */
+		STM_PAD_PIO_IN(2, 6, 2),	/* KEYSCAN_IN[3] */
+
+		STM_PAD_PIO_OUT(1, 6, 2),	/* KEYSCAN_OUT[0] */
+		STM_PAD_PIO_OUT(1, 7, 2),	/* KEYSCAN_OUT[1] */
+		STM_PAD_PIO_OUT(0, 6, 2),	/* KEYSCAN_OUT[2] */
+		STM_PAD_PIO_OUT(2, 7, 2),	/* KEYSCAN_OUT[3] */
+	},
+	.sysconfs_num = 1,
+	.sysconfs = (struct stm_pad_sysconf []) {
+		/* KEYSCAN_POWERDOWN_REQ */
+		STM_PAD_SYSCONF(LPM_CONFIG(1), 8, 8, 0),
+	}
+};
+
+static struct platform_device stih415_keyscan_device = {
+	.name = "stm-keyscan",
+	.id = -1,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(STIH415_SBC_KEYSCAN_BASE, 0x2000),
+		STIH415_RESOURCE_IRQ(212),
+	},
+	.dev.platform_data = &(struct stm_plat_keyscan_data) {
+		.pad_config = &stih415_keyscan_pad_config,
+	},
+};
+
+void stih415_configure_keyscan(const struct stm_keyscan_config *config)
+{
+	struct stm_plat_keyscan_data *plat_data;
+	int i;
+
+	plat_data = stih415_keyscan_device.dev.platform_data;
+	plat_data->keyscan_config = *config;	/* struct copy */
+
+	for (i = config->num_in_pads; i < 4; i++)
+		stih415_keyscan_pad_config.gpios[i].direction =
+			stm_pad_gpio_direction_ignored;
+	for (i = config->num_out_pads+4; i < 8; i++)
+		stih415_keyscan_pad_config.gpios[i].direction =
+			stm_pad_gpio_direction_ignored;
+
+	clk_add_alias_platform_device(NULL, &stih415_keyscan_device,
+				      "sbc_comms_clk", NULL);
+
+	platform_device_register(&stih415_keyscan_device);
+}
+
+
+/* Utility functions  ------------------------------------------------------*/
+
 void stih415_reset(char mode)
 {
 	struct sysconf_field *sc = sysconf_claim(SYSCONF(11),
