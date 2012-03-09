@@ -619,4 +619,18 @@ static inline int clk_add_alias_platform_device(const char *alias,
 extern void (*stm_board_reset)(char mode);
 
 
+/* stm-keyscan platform data */
+
+#define STM_KEYSCAN_MAXKEYS 16
+struct stm_keyscan_config {
+	unsigned int num_out_pads, num_in_pads;
+	unsigned int debounce_us;
+	int keycodes[STM_KEYSCAN_MAXKEYS];
+};
+
+struct stm_plat_keyscan_data {
+	struct stm_pad_config *pad_config;
+	struct stm_keyscan_config keyscan_config;
+};
+
 #endif /* __LINUX_STM_PLATFORM_H */
