@@ -173,3 +173,52 @@ void clkdev_drop(struct clk_lookup *cl)
 	kfree(cl);
 }
 EXPORT_SYMBOL(clkdev_drop);
+
+struct clk_devres {
+	struct clk *clk;
+};
+
+static void devm_clk_release(struct device *dev, void *res)
+{
+	struct clk_devres *dr = res;
+
+	clk_put(dr->clk);
+}
+
+static int devm_clk_match(struct device *dev, void *res, void *match_data)
+{
+	struct clk_devres *dr = res;
+	struct clk *clk = match_data;
+
+	return dr->clk == clk;
+}
+
+struct clk *devm_clk_get(struct device *dev, const char *id)
+{
+	struct clk_devres *dr;
+	struct clk *clk;
+
+	dr = devres_alloc(devm_clk_release, sizeof(struct clk_devres),
+			  GFP_KERNEL);
+	if (!dr)
+		return ERR_PTR(-ENOMEM);
+
+	clk = clk_get(dev, id);
+	if (IS_ERR(clk)) {
+		devres_free(dr);
+		return clk;
+	}
+
+	dr->clk = clk;
+	devres_add(dev, dr);
+
+	return clk;
+}
+EXPORT_SYMBOL(devm_clk_get);
+
+void devm_clk_put(struct device *dev, struct clk *clk)
+{
+	clk_put(clk);
+	WARN_ON(devres_destroy(dev, devm_clk_release, devm_clk_match, clk));
+}
+EXPORT_SYMBOL(devm_clk_put);

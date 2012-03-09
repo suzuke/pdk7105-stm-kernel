@@ -198,4 +198,10 @@ struct clk *clk_get_sys(const char *dev_id, const char *con_id);
 int clk_add_alias(const char *alias, const char *alias_dev_name, char *id,
 			struct device *dev);
 
+/*
+ * Managed clock interface
+ */
+struct clk *devm_clk_get(struct device *dev, const char *id);
+void devm_clk_put(struct device *dev, struct clk *clk);
+
 #endif
