@@ -1092,20 +1092,18 @@ static int fdma_compile_params(struct fdma_channel *channel,
 	return res;
 }
 
-static int fdma_update_param(struct dma_channel *dma_chan, void *params)
+static int fdma_update_param(struct fdma_channel *channel,
+		struct stm_dma_params *params)
 {
-	struct fdma_channel *channel = dma_chan->priv_data;
-
-	channel->params = (struct stm_dma_params *) params;
+	channel->params = params;
 
 	return 0;
 }
 
-static int fdma_get_node_ptr(struct dma_channel *dma_chan, void *fnode,
-		void *fparams)
+static int fdma_get_node_ptr(struct fdma_channel *channel, void *fnode,
+		struct stm_dma_params *params)
 {
 	struct fdma_xfer_descriptor *desc;
-	struct fdma_channel *channel = dma_chan->priv_data;
 	struct fdma *fdma = channel->fdma;
 	struct stm_dma_node_addr *node = (struct stm_dma_node_addr *) fnode;
 	u32 count;
@@ -1125,10 +1123,7 @@ static int fdma_get_node_ptr(struct dma_channel *dma_chan, void *fnode,
 	node->curr_node = curnode;
 	node->next_node = nextnode;
 
-	if (fparams) {
-		struct stm_dma_params *params =
-			(struct stm_dma_params *) fparams;
-
+	if (params) {
 		desc = (struct fdma_xfer_descriptor *) params->priv;
 		node->node_dma_addr = desc->llu_nodes->dma_addr;
 	} else
@@ -1137,18 +1132,16 @@ static int fdma_get_node_ptr(struct dma_channel *dma_chan, void *fnode,
 	return 0;
 }
 
-static int fdma_set_next_node(struct dma_channel *dma_chan, void *s_node,
-		void *d_node)
+static int fdma_set_next_node(struct stm_dma_params *s_node,
+		struct stm_dma_params *d_node)
 {
 	struct fdma_xfer_descriptor *s_desc;
 	struct fdma_xfer_descriptor *d_desc;
 	struct fdma_llu_node *current_node;
 	int i;
 
-	s_desc = (struct fdma_xfer_descriptor *)
-			((struct stm_dma_params *) s_node)->priv;
-	d_desc = (struct fdma_xfer_descriptor *)
-			((struct stm_dma_params *) d_node)->priv;
+	s_desc = (struct fdma_xfer_descriptor *)s_node->priv;
+	d_desc = (struct fdma_xfer_descriptor *)d_node->priv;
 
 	/* Switch all nodes (effective on next (not pre-loaded) transition) */
 	current_node = s_desc->llu_nodes;
@@ -1269,6 +1262,18 @@ static int fdma_extended(struct dma_channel *dma_chan,
 	case STM_DMA_OP_REQ_FREE:
 		fdma_req_free(channel, ext_param);
 		return 0;
+	case STM_DMA_OP_NEXT_NODE: {
+		struct dma_next_node_param *op_param = ext_param;
+		return fdma_set_next_node(op_param->s_params,
+					  op_param->d_params);
+	}
+	case STM_DMA_OP_GET_NODE: {
+		struct dma_get_node_param *op_param = ext_param;
+		return fdma_get_node_ptr(channel, op_param->node_addr,
+					 op_param->params);
+	}
+	case STM_DMA_OP_CONF_PARAMS:
+		return fdma_update_param(channel, ext_param);
 	default:
 		return -ENOSYS;
 	}
@@ -1355,9 +1360,6 @@ static struct dma_ops fdma_ops = {
 	.xfer		= fdma_xfer,
 	.configure	= fdma_configure,
 	.extend		= fdma_extended,
-	.set_next_node	= fdma_set_next_node,
-	.get_node_ptr	= fdma_get_node_ptr,
-	.reconfigure	= fdma_update_param,
 };
 
 static int __devinit fdma_driver_probe(struct platform_device *pdev)

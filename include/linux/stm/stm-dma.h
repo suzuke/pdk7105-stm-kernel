@@ -74,6 +74,9 @@ enum stm_dma_flags {
 #define STM_DMA_OP_STATUS     6
 #define STM_DMA_OP_REQ_CONFIG 7
 #define STM_DMA_OP_REQ_FREE   8
+#define STM_DMA_OP_NEXT_NODE	10
+#define STM_DMA_OP_GET_NODE	11
+#define STM_DMA_OP_CONF_PARAMS	12
 
 /* Generic DMA request line configuration */
 
@@ -236,24 +239,40 @@ static inline int dma_compile_list(unsigned int vchan,
 	return dma_extend(vchan, STM_DMA_OP_COMPILE, params);
 }
 
+struct dma_next_node_param {
+	struct stm_dma_params *s_params;
+	struct stm_dma_params *d_params;
+};
+
 static inline void dma_next_node(unsigned int vchan,
 				struct stm_dma_params *s_params,
 				struct stm_dma_params *d_params)
 {
-	dma_set_next_node(vchan, s_params, d_params);
+	struct dma_next_node_param ext_param = {
+		s_params, d_params
+	};
+	dma_extend(vchan, STM_DMA_OP_NEXT_NODE, &ext_param);
 }
+
+struct dma_get_node_param {
+	void *node_addr;
+	struct stm_dma_params *params;
+};
 
 static inline void dma_get_node(unsigned int vchan,
 				void *node_addr,
 				struct stm_dma_params *params)
 {
-	dma_get_node_ptr(vchan, node_addr, params);
+	struct dma_get_node_param ext_param = {
+		node_addr, params
+	};
+	dma_extend(vchan, STM_DMA_OP_GET_NODE, &ext_param);
 }
 
 static inline void dma_configure_params(unsigned int vchan,
 				struct stm_dma_params *params)
 {
-	dma_configure_node_params(vchan, params);
+	dma_extend(vchan, STM_DMA_OP_CONF_PARAMS, params);
 }
 
 static inline int dma_xfer_list(unsigned int vchan, struct stm_dma_params *p)
