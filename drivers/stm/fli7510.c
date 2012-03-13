@@ -46,10 +46,11 @@ static void fli7510_emi_power(struct stm_device_state *device_state,
 static struct platform_device fli7510_emi = {
 	.name = "emi",
 	.id = -1,
-	.num_resources = 2,
+	.num_resources = 3,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM(0, 128 * 1024 * 1024),
-		STM_PLAT_RESOURCE_MEM(0xfd100000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 128 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfd100000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfd201000, 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
 		.sysconfs_num = 2,
@@ -73,19 +74,20 @@ static struct platform_device fli7510_nand_emi_device = {
 	},
 };
 
-static struct platform_device fli7510_nand_flex_device = {
-	.num_resources		= 2,
+static struct stm_plat_nand_flex_data fli7510_nand_flex_data;
+static struct stm_plat_nand_bch_data fli7510_nand_bch_data;
+
+static struct platform_device fli7510_nandi_device = {
+	.num_resources		= 3,
 	.resource		= (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM_NAMED("flex_mem", 0xFD101000, 0x1000),
-		STM_PLAT_RESOURCE_IRQ(ILC_IRQ(35), -1),
-	},
-	.dev.platform_data	= &(struct stm_plat_nand_flex_data) {
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xFD101000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_dma", 0xfd200800, 0x0800),
+		STM_PLAT_RESOURCE_IRQ_NAMED("nand_irq", ILC_IRQ(35), -1),
 	},
 };
 
 void __init fli7510_configure_nand(struct stm_nand_config *config)
 {
-	struct stm_plat_nand_flex_data *flex_data;
 	struct stm_plat_nand_emi_data *emi_data;
 
 	switch (config->driver) {
@@ -100,19 +102,75 @@ void __init fli7510_configure_nand(struct stm_nand_config *config)
 	case stm_nand_flex:
 	case stm_nand_afm:
 		/* Configure platform device for stm-nand-flex/afm driver */
-		flex_data = fli7510_nand_flex_device.dev.platform_data;
-		flex_data->nr_banks = config->nr_banks;
-		flex_data->banks = config->banks;
-		flex_data->flex_rbn_connected = config->rbn.flex_connected;
-		fli7510_nand_flex_device.name =
+		emiss_nandi_select(STM_NANDI_HAMMING);
+		fli7510_nand_flex_data.nr_banks = config->nr_banks;
+		fli7510_nand_flex_data.banks = config->banks;
+		fli7510_nand_flex_data.flex_rbn_connected =
+			config->rbn.flex_connected;
+		fli7510_nandi_device.dev.platform_data =
+			&fli7510_nand_flex_data;
+		fli7510_nandi_device.name =
 			(config->driver == stm_nand_flex) ?
 			"stm-nand-flex" : "stm-nand-afm";
-		platform_device_register(&fli7510_nand_flex_device);
+		platform_device_register(&fli7510_nandi_device);
 		break;
+	case stm_nand_bch:
+		/* Configure device for stm-nand-bch driver */
+		BUG_ON(cpu_data->type == CPU_FLI7510);
+		BUG_ON(cpu_data->cut_major < 1);
+		BUG_ON(config->nr_banks > 1);
+		emiss_nandi_select(STM_NANDI_BCH);
+		fli7510_nand_bch_data.bank = config->banks;
+		fli7510_nand_bch_data.bch_ecc_cfg = config->bch_ecc_cfg;
+		fli7510_nandi_device.dev.platform_data =
+			&fli7510_nand_bch_data;
+		fli7510_nandi_device.name = "stm-nand-bch";
+		platform_device_register(&fli7510_nandi_device);
+		break;
+	default:
+		BUG();
+		return;
 	}
 }
 
 /* SPI FSM setup ---------------------------------------------------------- */
+
+static struct stm_pad_config fli7510_spifsm_pad_config = {
+	.gpios_num = 6,
+	.gpios = (struct stm_pad_gpio[]) {
+		STM_PAD_PIO_OUT_NAMED(17, 2, 1, "spi-fsm-clk"),
+		STM_PAD_PIO_OUT_NAMED(17, 4, 1, "spi-fsm-cs"),
+		STM_PAD_PIO_BIDIR_NAMED(17, 3, 1, "spi-fsm-mosi"),
+		STM_PAD_PIO_BIDIR_NAMED(17, 5, 1, "spi-fsm-miso"),
+		STM_PAD_PIO_BIDIR_NAMED(17, 0, 1, "spi-fsm-hold"),
+		STM_PAD_PIO_BIDIR_NAMED(17, 1, 1, "spi-fsm-wp"),
+	},
+	.sysconfs_num = 1,
+	.sysconfs = (struct stm_pad_sysconf []) {
+		/* Enable SPIBoot/FSM controller */
+		STM_PAD_SYSCONF(CFG_COMMS_CONFIG_2, 13, 13, 1),
+	},
+};
+
+static struct stm_pad_config fli7520_spifsm_pad_config = {
+	.gpios_num = 6,
+	.gpios = (struct stm_pad_gpio[]) {
+		STM_PAD_PIO_OUT_NAMED(21, 2, 1, "spi-fsm-clk"),
+		STM_PAD_PIO_OUT_NAMED(20, 2, 1, "spi-fsm-cs"),
+		STM_PAD_PIO_BIDIR_NAMED(21, 3, 1, "spi-fsm-mosi"),
+		STM_PAD_PIO_BIDIR_NAMED(20, 5, 1, "spi-fsm-miso"),
+		STM_PAD_PIO_BIDIR_NAMED(18, 1, 1, "spi-fsm-hold"),
+		STM_PAD_PIO_BIDIR_NAMED(18, 2, 1, "spi-fsm-wp"),
+	},
+	.sysconfs_num = 2,
+	.sysconfs = (struct stm_pad_sysconf []) {
+		/* Enable SPIBoot/FSM controller */
+		STM_PAD_SYSCONF(CFG_COMMS_CONFIG_2, 13, 13, 1),
+
+		/* Select MII/RMII/SPI routing on PIO18/20/21 */
+		STM_PAD_SYSCONF(CFG_COMMS_CONFIG_2, 17, 17, 0),
+	},
+};
 
 static struct platform_device fli7510_spifsm_device = {
 	.name		= "stm-spi-fsm",
@@ -126,6 +184,17 @@ static struct platform_device fli7510_spifsm_device = {
 void __init fli7510_configure_spifsm(struct stm_plat_spifsm_data *data)
 {
 	fli7510_spifsm_device.dev.platform_data = data;
+
+	if (cpu_data->type == CPU_FLI7510)
+		data->pads = &fli7510_spifsm_pad_config;
+	else
+		data->pads = &fli7520_spifsm_pad_config;
+
+	/* SoC/IP Capabilities */
+	data->capabilities.quad_mode = 0;
+	data->capabilities.no_read_repeat = 1;
+	data->capabilities.no_write_repeat = 1;
+	data->capabilities.read_status_bug = spifsm_no_read_status;
 
 	platform_device_register(&fli7510_spifsm_device);
 }
@@ -425,10 +494,13 @@ void __init fli7510_configure_mmc(void)
 #ifdef CONFIG_DEBUG_FS
 
 #define SYSCONF_REG(field) _SYSCONF_REG(#field, field)
-#define _SYSCONF_REG(name, group, num) case num: return name
+#define _SYSCONF_REG(name, group, num) case num: str = name; break
 
-static const char *fli7510_sysconf_PRB_PU_CFG_1(int num)
+static void fli7510_sysconf_PRB_PU_CFG_1(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_RESET_CTL);
 	SYSCONF_REG(CFG_BOOT_CTL);
@@ -440,11 +512,14 @@ static const char *fli7510_sysconf_PRB_PU_CFG_1(int num)
 	SYSCONF_REG(CFG_PCI_ROPC_STATUS);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_PRB_PU_CFG_2(int num)
+static void fli7510_sysconf_PRB_PU_CFG_2(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_ST40_HOST_BOOT_ADDR);
 	SYSCONF_REG(CFG_ST40_CTL_BOOT_ADDR);
@@ -456,11 +531,14 @@ static const char *fli7510_sysconf_PRB_PU_CFG_2(int num)
 	SYSCONF_REG(CFG_EMI_ROPC_STATUS);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_TRS_SPARE_REGS_0(int num)
+static void fli7510_sysconf_TRS_SPARE_REGS_0(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_COMMS_CONFIG_1);
 	SYSCONF_REG(CFG_TRS_CONFIG);
@@ -472,11 +550,14 @@ static const char *fli7510_sysconf_TRS_SPARE_REGS_0(int num)
 	SYSCONF_REG(CFG_EXTRA_ID1_LSB);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_TRS_SPARE_REGS_1(int num)
+static void fli7510_sysconf_TRS_SPARE_REGS_1(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_SPARE_1);
 	SYSCONF_REG(CFG_SPARE_2);
@@ -488,11 +569,14 @@ static const char *fli7510_sysconf_TRS_SPARE_REGS_1(int num)
 	SYSCONF_REG(CFG_EXTRA_ID1_MSB);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_VDEC_PU_CFG_0(int num)
+static void fli7510_sysconf_VDEC_PU_CFG_0(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_TOP_SPARE_REG1);
 	SYSCONF_REG(CFG_TOP_SPARE_REG2);
@@ -504,11 +588,14 @@ static const char *fli7510_sysconf_VDEC_PU_CFG_0(int num)
 	SYSCONF_REG(CFG_INTERRUPT);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_VDEC_PU_CFG_1(int num)
+static void fli7510_sysconf_VDEC_PU_CFG_1(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_ST231_DRA2_PERIPH_REG1);
 	SYSCONF_REG(CFG_ST231_DRA2_BOOT_REG2);
@@ -520,11 +607,14 @@ static const char *fli7510_sysconf_VDEC_PU_CFG_1(int num)
 	SYSCONF_REG(CFG_INTERRUPT_REG8);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_VOUT_SPARE_REGS(int num)
+static void fli7510_sysconf_VOUT_SPARE_REGS(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_REG1_VOUT_PIO_ALT_SEL);
 	SYSCONF_REG(CFG_REG2_VOUT_PIO_ALT_SEL);
@@ -535,21 +625,27 @@ static const char *fli7510_sysconf_VOUT_SPARE_REGS(int num)
 	SYSCONF_REG(CFG_REG7_UNUSED);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_CKG_DDR(int num)
+static void fli7510_sysconf_CKG_DDR(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CKG_DDR_CTL_PLL_DDR_FREQ);
 	SYSCONF_REG(CKG_DDR_STATUS_PLL_DDR);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *fli7510_sysconf_PCIE_SPARE_REGS(int num)
+static void fli7510_sysconf_PCIE_SPARE_REGS(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_REG1_PCIE_CORE_MIPHY_INIT);
 	SYSCONF_REG(CFG_REG2_SPARE_OUTPUT_REG);
@@ -561,7 +657,7 @@ static const char *fli7510_sysconf_PCIE_SPARE_REGS(int num)
 	SYSCONF_REG(CFG_REG8_PCIE_SYS_ERR_INTERRUPT);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
 #endif

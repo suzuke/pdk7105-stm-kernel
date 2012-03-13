@@ -49,10 +49,11 @@ static void stx7105_emi_power(struct stm_device_state *device_state,
 static struct platform_device stx7105_emi = {
 	.name = "emi",
 	.id = -1,
-	.num_resources = 2,
+	.num_resources = 3,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM(0, 128 * 1024 * 1024),
-		STM_PLAT_RESOURCE_MEM(0xfe700000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 128 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfe700000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfe401000, 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
 		.sysconfs_num = 2,
@@ -137,27 +138,34 @@ static struct platform_device stx7106_spifsm_device = {
 static struct stm_pad_config stx7106_spifsm_pad_config = {
 	.gpios_num = 4,
 	.gpios = (struct stm_pad_gpio []) {
-		STM_PAD_PIO_OUT(15, 0, 1),	/* SPIBoot CLK */
-		STM_PAD_PIO_OUT(15, 1, 1),	/* SPIBoot DOUT */
-		STM_PAD_PIO_OUT(15, 2, 1),	/* SPIBoot NOTCS */
-		STM_PAD_PIO_IN(15, 3, -1),	/* SPIBoot DIN */
+		STM_PAD_PIO_OUT_NAMED(15, 0, 1, "spi-fsm-clk"),
+		STM_PAD_PIO_OUT_NAMED(15, 1, 1, "spi-fsm-mosi"),
+		STM_PAD_PIO_OUT_NAMED(15, 2, 1, "spi-fsm-cs"),
+		STM_PAD_PIO_IN_NAMED(15, 3, -1, "spi-fsm-miso"),
 	},
 };
 
 void __init stx7106_configure_spifsm(struct stm_plat_spifsm_data *data)
 {
 	/* Not available on stx7105 */
-	if (cpu_data->type == CPU_STX7105)
-		BUG();
+	BUG_ON(cpu_data->type == CPU_STX7105);
 
-	/* Configure pads for SPIBoot FSM */
-	/* Note, output pads must be configured as ALT_OUT rather than ALT_BIDIR
-	 * (see bug GNBvd8843).  As a result, FSM dual mode is not supported on
-	 * stx7106.
-	 */
+	/* SoC/IP Capabilities */
+	data->capabilities.quad_mode = 0;
+	data->capabilities.no_write_repeat = 1;
+	data->capabilities.read_status_bug = spifsm_no_read_status;
 
-	if (stm_pad_claim(&stx7106_spifsm_pad_config, "SPIFSM") == NULL)
-		printk(KERN_ERR "Failed to claim SPIFSM pads!\n");
+	/* Dual mode not possible due to pad configurations issues */
+	data->capabilities.dual_mode = 0;
+	data->pads = &stx7106_spifsm_pad_config;
+
+	if (cpu_data->cut_major == 1) {
+		data->capabilities.no_clk_div_4 = 1;
+		data->capabilities.dummy_on_write = 1;
+		data->capabilities.no_sw_reset = 1;
+	} else if (cpu_data->cut_major == 3) {
+		data->capabilities.no_poll_mode_change = 1;
+	}
 
 	stx7106_spifsm_device.dev.platform_data = data;
 
@@ -176,8 +184,8 @@ static struct platform_device stx7105_nand_emi_device = {
 static struct platform_device stx7105_nand_flex_device = {
 	.num_resources		= 2,
 	.resource		= (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM_NAMED("flex_mem", 0xFE701000, 0x1000),
-		STM_PLAT_RESOURCE_IRQ(evt2irq(0x14a0), -1),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xFE701000, 0x1000),
+		STM_PLAT_RESOURCE_IRQ_NAMED("nand_irq", evt2irq(0x14a0), -1),
 	},
 	.dev.platform_data	= &(struct stm_plat_nand_flex_data) {
 	},
@@ -209,6 +217,9 @@ void __init stx7105_configure_nand(struct stm_nand_config *config)
 			"stm-nand-flex" : "stm-nand-afm";
 		platform_device_register(&stx7105_nand_flex_device);
 		break;
+	default:
+		BUG();
+		return;
 	}
 }
 
@@ -653,7 +664,9 @@ static int mmc_pad_resources(struct sdhci_host *sdhci)
 
 static struct sdhci_pltfm_data stx7105_mmc_platform_data = {
 		.init = mmc_pad_resources,
-		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC |
+			  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
+			  SDHCI_QUIRK_FORCE_MAX_VDD,
 };
 
 static struct platform_device stx7105_mmc_device = {

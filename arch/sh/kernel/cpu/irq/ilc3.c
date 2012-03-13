@@ -12,7 +12,6 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/sysdev.h>
 #include <linux/cpu.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -27,6 +26,7 @@
 #include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/pm_sys.h>
 #include <linux/io.h>
 
 #include <asm/hw_irq.h>
@@ -74,20 +74,11 @@ struct ilc {
 	unsigned int first_irq;
 	int disable_wakeup:1;
 	spinlock_t lock;
-	struct sys_device sysdev;
 	struct ilc_irq *irqs;
-#ifdef CONFIG_HIBERNATION
-	pm_message_t state;
-#endif
 	unsigned long **priority;
 };
 
 static LIST_HEAD(ilcs_list);
-
-static struct sysdev_class ilc_sysdev_class;
-
-#define sysdev_to_ilc(x) container_of((x), struct ilc, sysdev)
-
 
 /*
  * Debug printk macro
@@ -122,7 +113,8 @@ static struct sysdev_class ilc_sysdev_class;
 int ilc2irq(unsigned int evtcode)
 {
 	struct ilc *ilc = get_irq_data(evt2irq(evtcode));
-#if	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
+#if	defined(CONFIG_CPU_SUBTYPE_STXH205) || \
+	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7111) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7141)
@@ -156,7 +148,8 @@ int ilc2irq(unsigned int evtcode)
 void ilc_irq_demux(unsigned int irq, struct irq_desc *desc)
 {
 	struct ilc *ilc = get_irq_data(irq);
-#if	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
+#if	defined(CONFIG_CPU_SUBTYPE_STXH205) || \
+	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7111) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7141)
@@ -248,7 +241,8 @@ static unsigned int startup_ilc_irq(unsigned int irq)
 	defined(CONFIG_CPU_SUBTYPE_STX7105) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7200)
 	ILC_SET_PRI(ilc->base, input, priority);
-#elif	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
+#elif	defined(CONFIG_CPU_SUBTYPE_STXH205) || \
+	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7141)
 	ILC_SET_PRI(ilc->base, input, 0x0);
 #endif
@@ -481,12 +475,6 @@ static int __init ilc_probe(struct platform_device *pdev)
 
 	list_add(&ilc->list, &ilcs_list);
 
-	/* sysdev doesn't appear to like id's of -1 */
-	ilc->sysdev.id = (pdev->id == -1) ? 0 : pdev->id;
-
-	ilc->sysdev.cls = &ilc_sysdev_class,
-	error = sysdev_register(&ilc->sysdev);
-
 	return error;
 }
 
@@ -574,11 +562,11 @@ subsys_initcall(ilc_debugfs_init);
 
 
 #ifdef CONFIG_HIBERNATION
-
 static int ilc_resume_from_hibernation(struct ilc *ilc)
 {
 	unsigned long flag;
 	int i, irq;
+
 	local_irq_save(flag);
 	for (i = 0; i < ilc->inputs_num; ++i) {
 		irq = i + ilc->first_irq;
@@ -596,41 +584,35 @@ static int ilc_resume_from_hibernation(struct ilc *ilc)
 	return 0;
 }
 
-static int ilc_sysdev_suspend(struct sys_device *dev, pm_message_t state)
+static int ilc_restore(void)
 {
-	struct ilc *ilc = sysdev_to_ilc(dev);
+	struct ilc *ilc;
+	int ret = 0;
 
-	ilc->state = state;
+	list_for_each_entry(ilc, &ilcs_list, list)
+		ret |= ilc_resume_from_hibernation(ilc);
 
-	return 0;
+	return ret;
 }
-
-static int ilc_sysdev_resume(struct sys_device *dev)
-{
-	struct ilc *ilc = sysdev_to_ilc(dev);
-	if (ilc->state.event == PM_EVENT_FREEZE) {
-		ilc_resume_from_hibernation(ilc);
-		ilc->state = PMSG_ON;
-	}
-	return 0;
-}
-
 #else
-#define ilc_sysdev_suspend NULL
-#define ilc_sysdev_resume NULL
+#define ilc_restore		NULL
 #endif
 
-static struct sysdev_class ilc_sysdev_class = {
+static struct stm_system stm_ilc_system = {
 	.name = "ilc3",
-	.suspend = ilc_sysdev_suspend,
-	.resume = ilc_sysdev_resume,
+	.priority = 0x1000, /* higher enough to be restored after:
+			     * - clk
+			     * - sysconf
+			     * - gpio
+			     */
+	.restore = ilc_restore,
 };
 
 static int __init ilc_init(void)
 {
 	int ret;
 
-	ret = sysdev_class_register(&ilc_sysdev_class);
+	ret = stm_register_system(&stm_ilc_system);
 	if (ret)
 		return ret;
 

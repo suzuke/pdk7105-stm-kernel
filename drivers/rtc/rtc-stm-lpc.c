@@ -20,6 +20,7 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/irq.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/clk.h>
 
@@ -63,24 +64,32 @@ struct stm_rtc {
 static void stm_rtc_set_hw_alarm(struct stm_rtc *rtc,
 		unsigned long msb, unsigned long  lsb)
 {
-	writel(1, rtc->ioaddr + LPC_WDT_OFF);
+	struct stm_plat_rtc_lpc *pdata =
+		rtc->rtc_dev->dev.parent->platform_data;
+
+
+	if (pdata->need_wdt_reset)
+		writel(1, rtc->ioaddr + LPC_WDT_OFF);
 
 	writel(msb, rtc->ioaddr + LPC_LPA_MSB_OFF);
 	writel(lsb, rtc->ioaddr + LPC_LPA_LSB_OFF);
 	writel(1, rtc->ioaddr + LPC_LPA_START_OFF);
-	writel(1, rtc->ioaddr + LPC_WDT_OFF);
+
+	if (pdata->need_wdt_reset)
+		writel(0, rtc->ioaddr + LPC_WDT_OFF);
+
 }
 
 static irqreturn_t stm_rtc_irq(int this_irq, void *data)
 {
 	struct stm_rtc *rtc = (struct stm_rtc *)data;
 
-	spin_lock(&rtc->lock);
-
 	switch (rtc->mode) {
 	case STM_LPC_MODE_PERIODIC:
 		/* reload the value... */
+		spin_lock(&rtc->lock);
 		stm_rtc_set_hw_alarm(rtc, 0, rtc->periodic_tick);
+		spin_unlock(&rtc->lock);
 
 	case STM_LPC_MODE_ONESHOT:
 		rtc_update_irq(rtc->rtc_dev, 1,
@@ -90,7 +99,6 @@ static irqreturn_t stm_rtc_irq(int this_irq, void *data)
 		break;
 	}
 
-	spin_unlock(&rtc->lock);
 	return IRQ_HANDLED;
 }
 
@@ -102,6 +110,7 @@ static int stm_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	unsigned long lpt_lsb, lpt_msb;
 
 	spin_lock(&rtc->lock);
+
 	do {
 		lpt_msb = readl(rtc->ioaddr + LPC_LPT_MSB_OFF);
 		lpt_lsb = readl(rtc->ioaddr + LPC_LPT_LSB_OFF);
@@ -119,7 +128,7 @@ static int stm_rtc_read_time(struct device *dev, struct rtc_time *tm)
 static int stm_rtc_set_time(struct device *dev, struct rtc_time *tm)
 {
 	struct stm_rtc *rtc = dev_get_drvdata(dev);
-	unsigned long secs;
+	unsigned long secs, flags;
 	int ret;
 	unsigned long long lpt;
 
@@ -127,12 +136,12 @@ static int stm_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	if (ret != 0)
 		return ret;
 
-	spin_lock(&rtc->lock);
 	lpt = (unsigned long long)secs * clk_get_rate(rtc->clk);
+	spin_lock_irqsave(&rtc->lock, flags);
 	writel(lpt >> 32, rtc->ioaddr + LPC_LPT_MSB_OFF);
 	writel(lpt, rtc->ioaddr + LPC_LPT_LSB_OFF);
 	writel(1, rtc->ioaddr + LPC_LPT_START_OFF);
-	spin_unlock(&rtc->lock);
+	spin_unlock_irqrestore(&rtc->lock, flags);
 
 	return 0;
 }
@@ -229,7 +238,6 @@ static int stm_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *t)
 	unsigned long long lpa;
 	int ret = 0;
 
-	pr_info("%s\n", __func__);
 	stm_rtc_read_time(dev, &now);
 	rtc_tm_to_time(&now, &now_secs);
 	rtc_tm_to_time(&t->time, &alarm_secs);
@@ -280,14 +288,20 @@ static int stm_rtc_suspend(struct device *dev)
 static int stm_rtc_resume(struct device *dev)
 {
 	struct stm_rtc *rtc = dev_get_drvdata(dev);
+	struct stm_plat_rtc_lpc *pdata = dev->platform_data;
 
 	/*
 	 * clean 'rtc->alarm' to allow a new
 	 * a new .set_alarm to the upper RTC layer
 	 */
 	memset(&rtc->alarm, 0, sizeof(struct rtc_wkalrm));
-
-	writel(1, rtc->ioaddr + LPC_WDT_OFF);
+	if (pdata->need_wdt_reset) {
+		writel(0, rtc->ioaddr + LPC_LPA_MSB_OFF);
+		writel(0, rtc->ioaddr + LPC_LPA_LSB_OFF);
+		writel(1, rtc->ioaddr + LPC_WDT_OFF);
+		writel(1, rtc->ioaddr + LPC_LPA_START_OFF);
+		writel(0, rtc->ioaddr + LPC_WDT_OFF);
+	}
 
 	return 0;
 }
@@ -296,6 +310,8 @@ static struct dev_pm_ops stm_rtc_pm_ops = {
 	.suspend = stm_rtc_suspend,  /* on standby/memstandby */
 	.resume = stm_rtc_resume,
 };
+#else
+static struct dev_pm_ops stm_rtc_pm_ops;
 #endif
 
 static int __devinit stm_rtc_probe(struct platform_device *pdev)
@@ -333,19 +349,25 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 		goto err_badres;
 	}
 
-	rtc->ioaddr = ioremap(res->start, size);
+	rtc->ioaddr = ioremap_nocache(res->start, size);
 	if (!rtc->ioaddr) {
 		ret = -EINVAL;
 		goto err_badmap;
 	}
 
-	rtc->clk = clk_get(&pdev->dev, plat_data->clk_id);
+	if (plat_data->clk_id)
+		rtc->clk = clk_get(&pdev->dev, plat_data->clk_id);
+	else
+		rtc->clk = clk_get(&pdev->dev, "lpc_clk");
 	if (IS_ERR(rtc->clk)) {
-		pr_err("clk %s not found\n", plat_data->clk_id);
+		pr_err("clk lpc_clk not found\n");
 		ret = PTR_ERR(rtc->clk);
 		goto err_badreg;
 	}
 	clk_enable(rtc->clk);
+
+	if (plat_data->force_clk_rate)
+		clk_set_rate(rtc->clk, plat_data->force_clk_rate);
 
 	pr_debug("%s: is using clk: %s @ %lu\n",
 		DRV_NAME, rtc->clk->name, clk_get_rate(rtc->clk));
@@ -369,13 +391,6 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 
 	device_set_wakeup_capable(&pdev->dev, 1);
 
-	rtc->rtc_dev = rtc_device_register(DRV_NAME, &pdev->dev,
-					   &stm_rtc_ops, THIS_MODULE);
-	if (IS_ERR(rtc->rtc_dev)) {
-		ret = PTR_ERR(rtc->rtc_dev);
-		goto err_badreg;
-	}
-
 	platform_set_drvdata(pdev, rtc);
 
 	/*
@@ -398,6 +413,13 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 		stm_rtc_set_time(&pdev->dev, &tm_check);
 	}
 
+	rtc->rtc_dev = rtc_device_register(DRV_NAME, &pdev->dev,
+					   &stm_rtc_ops, THIS_MODULE);
+	if (IS_ERR(rtc->rtc_dev)) {
+		ret = PTR_ERR(rtc->rtc_dev);
+		goto err_badreg;
+	}
+
 	return ret;
 
 err_badreg:
@@ -406,6 +428,8 @@ err_badmap:
 	release_resource(rtc->res);
 err_badres:
 	kfree(rtc);
+
+	platform_set_drvdata(pdev, NULL);
 	return ret;
 }
 
@@ -428,9 +452,7 @@ static struct platform_driver stm_rtc_platform_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
-#ifdef CONFIG_PM
 		.pm = &stm_rtc_pm_ops,
-#endif
 	},
 	.probe = stm_rtc_probe,
 	.remove = __devexit_p(stm_rtc_remove),

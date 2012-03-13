@@ -31,9 +31,7 @@
 #include <linux/stm/stx7108.h>
 #include <linux/stm/sysconf.h>
 #include <asm/irq-ilc.h>
-
-#undef GMAC_RGMII_MODE
-/*#define GMAC_RGMII_MODE*/
+#include "../mach-st/ic1001.h"
 
 /*
  * The FLASH devices are configured according to the boot-mode:
@@ -188,6 +186,39 @@ static void hdk7108_mii_txclk_select(int txclk_250_not_25_mhz)
 		gpio_set_value(HDK7108_GPIO_MII_SPEED_SEL, 0);
 }
 
+static int hdk7108_ic1001_phy_fixup(struct phy_device *phydev)
+{
+	int c;
+
+	/*
+	 * The phase setting options for the IC+ 1001 is strange.
+	 * For all board versions it appears the default is:
+	 *
+	 *                  Pull up     Pull down
+	 *      TX_PHASE    RP30 (NC)   RP38 (5K1)
+	 *      RX_PHASE    RP31 (5K1)  RP39 (NC)
+	 *
+	 * which doesn't work with the default retiming values.
+	 *
+	 * It appears that no additional delays are required in GMII mode,
+	 * delays on both RxCLK and TxCLK are required in RGMII mode.
+	 */
+
+	c = phy_read(phydev, IP1001_SPEC_CTRL_STATUS);
+	if (c < 0)
+		return c;
+
+	if (phydev->interface == PHY_INTERFACE_MODE_RGMII)
+		c |= (1 << IP1001_RXPHASE_SEL) | (1<<IP1001_TXPHASE_SEL);
+	else
+		c &= ~((1 << IP1001_RXPHASE_SEL) | (1<<IP1001_TXPHASE_SEL));
+
+	c = phy_write(phydev, IP1001_SPEC_CTRL_STATUS, c);
+
+	return c;
+}
+
+
 #ifdef CONFIG_SH_ST_HDK7108_STMMAC0
 static struct stmmac_mdio_bus_data stmmac0_mdio_bus = {
 	.bus_id = 0,
@@ -323,6 +354,11 @@ static struct spi_board_info hdk7108_serial_flash[] =  {
 static struct stm_plat_spifsm_data hdk7108_spifsm_flash = {
 	.parts = hdk7108_serial_flash_parts,
 	.nr_parts = ARRAY_SIZE(hdk7108_serial_flash_parts),
+	.capabilities = {
+		/* Capabilities may be overriden by SoC configuration */
+		.dual_mode = 1,
+		.quad_mode = 1,
+	},
 };
 #endif
 
@@ -385,7 +421,7 @@ static struct stm_mali_resource hdk7108_mali_ext_mem[] = {
 	{
 		.name 	= "EXTERNAL_MEMORY_RANGE",
 		.start 	=  0x40000000,
-		.end	=  0x4FFFFFFF,
+		.end	=  0xbfffffff,
 	}
 };
 
@@ -530,6 +566,14 @@ static int __init device_init(void)
 			});
 	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
 	stx7108_configure_sata(1, &(struct stx7108_sata_config) { });
+
+#elif defined(CONFIG_SH_ST_HDK7108_VER2_2_BOARD)
+	/* PCIe + 1 SATA */
+	stx7108_configure_miphy(&(struct stx7108_miphy_config) {
+			.modes = (enum miphy_mode[2]) {
+				SATA_MODE, PCIE_MODE },
+			});
+	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
 #endif
 
 
@@ -549,14 +593,18 @@ static int __init device_init(void)
 	 *	GMII    NC       51R    NC      51R
 	 *	MII     NC       NC     51R     51R
 	 *
-	 * On the HDK7108V1/2: remove R31 and place it at R39.
+	 * On the HDK7108V1/2: remove R31 and place it at R39,
+	 * although the phy fixup below removes the need for this.
 	 *
-	 * RGMII more requires the following HW change (on both
+	 * RGMII mode requires the following HW change (on both
 	 * HDK7108V1 and HDK7108V2): remove R29 and place it at R37
 	 *
 	 */
 	gpio_request(HDK7108_GPIO_MII_SPEED_SEL, "stmmac");
 	gpio_direction_output(HDK7108_GPIO_MII_SPEED_SEL, 0);
+
+	phy_register_fixup_for_uid(IP1001_PHY_ID, IP1001_PHY_MASK,
+				   hdk7108_ic1001_phy_fixup);
 
 	stx7108_configure_ethernet(1, &(struct stx7108_ethernet_config) {
 #ifndef CONFIG_SH_ST_HDK7108_GMAC_RGMII_MODE
@@ -651,34 +699,39 @@ struct sh_machine_vector mv_hdk7108 __initmv = {
 };
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY
-int stm_freeze_board(void *data)
+
+#include "../../kernel/cpu/sh4/stm_hom.h"
+
+static int hdk7108_board_freeze(void)
 {
 	gpio_direction_output(HDK7108_PIO_POWER_ON, 0);
 	return 0;
 }
 
-int stm_defrost_board(void *data)
+static int hdk7108_board_restore(void)
 {
-	/* The "POWER_ON_ETH" line should be rather called "PHY_RESET",
-	 * but it isn't... ;-) */
-	gpio_direction_output(HDK7108_PIO_POWER_ON_ETHERNET, 0);
-
 	/* Some of the peripherals are powered by regulators
 	 * triggered by the following PIO line... */
 	gpio_direction_output(HDK7108_PIO_POWER_ON, 1);
 
-	/* HW changes needed to use the GMII mode (GTX CLK) on the
-	 * HDK7108V1
-	 */
-	gpio_direction_output(HDK7108_GPIO_MII_SPEED_SEL, 0);
-
-	/*
-	 * hdk7108_phy_reset(...);
-	 */
-	gpio_set_value(HDK7108_PIO_POWER_ON_ETHERNET, 0);
+	/* The "POWER_ON_ETH" line should be rather called "PHY_RESET",
+	 * but it isn't... ;-) */
+	gpio_direction_output(HDK7108_PIO_POWER_ON_ETHERNET, 0);
 	udelay(10000); /* 10 miliseconds is enough for everyone ;-) */
-	gpio_set_value(HDK7108_PIO_POWER_ON_ETHERNET, 1);
+	gpio_direction_output(HDK7108_PIO_POWER_ON_ETHERNET, 1);
 
 	return 0;
 }
+
+static struct stm_hom_board hdk7108_hom = {
+	.freeze = hdk7108_board_freeze,
+	.restore = hdk7108_board_restore,
+};
+
+static int __init hdk7108_hom_register(void)
+{
+	return stm_hom_board_register(&hdk7108_hom);
+}
+
+module_init(hdk7108_hom_register);
 #endif

@@ -20,9 +20,10 @@
   Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
 *******************************************************************************/
 
-#define DRV_MODULE_VERSION	"Nov_2010"
+#define STMMAC_RESOURCE_NAME   "stmmaceth"
+#define DRV_MODULE_VERSION	"Feb_2012"
 #include <linux/stmmac.h>
-
+#include <linux/phy.h>
 #include "common.h"
 #ifdef CONFIG_STMMAC_TIMER
 #include "stmmac_timer.h"
@@ -70,8 +71,9 @@ struct stmmac_priv {
 
 	u32 msg_enable;
 	spinlock_t lock;
+	spinlock_t tx_lock;
 	int wolopts;
-	int wolenabled;
+	int wol_irq;
 #ifdef CONFIG_STMMAC_TIMER
 	struct stmmac_timer *tm;
 #endif
@@ -79,10 +81,24 @@ struct stmmac_priv {
 	struct vlan_group *vlgrp;
 #endif
 	struct plat_stmmacenet_data *plat;
+	struct stmmac_counters mmc;
+	struct dma_features dma_cap;
+	int hw_cap_support;
 };
+
+extern int phyaddr;
 
 extern int stmmac_mdio_unregister(struct net_device *ndev);
 extern int stmmac_mdio_register(struct net_device *ndev);
 extern void stmmac_set_ethtool_ops(struct net_device *netdev);
 extern const struct stmmac_desc_ops enh_desc_ops;
 extern const struct stmmac_desc_ops ndesc_ops;
+
+int stmmac_freeze(struct net_device *ndev);
+int stmmac_restore(struct net_device *ndev);
+int stmmac_resume(struct net_device *ndev);
+int stmmac_suspend(struct net_device *ndev);
+int stmmac_dvr_remove(struct net_device *ndev);
+struct stmmac_priv *stmmac_dvr_probe(struct device *device,
+				     struct plat_stmmacenet_data *plat_dat,
+				     void __iomem *addr);

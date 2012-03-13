@@ -21,9 +21,8 @@
 #include <linux/stm/device.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stx5206.h>
+#include <linux/stm/clk.h>
 #include <asm/irq-ilc.h>
-
-
 
 /* Note that 5206 documentation defines PIO alternative functions starting
  * from 0. So for the "Pad Manager" use the STX5206_GPIO_FUNCTION defines
@@ -56,10 +55,11 @@ static void stx5206_emi_power(struct stm_device_state *device_state,
 static struct platform_device stx5206_emi = {
 	.name = "emi",
 	.id = -1,
-	.num_resources = 2,
+	.num_resources = 3,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM(0, 128 * 1024 * 1024),
-		STM_PLAT_RESOURCE_MEM(0xfe700000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 128 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfe700000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfe401000, 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
 		.sysconfs_num = 2,
@@ -139,9 +139,20 @@ static struct platform_device stx5206_spifsm_device = {
 	},
 };
 
-void __init stx5206_configure_spifsm(struct stm_plat_spifsm_data *spifsm_data)
+void __init stx5206_configure_spifsm(struct stm_plat_spifsm_data *data)
 {
-	stx5206_spifsm_device.dev.platform_data = spifsm_data;
+	stx5206_spifsm_device.dev.platform_data = data;
+
+	/* Pads not shared with PIO (although potential conflict with PCI
+	 * alternative routing) */
+	data->pads = NULL;
+
+	/* SoC/IP Capabilities */
+	data->capabilities.quad_mode = 0;
+	data->capabilities.no_read_repeat = 1;
+	data->capabilities.no_write_repeat = 1;
+	data->capabilities.no_clk_div_4 = 1;
+	data->capabilities.read_status_bug = spifsm_no_read_status;
 
 	platform_device_register(&stx5206_spifsm_device);
 }
@@ -156,8 +167,8 @@ static struct platform_device stx5206_nand_emi_device = {
 static struct platform_device stx5206_nand_flex_device = {
 	.num_resources		= 2,
 	.resource		= (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM_NAMED("flex_mem", 0xFE701000, 0x1000),
-		STM_PLAT_RESOURCE_IRQ(evt2irq(0x14c0), -1),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xFE701000, 0x1000),
+		STM_PLAT_RESOURCE_IRQ_NAMED("nand_irq", evt2irq(0x14c0), -1),
 	},
 	.dev.platform_data	= &(struct stm_plat_nand_flex_data) {
 	},
@@ -189,6 +200,9 @@ void __init stx5206_configure_nand(struct stm_nand_config *config)
 			"stm-nand-flex" : "stm-nand-afm";
 		platform_device_register(&stx5206_nand_flex_device);
 		break;
+	default:
+		BUG();
+		return;
 	}
 }
 
@@ -442,7 +456,9 @@ static int mmc_pad_resources(struct sdhci_host *sdhci)
 
 static struct sdhci_pltfm_data stx5206_mmc_platform_data = {
 		.init = mmc_pad_resources,
-		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC |
+			  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
+			  SDHCI_QUIRK_FORCE_MAX_VDD,
 };
 
 static struct platform_device stx5206_mmc_device = {
@@ -462,6 +478,24 @@ static struct platform_device stx5206_mmc_device = {
 void __init stx5206_configure_mmc(void)
 {
 	struct sysconf_field *sc;
+
+	struct clk *mmc_clk = clk_get(NULL, "CLKB_FS1_CH3");
+
+	if (mmc_clk && !IS_ERR(mmc_clk)) {
+		unsigned long mmc_clk_rate = clk_get_rate(mmc_clk);
+
+		if (mmc_clk_rate < 48000000) { /* Arasan suggested clk */
+
+			pr_debug("mmc_stm: invalid clk (%luMHz), force it "
+				 "to 50MHz", mmc_clk_rate);
+
+			mmc_clk_rate = 50000000; /* Validation clk */
+			if (clk_set_rate(mmc_clk, mmc_clk_rate))
+				pr_err("mmc_stm: Unable to set clock to"
+				"%luMHz\n", mmc_clk_rate);
+		}
+	} else
+		pr_err("mmc_stm: cannot find mmc clock");
 
 	sc = sysconf_claim(SYS_CFG, 18, 19, 19, "mmc");
 	sysconf_write(sc, 1);

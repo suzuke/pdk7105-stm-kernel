@@ -17,6 +17,7 @@
 #include <linux/types.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/sysconf.h>
+#include <linux/stm/pm_sys.h>
 
 #define DRIVER_NAME "stm-sysconf"
 
@@ -41,7 +42,7 @@ struct sysconf_field {
 struct sysconf_group {
 	void __iomem *base;
 	const char *name;
-	const char *(*reg_name)(int num);
+	void (*reg_name)(char *name, int size, int group, int num);
 	struct sysconf_block *block;
 };
 
@@ -68,7 +69,7 @@ static DEFINE_SPINLOCK(sysconf_registers_lock);
 
 
 /* We need a small stash of allocations before kmalloc becomes available */
-#define NUM_EARLY_FIELDS	128
+#define NUM_EARLY_FIELDS	256
 #define EARLY_BITS_MAPS_SIZE	DIV_ROUND_UP(NUM_EARLY_FIELDS, BITS_PER_LONG)
 
 static struct sysconf_field early_fields[NUM_EARLY_FIELDS];
@@ -312,26 +313,30 @@ unsigned long sysconf_mask(struct sysconf_field *field)
 }
 EXPORT_SYMBOL(sysconf_mask);
 
-const char *sysconf_group_name(int group)
+void sysconf_reg_name(char *name, int size, int group, int num)
 {
 	BUG_ON(group < 0 || group >= sysconf_groups_num);
 
-	return sysconf_groups[group].name;
-
-}
-EXPORT_SYMBOL(sysconf_group_name);
-
-const char *sysconf_reg_name(int group, int num)
-{
-	BUG_ON(group < 0 || group >= sysconf_groups_num);
-
-	return sysconf_groups[group].reg_name ?
-			sysconf_groups[group].reg_name(num) : NULL;
+	if (sysconf_groups[group].reg_name)
+		sysconf_groups[group].reg_name(name, size, group, num);
+	else
+		snprintf(name, size, "%s%d", sysconf_groups[group].name, num);
 }
 EXPORT_SYMBOL(sysconf_reg_name);
 
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_HIBERNATION
+/*
+ * platform_allow_pm_sysconf
+ * Every platform implementation of this function has to check if
+ * a specific register in a bank can be managed or not in the PM core code
+ */
+int __weak platform_allow_pm_sysconf(struct device *dev,
+	int reg_nr, int freezing)
+{
+	return 1;
+}
+
 static int sysconf_pm_freeze(void)
 {
 	int result = 0;
@@ -351,9 +356,12 @@ static int sysconf_pm_freeze(void)
 			continue;
 		}
 
-		for (j = 0; j < block->size; j += sizeof(unsigned long))
+		for (j = 0; j < block->size; j += sizeof(unsigned long)) {
+			if (!platform_allow_pm_sysconf(&block->pdev->dev, j, 1))
+				continue;
 			block->snapshot[j / sizeof(unsigned long)] =
 					readl(block->base + j);
+		}
 	}
 
 	pr_debug("%s()=%d\n", __func__, result);
@@ -379,10 +387,13 @@ static int sysconf_pm_restore(void)
 			continue;
 		}
 
-		for (j = 0; j < block->size; j += sizeof(unsigned long))
+		for (j = 0; j < block->size; j += sizeof(unsigned long)) {
+			if (!platform_allow_pm_sysconf(&block->pdev->dev,
+				j, 0))
+				continue;
 			writel(block->snapshot[j / sizeof(unsigned long)],
 					block->base + j);
-
+		}
 		kfree(block->snapshot);
 		block->snapshot = NULL;
 	}
@@ -392,64 +403,19 @@ static int sysconf_pm_restore(void)
 	return result;
 }
 
-static int sysconf_sysdev_suspend(struct sys_device *dev, pm_message_t state)
-{
-	int result = 0;
-	static unsigned long prev_state = PM_EVENT_ON;
-
-	pr_debug("%s()\n", __func__);
-
-	switch (state.event) {
-	case PM_EVENT_ON:
-		if (prev_state == PM_EVENT_FREEZE)
-			result = sysconf_pm_restore();
-		break;
-	case PM_EVENT_SUSPEND:
-		break;
-	case PM_EVENT_FREEZE:
-		result = sysconf_pm_freeze();
-		break;
-	}
-
-	prev_state = state.event;
-
-	pr_debug("%s()=%d\n", __func__, result);
-
-	return result;
-}
-
-static int sysconf_sysdev_resume(struct sys_device *dev)
-{
-	return sysconf_sysdev_suspend(dev, PMSG_ON);
-}
-
-static struct sysdev_class sysconf_sysdev_class = {
+static struct stm_system sysconf_sys = {
 	.name = "sysconf",
-	.suspend = sysconf_sysdev_suspend,
-	.resume = sysconf_sysdev_resume,
+	.priority = stm_sysconf_pr,
+	.freeze = sysconf_pm_freeze,
+	.restore = sysconf_pm_restore,
 };
 
-struct sys_device sysconf_sysdev_dev = {
-	.id = 0,
-	.cls = &sysconf_sysdev_class,
-};
-
-static int __init sysconf_sysdev_init(void)
+static int __init sysconf_sys_init(void)
 {
-	int ret;
-
-	ret = sysdev_class_register(&sysconf_sysdev_class);
-	if (ret)
-		return ret;
-
-	ret = sysdev_register(&sysconf_sysdev_dev);
-	if (ret)
-		return ret;
-
-	return 0;
+	return stm_register_system(&sysconf_sys);
 }
 
-module_init(sysconf_sysdev_init);
+module_init(sysconf_sys_init);
 #endif
 
 
@@ -529,12 +495,10 @@ static int sysconf_seq_show_fields(struct seq_file *s)
 	spin_lock(&sysconf_fields_lock);
 
 	list_for_each_entry(field, &sysconf_fields, list) {
-		struct sysconf_group *group = &sysconf_groups[field->group];
+		char name[20];
 
-		if (group->reg_name)
-			seq_printf(s, "- %s[", group->reg_name(field->num));
-		else
-			seq_printf(s, "- %s%d[", group->name, field->num);
+		sysconf_reg_name(name, sizeof(name), field->group, field->num);
+		seq_printf(s, "- %s[", name);
 
 		if (field->msb == field->lsb)
 			seq_printf(s, "%d", field->msb);

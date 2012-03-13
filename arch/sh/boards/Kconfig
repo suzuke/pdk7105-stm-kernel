@@ -333,6 +333,30 @@ config SH_ST_ADI7108
 	  Select SH_ST_ADI7108 if configuring for a
 	  STMicroelectronics STi7108-ADI Reference Board.
 
+config SH_ST_B2039
+	bool "B2039: STxH207-HVK processor module board"
+	depends on CPU_SUBTYPE_STXH205
+	default n
+	help
+	  Select SH_ST_B2039 if configuring for a
+	  STMicroelectronics STxH207-HVK processor module board.
+
+config SH_ST_B2057
+	bool "B2057: STxH207-HDK Reference board"
+	depends on CPU_SUBTYPE_STXH205
+	default n
+	help
+	  Select SH_ST_B2057 if configuring for a
+	  STMicroelectronics STxH207-HDK Reference Board.
+
+config SH_ST_B2068
+	bool "B2068 : STx7167 Reference board"
+	depends on CPU_SUBTYPE_STX7105
+	default n
+	help
+	  Select B2068 if configuring for an
+	  STMicroelectronics STx7167 Reference Board.
+
 config SH_ST_CAB5197
 	bool "CAB5197: STx5197 CAB reference board"
 	depends on CPU_SUBTYPE_STX5197
@@ -377,6 +401,23 @@ config SH_ST_HDK5289
 	  Select this if configuring for an
 	  STMicroelectronics STi5289 HDK Reference Board.
 
+config SH_ST_DTT5250
+	bool "DTT5250 : STx5250 DTT Reference board"
+	depends on CPU_SUBTYPE_STX5206
+	default n
+	help
+	  Select this if configuring for an
+	  STMicroelectronics STi5250 DTT Reference Board.
+
+config SH_ST_HDK5250
+	bool "HDK5250 : STx5250 HDK Reference board"
+	depends on CPU_SUBTYPE_STX5206
+	select SYS_SUPPORTS_PCI
+	default n
+	help
+	  Select this if configuring for an
+	  STMicroelectronics STi5250 HDK Reference Board.
+
 config SH_ST_HDK7105
 	bool "HDK7105 : STx7105 HDK Reference board"
 	depends on CPU_SUBTYPE_STX7105
@@ -385,6 +426,22 @@ config SH_ST_HDK7105
 	help
 	  Select HDK7105 if configuring for an
 	  STMicroelectronics STi7105 HDK Reference Board.
+
+config SH_ST_HDKH225
+	bool "HDKH225 : STiH225 HDK Reference board"
+	depends on CPU_SUBTYPE_STX7141
+	default n
+	help
+	  Select this if configuring for an
+	  STMicroelectronics STiH225 HDK Reference Board.
+
+config SH_ST_HDKH246
+	bool "HDKH246 : STi235/236/246 Reference boards"
+	depends on CPU_SUBTYPE_STX7105
+	default n
+	help
+	  Select HDKH246 if configuring for an
+	  STMicroelectronics STiH235/H236/H246 Reference Boards.
 
 config SH_ST_HDKH251
 	bool "HDKH251 : STiH251 HDK Reference board"
@@ -476,6 +533,15 @@ config SH_ST_IPTV7105
 	default n
 	help
 	  Select SH_ST_IPTV7105 if configuring for an STx7105 IPTV board
+
+config SH_ST_NGB7167
+	bool "NGB7167 : STi7167-NGB Reference board"
+	depends on CPU_SUBTYPE_STX7105
+	select FIXED_PHY
+	default n
+	help
+	  Select NGB7167 if configuring for an
+	  STMicroelectronics STi7167-NGB Reference Board.
 
 config SH_ST_SAT7111
 	bool "sat7111: sat7111 board"
@@ -746,19 +812,23 @@ config SH_ST_MB705_FPBUTTON
 	  Select this option to enable a simple driver for the front
 	  pannel button on the mb705.
 
-endmenu
-
 source "arch/sh/boards/mach-r2d/Kconfig"
 source "arch/sh/boards/mach-highlander/Kconfig"
 source "arch/sh/boards/mach-sdk7780/Kconfig"
 source "arch/sh/boards/mach-migor/Kconfig"
 source "arch/sh/boards/mach-rsk/Kconfig"
+source "arch/sh/boards/mach-b2039/Kconfig"
+source "arch/sh/boards/mach-b2057/Kconfig"
 source "arch/sh/boards/mach-eud7141/Kconfig"
 source "arch/sh/boards/mach-mb628/Kconfig"
 source "arch/sh/boards/mach-mb837/Kconfig"
 source "arch/sh/boards/mach-mb671/Kconfig"
 source "arch/sh/boards/mach-hdk7106/Kconfig"
 source "arch/sh/boards/mach-hdk7108/Kconfig"
+source "arch/sh/boards/mach-hdkh225/Kconfig"
+source "arch/sh/boards/mach-adi7108/Kconfig"
+
+endmenu
 
 if SH_MAGIC_PANEL_R2
 

@@ -19,7 +19,6 @@
 #include <asm/irq-ilc.h>
 
 
-
 /* PCI Resources ---------------------------------------------------------- */
 
 /* You may pass one of the PCI_PIN_* constants to use dedicated pin or
@@ -85,7 +84,7 @@ static struct platform_device stx7105_pci_device = {
 			.end = 0xffff,
 			.flags = IORESOURCE_IO,
 		},
-		STM_PLAT_RESOURCE_MEM_NAMED("pci emiss", 0xfe400000, 0x17fc),
+		STM_PLAT_RESOURCE_MEM_NAMED("pci bridge", 0xfe401400, 0x3fc),
 		STM_PLAT_RESOURCE_MEM_NAMED("pci ahb", 0xfe560000, 0xff),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pci dma", evt2irq(0x1280), -1),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pci err", ILC_EXT_IRQ(25), -1),
@@ -94,7 +93,7 @@ static struct platform_device stx7105_pci_device = {
 	},
 };
 
-static struct stm_pad_config __initdata pci_reqgnt_config[] = {
+static struct stm_pad_config pci_reqgnt_config[] = {
 	/* REQ0/GNT0 have dedicated pins... */
 	[1] = {
 		.gpios_num = 2,
@@ -119,7 +118,7 @@ static struct stm_pad_config __initdata pci_reqgnt_config[] = {
 	},
 };
 
-static struct stm_pad_config __initdata pci_int_config[] = {
+static struct stm_pad_config pci_int_config[] = {
 	[0] = {
 		.gpios_num = 1,
 		.gpios = (struct stm_pad_gpio []) {

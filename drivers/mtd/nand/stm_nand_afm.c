@@ -32,7 +32,7 @@
 #include <linux/delay.h>
 
 #include "stm_nand_ecc.h"
-#include "stm_nandc_regs.h"
+#include "stm_nand_regs.h"
 
 #define NAME	"stm-nand-afm"
 
@@ -480,21 +480,14 @@ static struct nand_bbt_descr bbt_scan_lp = {
  * AFM Interrupts
  */
 
-#define AFM_IRQ			(1 << 0)
-#define AFM_IRQ_RBN		(1 << 2)
-#define AFM_IRQ_DATA_DREQ	(1 << 3)
-#define AFM_IRQ_SEQ_DREQ	(1 << 4)
-#define AFM_IRQ_CHECK		(1 << 5)
-#define AFM_IRQ_ECC_FIX		(1 << 6)
-
 static void afm_enable_interrupts(struct stm_nand_afm_controller *afm,
 				  uint32_t irqs)
 {
 	uint32_t reg;
 
-	reg = afm_readreg(EMINAND_INTERRUPT_ENABLE);
+	reg = afm_readreg(NANDHAM_INT_EN);
 	reg |= irqs;
-	afm_writereg(reg, EMINAND_INTERRUPT_ENABLE);
+	afm_writereg(reg, NANDHAM_INT_EN);
 
 }
 
@@ -503,9 +496,9 @@ static void afm_disable_interrupts(struct stm_nand_afm_controller *afm,
 {
 	uint32_t reg;
 
-	reg = afm_readreg(EMINAND_INTERRUPT_ENABLE);
+	reg = afm_readreg(NANDHAM_INT_EN);
 	reg &= ~irqs;
-	afm_writereg(reg, EMINAND_INTERRUPT_ENABLE);
+	afm_writereg(reg, NANDHAM_INT_EN);
 }
 
 static irqreturn_t afm_irq_handler(int irq, void *dev)
@@ -514,21 +507,21 @@ static irqreturn_t afm_irq_handler(int irq, void *dev)
 		(struct stm_nand_afm_controller *)dev;
 	unsigned int irq_status;
 
-	irq_status = afm_readreg(EMINAND_INTERRUPT_STATUS);
+	irq_status = afm_readreg(NANDHAM_INT_STA);
 
 	/* RBn */
-	if (irq_status & 0x4) {
-		afm_writereg(0x04, EMINAND_INTERRUPT_CLEAR);
+	if (irq_status & NAND_INT_RBN) {
+		afm_writereg(NAND_INT_CLR_RBN, NANDHAM_INT_CLR);
 		complete(&afm->rbn_completed);
 	}
 
 	/* ECC_fix */
-	if (irq_status & 0x40)
-		afm_writereg(0x10, EMINAND_INTERRUPT_CLEAR);
+	if (irq_status & NANDHAM_INT_ECC_FIX_REQ)
+		afm_writereg(NANDHAM_INT_CLR_ECC_FIX_REQ, NANDHAM_INT_CLR);
 
 	/* Seq_req */
-	if (irq_status & AFM_IRQ_SEQ_DREQ) {
-		afm_writereg(0x40, EMINAND_INTERRUPT_CLEAR);
+	if (irq_status & NANDHAM_INT_SEQ_DREQ) {
+		afm_writereg(NANDHAM_INT_CLR_SEQ_DREQ, NANDHAM_INT_CLR);
 		complete(&afm->seq_completed);
 	}
 
@@ -547,23 +540,23 @@ static void afm_generic_config(struct stm_nand_afm_controller *afm,
 	uint32_t reg;
 
 	reg = 0x00;
+	/* Bus width */
 	if ((busw & NAND_BUSWIDTH_16) == 0)
-		reg |= 0x1 << 16;		/* data_8_not_16      */
+		reg |= AFM_GEN_CFG_DATA_8_NOT_16;
 
+	/* Page size, Address cycles */
 	if (page_size > 512) {
-		/* large page */
-		reg |= 0x1 << 17;		/* page size	      */
+		reg |= AFM_GEN_CFG_LARGE_PAGE;
 		if (chip_size > (128 << 20))
-			reg |= 0x1 << 18;	/* extra addr cycle   */
+			reg |= AFM_GEN_CFG_EXTRA_ADD_CYCLE;
 	} else if (chip_size > (32 << 20)) {
-		/* small page */
-		reg |= 0x1 << 18;		/* extra addr cycle   */
+		reg |= AFM_GEN_CFG_EXTRA_ADD_CYCLE;
 
 	}
 
-	dev_dbg(afm->dev, "setting AFM_GENERIC_CONFIG_REG = 0x%08x\n", reg);
+	dev_dbg(afm->dev, "setting AFM_GEN_CFG = 0x%08x\n", reg);
 
-	afm_writereg(reg, EMINAND_AFM_GENERIC_CONFIG_REG);
+	afm_writereg(reg, NANDHAM_AFM_GEN_CFG);
 }
 
 /* AFM configure timing parameters */
@@ -600,8 +593,8 @@ static void afm_set_timings(struct stm_nand_afm_controller *afm,
 	n = (tm->WE_to_RBn + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 24;
 
-	dev_dbg(afm->dev, "setting CONTROL_TIMING = 0x%08x\n", reg);
-	afm_writereg(reg, EMINAND_CONTROL_TIMING);
+	dev_dbg(afm->dev, "setting CTL_TIMING = 0x%08x\n", reg);
+	afm_writereg(reg, NANDHAM_CTL_TIMING);
 
 	/* WEN_TIMING */
 	n = (tm->wr_on + emi_t_ns - 1)/emi_t_ns;
@@ -611,7 +604,7 @@ static void afm_set_timings(struct stm_nand_afm_controller *afm,
 	reg |= (n & 0xff) << 8;
 
 	dev_dbg(afm->dev, "setting WEN_TIMING = 0x%08x\n", reg);
-	afm_writereg(reg, EMINAND_WEN_TIMING);
+	afm_writereg(reg, NANDHAM_WEN_TIMING);
 
 	/* REN_TIMING */
 	n = (tm->rd_on + emi_t_ns - 1)/emi_t_ns;
@@ -621,7 +614,7 @@ static void afm_set_timings(struct stm_nand_afm_controller *afm,
 	reg |= (n & 0xff) << 8;
 
 	dev_dbg(afm->dev, "setting REN_TIMING = 0x%08x\n", reg);
-	afm_writereg(reg, EMINAND_REN_TIMING);
+	afm_writereg(reg, NANDHAM_REN_TIMING);
 }
 
 /* Initialise the AFM NAND controller */
@@ -645,7 +638,8 @@ afm_init_controller(struct platform_device *pdev)
 	afm->dev = &pdev->dev;
 
 	/* Request IO Memory */
-	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	resource = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"nand_mem");
 	if (!resource) {
 		dev_err(&pdev->dev, "failed to find IOMEM resource\n");
 		err = -ENOENT;
@@ -672,7 +666,7 @@ afm_init_controller(struct platform_device *pdev)
 
 #ifdef CONFIG_STM_NAND_AFM_CACHED
 	/* Setup cached mapping to the AFM data FIFO */
-	afm->fifo_phys = (afm->map_base + EMINAND_AFM_DATA_FIFO);
+	afm->fifo_phys = (afm->map_base + NANDHAM_AFM_DATA_FIFO);
 #ifndef CONFIG_32BIT
 	/* 29-bit uses 'Area 7' address.  [Should this be done in ioremap?] */
 	afm->fifo_phys &= 0x1fffffff;
@@ -680,7 +674,7 @@ afm_init_controller(struct platform_device *pdev)
 	afm->fifo_cached = ioremap_cache(afm->fifo_phys, 512);
 	if (!afm->fifo_cached) {
 		dev_err(&pdev->dev, "fifo ioremap failed [0x%08x]\n",
-			afm->map_base + EMINAND_AFM_DATA_FIFO);
+			afm->map_base + NANDHAM_AFM_DATA_FIFO);
 		err = -ENXIO;
 		goto err3;
 	}
@@ -689,18 +683,17 @@ afm_init_controller(struct platform_device *pdev)
 #endif
 
 	/* Setup IRQ handler */
-	resource = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!resource) {
+	afm->irq = platform_get_irq_byname(pdev, "nand_irq");
+	if (afm->irq < 0) {
 		dev_err(&pdev->dev, "failed to find IRQ resource\n");
-		err = -ENOENT;
+		err = afm->irq;
 		goto err4;
 	}
 
-	afm->irq = resource->start;
-	if (request_irq(afm->irq, afm_irq_handler, IRQF_DISABLED,
-			dev_name(&pdev->dev), afm)) {
+	err = request_irq(afm->irq, afm_irq_handler, IRQF_DISABLED,
+			  dev_name(&pdev->dev), afm);
+	if (err) {
 		dev_err(&pdev->dev, "irq request failed\n");
-		err = -EBUSY;
 		goto err4;
 	}
 
@@ -713,24 +706,24 @@ afm_init_controller(struct platform_device *pdev)
 	afm->current_csn = -1;
 
 	/* Stop AFM Controller, in case it's still running! */
-	afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
-	memset(afm->base + EMINAND_AFM_SEQUENCE_REG_1, 0, 32);
+	afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
+	memset(afm->base + NANDHAM_AFM_SEQ_REG_1, 0, 32);
 
 	/* Reset AFM Controller */
-	afm_writereg((0x1 << 3), EMINAND_FLEXMODE_CONFIG);
+	afm_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
 	udelay(1);
-	afm_writereg(0x00, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00, NANDHAM_FLEXMODE_CFG);
 
 	/* Disable boot_not_flex */
-	afm_writereg(0x00000000, EMINAND_BOOTBANK_CONFIG);
+	afm_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
 
 	/* Set Controller to AFM */
-	afm_writereg(0x00000002, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
 
 	/* Enable Interrupts: individual interrupts enabled when needed! */
-	afm_writereg(0x0000007C, EMINAND_INTERRUPT_CLEAR);
-	afm_writereg(0x00000001, EMINAND_INTERRUPT_EDGECONFIG);
-	afm_writereg(AFM_IRQ, EMINAND_INTERRUPT_ENABLE);
+	afm_writereg(0x0000007C, NANDHAM_INT_CLR);
+	afm_writereg(NAND_EDGE_CFG_RBN_RISING, NANDHAM_INT_EDGE_CFG);
+	afm_writereg(NAND_INT_ENABLE, NANDHAM_INT_EN);
 
 	/* Success :-) */
 	return afm;
@@ -941,6 +934,12 @@ static int afm_do_read_oob(struct mtd_info *mtd, loff_t from,
 	page = realpage & chip->pagemask;
 
 	while (1) {
+#ifdef CONFIG_STM_NAND_AFM_PBLBOOTBOUNDARY
+		/* Need to check/Update ECC scheme if using PBL boot-boundary */
+		afm_select_eccparams(mtd, page << chip->page_shift);
+		if (ops->mode == MTD_OOB_AUTO)
+			len = chip->ecc.layout->oobavail;
+#endif
 		sndcmd = chip->ecc.read_oob(mtd, chip, page, sndcmd);
 
 		len = min(len, readlen);
@@ -1016,6 +1015,10 @@ static int afm_do_read_ops(struct mtd_info *mtd, loff_t from,
 	oob = ops->oobbuf;			/* pointer to oob buf	*/
 
 	while (1) {
+#ifdef CONFIG_STM_NAND_AFM_PBLBOOTBOUNDARY
+		/* Need to check/Update ECC scheme if using PBL boot-boundary */
+		afm_select_eccparams(mtd, page << chip->page_shift);
+#endif
 		/* #bytes in next transfer */
 		bytes = min(mtd->writesize - col, readlen);
 		/* tranfer aligned to page? */
@@ -1119,14 +1122,14 @@ static int afm_check_wp(struct mtd_info *mtd)
 	uint32_t status;
 
 	/* Switch to Flex Mode */
-	afm_writereg(0x00000001, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
 
 	/* Read status register */
-	afm_writereg(FLX_CMD(NAND_CMD_STATUS), EMINAND_FLEX_COMMAND_REG);
-	status = afm_readreg(EMINAND_FLEX_DATA);
+	afm_writereg(FLEX_CMD(NAND_CMD_STATUS), NANDHAM_FLEX_CMD);
+	status = afm_readreg(NANDHAM_FLEX_DATA);
 
 	/* Switch back to AFM */
-	afm_writereg(0x00000002, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
 
 	return (status & NAND_STATUS_WP) ? 0 : 1;
 }
@@ -1312,6 +1315,10 @@ static int afm_do_write_ops(struct mtd_info *mtd, loff_t to,
 		int cached = writelen > bytes && page != blockmask;
 		uint8_t *wbuf = buf;
 
+#ifdef CONFIG_STM_NAND_AFM_PBLBOOTBOUNDARY
+		/* Need to check/Update ECC scheme if using PBL boot-boundary */
+		afm_select_eccparams(mtd, page << chip->page_shift);
+#endif
 		/* Partial page write ? */
 		/* TODO: change alignment constraints for DMA transfer! */
 		if (unlikely(column || writelen < (mtd->writesize - 1) ||
@@ -1629,7 +1636,7 @@ static void afm_read_buf_cached(struct mtd_info *mtd, uint8_t *buf, int len)
 #endif
 	/* Mop up any remaining bytes */
 	while (lenleft > 0) {
-		*buf++ = readb(afm->base + EMINAND_AFM_DATA_FIFO);
+		*buf++ = readb(afm->base + NANDHAM_AFM_DATA_FIFO);
 		lenleft--;
 	}
 }
@@ -1639,7 +1646,7 @@ static void afm_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 {
 	struct stm_nand_afm_controller *afm = mtd_to_afm(mtd);
 
-	readsl(afm->base + EMINAND_AFM_DATA_FIFO, buf, len/4);
+	readsl(afm->base + NANDHAM_AFM_DATA_FIFO, buf, len/4);
 }
 #endif
 
@@ -1648,7 +1655,7 @@ static void afm_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 {
 	struct stm_nand_afm_controller *afm = mtd_to_afm(mtd);
 
-	writesl(afm->base + EMINAND_AFM_DATA_FIFO, buf, len/4);
+	writesl(afm->base + NANDHAM_AFM_DATA_FIFO, buf, len/4);
 }
 
 
@@ -1670,7 +1677,7 @@ static void afm_erase_cmd(struct mtd_info *mtd, int page)
 
 	/* Initialise Seq interrupts */
 	INIT_COMPLETION(afm->seq_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_enable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	/* Select AFM program */
 	if ((mtd->writesize == 512 && chip->chipsize > (32 << 20)) ||
@@ -1684,24 +1691,24 @@ static void afm_erase_cmd(struct mtd_info *mtd, int page)
 	prog->extra_reg	= page;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	/* Wait for sequence to finish */
 	ret = wait_for_completion_timeout(&afm->seq_completed, 2*HZ);
 	if (!ret) {
 		dev_warn(afm->dev, "sequence timeout, force exit!\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
 		afm->status = NAND_STATUS_FAIL;
-		afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+		afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 		return;
 	}
 
 	/* Get status */
-	reg = afm_readreg(EMINAND_AFM_SEQUENCE_STATUS_REG);
+	reg = afm_readreg(NANDHAM_AFM_SEQ_STA);
 	afm->status =  NAND_STATUS_READY | ((reg & 0x60) >> 5);
 
 	/* Disable interrupts */
-	afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 }
 
 static int afm_correct_ecc(struct mtd_info *mtd, unsigned char *buf,
@@ -1759,7 +1766,7 @@ static int afm_read_page_ecc(struct mtd_info *mtd, struct nand_chip *chip,
 
 		/* Get H/W ECC */
 		chkcode_offs = (eccsteps == 1) ? (3 << 2) : (i << 2);
-		ecc_afm = afm_readreg(EMINAND_AFM_ECC_CHECKCODE_REG_0 +
+		ecc_afm = afm_readreg(NANDHAM_AFM_ECC_REG_0 +
 				      chkcode_offs);
 
 		/* Extract ecc_code and ecc_calc */
@@ -1823,27 +1830,27 @@ static int afm_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* Initialise RBn interrupt */
 	INIT_COMPLETION(afm->rbn_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_RBN);
+	afm_enable_interrupts(afm, NAND_INT_RBN);
 
 	if (mtd->writesize == 512) {
 		/* SmallPage: Reset ECC counters */
-		reg = afm_readreg(EMINAND_FLEXMODE_CONFIG);
+		reg = afm_readreg(NANDHAM_FLEXMODE_CFG);
 		reg |= (1 << 6);
-		afm_writereg(reg, EMINAND_FLEXMODE_CONFIG);
+		afm_writereg(reg, NANDHAM_FLEXMODE_CFG);
 	}
 
 	/* Set page address */
-	prog->addr_reg = afm->page << 8;
+	prog->addr_reg = page << 8;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	/* Wait for data to become available */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
 	if (!ret) {
 		dev_err(afm->dev, "RBn timeout, force exit\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
-		afm_disable_interrupts(afm, AFM_IRQ_RBN);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
+		afm_disable_interrupts(afm, NAND_INT_RBN);
 		return 1;
 	}
 	/* Read page data and OOB (SmallPage: +48 bytes dummy data) */
@@ -1851,7 +1858,7 @@ static int afm_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 	chip->read_buf(mtd, chip->oob_poi, 64);
 
 	/* Disable RBn interrupts */
-	afm_disable_interrupts(afm, AFM_IRQ_RBN);
+	afm_disable_interrupts(afm, NAND_INT_RBN);
 
 	return 0;
 }
@@ -1872,13 +1879,13 @@ static int afm_read_oob_chip(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* Initialise RBn interrupt */
 	INIT_COMPLETION(afm->rbn_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_RBN);
+	afm_enable_interrupts(afm, NAND_INT_RBN);
 
 	if (mtd->writesize == 512) {
 		/* SmallPage: Reset ECC counters and set page address */
-		reg = afm_readreg(EMINAND_FLEXMODE_CONFIG);
+		reg = afm_readreg(NANDHAM_FLEXMODE_CFG);
 		reg |= (1 << 6);
-		afm_writereg(reg, EMINAND_FLEXMODE_CONFIG);
+		afm_writereg(reg, NANDHAM_FLEXMODE_CFG);
 
 		prog->addr_reg	= page << 8;
 	} else {
@@ -1887,14 +1894,14 @@ static int afm_read_oob_chip(struct mtd_info *mtd, struct nand_chip *chip,
 	}
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	/* Wait for data to become available */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
 	if (!ret) {
 		dev_err(afm->dev, "RBn timeout, force exit\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
-		afm_disable_interrupts(afm, AFM_IRQ_RBN);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
+		afm_disable_interrupts(afm, NAND_INT_RBN);
 		return 1;
 	}
 
@@ -1902,7 +1909,7 @@ static int afm_read_oob_chip(struct mtd_info *mtd, struct nand_chip *chip,
 	chip->read_buf(mtd, chip->oob_poi, 64);
 
 	/* Disable RBn Interrupts */
-	afm_disable_interrupts(afm, AFM_IRQ_RBN);
+	afm_disable_interrupts(afm, NAND_INT_RBN);
 
 	return 0;
 }
@@ -1924,18 +1931,18 @@ static void afm_write_page_ecc_sp(struct mtd_info *mtd,
 
 	/*    Initialise Seq interrupt */
 	INIT_COMPLETION(afm->seq_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_enable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	/*    Reset ECC counters */
-	reg = afm_readreg(EMINAND_FLEXMODE_CONFIG);
+	reg = afm_readreg(NANDHAM_FLEXMODE_CFG);
 	reg |= (1 << 6);
-	afm_writereg(reg, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(reg, NANDHAM_FLEXMODE_CFG);
 
 	/*    Set page address */
 	prog->addr_reg	= afm->page << 8;
 
 	/*    Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	/*    Write page data */
 	chip->write_buf(mtd, buf, mtd->writesize);
@@ -1944,18 +1951,18 @@ static void afm_write_page_ecc_sp(struct mtd_info *mtd,
 	ret = wait_for_completion_timeout(&afm->seq_completed, HZ/2);
 	if (!ret) {
 		dev_err(afm->dev, "seq timeout, force exit\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
 		afm->status = NAND_STATUS_FAIL;
-		afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+		afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 		return;
 	}
 
 	/*    Disable Seq interrupt */
-	afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	/* 2. Write OOB data */
 	/*    Populate OOB with ECC data  */
-	ecc_afm = afm_readreg(EMINAND_AFM_ECC_CHECKCODE_REG_3);
+	ecc_afm = afm_readreg(NANDHAM_AFM_ECC_REG_3);
 	chip->oob_poi[0] = ecc_afm & 0xff; ecc_afm >>= 8;
 	chip->oob_poi[1] = ecc_afm & 0xff; ecc_afm >>= 8;
 	chip->oob_poi[2] = ecc_afm & 0xff;
@@ -1966,18 +1973,18 @@ static void afm_write_page_ecc_sp(struct mtd_info *mtd,
 
 	/*    Switch to FLEX mode for writing OOB */
 	INIT_COMPLETION(afm->rbn_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_RBN);
-	afm_writereg(0x00000001, EMINAND_FLEXMODE_CONFIG);
+	afm_enable_interrupts(afm, NAND_INT_RBN);
+	afm_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
 
 	/*    Write OOB data */
-	afm_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		     EMINAND_FLEX_DATAWRITE_CONFIG);
-	writesl(afm->base + EMINAND_FLEX_DATA, chip->oob_poi, 4);
-	afm_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		     EMINAND_FLEX_DATAWRITE_CONFIG);
+	afm_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		     NANDHAM_FLEX_DATAWRITE_CONFIG);
+	writesl(afm->base + NANDHAM_FLEX_DATA, chip->oob_poi, 4);
+	afm_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		     NANDHAM_FLEX_DATAWRITE_CONFIG);
 
 	/*    Issue page program command */
-	afm_writereg(FLX_CMD(NAND_CMD_PAGEPROG), EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_PAGEPROG), NANDHAM_FLEX_CMD);
 
 	/*    Wait for page program operation to complete */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
@@ -1985,13 +1992,13 @@ static void afm_write_page_ecc_sp(struct mtd_info *mtd,
 		dev_err(afm->dev, "RBn timeout, force exit\n");
 
 	/*     Get status */
-	afm_writereg(FLX_CMD(NAND_CMD_STATUS), EMINAND_FLEX_COMMAND_REG);
-	afm->status = afm_readreg(EMINAND_FLEX_DATA);
+	afm_writereg(FLEX_CMD(NAND_CMD_STATUS), NANDHAM_FLEX_CMD);
+	afm->status = afm_readreg(NANDHAM_FLEX_DATA);
 
-	afm_disable_interrupts(afm, AFM_IRQ_RBN);
+	afm_disable_interrupts(afm, NAND_INT_RBN);
 
 	/* 3. Switch back to AFM */
-	afm_writereg(0x00000002, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
 }
 
 
@@ -2027,18 +2034,18 @@ static void afm_write_page_ecc_lp(struct mtd_info *mtd,
 
 	/* Initialise Seq interrupt */
 	INIT_COMPLETION(afm->seq_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_enable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	/* Reset ECC counters */
-	reg = afm_readreg(EMINAND_FLEXMODE_CONFIG);
+	reg = afm_readreg(NANDHAM_FLEXMODE_CFG);
 	reg |= (1 << 6);
-	afm_writereg(reg, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(reg, NANDHAM_FLEXMODE_CFG);
 
 	/* Set page address */
 	prog->addr_reg	= afm->page << 8;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	/* Write page and oob data */
 	chip->write_buf(mtd, buf, mtd->writesize);
@@ -2048,18 +2055,18 @@ static void afm_write_page_ecc_lp(struct mtd_info *mtd,
 	ret = wait_for_completion_timeout(&afm->seq_completed, HZ/2);
 	if (!ret) {
 		dev_err(afm->dev, "seq timeout, force exit\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
 		afm->status = NAND_STATUS_FAIL;
-		afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+		afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 		return;
 	}
 
 	/* Get status */
-	reg = afm_readreg(EMINAND_AFM_SEQUENCE_STATUS_REG);
+	reg = afm_readreg(NANDHAM_AFM_SEQ_STA);
 	afm->status =  NAND_STATUS_READY | ((reg & 0x60) >> 5);
 
 	/* Disable Seq interrupt */
-	afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 }
 
 /* AFM: Write Raw Page and OOB Data [LargePage] */
@@ -2075,13 +2082,13 @@ static void afm_write_page_raw_lp(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* Initialise Seq Interrupts */
 	INIT_COMPLETION(afm->seq_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_enable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	/* Set page address */
 	prog->addr_reg	= afm->page << 8;
 
 	/* Copy program to controller, and start sequence */
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	/* Write page and OOB data */
 	chip->write_buf(mtd, buf, 2048);
@@ -2091,18 +2098,18 @@ static void afm_write_page_raw_lp(struct mtd_info *mtd, struct nand_chip *chip,
 	ret = wait_for_completion_timeout(&afm->seq_completed, HZ/2);
 	if (!ret) {
 		dev_err(afm->dev, "seq timeout, force exit\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
 		afm->status = NAND_STATUS_FAIL;
-		afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+		afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 		return;
 	}
 
 	/* Get status */
-	reg = afm_readreg(EMINAND_AFM_SEQUENCE_STATUS_REG);
+	reg = afm_readreg(NANDHAM_AFM_SEQ_STA);
 	afm->status =  NAND_STATUS_READY | ((reg & 0x60) >> 5);
 
 	/* Disable Seq Interrupts */
-	afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 }
 
 /* AFM: Write Raw Page and OOB Data [SmallPage] */
@@ -2118,25 +2125,25 @@ static void afm_write_page_raw_sp(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* Enable sequence interrupts */
 	INIT_COMPLETION(afm->seq_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_enable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	/* 1. Write page data to chip's page buffer */
 	prog->addr_reg	= afm->page << 8;
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	chip->write_buf(mtd, buf, mtd->writesize);
 
 	ret = wait_for_completion_timeout(&afm->seq_completed, HZ/2);
 	if (!ret) {
 		dev_err(afm->dev, "seq timeout, force exit\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
 		afm->status = NAND_STATUS_FAIL;
-		afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+		afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 		return;
 	}
-	afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
-	reg = afm_readreg(EMINAND_AFM_SEQUENCE_STATUS_REG);
+	reg = afm_readreg(NANDHAM_AFM_SEQ_STA);
 	if ((reg & 0x60) != 0) {
 		dev_err(afm->dev, "error programming page data\n");
 		afm->status = NAND_STATUS_FAIL;
@@ -2145,33 +2152,33 @@ static void afm_write_page_raw_sp(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* 2. Switch to FLEX mode and write OOB data */
 	INIT_COMPLETION(afm->rbn_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_RBN);
-	afm_writereg(0x00000001, EMINAND_FLEXMODE_CONFIG);
+	afm_enable_interrupts(afm, NAND_INT_RBN);
+	afm_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
 
 	/*    Send OOB pointer operation */
-	afm_writereg(FLX_CMD(NAND_CMD_READOOB),  EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_READOOB),  NANDHAM_FLEX_CMD);
 
 	/*    Send SEQIN command */
-	afm_writereg(FLX_CMD(NAND_CMD_SEQIN), EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_SEQIN), NANDHAM_FLEX_CMD);
 
 	/*    Send page address */
-	reg = afm->page << 8 | FLX_ADDR_REG_ADD8_VALID |
-		FLX_ADDR_REG_CSN_STATUS;
+	reg = afm->page << 8 | FLEX_ADDR_ADD8_VALID |
+		FLEX_ADDR_CSN;
 	if (chip->chipsize > (32 << 20))
-		reg |= FLX_ADDR_REG_BEAT_4;
+		reg |= FLEX_ADDR_BEATS_4;
 	else
-		reg |= FLX_ADDR_REG_BEAT_3;
-	afm_writereg(reg, EMINAND_FLEX_ADDRESS_REG);
+		reg |= FLEX_ADDR_BEATS_3;
+	afm_writereg(reg, NANDHAM_FLEX_ADD);
 
 	/*    Send OOB data */
-	afm_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		     EMINAND_FLEX_DATAWRITE_CONFIG);
-	writesl(afm->base + EMINAND_FLEX_DATA, chip->oob_poi, 4);
-	afm_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		     EMINAND_FLEX_DATAWRITE_CONFIG);
+	afm_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		     NANDHAM_FLEX_DATAWRITE_CONFIG);
+	writesl(afm->base + NANDHAM_FLEX_DATA, chip->oob_poi, 4);
+	afm_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		     NANDHAM_FLEX_DATAWRITE_CONFIG);
 
 	/*    Send page program command */
-	afm_writereg(FLX_CMD(NAND_CMD_PAGEPROG),  EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_PAGEPROG),  NANDHAM_FLEX_CMD);
 
 	/* Wait for page program operation to complete */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
@@ -2179,13 +2186,13 @@ static void afm_write_page_raw_sp(struct mtd_info *mtd, struct nand_chip *chip,
 		dev_err(afm->dev, "RBn timeout!\n");
 
 	/*     Get status */
-	afm_writereg(FLX_CMD(NAND_CMD_STATUS), EMINAND_FLEX_COMMAND_REG);
-	afm->status = afm_readreg(EMINAND_FLEX_DATA);
+	afm_writereg(FLEX_CMD(NAND_CMD_STATUS), NANDHAM_FLEX_CMD);
+	afm->status = afm_readreg(NANDHAM_FLEX_DATA);
 
-	afm_disable_interrupts(afm, AFM_IRQ_RBN);
+	afm_disable_interrupts(afm, NAND_INT_RBN);
 
 	/* 3. Switch back to AFM */
-	afm_writereg(0x00000002, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
 }
 
 /* AFM: Write OOB Data [LargePage] */
@@ -2201,11 +2208,11 @@ static int afm_write_oob_chip_lp(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* Enable sequence interrupts */
 	INIT_COMPLETION(afm->seq_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_enable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	prog->addr_reg	= (page << 8) | (2048 >> 8);
 
-	memcpy_toio(afm->base + EMINAND_AFM_SEQUENCE_REG_1, prog, 32);
+	memcpy_toio(afm->base + NANDHAM_AFM_SEQ_REG_1, prog, 32);
 
 	/* Write OOB */
 	chip->write_buf(mtd, chip->oob_poi, 64);
@@ -2214,18 +2221,18 @@ static int afm_write_oob_chip_lp(struct mtd_info *mtd, struct nand_chip *chip,
 	ret = wait_for_completion_timeout(&afm->seq_completed, HZ);
 	if (!ret) {
 		dev_err(afm->dev, "seq timeout, force exit\n");
-		afm_writereg(0x00000000, EMINAND_AFM_SEQUENCE_CONFIG_REG);
+		afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
 		afm->status = NAND_STATUS_FAIL;
-		afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+		afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 		return 1;
 	}
 
 	/* Get status */
-	reg = afm_readreg(EMINAND_AFM_SEQUENCE_STATUS_REG);
+	reg = afm_readreg(NANDHAM_AFM_SEQ_STA);
 	afm->status =  NAND_STATUS_READY | ((reg & 0x60) >> 5);
 
 	/* Disable sequence interrupts */
-	afm_disable_interrupts(afm, AFM_IRQ_SEQ_DREQ);
+	afm_disable_interrupts(afm, NANDHAM_INT_SEQ_DREQ);
 
 	return afm->status & NAND_STATUS_FAIL ? -EIO : 0;
 }
@@ -2243,39 +2250,39 @@ static int afm_write_oob_chip_sp(struct mtd_info *mtd, struct nand_chip *chip,
 
 	/* Initialise interrupts */
 	INIT_COMPLETION(afm->rbn_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_RBN);
+	afm_enable_interrupts(afm, NAND_INT_RBN);
 
 	/* Switch to Flex Mode */
-	afm_writereg(0x00000001, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
 
 	/* Pointer Operation */
-	afm_writereg(FLX_CMD(NAND_CMD_READOOB), EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_READOOB), NANDHAM_FLEX_CMD);
 
 	/* Send SEQIN command */
-	afm_writereg(FLX_CMD(NAND_CMD_SEQIN), EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_SEQIN), NANDHAM_FLEX_CMD);
 
 	/* Send Col/Page Addr */
 	reg = (page << 8 |
-	       FLX_ADDR_REG_RBN |
-	       FLX_ADDR_REG_ADD8_VALID |
-	       FLX_ADDR_REG_CSN_STATUS);
+	       FLEX_ADDR_RBN |
+	       FLEX_ADDR_ADD8_VALID |
+	       FLEX_ADDR_CSN);
 
 	if (chip->chipsize > (32 << 20))
 		/* Need extra address cycle for 'large' devices */
-		reg |= FLX_ADDR_REG_BEAT_4;
+		reg |= FLEX_ADDR_BEATS_4;
 	else
-		reg |= FLX_ADDR_REG_BEAT_3;
-	afm_writereg(reg, EMINAND_FLEX_ADDRESS_REG);
+		reg |= FLEX_ADDR_BEATS_3;
+	afm_writereg(reg, NANDHAM_FLEX_ADD);
 
 	/* Write OOB data */
-	afm_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		     EMINAND_FLEX_DATAWRITE_CONFIG);
-	writesl(afm->base + EMINAND_FLEX_DATA, chip->oob_poi, 4);
-	afm_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		     EMINAND_FLEX_DATAWRITE_CONFIG);
+	afm_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		     NANDHAM_FLEX_DATAWRITE_CONFIG);
+	writesl(afm->base + NANDHAM_FLEX_DATA, chip->oob_poi, 4);
+	afm_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		     NANDHAM_FLEX_DATAWRITE_CONFIG);
 
 	/* Issue Page Program command */
-	afm_writereg(FLX_CMD(NAND_CMD_PAGEPROG), EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_PAGEPROG), NANDHAM_FLEX_CMD);
 
 	/* Wait for page program operation to complete */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
@@ -2283,16 +2290,16 @@ static int afm_write_oob_chip_sp(struct mtd_info *mtd, struct nand_chip *chip,
 		dev_err(afm->dev, "RBn timeout\n");
 
 	/* Get status */
-	afm_writereg(FLX_CMD(NAND_CMD_STATUS), EMINAND_FLEX_COMMAND_REG);
-	status = afm_readreg(EMINAND_FLEX_DATA);
+	afm_writereg(FLEX_CMD(NAND_CMD_STATUS), NANDHAM_FLEX_CMD);
+	status = afm_readreg(NANDHAM_FLEX_DATA);
 
 	afm->status = 0xff & status;
 
 	/* Switch back to AFM */
-	afm_writereg(0x00000002, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
 
 	/* Disable RBn interrupts */
-	afm_disable_interrupts(afm, AFM_IRQ_RBN);
+	afm_disable_interrupts(afm, NAND_INT_RBN);
 
 	return status & NAND_STATUS_FAIL ? -EIO : 0;
 }
@@ -2307,13 +2314,13 @@ static int afm_read_sig(struct mtd_info *mtd,
 
 	/* Enable RBn interrupts */
 	INIT_COMPLETION(afm->rbn_completed);
-	afm_enable_interrupts(afm, AFM_IRQ_RBN);
+	afm_enable_interrupts(afm, NAND_INT_RBN);
 
 	/* Switch to Flex Mode */
-	afm_writereg(0x00000001, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
 
 	/* Issue NAND reset */
-	afm_writereg(FLX_CMD(NAND_CMD_RESET), EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_RESET), NANDHAM_FLEX_CMD);
 
 	/* Wait for reset to complete */
 	ret = wait_for_completion_timeout(&afm->rbn_completed, HZ/2);
@@ -2321,19 +2328,16 @@ static int afm_read_sig(struct mtd_info *mtd,
 		dev_err(afm->dev, "RBn timeout\n");
 
 	/* Read electronic signature */
-	afm_writereg(FLX_CMD(NAND_CMD_READID), EMINAND_FLEX_COMMAND_REG);
+	afm_writereg(FLEX_CMD(NAND_CMD_READID), NANDHAM_FLEX_CMD);
 
-	reg = (0x00 |
-	       FLX_ADDR_REG_BEAT_1 |
-	       FLX_ADDR_REG_RBN |
-	       FLX_ADDR_REG_CSN_STATUS);
-	afm_writereg(reg, EMINAND_FLEX_ADDRESS_REG);
+	reg = (0x00 | FLEX_ADDR_BEATS_1 | FLEX_ADDR_RBN | FLEX_ADDR_CSN);
+	afm_writereg(reg, NANDHAM_FLEX_ADD);
 
-	afm_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		     EMINAND_FLEX_DATAREAD_CONFIG);
-	reg = afm_readreg(EMINAND_FLEX_DATA);
-	afm_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	afm_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		     NANDHAM_FLEX_DATAREAD_CONFIG);
+	reg = afm_readreg(NANDHAM_FLEX_DATA);
+	afm_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 
 	/* Extract manufacturer and device ID */
 	*maf_id = reg & 0xff;
@@ -2344,10 +2348,10 @@ static int afm_read_sig(struct mtd_info *mtd,
 	*extid = (reg >> 24) & 0xff;
 
 	/* Switch back to AFM Mode */
-	afm_writereg(0x00000002, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
 
 	/* Disable RBn interrupts */
-	afm_disable_interrupts(afm, AFM_IRQ_RBN);
+	afm_disable_interrupts(afm, NAND_INT_RBN);
 
 	return 0;
 }
@@ -2463,7 +2467,7 @@ static void afm_select_chip(struct mtd_info *mtd, int chipnr)
 
 		/* Set CSn on AFM controller */
 		afm->current_csn = data->csn;
-		afm_writereg(0x1 << data->csn, EMINAND_MUXCONTROL_REG);
+		afm_writereg(0x1 << data->csn, NANDHAM_FLEX_MUXCTRL);
 
 		/* Set up timing parameters */
 		afm_set_timings(afm, data->timing_data);
@@ -2508,16 +2512,16 @@ static uint8_t afm_read_byte(struct mtd_info *mtd)
 	uint32_t reg;
 
 	/* Switch to Flex Mode */
-	afm_writereg(0x00000001, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
 
-	/* Write STATUS command (do not set FLX_CMD_REG_RBN!) */
-	reg = (NAND_CMD_STATUS | FLX_CMD_REG_BEAT_1 | FLX_CMD_REG_CSN_STATUS);
-	afm_writereg(reg, EMINAND_FLEX_COMMAND_REG);
+	/* Write STATUS command (do not set FLEX_CMD_RBN!) */
+	reg = (NAND_CMD_STATUS | FLEX_CMD_BEATS_1 | FLEX_CMD_CSN);
+	afm_writereg(reg, NANDHAM_FLEX_CMD);
 
-	reg = afm_readreg(EMINAND_FLEX_DATA);
+	reg = afm_readreg(NANDHAM_FLEX_DATA);
 
 	/* Switch back to AFM */
-	afm_writereg(0x00000002, EMINAND_FLEXMODE_CONFIG);
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
 
 	return reg & 0xff;
 }
@@ -2849,6 +2853,11 @@ int afm_scan(struct mtd_info *mtd, int maxchips)
 }
 
 #ifdef CONFIG_STM_NAND_AFM_PBLBOOTBOUNDARY
+
+#define PBL_BOOT_BOUNDARY_POINTER	0x0034
+#define PBL_MARKER1			0x09b1b007
+#define PBL_MARKER2			(~(PBL_MARKER1))
+
 /* The NAND_BLOCK_ZERO_REMAP_REG is not implemented on current versions of the
  * NAND controller.  We must therefore scan for the logical block 0 pattern.
  */
@@ -2864,56 +2873,159 @@ static int check_block_zero_pattern(uint8_t *buf)
 	return 0;
 }
 
-static int pbl_boot_boundary(struct mtd_info *mtd, uint32_t *_boundary)
+static int find_block_zero(struct mtd_info *mtd)
 {
 	struct stm_nand_afm_controller *afm = mtd_to_afm(mtd);
 	struct nand_chip *chip = mtd->priv;
 	struct stm_nand_afm_device *data = chip->priv;
 	uint8_t *buf = chip->buffers->databuf;
-	int block;
-	int block_zero_phys = -1;
+
+	int block, block_end;
+	uint32_t offs;
+	uint32_t page;
 	int pages_per_block;
-	uint32_t boundary_log = 0;
-	uint32_t boundary_phys;
 
 	/* Select boot-mode ECC */
 	afm_select_eccparams(mtd, data->boot_start);
 
-	/* Find logical block zero */
 	pages_per_block = 1 << (chip->phys_erase_shift - chip->page_shift);
-	afm->col = 0;
-	afm->page = 0;
-	for (block = 0; block < 512; block++) {
-		if (nand_isbad_bbt(mtd, block << chip->phys_erase_shift, 0)
-		    == 0) {
-			afm_read_page_boot(mtd, chip, buf, afm->page);
 
-			if (check_block_zero_pattern(buf) == 0) {
-				block_zero_phys = block;
-				boundary_log = *((uint32_t *)(buf + 0x0034));
-				break;
-			}
+	block_end = min(512UL, (data->boot_end >> chip->phys_erase_shift));
+
+	for (block = 0; block < block_end; block++) {
+		offs = block << chip->phys_erase_shift;
+
+		/* Skip if block is bad */
+		if (nand_isbad_bbt(mtd, offs, 0))
+			continue;
+
+		page = block * pages_per_block;
+		afm->page = page;
+
+		afm_read_page_boot(mtd, chip, buf, page);
+
+		if (check_block_zero_pattern(buf) == 0)
+			return block;
+	}
+
+	return -1;
+}
+
+static int find_pbl_marker(uint8_t *buf, int len, int *col)
+{
+	uint32_t *s = (uint32_t *)buf;
+	int i;
+
+	/* The PBL offset must also be present in the buffer for success, '0',
+	 * to be returned. */
+	for (i = 0; i < (len / 4) - 2; i++) {
+		if ((s[i] == PBL_MARKER1) && (s[i + 1] == PBL_MARKER2)) {
+			*col = i * 4;
+			return 0;
 		}
-		afm->page += pages_per_block;
 	}
 
-	/* Return if we didn't find logical block zero */
-	if (block_zero_phys == -1)
+	return 1;
+}
+
+/* Find the offset of the PBL.  Note, the PBL is not always located at the start
+ * of block zero, so we must search for the PBL Markers and PBL offset. */
+static int find_pbl_offset(struct mtd_info *mtd, int block_zero,
+			   uint32_t *offset)
+{
+	struct stm_nand_afm_controller *afm = mtd_to_afm(mtd);
+	struct nand_chip *chip = mtd->priv;
+	struct stm_nand_afm_device *data = chip->priv;
+
+	int buf_len;
+	uint8_t *buf;
+
+	int pages_per_block;
+	uint32_t delta;
+	int found = 0;
+	int page;
+	int page_end;
+	int col;
+	int marker_size = 2 * sizeof(uint32_t);
+
+	pages_per_block = 1 << (chip->phys_erase_shift - chip->page_shift);
+	page_end = data->boot_end >> chip->page_shift;
+
+	/* Use extended buffer to handle the case where the PBL Markers and the
+	 * Offset straddle a page boundary. */
+	buf_len = mtd->writesize + marker_size;
+	buf = kmalloc(buf_len, GFP_KERNEL);
+	if (!buf) {
+		dev_err(afm->dev, "failed to allocate PBL search buffer\n");
 		return 1;
-
-	/* For bootmode_boundary, map logical offset to physical offset */
-	boundary_phys = block_zero_phys << chip->phys_erase_shift;
-	while (boundary_log >= mtd->erasesize) {
-		boundary_phys += mtd->erasesize;
-		if (!afm_block_isbad(mtd, boundary_phys))
-			boundary_log -= mtd->erasesize;
 	}
-	boundary_phys += boundary_log;		/* Add residual offset */
 
-	dev_info(afm->dev, "boot-mode boundary = 0x%08x (physical)\n",
-		 boundary_phys);
+	/* Initialise start of buffer - see memcpy() below... */
+	memset(buf, 0x00, marker_size);
 
-	*_boundary = boundary_phys;
+	/* Start at block zero */
+	for (page = block_zero * pages_per_block;
+	     page < page_end; page++) {
+
+		afm_read_page_boot(mtd, chip, buf + marker_size, page);
+		if (find_pbl_marker(buf, buf_len, &col) == 0) {
+			found = 1;
+			delta = *((uint32_t *)(buf + col + marker_size));
+			*offset =  (page << chip->page_shift) + col - delta;
+			break;
+		}
+
+		/* Copy end of buffer to start, just in case the markers and
+		 * offset straddle a page boundary. */
+		memcpy(buf, buf + (buf_len - marker_size), marker_size);
+	}
+
+	kfree(buf);
+
+	/* Did we find the PBL? */
+	return found ? 0 : 1;
+}
+
+static int pbl_boot_boundary(struct mtd_info *mtd, uint32_t *boundary)
+{
+	struct stm_nand_afm_controller *afm = mtd_to_afm(mtd);
+	struct nand_chip *chip = mtd->priv;
+	uint8_t *buf = chip->buffers->databuf;
+
+	int block_zero;
+	uint32_t pbl_offs = 0x00000000;
+	int pbl_page;
+
+	/* Find logical block zero */
+	block_zero = find_block_zero(mtd);
+	if (block_zero < 0) {
+		dev_err(afm->dev, "failed to find logical block zero\n");
+		return 1;
+	}
+
+	dev_dbg(afm->dev, "block zero: 0x%08x\n",
+		 block_zero << chip->phys_erase_shift);
+
+	/* Find PBL offset */
+	if (find_pbl_offset(mtd, block_zero, &pbl_offs) != 0) {
+		dev_err(afm->dev, "failed to find PBL marker\n");
+		return 1;
+	}
+
+	dev_dbg(afm->dev, "PBL offset: 0x%08x\n", pbl_offs);
+
+	if (pbl_offs & (mtd->writesize - 1)) {
+		dev_err(afm->dev, "PBL offset is not page-aligned\n");
+		return 1;
+	}
+
+	/* Extract boot-boundary from PBL image */
+	pbl_page = pbl_offs >> chip->page_shift;
+	afm_read_page_boot(mtd, chip, buf, pbl_page);
+	*boundary = *((uint32_t *)(buf + PBL_BOOT_BOUNDARY_POINTER));
+	*boundary += block_zero << chip->phys_erase_shift;	/* physical */
+
+	dev_info(afm->dev, "PBL boot-boundary: 0x%08x\n", *boundary);
 
 	return 0;
 }
@@ -2970,14 +3082,6 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 		goto err2;
 	}
 
-#ifdef CONFIG_STM_NAND_AFM_BOOTMODESUPPORT
-	/* Set name of boot partition */
-	boot_part_name = nbootpart ? nbootpart :
-		CONFIG_STM_NAND_AFM_BOOTPARTITION;
-	dev_info(afm->dev, "using boot partition name [%s] (from %s)\n",
-		 boot_part_name, nbootpart ? "command line" : "kernel config");
-#endif
-
 #ifdef CONFIG_MTD_PARTITIONS
 	/* Try probing for MTD partitions */
 	data->nr_parts = parse_mtd_partitions(&data->mtd,
@@ -2998,12 +3102,13 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 			goto err3;
 
 #ifdef CONFIG_STM_NAND_AFM_BOOTMODESUPPORT
+		/* Set name of boot partition */
+		boot_part_name = nbootpart ? nbootpart :
+			CONFIG_STM_NAND_AFM_BOOTPARTITION;
+
 		/* Update boot-mode slave partition */
 		slave = get_mtd_partition_slave(&data->mtd, boot_part_name);
 		if (slave) {
-			dev_info(afm->dev, "found boot-mode partition "
-				 "updating ECC paramters\n");
-
 			part = PART(slave);
 			data->boot_start = part->offset;
 			data->boot_end = part->offset + slave->size;
@@ -3012,19 +3117,15 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 			/* Update 'boot_end' with value in PBL image */
 			if (pbl_boot_boundary(&data->mtd,
 					      &boundary) != 0) {
-				dev_info(afm->dev, "failed to get boot-mode "
-					 "boundary from PBL\n");
+				dev_err(afm->dev, "failed to get boot-mode "
+					"boundary from PBL\n");
 			} else {
 				if (boundary < data->boot_start ||
 				    boundary > data->boot_end) {
-					dev_info(afm->dev,
-						 "PBL boot-mode "
-						 "boundary lies outside "
-						 "boot partition\n");
+					dev_err(afm->dev, "PBL boot-mode "
+						"boundary lies outside "
+						"boot partition\n");
 				} else {
-					dev_info(afm->dev,
-						 "Updating boot-mode "
-						 "ECC boundary from PBL");
 					data->boot_end = boundary;
 				}
 			}

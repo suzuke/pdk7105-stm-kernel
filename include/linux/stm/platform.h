@@ -17,6 +17,7 @@
 #include <linux/lirc.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
+#include <linux/clkdev.h>
 #include <linux/spi/spi.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/nand.h>
@@ -88,6 +89,7 @@ struct stm_plat_asc_data {
 	int hw_flow_control:1;
 	int txfifo_bug:1;
 	struct stm_pad_config *pad_config;
+	char *clk_id;
 };
 
 extern int stm_asc_console_device;
@@ -98,9 +100,9 @@ extern struct platform_device *stm_asc_configured_devices[];
 struct stm_plat_rtc_lpc {
 	unsigned int no_hw_req:1;	/* iomem in sys/serv 5197 */
 	unsigned int need_wdt_reset:1;	/* W/A on 7141 */
-	unsigned int need_wdt_start:1;	/* W/A on 7108 */
 	unsigned char irq_edge_level;
 	char *clk_id;
+	unsigned long force_clk_rate;
 };
 
 /*** SSC platform data ***/
@@ -263,7 +265,7 @@ struct stm_plat_sysconf_group {
 	int group;
 	unsigned long offset;
 	const char *name;
-	const char *(*reg_name)(int num);
+	void (*reg_name)(char *name, int size, int group, int num);
 };
 
 struct stm_plat_sysconf_data {
@@ -281,6 +283,18 @@ struct stm_plat_nand_flex_data {
 	unsigned int flex_rbn_connected:1;
 };
 
+enum stm_nand_bch_ecc_config {
+	BCH_ECC_CFG_AUTO = 0,
+	BCH_ECC_CFG_NOECC,
+	BCH_ECC_CFG_18BIT,
+	BCH_ECC_CFG_30BIT
+};
+
+struct stm_plat_nand_bch_data {
+	struct stm_nand_bank_data *bank;
+	enum stm_nand_bch_ecc_config bch_ecc_cfg;
+};
+
 struct stm_plat_nand_emi_data {
 	unsigned int nr_banks;
 	struct stm_nand_bank_data *banks;
@@ -291,7 +305,8 @@ struct stm_nand_config {
 	enum {
 		stm_nand_emi,
 		stm_nand_flex,
-		stm_nand_afm
+		stm_nand_afm,
+		stm_nand_bch
 	} driver;
 	int nr_banks;
 	struct stm_nand_bank_data *banks;
@@ -299,16 +314,39 @@ struct stm_nand_config {
 		int emi_gpio;
 		int flex_connected;
 	} rbn;
+	enum stm_nand_bch_ecc_config bch_ecc_cfg;
 };
 
 
 /*** STM SPI FSM Serial Flash data ***/
+
+struct stm_spifsm_caps {
+	/* Board/SoC/IP capabilities */
+	int dual_mode:1;		/* DUAL mode */
+	int quad_mode:1;		/* QUAD mode */
+
+	/* IP capabilities */
+	int addr_32bit:1;		/* 32bit addressing supported */
+	int no_poll_mode_change:1;	/* Polling MODE_CHANGE broken */
+	int no_clk_div_4:1;		/* Bug prevents ClK_DIV=4 */
+	int no_sw_reset:1;		/* S/W reset not possible */
+	int dummy_on_write:1;		/* Bug requires "dummy" sequence on
+					 * WRITE */
+	int no_read_repeat:1;		/* READ repeat sequence broken */
+	int no_write_repeat:1;		/* WRITE repeat sequence broken */
+	enum {
+		spifsm_no_read_status = 1,	/* READ_STA broken */
+		spifsm_read_status_clkdiv4,	/* READ_STA only at CLK_DIV=4 */
+	} read_status_bug;
+};
 
 struct stm_plat_spifsm_data {
 	char			*name;
 	struct mtd_partition	*parts;
 	unsigned int		nr_parts;
 	unsigned int		max_freq;
+	struct stm_pad_config	*pads;
+	struct stm_spifsm_caps	capabilities;
 };
 
 
@@ -471,7 +509,7 @@ struct stm_plat_ilc3_data {
 	int disable_wakeup:1;
 };
 
-/*** To claim Ethernet PAD resources from thr platform ***/
+/*** To claim Ethernet PAD resources from the platform ***/
 
 static inline int stmmac_claim_resource(struct platform_device *pdev)
 {
@@ -504,5 +542,21 @@ struct stm_mali_config {
 	int num_ext_resources;
 	struct stm_mali_resource *ext_mem;
 };
+
+static inline int clk_add_alias_platform_device(const char *alias,
+	struct platform_device *pdev, char *id, struct device *dev)
+{
+	char dev_name_buf[20];
+	const char *dev_name;
+
+	if (pdev->id == -1) {
+		dev_name = pdev->name;
+	} else {
+		snprintf(dev_name_buf, sizeof(dev_name_buf), "%s.%d",
+			pdev->name, pdev->id);
+		dev_name = dev_name_buf;
+	}
+	return clk_add_alias(alias, dev_name, id, dev);
+}
 
 #endif /* __LINUX_STM_PLATFORM_H */

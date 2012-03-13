@@ -20,7 +20,6 @@
 #include <linux/stm/stx7108.h>
 #include <asm/irq-ilc.h>
 
-
 #define PCIE_SOFT_RST_N_PCIE	(1<<6) /* Active low !! */
 #define PCIE_SYS_INT		(1<<5)
 #define PCIE_P1_SSC_EN		(1<<4)
@@ -72,7 +71,7 @@ static struct stm_plat_pcie_config stx7108_plat_pcie_config = {
 /* PCI express support */
 #define PCIE_MEM_START 0x20000000
 #define PCIE_MEM_SIZE  0x20000000
-#define MSI_FIRST_IRQ 	(NR_IRQS - 33)
+#define MSI_FIRST_IRQ 	(NR_IRQS - 29)
 #define MSI_LAST_IRQ 	(NR_IRQS - 1)
 
 static struct platform_device stx7108_pcie_device = {
@@ -177,7 +176,7 @@ static struct platform_device stx7108_pci_device = {
 			.end = 0xffff,
 			.flags = IORESOURCE_IO,
 		},
-		STM_PLAT_RESOURCE_MEM_NAMED("pci emiss", 0xfdaa8000, 0x17fc),
+		STM_PLAT_RESOURCE_MEM_NAMED("pci bridge", 0xfdaa9400, 0x3fc),
 		STM_PLAT_RESOURCE_MEM_NAMED("pci ahb", 0xfea08000, 0xff),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pci dma", ILC_IRQ(126), -1),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pci err", ILC_IRQ(127), -1),

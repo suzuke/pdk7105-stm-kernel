@@ -27,10 +27,17 @@ struct emi_timing_data {
 
 unsigned long emi_bank_base(int bank);
 void emi_bank_configure(int bank, unsigned long data[4]);
+void emi_bank_write_cs_enable(int bank, int enable);
 void emi_config_pcmode(int bank, int pc_mode);
 
 void emi_config_pata(int bank, int pc_mode);
 void emi_config_nand(int bank, struct emi_timing_data *timing_data);
-void emi_config_pci(void);
+struct stm_plat_pci_config;
+void emi_config_pci(struct stm_plat_pci_config *pci_config);
+
+enum nandi_controllers {STM_NANDI_UNCONFIGURED,
+			STM_NANDI_HAMMING,
+			STM_NANDI_BCH};
+void emiss_nandi_select(enum nandi_controllers controller);
 
 #endif

@@ -44,8 +44,8 @@ extern void nand_wait_ready(struct mtd_info *mtd);
  * is supported now. If you add a chip with bigger oobsize/page
  * adjust this accordingly.
  */
-#define NAND_MAX_OOBSIZE	128
-#define NAND_MAX_PAGESIZE	4096
+#define NAND_MAX_OOBSIZE	576
+#define NAND_MAX_PAGESIZE	8192
 
 /*
  * Constants for hardware specific CLE/ALE/NCE function
@@ -79,6 +79,7 @@ extern void nand_wait_ready(struct mtd_info *mtd);
 #define NAND_CMD_RNDIN		0x85
 #define NAND_CMD_READID		0x90
 #define NAND_CMD_ERASE2		0xd0
+#define NAND_CMD_PARAM          0xec
 #define NAND_CMD_RESET		0xff
 #define NAND_CMD_SETFEATURES    0xef
 #define NAND_CMD_GETFEATURES    0xee
@@ -176,6 +177,21 @@ typedef enum {
 /* Chip does not allow subpage writes */
 #define NAND_NO_SUBPAGE_WRITE	0x00000200
 
+/* Device is one of 'new' xD cards that expose fake nand command set */
+#define NAND_BROKEN_XD		0x00000400
+
+/* Device behaves just like nand, but is readonly */
+#define NAND_ROM                0x00000800
+
+/* Device supports cache read function */
+#define NAND_CACHERD		0x00001000
+/* Device supports multi-plane read operations */
+#define NAND_MULTIPLANE_READ	0x00002000
+/* Deivce supports multi-plane program/erase operations */
+#define NAND_MULTIPLANE_PROG_ERASE	0x00004000
+/* Deivce supports multi-LUN operations */
+#define NAND_MULTILUN		0x00008000
+
 
 /* Options valid for Samsung large page devices */
 #define NAND_SAMSUNG_LP_OPTIONS \
@@ -211,6 +227,19 @@ typedef enum {
 #define NAND_CI_CELLTYPE_MSK	0x0C
 
 /*
+ * Factory-programmed bad-block marker (BBM) flags
+ */
+#define NAND_BBM_PAGE_0		0x00000001
+#define NAND_BBM_PAGE_1		0x00000002
+#define NAND_BBM_PAGE_LAST	0x00000004
+#define NAND_BBM_PAGE_LMIN2	0x00000008
+#define NAND_BBM_PAGE_ALL	0x00000010
+#define NAND_BBM_BYTE_OOB_0	0x00000020
+#define NAND_BBM_BYTE_OOB_5	0x00000040
+#define NAND_BBM_BYTE_OOB_ALL	0x00000080
+#define NAND_BBM_BYTE_ALL	0x00000100
+
+/*
  * nand_state_t - chip states
  * Enumeration for NAND flash chip state
  */
@@ -226,6 +255,70 @@ typedef enum {
 
 /* Keep gcc happy */
 struct nand_chip;
+
+struct nand_onfi_params {
+	/* rev info and features block */
+	/* 'O' 'N' 'F' 'I'  */
+	u8 sig[4];
+	__le16 revision;
+	__le16 features;
+	__le16 opt_cmd;
+	u8 reserved[22];
+
+	/* manufacturer information block */
+	char manufacturer[12];
+	char model[20];
+	u8 jedec_id;
+	__le16 date_code;
+	u8 reserved2[13];
+
+	/* memory organization block */
+	__le32 byte_per_page;
+	__le16 spare_bytes_per_page;
+	__le32 data_bytes_per_ppage;
+	__le16 spare_bytes_per_ppage;
+	__le32 pages_per_block;
+	__le32 blocks_per_lun;
+	u8 lun_count;
+	u8 addr_cycles;
+	u8 bits_per_cell;
+	__le16 bb_per_lun;
+	__le16 block_endurance;
+	u8 guaranteed_good_blocks;
+	__le16 guaranteed_block_endurance;
+	u8 programs_per_page;
+	u8 ppage_attr;
+	u8 ecc_bits;
+	u8 interleaved_bits;
+	u8 interleaved_ops;
+	u8 reserved3[13];
+
+	/* electrical parameter block */
+	u8 io_pin_capacitance_max;
+	__le16 async_timing_mode;
+	__le16 program_cache_timing_mode;
+	__le16 t_prog;
+	__le16 t_bers;
+	__le16 t_r;
+	__le16 t_ccs;
+	__le16 src_sync_timing_mode;
+	__le16 src_ssync_features;
+	__le16 clk_pin_capacitance_typ;
+	__le16 io_pin_capacitance_typ;
+	__le16 input_pin_capacitance_typ;
+	u8 input_pin_capacitance_max;
+	u8 driver_strenght_support;
+	__le16 t_int_r;
+	__le16 t_ald;
+	u8 reserved4[7];
+
+	/* vendor */
+	u8 reserved5[90];
+
+	__le16 crc;
+} __attribute__((packed));
+
+#define ONFI_CRC_BASE	0x4F4E
 
 /**
  * struct nand_hw_control - Control structure for hardware controller (e.g ECC generator) shared among independent devices
@@ -350,15 +443,23 @@ struct nand_buffers {
  * @phys_erase_shift:	[INTERN] number of address bits in a physical eraseblock
  * @bbt_erase_shift:	[INTERN] number of address bits in a bbt entry
  * @chip_shift:		[INTERN] number of address bits in one chip
- * @options:		[BOARDSPECIFIC] various chip options. They can partly be set to inform nand_scan about
- *			special functionality. See the defines for further explanation
+ * @options:		[BOARDSPECIFIC] various chip options. They can partly
+ *			be set to inform nand_scan about special functionality.
+ *			See the defines for further explanation.
+ * @bbm:		[INTERN] Bad block marker flags
  * @badblockpos:	[INTERN] position of the bad block marker in the oob area
+ * @planes_per_chip:	[INTERN] number of planes per chip
+ * @luns_per_chip:	[INTERN] number of LUNs per chip
  * @cellinfo:		[INTERN] MLC/multichip data from chip ident
  * @numchips:		[INTERN] number of physical chips
  * @chipsize:		[INTERN] the size of one chip for multichip arrays
  * @pagemask:		[INTERN] page number mask = number of (pages / chip) - 1
  * @pagebuf:		[INTERN] holds the pagenumber which is currently in data_buf
  * @subpagesize:	[INTERN] holds the subpagesize
+ * @onfi_version:	[INTERN] holds the chip ONFI version (BCD encoded),
+ *			non 0 if ONFI supported.
+ * @onfi_params:	[INTERN] holds the ONFI page parameter when ONFI is
+ *			supported, 0 otherwise.
  * @ecclayout:		[REPLACEABLE] the default ecc placement scheme
  * @bbt:		[INTERN] bad block table pointer
  * @bbt_td:		[REPLACEABLE] bad block table descriptor for flash lookup
@@ -397,6 +498,7 @@ struct nand_chip {
 
 	int		chip_delay;
 	unsigned int	options;
+	unsigned int	bbm;
 
 	int		page_shift;
 	int		phys_erase_shift;
@@ -409,6 +511,11 @@ struct nand_chip {
 	int		subpagesize;
 	uint8_t		cellinfo;
 	int		badblockpos;
+	int		planes_per_chip;
+	int		luns_per_chip;
+
+	int onfi_version;
+	struct nand_onfi_params	onfi_params;
 
 	nand_state_t	state;
 
@@ -443,6 +550,7 @@ struct nand_chip {
 #define NAND_MFR_HYNIX		0xad
 #define NAND_MFR_MICRON		0x2c
 #define NAND_MFR_AMD		0x01
+#define NAND_MFR_MACRONIX	0xc2
 
 /**
  * struct nand_flash_dev - NAND Flash Device ID Structure
@@ -477,6 +585,11 @@ struct nand_manufacturers {
 
 extern struct nand_flash_dev nand_flash_ids[];
 extern struct nand_manufacturers nand_manuf_ids[];
+extern int nand_decode_id(struct mtd_info *mtd, struct nand_chip *chip,
+			  struct nand_flash_dev *type, uint8_t *id,
+			  int max_id_len);
+extern void nand_derive_bbm(struct mtd_info *mtd, struct nand_chip *chip,
+			    uint8_t *id);
 
 /**
  * struct nand_bbt_descr - bad block table descriptor
@@ -562,7 +675,10 @@ extern int nand_do_read(struct mtd_info *mtd, loff_t from, size_t len,
 extern int nand_get_device(struct nand_chip *chip,
 			   struct mtd_info *mtd, int new_state);
 extern void nand_release_device(struct mtd_info *mtd);
-
+extern int nand_suspend(struct mtd_info *mtd);
+extern void nand_resume(struct mtd_info *mtd);
+extern void nand_sync(struct mtd_info *mtd);
+extern u8 nand_erasebb;
 
 /*
 * Constants for oob configuration

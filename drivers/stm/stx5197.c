@@ -865,10 +865,13 @@ static int stx5197_pio_config(unsigned gpio,
 #ifdef CONFIG_DEBUG_FS
 
 #define SYSCONF_REG(field) _SYSCONF_REG(#field, field)
-#define _SYSCONF_REG(name, group, num) case num: return name
+#define _SYSCONF_REG(name, group, num) case num: str = name; break
 
-static const char *stx5197_sysconf_hd_reg_name(int num)
+static void stx5197_sysconf_hd_reg_name(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_CTRL_C);
 	SYSCONF_REG(CFG_CTRL_D);
@@ -907,11 +910,14 @@ static const char *stx5197_sysconf_hd_reg_name(int num)
 	SYSCONF_REG(CFG_MONITOR_R);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
-static const char *stx5197_sysconf_hs_reg_name(int num)
+static void stx5197_sysconf_hs_reg_name(char *name, int size,
+		int group, int num)
 {
+	char *str = "???";
+
 	switch (num) {
 	SYSCONF_REG(CFG_CTRL_A);
 	SYSCONF_REG(CFG_CTRL_B);
@@ -920,7 +926,7 @@ static const char *stx5197_sysconf_hs_reg_name(int num)
 	SYSCONF_REG(CFG_MONITOR_B);
 	}
 
-	return "???";
+	strlcpy(name, size, str);
 }
 
 #endif
@@ -992,10 +998,11 @@ static void stx5197_emi_power(struct stm_device_state *device_state,
 static struct platform_device stx5197_emi = {
 	.name = "emi",
 	.id = -1,
-	.num_resources = 2,
+	.num_resources = 3,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM(0, 128 * 1024 * 1024),
-		STM_PLAT_RESOURCE_MEM(0xfde30000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 128 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfdf00000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfde31000, 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
 		.sysconfs_num = 2,
