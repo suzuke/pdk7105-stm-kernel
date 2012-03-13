@@ -304,15 +304,18 @@ static int scsi_dh_notifier(struct notifier_block *nb,
 	sdev = to_scsi_device(dev);
 
 	if (action == BUS_NOTIFY_ADD_DEVICE) {
-		err = device_create_file(dev, &scsi_dh_state_attr);
-		/* don't care about err */
 		devinfo = device_handler_match(NULL, sdev);
-		if (devinfo)
-			err = scsi_dh_handler_attach(sdev, devinfo);
+		if (!devinfo)
+			goto out;
+
+		err = scsi_dh_handler_attach(sdev, devinfo);
+		if (!err)
+			err = device_create_file(dev, &scsi_dh_state_attr);
 	} else if (action == BUS_NOTIFY_DEL_DEVICE) {
 		device_remove_file(dev, &scsi_dh_state_attr);
 		scsi_dh_handler_detach(sdev, NULL);
 	}
+out:
 	return err;
 }
 
@@ -432,12 +435,7 @@ int scsi_dh_activate(struct request_queue *q)
 
 	spin_lock_irqsave(q->queue_lock, flags);
 	sdev = q->queuedata;
-	if (!sdev) {
-		spin_unlock_irqrestore(q->queue_lock, flags);
-		return SCSI_DH_NOSYS;
-	}
-
-	if (sdev->scsi_dh_data)
+	if (sdev && sdev->scsi_dh_data)
 		scsi_dh = sdev->scsi_dh_data->scsi_dh;
 	if (!scsi_dh || !get_device(&sdev->sdev_gendev))
 		err = SCSI_DH_NOSYS;

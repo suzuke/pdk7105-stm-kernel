@@ -382,13 +382,11 @@ ENDPROC(sys_clone_wrapper)
 
 sys_sigreturn_wrapper:
 		add	r0, sp, #S_OFF
-		mov	why, #0		@ prevent syscall restart handling
 		b	sys_sigreturn
 ENDPROC(sys_sigreturn_wrapper)
 
 sys_rt_sigreturn_wrapper:
 		add	r0, sp, #S_OFF
-		mov	why, #0		@ prevent syscall restart handling
 		b	sys_rt_sigreturn
 ENDPROC(sys_rt_sigreturn_wrapper)
 
@@ -418,12 +416,12 @@ sys_mmap2:
 		tst	r5, #PGOFF_MASK
 		moveq	r5, r5, lsr #PAGE_SHIFT - 12
 		streq	r5, [sp, #4]
-		beq	sys_mmap_pgoff
+		beq	do_mmap2
 		mov	r0, #-EINVAL
 		mov	pc, lr
 #else
 		str	r5, [sp, #4]
-		b	sys_mmap_pgoff
+		b	do_mmap2
 #endif
 ENDPROC(sys_mmap2)
 

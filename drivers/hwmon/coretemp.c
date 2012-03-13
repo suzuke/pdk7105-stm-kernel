@@ -33,7 +33,6 @@
 #include <linux/list.h>
 #include <linux/platform_device.h>
 #include <linux/cpu.h>
-#include <linux/pci.h>
 #include <asm/msr.h>
 #include <asm/processor.h>
 
@@ -53,7 +52,6 @@ struct coretemp_data {
 	struct mutex update_lock;
 	const char *name;
 	u32 id;
-	u16 core_id;
 	char valid;		/* zero until following fields are valid */
 	unsigned long last_updated;	/* in jiffies */
 	int temp;
@@ -76,7 +74,7 @@ static ssize_t show_name(struct device *dev, struct device_attribute
 	if (attr->index == SHOW_NAME)
 		ret = sprintf(buf, "%s\n", data->name);
 	else	/* show label */
-		ret = sprintf(buf, "Core %d\n", data->core_id);
+		ret = sprintf(buf, "Core %d\n", data->id);
 	return ret;
 }
 
@@ -163,7 +161,6 @@ static int __devinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *
 	int usemsr_ee = 1;
 	int err;
 	u32 eax, edx;
-	struct pci_dev *host_bridge;
 
 	/* Early chips have no MSR for TjMax */
 
@@ -171,21 +168,11 @@ static int __devinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *
 		usemsr_ee = 0;
 	}
 
-	/* Atom CPUs */
+	/* Atoms seems to have TjMax at 90C */
 
 	if (c->x86_model == 0x1c) {
 		usemsr_ee = 0;
-
-		host_bridge = pci_get_bus_and_slot(0, PCI_DEVFN(0, 0));
-
-		if (host_bridge && host_bridge->vendor == PCI_VENDOR_ID_INTEL
-		    && (host_bridge->device == 0xa000	/* NM10 based nettop */
-		    || host_bridge->device == 0xa010))	/* NM10 based netbook */
-			tjmax = 100000;
-		else
-			tjmax = 90000;
-
-		pci_dev_put(host_bridge);
+		tjmax = 90000;
 	}
 
 	if ((c->x86_model > 0xe) && (usemsr_ee)) {
@@ -229,7 +216,7 @@ static int __devinit adjust_tjmax(struct cpuinfo_x86 *c, u32 id, struct device *
 		if (err) {
 			dev_warn(dev,
 				 "Unable to access MSR 0xEE, for Tjmax, left"
-				 " at default\n");
+				 " at default");
 		} else if (eax & 0x40000000) {
 			tjmax = tjmax_ee;
 		}
@@ -256,9 +243,6 @@ static int __devinit coretemp_probe(struct platform_device *pdev)
 	}
 
 	data->id = pdev->id;
-#ifdef CONFIG_SMP
-	data->core_id = c->cpu_core_id;
-#endif
 	data->name = "coretemp";
 	mutex_init(&data->update_lock);
 
@@ -356,10 +340,6 @@ struct pdev_entry {
 	struct list_head list;
 	struct platform_device *pdev;
 	unsigned int cpu;
-#ifdef CONFIG_SMP
-	u16 phys_proc_id;
-	u16 cpu_core_id;
-#endif
 };
 
 static LIST_HEAD(pdev_list);
@@ -370,22 +350,6 @@ static int __cpuinit coretemp_device_add(unsigned int cpu)
 	int err;
 	struct platform_device *pdev;
 	struct pdev_entry *pdev_entry;
-#ifdef CONFIG_SMP
-	struct cpuinfo_x86 *c = &cpu_data(cpu);
-#endif
-
-	mutex_lock(&pdev_list_mutex);
-
-#ifdef CONFIG_SMP
-	/* Skip second HT entry of each core */
-	list_for_each_entry(pdev_entry, &pdev_list, list) {
-		if (c->phys_proc_id == pdev_entry->phys_proc_id &&
-		    c->cpu_core_id == pdev_entry->cpu_core_id) {
-			err = 0;	/* Not an error */
-			goto exit;
-		}
-	}
-#endif
 
 	pdev = platform_device_alloc(DRVNAME, cpu);
 	if (!pdev) {
@@ -409,10 +373,7 @@ static int __cpuinit coretemp_device_add(unsigned int cpu)
 
 	pdev_entry->pdev = pdev;
 	pdev_entry->cpu = cpu;
-#ifdef CONFIG_SMP
-	pdev_entry->phys_proc_id = c->phys_proc_id;
-	pdev_entry->cpu_core_id = c->cpu_core_id;
-#endif
+	mutex_lock(&pdev_list_mutex);
 	list_add_tail(&pdev_entry->list, &pdev_list);
 	mutex_unlock(&pdev_list_mutex);
 
@@ -423,7 +384,6 @@ exit_device_free:
 exit_device_put:
 	platform_device_put(pdev);
 exit:
-	mutex_unlock(&pdev_list_mutex);
 	return err;
 }
 

@@ -62,10 +62,6 @@ static unsigned long free_mem_end_ptr;
 #include "../../../../lib/decompress_unlzma.c"
 #endif
 
-#ifdef CONFIG_KERNEL_LZO
-#include "../../../../lib/decompress_unlzo.c"
-#endif
-
 #ifdef CONFIG_SH_STANDARD_BIOS
 size_t strlen(const char *s)
 {
@@ -135,9 +131,9 @@ void decompress_kernel(void)
 #ifdef CONFIG_SUPERH64
 	output_addr = (CONFIG_MEMORY_START + 0x2000);
 #else
-	output_addr = (unsigned long)&_text+PAGE_SIZE;
-#if defined(CONFIG_29BIT) || defined(CONFIG_PMB_FIXED)
-	output_addr = P2SEGADDR(output_addr);
+	output_addr = PHYSADDR((unsigned long)&_text+PAGE_SIZE);
+#ifdef CONFIG_29BIT
+	output_addr |= P2SEG;
 #endif
 #endif
 
