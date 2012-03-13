@@ -145,29 +145,6 @@ static int stm_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	return 0;
 }
 
-static int stm_rtc_irq_set_freq(struct device *dev, int freq)
-{
-	struct stm_rtc *rtc = dev_get_drvdata(dev);
-	int ret = 0;
-
-	spin_lock(&rtc->lock);
-	switch (freq) {
-	case 0:
-		ret = -EINVAL;
-		break;
-	case 1 ... 4096:
-		rtc->periodic_tick = clk_get_rate(rtc->clk) / freq;
-		if (!rtc->periodic_tick)
-			ret = -EINVAL;
-		break;
-	default:
-		ret = -ENOTSUPP;
-	}
-	spin_unlock(&rtc->lock);
-
-	return ret;
-}
-
 static int stm_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *wkalrm)
 {
 	struct stm_rtc *rtc = dev_get_drvdata(dev);
@@ -267,7 +244,6 @@ static struct rtc_class_ops stm_rtc_ops = {
 	.set_time = stm_rtc_set_time,
 	.read_alarm = stm_rtc_read_alarm,
 	.set_alarm = stm_rtc_set_alarm,
-	.irq_set_freq = stm_rtc_irq_set_freq,
 };
 
 #ifdef CONFIG_PM
@@ -372,7 +348,7 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 	}
 
 	rtc->irq = res->start;
-	set_irq_type(rtc->irq, plat_data->irq_edge_level);
+	irq_set_irq_type(rtc->irq, plat_data->irq_edge_level);
 	enable_irq_wake(rtc->irq);
 	if (devm_request_irq(&pdev->dev, rtc->irq, stm_rtc_irq,
 		IRQF_DISABLED, DRV_NAME, rtc) < 0){
@@ -383,14 +359,13 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 
 	device_set_wakeup_capable(&pdev->dev, 1);
 
+	platform_set_drvdata(pdev, rtc);
 	rtc->rtc_dev = rtc_device_register(DRV_NAME, &pdev->dev,
 					   &stm_rtc_ops, THIS_MODULE);
 	if (IS_ERR(rtc->rtc_dev)) {
 		ret = PTR_ERR(rtc->rtc_dev);
 		goto err_badreg;
 	}
-
-	platform_set_drvdata(pdev, rtc);
 
 	/*
 	 * The RTC-LPC is able to manage date.year > 2038
