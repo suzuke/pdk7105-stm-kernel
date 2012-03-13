@@ -7,6 +7,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/export.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <mach/common.h>

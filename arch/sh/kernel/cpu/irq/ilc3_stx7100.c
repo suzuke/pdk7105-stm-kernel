@@ -14,6 +14,7 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/irq.h>
 #include <linux/pm.h>
 #include <linux/sysdev.h>

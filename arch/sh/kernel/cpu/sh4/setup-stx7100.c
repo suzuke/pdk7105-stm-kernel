@@ -14,6 +14,7 @@
 #include <linux/stm/stx7100.h>
 #include <linux/stm/sysconf.h>
 #include <asm/irq-ilc.h>
+#include <asm/io.h>
 
 
 

@@ -8,6 +8,8 @@
 
 #include <linux/stm/wakeup_devices.h>
 #include <linux/device.h>
+#include <linux/string.h>
+#include <linux/export.h>
 #include <linux/platform_device.h>
 
 static void stm_wake_init(struct stm_wakeup_devices *wkd)
