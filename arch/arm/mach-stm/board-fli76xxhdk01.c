@@ -20,6 +20,7 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/fli7610.h>
 
+#include <asm/hardware/cache-l2x0.h>
 #include <asm/mach-types.h>
 #include <asm/memory.h>
 
