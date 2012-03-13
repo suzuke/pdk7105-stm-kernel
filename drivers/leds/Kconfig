@@ -305,6 +305,20 @@ config LEDS_MB374
 	  This option enables support for the LEDs on the STMicroelectronics
 	  mb374 (ST40RA Starter board).
 
+config LEDS_MB411
+	tristate "LED Support for STMicroelectronics mb411 LEDs"
+	depends on LEDS_CLASS && SH_ST_MB411
+	help
+	  This option enables support for the LEDs on the STMicroelectronics
+	  mb411 board.
+
+config LEDS_MB628
+	tristate "LED Support for STMicroelectronics mb374 LEDs"
+	depends on LEDS_CLASS && SH_ST_MB628
+	help
+	  This option enables support for the LEDs on the STMicroelectronics
+	  mb628 board.
+
 config LEDS_INTEL_SS4200
 	tristate "LED driver for Intel NAS SS4200 series"
 	depends on LEDS_CLASS

@@ -43,8 +43,8 @@ obj-$(CONFIG_LEDS_NS2)			+= leds-ns2.o
 obj-$(CONFIG_LEDS_NETXBIG)		+= leds-netxbig.o
 obj-$(CONFIG_LEDS_ASIC3)		+= leds-asic3.o
 obj-$(CONFIG_LEDS_MB374)		+= leds-mb374.o
-obj-$(CONFIG_SH_ST_MB411)		+= leds-mb411.o
-obj-$(CONFIG_SH_ST_MB628)		+= leds-mb628.o
+obj-$(CONFIG_LEDS_MB411)		+= leds-mb411.o
+obj-$(CONFIG_LEDS_MB628)		+= leds-mb628.o
 
 obj-$(CONFIG_LEDS_RENESAS_TPU)		+= leds-renesas-tpu.o
 
