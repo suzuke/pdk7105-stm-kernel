@@ -59,8 +59,6 @@ static struct platform_device mb628_epld_device;
 
 static void __init mb628_setup(char **cmdline_p)
 {
-	u8 test;
-
 	printk(KERN_INFO "STMicroelectronics STx7141 Mboard initialisation\n");
 
 	stx7141_early_device_init();
@@ -77,14 +75,6 @@ static void __init mb628_setup(char **cmdline_p)
 			.routing.asc2 = stx7141_asc2_pio6,
 			.hw_flow_control = 1,
 			.is_console = 0, });
-
-	epld_early_init(&mb628_epld_device);
-
-	epld_write(0xab, EPLD_TEST);
-	test = epld_read(EPLD_TEST);
-	printk(KERN_INFO "mb628 EPLD version %ld, test %s\n",
-	       epld_read(EPLD_IDENT),
-	       (test == (u8)(~0xab)) ? "passed" : "failed");
 }
 
 /* Serial Flash Chip Select
@@ -149,7 +139,7 @@ static struct spi_board_info mb628_serial_flash =  {
 };
 
 /* NOR Flash */
-static void mb628_nor_set_vpp(struct map_info *info, int enable)
+static void mb628_nor_set_vpp(struct platform_device *dev, int enable)
 {
 	epld_write((enable ? EPLD_FLASH_NOTWP : 0) | EPLD_FLASH_NOTRESET,
 		   EPLD_FLASH);
@@ -369,6 +359,16 @@ static struct platform_device *mb628_devices[] __initdata = {
 static int __init mb628_device_init(void)
 {
 	struct sysconf_field *sc;
+	u8 test;
+
+	epld_early_init(&mb628_epld_device);
+
+	epld_write(0xab, EPLD_TEST);
+	test = epld_read(EPLD_TEST);
+	printk(KERN_INFO "mb628 EPLD version %ld, test %s\n",
+	       epld_read(EPLD_IDENT),
+	       (test == (u8)(~0xab)) ? "passed" : "failed");
+
 
 	/* Configure FLASH devices */
 	sc = sysconf_claim(SYS_STA, 1, 16, 17, "boot_mode");
@@ -452,7 +452,7 @@ static int __init mb628_device_init(void)
 		   EPLD_ENABLE);
 
 	/* Configure GMII0 MDINT for active low */
-	set_irq_type(ILC_IRQ(43), IRQ_TYPE_LEVEL_LOW);
+	irq_set_irq_type(ILC_IRQ(43), IRQ_TYPE_LEVEL_LOW);
 
 	stx7141_configure_ethernet(0, &(struct stx7141_ethernet_config) {
 			.mode = stx7141_ethernet_mode_mii,
@@ -548,6 +548,7 @@ static int __init mb628_device_init(void)
 }
 arch_initcall(mb628_device_init);
 
+#ifdef CONFIG_HAS_IOPORT
 static void __iomem *mb628_ioport_map(unsigned long port, unsigned int size)
 {
 	/*
@@ -556,6 +557,7 @@ static void __iomem *mb628_ioport_map(unsigned long port, unsigned int size)
 	 */
 	return (void __iomem *)CCN_PVR;
 }
+#endif
 
 static void __init mb628_init_irq(void)
 {
@@ -566,5 +568,7 @@ struct sh_machine_vector mv_mb628 __initmv = {
 	.mv_setup		= mb628_setup,
 	.mv_nr_irqs		= NR_IRQS,
 	.mv_init_irq		= mb628_init_irq,
+#ifdef CONFIG_HAS_IOPORT
 	.mv_ioport_map		= mb628_ioport_map,
+#endif
 };
