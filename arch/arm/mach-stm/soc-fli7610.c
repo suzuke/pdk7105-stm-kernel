@@ -34,8 +34,8 @@
 
 static struct map_desc fli7610_io_desc[] __initdata = {
 	{
-		.virtual	= IO_ADDRESS(FLI7610_GIC_CPU_BASE),
-		.pfn		= __phys_to_pfn(FLI7610_GIC_CPU_BASE),
+		.virtual	= IO_ADDRESS(STIH415_SCU_BASE),
+		.pfn		= __phys_to_pfn(STIH415_SCU_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
