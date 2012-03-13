@@ -13,7 +13,7 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
-#include <linux/lirc.h>
+#include <media/lirc.h>
 #include <linux/smsc911x.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/physmap.h>

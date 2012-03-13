@@ -15,7 +15,7 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/leds.h>
-#include <linux/lirc.h>
+#include <media/lirc.h>
 #include <linux/gpio.h>
 #include <linux/phy.h>
 #include <linux/input.h>

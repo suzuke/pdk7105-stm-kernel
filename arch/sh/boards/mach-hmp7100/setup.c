@@ -15,7 +15,7 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/phy.h>
-#include <linux/lirc.h>
+#include <media/lirc.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/physmap.h>
 #include <linux/spi/spi.h>
