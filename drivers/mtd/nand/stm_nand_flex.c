@@ -62,7 +62,7 @@
 #include <linux/delay.h>
 #include <linux/mtd/partitions.h>
 
-#include "stm_nandc_regs.h"
+#include "stm_nand_regs.h"
 
 
 #define NAME	"stm-nand-flex"
@@ -152,13 +152,14 @@ static const char *part_probes[] = { "cmdlinepart", NULL };
 
 /*** FLEX mode control functions (cf nand_base.c) ***/
 
-/* Assumes EMINAND_DATAREAD has been configured for 1-byte reads. */
+
+/* Assumes NANDHAM_DATAREAD has been configured for 1-byte reads. */
 static uint8_t flex_read_byte(struct mtd_info *mtd)
 {
 	struct stm_nand_flex_controller *flex = mtd_to_flex(mtd);
 	uint32_t reg;
 
-	reg =  flex_readreg(EMINAND_FLEX_DATA);
+	reg =  flex_readreg(NANDHAM_FLEX_DATA);
 
 	return (uint8_t)(reg & 0xff);
 }
@@ -174,13 +175,13 @@ static void flex_cmd_ctrl(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 
 	if (cmd != NAND_CMD_NONE) {
 		if (flex_ctrl & NAND_CLE) {
-			reg = (cmd & 0xff) | FLX_CMD_REG_BEAT_1 |
-				FLX_CMD_REG_CSN_STATUS;
-			flex_writereg(reg, EMINAND_FLEX_COMMAND_REG);
+			reg = (cmd & 0xff) | FLEX_CMD_BEATS_1 |
+				FLEX_CMD_CSN;
+			flex_writereg(reg, NANDHAM_FLEX_CMD);
 		} else if (flex_ctrl & NAND_ALE) {
-			reg = (cmd & 0xff) | FLX_ADDR_REG_ADD8_VALID |
-				FLX_ADDR_REG_BEAT_1 | FLX_ADDR_REG_CSN_STATUS;
-			flex_writereg(reg, EMINAND_FLEX_ADDRESS_REG);
+			reg = (cmd & 0xff) | FLEX_ADDR_ADD8_VALID |
+				FLEX_ADDR_BEATS_1 | FLEX_ADDR_CSN;
+			flex_writereg(reg, NANDHAM_FLEX_ADD);
 		} else {
 			printk(KERN_ERR NAME "%s: unknown ctrl 0x%02x!\n",
 			       __FUNCTION__, flex_ctrl);
@@ -238,7 +239,7 @@ static int flex_rbn(struct mtd_info *mtd)
 
 	/* Apply a small delay before sampling RBn signal */
 	ndelay(100);
-	return (flex_readreg(EMINAND_RBN_STATUS) & (0x4)) ? 1 : 0;
+	return (flex_readreg(NANDHAM_RBN_STA) & (0x4)) ? 1 : 0;
 }
 
 /* FLEX mode ECC requires 4-byte read/writes.  To maintain compatibility with
@@ -268,8 +269,8 @@ static void flex_read_buf_cached(struct mtd_info *mtd, uint8_t *buf, int len)
 	}
 
 	/* Switch to 4-byte reads */
-	flex_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 
 	while (lenaligned > 0) {
 		spin_lock_irqsave(&(flex->lock), irq_flags);
@@ -296,8 +297,8 @@ static void flex_read_buf_cached(struct mtd_info *mtd, uint8_t *buf, int len)
 		memcpy(buf, flex->buf, len);
 
 	/* Switch back to 1-byte reads */
-	flex_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 }
 #else
 static void flex_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
@@ -319,17 +320,17 @@ static void flex_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 	}
 
 	/* Switch to 4-byte reads (required for ECC) */
-	flex_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 
-	readsl(flex->base_addr + EMINAND_FLEX_DATA, p, lenaligned/4);
+	readsl(flex->base_addr + NANDHAM_FLEX_DATA, p, lenaligned/4);
 
 	if (notaligned)
 		memcpy(buf, p, len);
 
 	/* Switch back to 1-byte reads */
-	flex_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 
 }
 #endif
@@ -350,14 +351,14 @@ static void flex_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 	}
 
 	/* Switch to 4-byte reads (required for ECC) */
-	flex_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAWRITE_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAWRITE_CONFIG);
 
-	writesl(flex->base_addr + EMINAND_FLEX_DATA, p, len/4);
+	writesl(flex->base_addr + NANDHAM_FLEX_DATA, p, len/4);
 
 	/* Switch back to 1-byte writes  */
-	flex_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAWRITE_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAWRITE_CONFIG);
 
 }
 
@@ -370,11 +371,11 @@ static int flex_verify_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 	int i;
 
 	/* Switch to 4-byte reads */
-	flex_writereg(FLX_DATA_CFG_BEAT_4 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_4 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 
 	for (i = 0; i < len/4; i++) {
-		d = readl(flex->base_addr + EMINAND_FLEX_DATA);
+		d = readl(flex->base_addr + NANDHAM_FLEX_DATA);
 		if (d != *p++) {
 			ret = -EFAULT;
 			goto out1;
@@ -383,8 +384,8 @@ static int flex_verify_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 
  out1:
 	/* Switch back to 1-byte reads */
-	flex_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 
 	return ret;
 }
@@ -657,7 +658,7 @@ static int nand_read_oob(struct mtd_info *mtd, loff_t from,
 	/* Do not allow reads past end of device */
 	if (ops->datbuf && (from + ops->len) > mtd->size) {
 		pr_debug("nand_read_oob: "
-		      "Attempt read beyond end of device\n");
+			 "Attempt read beyond end of device\n");
 		return -EINVAL;
 	}
 
@@ -743,7 +744,7 @@ static int nand_write_oob(struct mtd_info *mtd, loff_t to,
 	/* Do not allow writes past end of device */
 	if (ops->datbuf && (to + ops->len) > mtd->size) {
 		pr_debug("nand_read_oob: "
-		      "Attempt read beyond end of device\n");
+			 "Attempt read beyond end of device\n");
 		return -EINVAL;
 	}
 
@@ -808,8 +809,8 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->WE_to_RBn + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 24;
 
-	pr_debug( "%s: CONTROL_TIMING = 0x%08x\n", NAME, reg);
-	flex_writereg(reg, EMINAND_CONTROL_TIMING);
+	pr_debug("%s: CTL_TIMING = 0x%08x\n", NAME, reg);
+	flex_writereg(reg, NANDHAM_CTL_TIMING);
 
 	/* WEN_TIMING */
 	n = (tm->wr_on + emi_t_ns - 1)/emi_t_ns;
@@ -818,8 +819,8 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->wr_off + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 8;
 
-	pr_debug( "%s: WEN_TIMING = 0x%08x\n", NAME, reg);
-	flex_writereg(reg, EMINAND_WEN_TIMING);
+	pr_debug("%s: WEN_TIMING = 0x%08x\n", NAME, reg);
+	flex_writereg(reg, NANDHAM_WEN_TIMING);
 
 	/* REN_TIMING */
 	n = (tm->rd_on + emi_t_ns - 1)/emi_t_ns;
@@ -828,8 +829,8 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->rd_off + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 8;
 
-	pr_debug( "%s: REN_TIMING = 0x%08x\n", NAME, reg);
-	flex_writereg(reg, EMINAND_REN_TIMING);
+	pr_debug("%s: REN_TIMING = 0x%08x\n", NAME, reg);
+	flex_writereg(reg, NANDHAM_REN_TIMING);
 }
 
 /* FLEX mode chip select: For now we only support 1 chip per
@@ -856,7 +857,7 @@ static void flex_select_chip(struct mtd_info *mtd, int chipnr)
 
 		/* Set CSn on FLEX controller */
 		flex->current_csn = data->csn;
-		flex_writereg(0x1 << data->csn, EMINAND_MUXCONTROL_REG);
+		flex_writereg(0x1 << data->csn, NANDHAM_FLEX_MUXCTRL);
 
 		/* Set up timing parameters */
 		flex_set_timings(flex, data->timing_data);
@@ -874,33 +875,33 @@ static void flex_print_regs(struct stm_nand_flex_controller *flex)
 {
 	printk(NAME ": FLEX Registers:\n");
 	printk(KERN_INFO "\tbootbank_config = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_BOOTBANK_CONFIG));
+	       (unsigned int)flex_readreg(NANDHAM_BOOTBANK_CFG));
 	printk(KERN_INFO "\trbn_status = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_RBN_STATUS));
+	       (unsigned int)flex_readreg(NANDHAM_RBN_STA));
 	printk(KERN_INFO "\tinterrupt_enable = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_INTERRUPT_ENABLE));
+	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_ENABLE));
 	printk(KERN_INFO "\tinterrupt_status = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_INTERRUPT_STATUS));
+	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_STATUS));
 	printk(KERN_INFO "\tinterrupt_clear = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_INTERRUPT_CLEAR));
+	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_CLEAR));
 	printk(KERN_INFO "\tinterrupt_edgeconfig = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_INTERRUPT_EDGECONFIG));
+	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_EDGECONFIG));
 	printk(KERN_INFO "\tcontrol_timing = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_CONTROL_TIMING));
+	       (unsigned int)flex_readreg(NANDHAM_CTL_TIMING));
 	printk(KERN_INFO "\twen_timing = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_WEN_TIMING));
+	       (unsigned int)flex_readreg(NANDHAM_WEN_TIMING));
 	printk(KERN_INFO "\tren_timing = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_REN_TIMING));
+	       (unsigned int)flex_readreg(NANDHAM_REN_TIMING));
 	printk(KERN_INFO "\tflexmode_config = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_FLEXMODE_CONFIG));
+	       (unsigned int)flex_readreg(NANDHAM_FLEXMODE_CONFIG));
 	printk(KERN_INFO "\tmuxcontrol_reg = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_MUXCONTROL_REG));
+	       (unsigned int)flex_readreg(NANDHAM_MUXCTL));
 	printk(KERN_INFO "\tcsn_alternate_reg = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_CSN_ALTERNATE));
+	       (unsigned int)flex_readreg(NANDHAM_CSN_ALTERNATE));
 	printk(KERN_INFO "\tmulti_cs_config_reg = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_MULTI_CS_CONFIG_REG));
+	       (unsigned int)flex_readreg(NANDHAM_MULTI_CS_CONFIG_REG));
 	printk(KERN_INFO "\tversion_reg = 0x%08x\n",
-	       (unsigned int)flex_readreg(EMINAND_VERSION_REG));
+	       (unsigned int)flex_readreg(NANDHAM_VERSION_REG));
 }
 #endif /* CONFIG_MTD_DEBUG */
 
@@ -920,7 +921,7 @@ flex_init_controller(struct platform_device *pdev)
 
 	/* Request IO Memory */
 	resource = platform_get_resource_byname(pdev, IORESOURCE_MEM,
-						"flex_mem");
+						"nand_mem");
 	if (!resource) {
 		printk(KERN_ERR NAME ": Failed to get FLEX IORESOURCE_MEM.\n");
 		res = -ENODEV;
@@ -948,11 +949,11 @@ flex_init_controller(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_STM_NAND_FLEX_CACHED
-	flex->data_phys = resource->start + EMINAND_FLEX_DATA;
+	flex->data_phys = resource->start + NANDHAM_FLEX_DATA;
 	flex->data_cached = ioremap_cache(flex->data_phys, L1_CACHE_BYTES);
 	if (!flex->data_cached) {
 		printk(KERN_ERR NAME " Failed to map data reg 0x%08x\n",
-		       resource->start + EMINAND_FLEX_DATA);
+		       resource->start + NANDHAM_FLEX_DATA);
 		res = -EINVAL;
 		goto out3;
 	}
@@ -974,26 +975,26 @@ flex_init_controller(struct platform_device *pdev)
 	init_waitqueue_head(&flex->hwcontrol.wq);
 
 	/* Disable boot_not_flex */
-	flex_writereg(0x00000000, EMINAND_BOOTBANK_CONFIG);
+	flex_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
 
 	/* Reset FLEX Controller */
-	flex_writereg((0x1 << 3), EMINAND_FLEXMODE_CONFIG);
+	flex_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
 	udelay(1);
-	flex_writereg(0x00, EMINAND_FLEXMODE_CONFIG);
+	flex_writereg(0x00, NANDHAM_FLEXMODE_CFG);
 
 	/* Set Controller to FLEX mode */
-	flex_writereg(0x00000001, EMINAND_FLEXMODE_CONFIG);
+	flex_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
 
 	/* Not using interrupts in FLEX mode */
-	flex_writereg(0x00, EMINAND_INTERRUPT_ENABLE);
+	flex_writereg(0x00, NANDHAM_INT_EN);
 
 	/* To fit with MTD framework, configure FLEX_DATA reg for 1-byte
 	 * read/writes, and deassert CSn
 	 */
-	flex_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAWRITE_CONFIG);
-	flex_writereg(FLX_DATA_CFG_BEAT_1 | FLX_DATA_CFG_CSN_STATUS,
-		      EMINAND_FLEX_DATAREAD_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAWRITE_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
 
 #ifdef CONFIG_MTD_DEBUG
 	flex_print_regs(flex);
@@ -1093,13 +1094,13 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	data->chip.ecc.mode = NAND_ECC_SOFT;
 
 	/* Data IO */
-	data->chip.IO_ADDR_R = flex->base_addr + EMINAND_FLEX_DATA;
-	data->chip.IO_ADDR_W = flex->base_addr + EMINAND_FLEX_DATA;
+	data->chip.IO_ADDR_R = flex->base_addr + NANDHAM_FLEX_DATA;
+	data->chip.IO_ADDR_W = flex->base_addr + NANDHAM_FLEX_DATA;
 
 #if defined(CONFIG_CPU_SUBTYPE_STX7200)
 	/* Reset AFM program. Why!?! */
-	flex_readreg(EMINAND_AFM_SEQUENCE_STATUS_REG);
-	memset(flex->base_addr + EMINAND_AFM_SEQUENCE_REG_1, 0, 32);
+	flex_readreg(NANDHAM_AFM_SEQUENCE_STATUS_REG);
+	memset(flex->base_addr + NANDHAM_AFM_SEQUENCE_REG_1, 0, 32);
 #endif
 
 	/* Scan to find existance of the device */

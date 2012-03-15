@@ -39,8 +39,8 @@
 static struct platform_device stih415_nandi_device = {
 	.num_resources          = 2,
 	.resource               = (struct resource[]) {
-	STM_PLAT_RESOURCE_MEM_NAMED("flex_mem", 0xFE901000, 0x1000),
-		STIH415_RESOURCE_IRQ(146),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xFE901000, 0x1000),
+		STIH415_RESOURCE_IRQ_NAMED("nand_irq", 146),
 	},
 	.dev.platform_data      = &(struct stm_plat_nand_flex_data) {
 	},
