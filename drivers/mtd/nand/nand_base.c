@@ -54,7 +54,8 @@
 struct dentry *file_erasebb;
 #endif
 
-u8 erasebb;
+u8 nand_erasebb;
+EXPORT_SYMBOL_GPL(nand_erasebb);
 
 /* Define default oob placement schemes for large and small page devices */
 static struct nand_ecclayout nand_oob_8 = {
@@ -2826,7 +2827,7 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 		/*
 		 * heck if we have a bad block, we do not erase bad blocks !
 		 */
-		if (!erasebb &&
+		if (!nand_erasebb &&
 		    nand_block_checkbad(mtd, ((loff_t) page) <<
 					chip->page_shift, 0, allowbbt)) {
 			pr_warn("%s: attempt to erase a bad block at page 0x%08x\n",
@@ -2936,7 +2937,7 @@ EXPORT_SYMBOL_GPL(nand_erase_nand);
  *
  * Sync is actually a wait for chip ready function.
  */
-static void nand_sync(struct mtd_info *mtd)
+void nand_sync(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
@@ -2947,6 +2948,7 @@ static void nand_sync(struct mtd_info *mtd)
 	/* Release it and go back */
 	nand_release_device(mtd);
 }
+EXPORT_SYMBOL_GPL(nand_sync);
 
 /**
  * nand_block_isbad - [MTD Interface] Check if block at offset is bad
@@ -2987,18 +2989,19 @@ static int nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
  * nand_suspend - [MTD Interface] Suspend the NAND flash
  * @mtd: MTD device structure
  */
-static int nand_suspend(struct mtd_info *mtd)
+int nand_suspend(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
 	return nand_get_device(chip, mtd, FL_PM_SUSPENDED);
 }
+EXPORT_SYMBOL_GPL(nand_suspend);
 
 /**
  * nand_resume - [MTD Interface] Resume the NAND flash
  * @mtd: MTD device structure
  */
-static void nand_resume(struct mtd_info *mtd)
+void nand_resume(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
@@ -3008,6 +3011,7 @@ static void nand_resume(struct mtd_info *mtd)
 		pr_err("%s called for a chip which is not in suspended state\n",
 			__func__);
 }
+EXPORT_SYMBOL_GPL(nand_resume);
 
 /* Set default functions */
 static void nand_set_defaults(struct nand_chip *chip, int busw)
@@ -3824,7 +3828,8 @@ EXPORT_SYMBOL_GPL(nand_release);
 static int __init nand_base_init(void)
 {
 #ifdef CONFIG_DEBUG_FS
-	file_erasebb = debugfs_create_u8("nanderasebb", 0644, NULL, &erasebb);
+	file_erasebb = debugfs_create_u8("nanderasebb", 0644, NULL,
+					 &nand_erasebb);
 #endif
 
 	led_trigger_register_simple("nand-disk", &nand_led_trigger);
