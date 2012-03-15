@@ -793,9 +793,17 @@ static inline uint32_t fsm_fifo_available(struct stm_spi_fsm *fsm)
 static inline void fsm_load_seq(struct stm_spi_fsm *fsm,
 				const struct fsm_seq *const seq)
 {
+	int words = FSM_SEQ_SIZE/sizeof(uint32_t);
+	const uint32_t *src = (const uint32_t *)seq;
+	void __iomem *dst = fsm->base + SPI_FAST_SEQ_TRANSFER_SIZE;
+
 	BUG_ON(!fsm_is_idle(fsm));
-	memcpy_toio(fsm->base + SPI_FAST_SEQ_TRANSFER_SIZE,
-		    seq, FSM_SEQ_SIZE);
+
+	while (words--) {
+		writel(*src, dst);
+		src++;
+		dst += 4;
+	}
 }
 
 static int fsm_wait_seq(struct stm_spi_fsm *fsm)
@@ -875,7 +883,7 @@ static int fsm_wait_busy(struct stm_spi_fsm *fsm)
 {
 	struct fsm_seq *seq = &seq_read_status_fifo;
 	unsigned long deadline;
-	uint8_t status[4] = {0x00, 0x00, 0x00, 0x00};
+	uint32_t status;
 
 	/* Use RDRS1 */
 	seq->seq_opc[0] = (SEQ_OPC_PADS_1 |
@@ -890,11 +898,11 @@ static int fsm_wait_busy(struct stm_spi_fsm *fsm)
 	do {
 		cond_resched();
 
-		fsm_read_fifo(fsm, (uint32_t *)status, 4);
+		fsm_read_fifo(fsm, &status, 4);
 
 		fsm_wait_seq(fsm);
 
-		if ((status[3] & FLASH_STATUS_BUSY) == 0)
+		if ((status & FLASH_STATUS_BUSY) == 0)
 			return 0;
 
 		/* Restart */
@@ -1425,7 +1433,7 @@ static struct flash_info *__devinit fsm_jedec_probe(struct stm_spi_fsm *fsm)
 /*
  * STM SPI FSM driver setup
  */
-static int __init stm_spi_fsm_probe(struct platform_device *pdev)
+static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 {
 	struct stm_plat_spifsm_data *data = pdev->dev.platform_data;
 	struct stm_spi_fsm *fsm;
