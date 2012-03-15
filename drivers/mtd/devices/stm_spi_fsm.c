@@ -29,7 +29,7 @@
 
 #define FLASH_PROBE_FREQ	10		/* Probe freq. (MHz) */
 #define FLASH_PAGESIZE		256
-#define FLASH_MAX_BUSY_WAIT	(10 * HZ)	/* Maximum erase time */
+#define FLASH_MAX_BUSY_WAIT	(300 * HZ)	/* Maximum 'CHIPERASE' time */
 
 /*
  * SPI FSM Controller data
@@ -233,14 +233,16 @@ static struct fsm_seq seq_erase_chip = {
 		 SEQ_OPC_OPCODE(FLASH_CMD_WREN) | SEQ_OPC_CSDEASSERT),
 
 		(SEQ_OPC_PADS_1 | SEQ_OPC_CYCLES(8) |
-		 SEQ_OPC_OPCODE(FLASH_CMD_CHIPERASE)),
+		 SEQ_OPC_OPCODE(FLASH_CMD_CHIPERASE) | SEQ_OPC_CSDEASSERT),
 	},
 	.seq = {
 		FSM_INST_CMD1,
 		FSM_INST_CMD2,
+		FSM_INST_WAIT,
 		FSM_INST_STOP,
 	},
 	.seq_cfg = (SEQ_CFG_PADS_1 |
+		    SEQ_CFG_ERASE |
 		    SEQ_CFG_READNOTWRITE |
 		    SEQ_CFG_CSDEASSERT |
 		    SEQ_CFG_STARTSEQ),
@@ -776,7 +778,6 @@ static int n25q_config(struct stm_spi_fsm *fsm, struct flash_info *info)
 
 	return ret;
 }
-
 /*
  * FSM interface
  */
