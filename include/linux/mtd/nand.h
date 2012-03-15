@@ -209,6 +209,16 @@ typedef enum {
 /* Device behaves just like nand, but is readonly */
 #define NAND_ROM		0x00000800
 
+/* Device supports cache read function */
+#define NAND_CACHERD		0x00001000
+/* Device supports multi-plane read operations */
+#define NAND_MULTIPLANE_READ	0x00002000
+/* Deivce supports multi-plane program/erase operations */
+#define NAND_MULTIPLANE_PROG_ERASE	0x00004000
+/* Deivce supports multi-LUN operations */
+#define NAND_MULTILUN		0x00008000
+
+
 /* Options valid for Samsung large page devices */
 #define NAND_SAMSUNG_LP_OPTIONS \
 	(NAND_NO_PADDING | NAND_CACHEPRG | NAND_COPYBACK)
@@ -453,6 +463,7 @@ struct nand_buffers {
  * @bbt_options:	[INTERN] bad block specific options. All options used
  *			here must come from bbm.h. By default, these options
  *			will be copied to the appropriate nand_bbt_descr's.
+ * @bbm:		[INTERN] Bad block marker flags (see bbm.h).
  * @badblockpos:	[INTERN] position of the bad block marker in the oob
  *			area.
  * @badblockbits:	[INTERN] number of bits to left-shift the bad block
@@ -514,6 +525,7 @@ struct nand_chip {
 	int chip_delay;
 	unsigned int options;
 	unsigned int bbt_options;
+	unsigned int bbm;
 
 	int page_shift;
 	int phys_erase_shift;
@@ -527,6 +539,8 @@ struct nand_chip {
 	uint8_t cellinfo;
 	int badblockpos;
 	int badblockbits;
+	int planes_per_chip;
+	int luns_per_chip;
 
 	int onfi_version;
 	struct nand_onfi_params	onfi_params;
