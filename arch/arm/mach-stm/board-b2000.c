@@ -94,7 +94,27 @@ static struct stm_nand_bank_data b2000_nand_flash = {
 	},
 };
 
-
+/* Serial FLASH */
+static struct stm_plat_spifsm_data b2000_serial_flash =  {
+	.name		= "n25q128",
+	.nr_parts	= 2,
+	.parts = (struct mtd_partition []) {
+		{
+			.name = "Serial Flash 1",
+			.size = 0x00200000,
+			.offset = 0,
+		}, {
+			.name = "Serial Flash 2",
+			.size = MTDPART_SIZ_FULL,
+			.offset = MTDPART_OFS_NXTBLK,
+		},
+	},
+	.capabilities = {
+		/* Capabilities may be overriden by SoC configuration */
+		.dual_mode = 1,
+		.quad_mode = 1,
+	},
+};
 
 #if defined(CONFIG_STM_GMAC0_B2032_GIGA_MODE)
 static void b2000_gmac0_txclk_select(int txclk_125_not_25_mhz)
@@ -402,6 +422,8 @@ static void __init b2000_init(void)
 			.nr_banks = 1,
 			.banks = &b2000_nand_flash,
 			.rbn.flex_connected = 1,});
+
+	stih415_configure_spifsm(&b2000_serial_flash);
 
 	stih415_configure_audio(&(struct stih415_audio_config) {
 			.uni_player_3_spdif_enabled = 1, });
