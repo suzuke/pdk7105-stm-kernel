@@ -11,6 +11,7 @@
 
 #include <linux/init.h>
 #include <linux/gpio.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
@@ -33,6 +34,43 @@
 #endif
 
 #include "pio-control.h"
+
+
+/* EMI resources ---------------------------------------------------------- */
+/* PM support NOT TESTED */
+static void stih415_emi_power(struct stm_device_state *device_state,
+			      enum stm_device_power_state power)
+{
+	int i;
+	int value = (power == stm_device_power_on) ? 0 : 1;
+
+	stm_device_sysconf_write(device_state, "EMI_PWR", value);
+	for (i = 5; i; --i) {
+		if (stm_device_sysconf_read(device_state, "EMI_ACK")
+		    == value)
+			break;
+		mdelay(10);
+	}
+}
+
+static struct platform_device stih415_emi = {
+	.name = "emi",
+	.id = -1,
+	.num_resources = 3,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 256 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfe900000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfef01000, 0x80),
+	},
+	.dev.platform_data = &(struct stm_device_config){
+		.sysconfs_num = 2,
+		.sysconfs = (struct stm_device_sysconf []){
+			STM_DEVICE_SYSCONF(SYSCONF(114), 0, 0, "EMI_PWR"),
+			STM_DEVICE_SYSCONF(SYSCONF(187), 0, 0, "EMI_ACK"),
+		},
+		.power = stih415_emi_power,
+	},
+};
 
 /* NAND Resources --------------------------------------------------------- */
 
@@ -1143,7 +1181,7 @@ static int __init stih415_postcore_setup(void)
 	for (i = 0; i < ARRAY_SIZE(stih415_pio_irqmux_devices); i++)
 		platform_device_register(&stih415_pio_irqmux_devices[i]);
 
-	return 0;
+	return platform_device_register(&stih415_emi);
 }
 postcore_initcall(stih415_postcore_setup);
 
