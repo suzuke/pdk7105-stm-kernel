@@ -2796,6 +2796,7 @@ static int afm_scan_tail(struct mtd_info *mtd)
 	mtd->resume = afm_resume;
 	mtd->block_isbad = afm_block_isbad;
 	mtd->block_markbad = afm_block_markbad;
+	mtd->writebufsize = mtd->writesize;
 
 	/* Propagate ecc.layout to mtd_info */
 	mtd->ecclayout = chip->ecc.layout;
