@@ -439,6 +439,7 @@ struct flash_info {
 
 static int w25q_config(struct stm_spi_fsm *fsm, struct flash_info *info);
 static int n25q_config(struct stm_spi_fsm *fsm, struct flash_info *info);
+static int mx25_config(struct stm_spi_fsm *fsm, struct flash_info *info);
 
 static struct flash_info __devinitdata flash_types[] = {
 
@@ -459,6 +460,18 @@ static struct flash_info __devinitdata flash_types[] = {
 		    FLASH_CAPS_WRITE_1_1_2)
 	{ "m25px32", 0x207116, 0,  64 * 1024,  64, M25PX_CAPS, 75, NULL},
 	{ "m25px64", 0x207117, 0,  64 * 1024, 128, M25PX_CAPS, 75, NULL},
+
+#define MX25_CAPS (FLASH_CAPS_READ_WRITE	| \
+		   FLASH_CAPS_READ_FAST		| \
+		   FLASH_CAPS_READ_1_1_2	| \
+		   FLASH_CAPS_READ_1_2_2	| \
+		   FLASH_CAPS_READ_1_1_4	| \
+		   FLASH_CAPS_READ_1_4_4	| \
+		   FLASH_CAPS_WRITE_1_4_4	| \
+		   FLASH_CAPS_SE_4K		| \
+		   FLASH_CAPS_SE_32K)
+	{ "mx25l25635e", 0xc22019, 0, 64*1024, 512,
+	  (MX25_CAPS | FLASH_CAPS_32BITADDR), 70, mx25_config},
 
 #define N25Q_CAPS (FLASH_CAPS_READ_WRITE	| \
 		   FLASH_CAPS_READ_FAST		| \
@@ -718,6 +731,33 @@ static int w25q_config(struct stm_spi_fsm *fsm, struct flash_info *info)
 		sta_wr |= W25Q_STATUS_QE;
 
 		fsm_write_status(fsm, sta_wr, 2);
+	}
+
+	return 0;
+}
+
+/* [MX25xxx] Configure READ/Write sequences */
+#define MX25_STATUS_QE			(0x1 << 6)
+static int mx25_config(struct stm_spi_fsm *fsm, struct flash_info *info)
+{
+	uint32_t data_pads;
+	uint8_t sta;
+
+	/* Disable support for 'WRITE_1_4_4' (limited to 20MHz which is of
+	 * marginal benefit on our hardware and doesn't justify implementing
+	 * different READ/WRITE frequencies).
+	 */
+	info->capabilities &= ~FLASH_CAPS_WRITE_1_4_4;
+
+	if (fsm_config_rw_seqs_default(fsm, info) != 0)
+		return 1;
+
+	/* If using QUAD mode, set 'QE' STATUS bit */
+	data_pads = ((seq_read.seq_cfg >> 16) & 0x3) + 1;
+	if (data_pads == 4) {
+		fsm_read_status(fsm, FLASH_CMD_RDSR, &sta);
+		sta |= MX25_STATUS_QE;
+		fsm_write_status(fsm, sta, 1);
 	}
 
 	return 0;
@@ -1548,6 +1588,14 @@ static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 		 (long long)fsm->mtd.size, (long long)(fsm->mtd.size >> 20),
 		 fsm->mtd.erasesize, (fsm->mtd.erasesize >> 10));
 
+	/* Reduce visibility of "large" devices until we support 32-bit
+	 * addressing
+	 */
+	if (fsm->mtd.size > 16 * 1024 * 1024) {
+		dev_info(&pdev->dev, "reducing visibility to 16MiB "
+			 "(due to lack of support for 32-bit address mode)\n");
+		fsm->mtd.size = 16 * 1024 * 1024;
+	}
 
 	ret = mtd_device_parse_register(&fsm->mtd, NULL, NULL,
 					data ? data->parts : NULL,
