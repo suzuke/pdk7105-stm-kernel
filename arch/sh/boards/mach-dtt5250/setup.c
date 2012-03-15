@@ -138,6 +138,11 @@ static struct stm_plat_spifsm_data dtt5250_serial_flash =  {
 			.offset = MTDPART_OFS_NXTBLK,
 		},
 	},
+	.capabilities = {
+		/* Capabilities may be overriden by SoC configuration */
+		.dual_mode = 1,
+		.quad_mode = 1,
+	},
 };
 
 /* NAND Flash */
