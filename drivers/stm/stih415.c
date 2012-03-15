@@ -74,19 +74,22 @@ static struct platform_device stih415_emi = {
 
 /* NAND Resources --------------------------------------------------------- */
 
+static struct stm_plat_nand_flex_data stih415_nand_flex_data;
+static struct stm_plat_nand_bch_data stih415_nand_bch_data;
+
 static struct platform_device stih415_nandi_device = {
-	.num_resources          = 2,
+	.num_resources          = 3,
 	.resource               = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xFE901000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_dma", 0xFEF00800, 0x0800),
 		STIH415_RESOURCE_IRQ_NAMED("nand_irq", 146),
-	},
-	.dev.platform_data      = &(struct stm_plat_nand_flex_data) {
 	},
 };
 
 void __init stih415_configure_nand(struct stm_nand_config *config)
 {
 	struct stm_plat_nand_flex_data *flex_data;
+	struct stm_plat_nand_bch_data  *bch_data;
 
 	switch (config->driver) {
 	case stm_nand_emi:
@@ -96,7 +99,9 @@ void __init stih415_configure_nand(struct stm_nand_config *config)
 	case stm_nand_flex:
 	case stm_nand_afm:
 		/* Configure device for stm-nand-flex/afm driver */
-		flex_data = stih415_nandi_device.dev.platform_data;
+		emiss_nandi_select(STM_NANDI_HAMMING);
+		flex_data = &stih415_nand_flex_data;
+		stih415_nandi_device.dev.platform_data = flex_data;
 		flex_data->nr_banks = config->nr_banks;
 		flex_data->banks = config->banks;
 		flex_data->flex_rbn_connected = config->rbn.flex_connected;
@@ -104,7 +109,17 @@ void __init stih415_configure_nand(struct stm_nand_config *config)
 					"stm-nand-afm" : "stm-nand-flex";
 		platform_device_register(&stih415_nandi_device);
 		break;
+	case stm_nand_bch:
+		BUG_ON(config->nr_banks > 1);
+		bch_data = &stih415_nand_bch_data;
+		stih415_nandi_device.dev.platform_data = bch_data;
+		bch_data->bank = config->banks;
+		bch_data->bch_ecc_cfg = config->bch_ecc_cfg;
+		stih415_nandi_device.name = "stm-nand-bch";
+		platform_device_register(&stih415_nandi_device);
+		break;
 	default:
+		BUG();
 		return;
 	}
 }

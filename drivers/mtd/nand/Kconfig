@@ -537,6 +537,21 @@ config MTD_NAND_FSMC
 	  Enables support for NAND Flash chips on the ST Microelectronics
 	  Flexible Static Memory Controller (FSMC)
 
+config MTD_NAND_STM_BCH
+	tristate "STMicroelectronics: NANDi BCH Controller"
+	depends on (CPU_SUBTYPE_STX7108 || \
+		    CPU_SUBTYPE_FLI7510 || \
+		    CPU_SUBTYPE_STIH415)
+	help
+	  Adds support for the STMicroelectronics NANDi BCH Controller.
+
+config STM_NAND_BCH_DEBUG
+	bool "NANDi BCH debug messages"
+	depends on MTD_NAND_STM_BCH
+	default n
+	help
+	  Display debug messages on the console
+
 config MTD_NAND_STM_EMI
 	tristate "STMicroelectronics: EMI 'bit-banging'"
 	depends on MTD_NAND
