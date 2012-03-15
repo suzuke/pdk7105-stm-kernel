@@ -165,7 +165,7 @@ static struct platform_device stx7108_pci_device = {
 	.id = -1,
 	.num_resources = 5,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM_NAMED("pci emiss", 0xfdaa8000, 0x17fc),
+		STM_PLAT_RESOURCE_MEM_NAMED("pci bridge", 0xfdaa9400, 0x3fc),
 		STM_PLAT_RESOURCE_MEM_NAMED("pci ahb", 0xfea08000, 0xff),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pci dma", ILC_IRQ(126), -1),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pci err", ILC_IRQ(127), -1),

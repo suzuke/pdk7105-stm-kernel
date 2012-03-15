@@ -48,8 +48,9 @@ static struct platform_device fli7510_emi = {
 	.id = -1,
 	.num_resources = 2,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM(0, 128 * 1024 * 1024),
-		STM_PLAT_RESOURCE_MEM(0xfd100000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 128 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfd100000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfd201000, 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
 		.sysconfs_num = 2,
