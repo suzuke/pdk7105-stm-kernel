@@ -131,7 +131,7 @@ struct stm_nand_flex_controller {
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
 /* The command line passed to nboot_setup() */
-__initdata static char *cmdline;
+static char __devinitdata *cmdline;
 #endif
 
 static struct stm_nand_flex_controller* mtd_to_flex(struct mtd_info *mtd)
@@ -613,6 +613,7 @@ static int nand_read(struct mtd_info *mtd, loff_t from, size_t len,
 		     size_t *retlen, uint8_t *buf)
 {
 	struct nand_chip *chip = mtd->priv;
+	struct mtd_oob_ops ops;
 	int ret;
 
 	/* Do not allow reads past end of device */
@@ -626,13 +627,14 @@ static int nand_read(struct mtd_info *mtd, loff_t from, size_t len,
 	/** Added to support switching ECC format **/
 	flex_select_eccparams(mtd, from);
 
-	chip->ops.len = len;
-	chip->ops.datbuf = buf;
-	chip->ops.oobbuf = NULL;
+	ops.len = len;
+	ops.datbuf = buf;
+	ops.oobbuf = NULL;
+	ops.mode = 0;
 
-	ret = nand_do_read_ops(mtd, from, &chip->ops);
+	ret = nand_do_read_ops(mtd, from, &ops);
 
-	*retlen = chip->ops.retlen;
+	*retlen = ops.retlen;
 
 	nand_release_device(mtd);
 
@@ -668,9 +670,9 @@ static int nand_read_oob(struct mtd_info *mtd, loff_t from,
 	flex_select_eccparams(mtd, from);
 
 	switch (ops->mode) {
-	case MTD_OOB_PLACE:
-	case MTD_OOB_AUTO:
-	case MTD_OOB_RAW:
+	case MTD_OPS_PLACE_OOB:
+	case MTD_OPS_AUTO_OOB:
+	case MTD_OPS_RAW:
 		break;
 
 	default:
@@ -701,6 +703,7 @@ static int nand_write(struct mtd_info *mtd, loff_t to, size_t len,
 			  size_t *retlen, const uint8_t *buf)
 {
 	struct nand_chip *chip = mtd->priv;
+	struct mtd_oob_ops ops;
 	int ret;
 
 	/* Do not allow reads past end of device */
@@ -714,13 +717,14 @@ static int nand_write(struct mtd_info *mtd, loff_t to, size_t len,
 	/** Added to support switching ECC format **/
 	flex_select_eccparams(mtd, to);
 
-	chip->ops.len = len;
-	chip->ops.datbuf = (uint8_t *)buf;
-	chip->ops.oobbuf = NULL;
+	ops.len = len;
+	ops.datbuf = (uint8_t *)buf;
+	ops.oobbuf = NULL;
+	ops.mode = 0;
 
-	ret = nand_do_write_ops(mtd, to, &chip->ops);
+	ret = nand_do_write_ops(mtd, to, &ops);
 
-	*retlen = chip->ops.retlen;
+	*retlen = ops.retlen;
 
 	nand_release_device(mtd);
 
@@ -753,9 +757,9 @@ static int nand_write_oob(struct mtd_info *mtd, loff_t to,
 	flex_select_eccparams(mtd, to);
 
 	switch (ops->mode) {
-	case MTD_OOB_PLACE:
-	case MTD_OOB_AUTO:
-	case MTD_OOB_RAW:
+	case MTD_OPS_PLACE_OOB:
+	case MTD_OPS_AUTO_OOB:
+	case MTD_OPS_RAW:
 		break;
 
 	default:
@@ -905,7 +909,7 @@ static void flex_print_regs(struct stm_nand_flex_controller *flex)
 }
 #endif /* CONFIG_MTD_DEBUG */
 
-static struct stm_nand_flex_controller * __init
+static struct stm_nand_flex_controller * __devinit
 flex_init_controller(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
@@ -1025,7 +1029,7 @@ static void __devexit flex_exit_controller(struct platform_device *pdev)
 	release_resource(flex->mem_region);
 }
 
-static struct stm_nand_flex_device * __init
+static struct stm_nand_flex_device * __devinit
 flex_init_bank(struct stm_nand_flex_controller *flex,
 	       struct stm_nand_bank_data *bank,
 	       int rbn_connected, const char *name)
@@ -1136,41 +1140,36 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	res = mtd_device_parse_register(&data->mtd,
 			part_probes, 0,
 			bank->partitions, bank->nr_partitions);
-	if (res) {
+	if (res)
+		goto out3;
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
-		/* Update boot-mode slave partition */
-		slave = get_mtd_partition_slave(&data->mtd, boot_part_name);
-		if (slave) {
-			printk(KERN_INFO NAME ": Found BOOT parition"
-			       "[%s], updating ECC paramters\n",
-			       slave->name);
+	/* Update boot-mode slave partition */
+	slave = get_mtd_partition_slave(&data->mtd, boot_part_name);
+	if (slave) {
+		part = PART(slave);
+		data->boot_start = part->offset;
+		data->boot_end = part->offset + slave->size;
 
-			part = PART(slave);
-			data->boot_start = part->offset;
-			data->boot_end = part->offset + slave->size;
+		slave->oobavail = data->ecc_boot.ecc_ctrl.layout->oobavail;
+		slave->subpage_sft = data->ecc_boot.subpage_sft;
+		slave->ecclayout = data->ecc_boot.ecc_ctrl.layout;
 
-			slave->oobavail =
-				data->ecc_boot.ecc_ctrl.layout->oobavail;
-			slave->subpage_sft =
-				data->ecc_boot.subpage_sft;
-			slave->ecclayout =
-				data->ecc_boot.ecc_ctrl.layout;
+		printk(KERN_INFO NAME ": boot-mode ECC: 0x%08x->0x%08x\n",
+		       (unsigned int)data->boot_start,
+		       (unsigned int)data->boot_end);
 
-			printk("boot-ECC 0x%08x->0x%08x\n",
-			       (unsigned int)data->boot_start,
-			       (unsigned int)data->boot_end);
-
-		} else {
-			printk(KERN_WARNING NAME ": Failed to find boot "
-			       "partition [%s]\n", boot_part_name);
-		}
+	} else {
+		printk(KERN_WARNING NAME ": Failed to find boot "
+		       "partition [%s]\n", boot_part_name);
+	}
 #endif
-	} else
-		return data;
+	/* Success! */
+	return data;
 
+ out3:
+	nand_release(&data->mtd);
  out2:
-
 	kfree(data);
  out1:
 	return ERR_PTR(res);
