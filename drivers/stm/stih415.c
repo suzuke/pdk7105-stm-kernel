@@ -71,6 +71,28 @@ void __init stih415_configure_nand(struct stm_nand_config *config)
 	}
 }
 
+/* SPI FSM Resources ------------------------------------------------------ */
+
+static struct platform_device stih415_spifsm_device = {
+	.name		= "stm-spi-fsm",
+	.id		= 0,
+	.num_resources	= 1,
+	.resource	= (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM_NAMED("spi-fsm", 0xFE902000, 0x1000),
+	},
+};
+
+void __init stih415_configure_spifsm(struct stm_plat_spifsm_data *data)
+{
+	stih415_spifsm_device.dev.platform_data = data;
+
+	/* SoC/IP Capabilities */
+	data->capabilities.no_read_repeat = 1;
+	data->capabilities.no_write_repeat = 1;
+	data->capabilities.read_status_bug = spifsm_read_status_clkdiv4;
+
+	platform_device_register(&stih415_spifsm_device);
+}
 
 /* ASC resources ---------------------------------------------------------- */
 
