@@ -3230,110 +3230,19 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	if (!mtd->name)
 		mtd->name = type->name;
 
-	chip->chipsize = (uint64_t)type->chipsize << 20;
-
 	if (!type->pagesize && chip->init_size) {
-		/* Set the pagesize, oobsize, erasesize by the driver */
+		/* set the pagesize, oobsize, erasesize by the driver*/
 		busw = chip->init_size(mtd, chip, id_data);
-	} else if (!type->pagesize) {
-		int extid;
-		/* The 3rd id byte holds MLC / multichip data */
-		chip->cellinfo = id_data[2];
-		/* The 4th id byte is the important one */
-		extid = id_data[3];
-
-		/*
-		 * Field definitions are in the following datasheets:
-		 * Old style (4,5 byte ID): Samsung K9GAG08U0M (p.32)
-		 * New style   (6 byte ID): Samsung K9GBG08U0M (p.40)
-		 *
-		 * Check for wraparound + Samsung ID + nonzero 6th byte
-		 * to decide what to do.
-		 */
-		if (id_data[0] == id_data[6] && id_data[1] == id_data[7] &&
-				id_data[0] == NAND_MFR_SAMSUNG &&
-				(chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
-				id_data[5] != 0x00) {
-			/* Calc pagesize */
-			mtd->writesize = 2048 << (extid & 0x03);
-			extid >>= 2;
-			/* Calc oobsize */
-			switch (extid & 0x03) {
-			case 1:
-				mtd->oobsize = 128;
-				break;
-			case 2:
-				mtd->oobsize = 218;
-				break;
-			case 3:
-				mtd->oobsize = 400;
-				break;
-			default:
-				mtd->oobsize = 436;
-				break;
-			}
-			extid >>= 2;
-			/* Calc blocksize */
-			mtd->erasesize = (128 * 1024) <<
-				(((extid >> 1) & 0x04) | (extid & 0x03));
-			busw = 0;
-		} else  if (*maf_id == NAND_MFR_MICRON) {
-			/* Micron device: check for 4-bit on-die ECC */
-			u8 id4, id5;
-			id4 = chip->read_byte(mtd);
-			id5 = chip->read_byte(mtd);
-
-			/* Do we have a 5-byte ID ? */
-			if (!(id4 == *maf_id && id5 == *dev_id))
-				/* ECC level in id4[1:0] */
-				if ((id4 & 0x3) == 0x2)
-					chip->ecc.mode = NAND_ECC_4BITONDIE;
-		} else {
-			/* Calc pagesize */
-			mtd->writesize = 1024 << (extid & 0x03);
-			extid >>= 2;
-			/* Calc oobsize */
-			mtd->oobsize = (8 << (extid & 0x01)) *
-				(mtd->writesize >> 9);
-			extid >>= 2;
-			/* Calc blocksize. Blocksize is multiples of 64KiB */
-			mtd->erasesize = (64 * 1024) << (extid & 0x03);
-			extid >>= 2;
-			/* Get buswidth information */
-			busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
-		}
 	} else {
-		/*
-		 * Old devices have chip data hardcoded in the device id table.
-		 */
-		mtd->erasesize = type->erasesize;
-		mtd->writesize = type->pagesize;
-		mtd->oobsize = mtd->writesize / 32;
-		busw = type->options & NAND_BUSWIDTH_16;
-
-		/*
-		 * Check for Spansion/AMD ID + repeating 5th, 6th byte since
-		 * some Spansion chips have erasesize that conflicts with size
-		 * listed in nand_ids table.
-		 * Data sheet (5 byte ID): Spansion S30ML-P ORNAND (p.39)
-		 */
-		if (*maf_id == NAND_MFR_AMD && id_data[4] != 0x00 &&
-				id_data[5] == 0x00 && id_data[6] == 0x00 &&
-				id_data[7] == 0x00 && mtd->writesize == 512) {
-			mtd->erasesize = 128 * 1024;
-			mtd->erasesize <<= ((id_data[3] & 0x03) << 1);
+		/* Decode READID string */
+		if (nand_decode_readid(mtd, chip, type, id_data, 8) != 0) {
+			printk(KERN_INFO "Failed to decode NAND READID "
+			       "[%02x %02x %02x %02x]\n",
+			       id_data[0], id_data[1], id_data[2], id_data[3]);
+			return ERR_PTR(-EINVAL);
 		}
 	}
-	/* Get chip options, preserve non chip based options */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
-	chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
 
-	/*
-	 * Check if chip is not a Samsung device. Do not clear the
-	 * options for chips which do not have an extended id.
-	 */
-	if (*maf_id != NAND_MFR_SAMSUNG && !type->pagesize)
-		chip->options &= ~NAND_SAMSUNG_LP_OPTIONS;
 ident_done:
 
 	/*
@@ -3375,33 +3284,10 @@ ident_done:
 		chip->chip_shift += 32 - 1;
 	}
 
-	chip->badblockbits = 8;
-
-	/* Set the bad block position */
-	if (mtd->writesize > 512 || (busw & NAND_BUSWIDTH_16))
-		chip->badblockpos = NAND_LARGE_BADBLOCK_POS;
-	else
-		chip->badblockpos = NAND_SMALL_BADBLOCK_POS;
-
 	/*
-	 * Bad block marker is stored in the last page of each block
-	 * on Samsung and Hynix MLC devices; stored in first two pages
-	 * of each block on Micron devices with 2KiB pages and on
-	 * SLC Samsung, Hynix, Toshiba and AMD/Spansion. All others scan
-	 * only the first page.
+	 * Detmine manufactuer's bad-block marker scheme
 	 */
-	if ((chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
-			(*maf_id == NAND_MFR_SAMSUNG ||
-			 *maf_id == NAND_MFR_HYNIX))
-		chip->bbt_options |= NAND_BBT_SCANLASTPAGE;
-	else if ((!(chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
-				(*maf_id == NAND_MFR_SAMSUNG ||
-				 *maf_id == NAND_MFR_HYNIX ||
-				 *maf_id == NAND_MFR_TOSHIBA ||
-				 *maf_id == NAND_MFR_AMD)) ||
-			(mtd->writesize == 2048 &&
-			 *maf_id == NAND_MFR_MICRON))
-		chip->bbt_options |= NAND_BBT_SCAN2NDPAGE;
+	nand_derive_bbm(mtd, chip, id_data);
 
 	/* Check for AND chips with 4 page planes */
 	if (chip->options & NAND_4PAGE_ARRAY)

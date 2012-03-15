@@ -610,6 +610,11 @@ struct nand_manufacturers {
 
 extern struct nand_flash_dev nand_flash_ids[];
 extern struct nand_manufacturers nand_manuf_ids[];
+extern int nand_decode_readid(struct mtd_info *mtd, struct nand_chip *chip,
+			      struct nand_flash_dev *type, uint8_t *id,
+			      int max_id_len);
+extern void nand_derive_bbm(struct mtd_info *mtd, struct nand_chip *chip,
+			    uint8_t *id);
 
 extern int nand_scan_bbt(struct mtd_info *mtd, struct nand_bbt_descr *bd);
 extern int nand_update_bbt(struct mtd_info *mtd, loff_t offs);
