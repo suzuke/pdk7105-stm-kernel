@@ -54,7 +54,6 @@ static struct snd_stm_pcm_player_info stx7105_pcm_player_0_info = {
 	.name = "PCM player #0 (HDMI)",
 	.ver = 6,
 	.card_device = 0,
-	.clock_name = "CLKC_FS0_CH1",
 	.channels = 8,
 	.fdma_initiator = 0,
 	.fdma_request_line = 39,
@@ -73,6 +72,19 @@ static struct stm_pad_config stx7105_pcm_player_0_pad_config = {
 	},
 };
 
+static struct stm_pad_config stx7106_pcm_player_0_pad_config = {
+	.gpios_num = 7,
+	.gpios = (struct stm_pad_gpio []) {
+		STM_PAD_PIO_OUT(10, 3, 1),	/* MCLK */
+		STM_PAD_PIO_OUT(10, 4, 1),	/* LRCLK */
+		STM_PAD_PIO_OUT(10, 5, 1),	/* SCLK */
+		STM_PAD_PIO_OUT(10, 0, 1),	/* DATA0 */
+		STM_PAD_PIO_OUT(10, 1, 1),	/* DATA1 */
+		STM_PAD_PIO_OUT(10, 2, 1),	/* DATA2 */
+		STM_PAD_PIO_OUT(10, 7, 1),	/* DATA3 */
+	},
+};
+
 static struct platform_device stx7105_pcm_player_0 = {
 	.name          = "snd_pcm_player",
 	.id            = 0,
@@ -88,7 +100,6 @@ static struct snd_stm_pcm_player_info stx7105_pcm_player_1_info = {
 	.name = "PCM player #1",
 	.ver = 6,
 	.card_device = 1,
-	.clock_name = "CLKC_FS0_CH2",
 	.channels = 2,
 	.fdma_initiator = 0,
 	.fdma_request_line = 34,
@@ -133,7 +144,6 @@ static struct snd_stm_spdif_player_info stx7105_spdif_player_info = {
 	.name = "SPDIF player (HDMI)",
 	.ver = 4,
 	.card_device = 2,
-	.clock_name = "CLKC_FS0_CH3",
 	.fdma_initiator = 0,
 	.fdma_request_line = 40,
 	/* .pad_config set by stx7105_configure_audio() */
@@ -304,22 +314,24 @@ void __init stx7105_configure_audio(struct stx7105_audio_config *config)
 	BUG_ON(configured);
 	configured = 1;
 
-	if (config->pcm_player_0_output >
-			stx7105_pcm_player_0_output_disabled) {
-		int unused = 3 - config->pcm_player_0_output;
-
-		stx7105_pcm_player_0_info.pad_config =
-				&stx7105_pcm_player_0_pad_config;
-
-		stx7105_pcm_player_0_pad_config.gpios_num -= unused;
-	}
-
 	if (config->spdif_player_output_enabled)
 		stx7105_spdif_player_info.pad_config =
 				&stx7105_spdif_player_pad_config;
 
 	switch (cpu_data->type) {
 	case CPU_STX7105:
+		BUG_ON(config->pcm_player_0_output ==
+				stx7105_pcm_player_0_output_8_channels);
+		if (config->pcm_player_0_output >
+				stx7105_pcm_player_0_output_disabled) {
+			int unused = stx7105_pcm_player_0_output_6_channels -
+					config->pcm_player_0_output;
+
+			stx7105_pcm_player_0_info.pad_config =
+					&stx7105_pcm_player_0_pad_config;
+
+			stx7105_pcm_player_0_pad_config.gpios_num -= unused;
+		}
 		if (config->pcm_player_1_enabled)
 			stx7105_pcm_player_1_info.pad_config =
 					&stx7105_pcm_player_1_pad_config;
@@ -328,6 +340,16 @@ void __init stx7105_configure_audio(struct stx7105_audio_config *config)
 					&stx7105_pcm_reader_pad_config;
 		break;
 	case CPU_STX7106:
+		if (config->pcm_player_0_output >
+				stx7105_pcm_player_0_output_disabled) {
+			int unused = stx7105_pcm_player_0_output_8_channels -
+					config->pcm_player_0_output;
+
+			stx7105_pcm_player_0_info.pad_config =
+					&stx7106_pcm_player_0_pad_config;
+
+			stx7105_pcm_player_0_pad_config.gpios_num -= unused;
+		}
 		if (config->pcm_player_1_enabled)
 			stx7105_pcm_player_1_info.pad_config =
 					&stx7106_pcm_player_1_pad_config;

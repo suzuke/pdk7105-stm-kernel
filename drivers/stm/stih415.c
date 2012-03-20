@@ -414,15 +414,28 @@ static const struct stm_pio_control_config stih415_pio_control_configs[27] = {
 
 static struct stm_pio_control stih415_pio_controls[27];
 
+static const struct stm_pio_control_retime_offset stih415_pio_retime_offset = {
+	.clk1notclk0_offset 	= 0,
+	.delay_lsb_offset	= 2,
+	.delay_msb_offset	= 3,
+	.invertclk_offset	= 4,
+	.retime_offset		= 5,
+	.clknotdata_offset	= 6,
+	.double_edge_offset	= 7,
+};
+
 static int stih415_pio_config(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function, void* priv)
 {
 	int port = stm_gpio_port(gpio);
 	int pin = stm_gpio_pin(gpio);
 	struct stih415_pio_config *config = priv;
+	struct stm_pio_control *pio_control;
 
 	BUG_ON(port > ARRAY_SIZE(stih415_pio_devices));
 	BUG_ON(function < 0 || function > 7);
+
+	pio_control = &stih415_pio_controls[port];
 
 	if (function == 0) {
 		switch (direction) {
@@ -440,33 +453,23 @@ static int stih415_pio_config(unsigned gpio,
 			break;
 		}
 	} else {
-		stm_pio_control_config_direction(port, pin, direction,
+		stm_pio_control_config_direction(pio_control, pin, direction,
 				config ? config->mode : NULL);
 	}
 
-	stm_pio_control_config_function(port, pin, function);
+	stm_pio_control_config_function(pio_control, pin, function);
 
 	if (config && config->retime)
-		stm_pio_control_config_retime(port, pin, config->retime);
+		stm_pio_control_config_retime(pio_control,
+			&stih415_pio_retime_offset, pin, config->retime);
 
 	return 0;
 }
 
-static const struct stm_pio_control_retime_offset stih415_pio_retime_offset = {
-	.clk1notclk0_offset 	= 0,
-	.delay_lsb_offset	= 2,
-	.delay_msb_offset	= 3,
-	.invertclk_offset	= 4,
-	.retime_offset		= 5,
-	.clknotdata_offset	= 6,
-	.double_edge_offset	= 7,
-};
-
 static void __init stih415_pio_init(void)
 {
 	stm_pio_control_init(stih415_pio_control_configs, stih415_pio_controls,
-			     ARRAY_SIZE(stih415_pio_control_configs),
-			     &stih415_pio_retime_offset);
+			     ARRAY_SIZE(stih415_pio_control_configs));
 }
 
 static struct platform_device stih415_pio_irqmux_devices[5] = {

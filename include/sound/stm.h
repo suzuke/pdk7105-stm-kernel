@@ -266,7 +266,6 @@ struct snd_stm_pcm_player_info {
 	int ver;
 
 	int card_device;
-	const char *clock_name;
 
 	unsigned int channels;
 
@@ -309,7 +308,6 @@ struct snd_stm_spdif_player_info {
 	int ver;
 
 	int card_device;
-	const char *clock_name;
 
 	const char *fdma_name;
 	unsigned char fdma_initiator;

@@ -28,10 +28,14 @@
 
 #include "stm_suspend.h"
 #include <linux/stm/poke_table.h>
+#include <linux/stm/synopsys_dwc_ddr32.h>
 
 #define CGA0			0xFDE98000
 #define CGA1			0xFDAB8000
 #define SYS_1_BASE_ADDRESS	0xFDE20000
+/*
+ * The Stx7108 uses the Synopsys IP Dram Controller
+*/
 #define DDR3SS0_REG		0xFDE50000
 #define DDR3SS1_REG		0xFDE70000
 
@@ -45,27 +49,8 @@
 #define CKGA_PLL0LS_DIV_CFG(x)		(0xA00 + (x) * 4)
 #define CKGA_PLL1_DIV_CFG(x)		(0xB00 + (x) * 4)
 
-
-/*
- * The Stx7108 uses the Synopsys IP Dram Controller
- * For registers description see:
- * 'DesignWare Cores DDR3/2 SDRAM Protocol - Controller -
- *  Databook - Version 2.10a - February 4, 2009'
- */
-#define DDR_SCTL		0x4
-#define  DDR_SCTL_CFG			0x1
-#define  DDR_SCTL_GO			0x2
-#define  DDR_SCTL_SLEEP			0x3
-#define  DDR_SCTL_WAKEUP		0x4
-
-#define DDR_STAT		0x8
-#define  DDR_STAT_CONFIG		0x1
-#define  DDR_STAT_ACCESS		0x3
-#define  DDR_STAT_LOW_POWER		0x5
-
-#define DDR_PHY_IOCRV1		0x31C
-#define DDR_PHY_PIR		0x404
-#define DDR_PHY_DXCCR		0x434
+#define CLKA0_ETH_PHY_ID		14
+#define CLKA0_ETH_MAC_ID		15
 /*
  * the following macros are valid only for SYSConf_Bank_1
   * where there are the ClockGen_D management registers
@@ -77,6 +62,8 @@
 static void __iomem *cga0;
 static void __iomem *cga1;
 
+static struct clk *ca0_pll1_clk;
+static struct clk *ca0_eth_phy_clk;
 static struct clk *ca1_ref_clk;
 static struct clk *ca1_pll1_clk;
 static struct clk *ca1_ic_lp_on_clk;
@@ -98,17 +85,12 @@ END_MARKER
  * *********************
  */
 static unsigned long stx7108_mem_table_c1[] __cacheline_aligned = {
-/* 1. Enables the DDR self refresh mode based on paraghaph. 7.1.4
- *    -> from ACCESS to LowPower
- */
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_SLEEP),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_LOW_POWER, DDR_STAT_LOW_POWER),
+synopsys_ddr32_in_self_refresh(DDR3SS0_REG),
 
 OR32(DDR3SS0_REG + DDR_PHY_IOCRV1, 1),
 OR32(DDR3SS0_REG + DDR_PHY_DXCCR, 1),
 
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_SLEEP),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_LOW_POWER, DDR_STAT_LOW_POWER),
+synopsys_ddr32_in_self_refresh(DDR3SS1_REG),
 
 OR32(DDR3SS1_REG + DDR_PHY_IOCRV1, 1),
 OR32(DDR3SS1_REG + DDR_PHY_DXCCR, 1),
@@ -135,38 +117,15 @@ UPDATE32(DDR3SS1_REG + DDR_PHY_DXCCR, ~1, 0),
 /* 2. Disables the DDR self refresh mode based on paraghaph 7.1.3
  *    -> from LowPower to Access
  */
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_WAKEUP),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
-
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_CFG),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_CONFIG, DDR_STAT_CONFIG),
-
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_GO),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
-
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_WAKEUP),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
-
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_CFG),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_CONFIG, DDR_STAT_CONFIG),
-
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_GO),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
-
-
+synopsys_ddr32_out_of_self_refresh(DDR3SS0_REG),
+synopsys_ddr32_out_of_self_refresh(DDR3SS1_REG),
 END_MARKER
 };
 
 
 static unsigned long stx7108_mem_table_c2[] __cacheline_aligned = {
-/* 1. Enables the DDR self refresh mode based on paraghaph. 7.1.4
- *    -> from ACCESS to LowPower
- */
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_SLEEP),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_LOW_POWER, DDR_STAT_LOW_POWER),
-
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_SLEEP),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_LOW_POWER, DDR_STAT_LOW_POWER),
+synopsys_ddr32_in_self_refresh(DDR3SS0_REG),
+synopsys_ddr32_in_self_refresh(DDR3SS1_REG),
 
 /*WHILE_NE32(SYS_BNK1_STA(5), 1, 0),*/
 
@@ -184,27 +143,9 @@ UPDATE32(DDR3SS1_REG + DDR_PHY_PIR, ~(1 << 7), 0),
 
 UPDATE32(DDR3SS0_REG + DDR_PHY_DXCCR, ~1, 0),
 UPDATE32(DDR3SS1_REG + DDR_PHY_DXCCR, ~1, 0),
-/* 2. Disables the DDR self refresh mode based on paraghaph 7.1.3
- *    -> from LowPower to Access
- */
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_WAKEUP),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
 
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_CFG),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_CONFIG, DDR_STAT_CONFIG),
-
-POKE32(DDR3SS0_REG + DDR_SCTL, DDR_SCTL_GO),
-WHILE_NE32(DDR3SS0_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
-
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_WAKEUP),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
-
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_CFG),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_CONFIG, DDR_STAT_CONFIG),
-
-POKE32(DDR3SS1_REG + DDR_SCTL, DDR_SCTL_GO),
-WHILE_NE32(DDR3SS1_REG + DDR_STAT, DDR_STAT_ACCESS, DDR_STAT_ACCESS),
-
+synopsys_ddr32_out_of_self_refresh(DDR3SS0_REG),
+synopsys_ddr32_out_of_self_refresh(DDR3SS1_REG),
 
 END_MARKER
 };
@@ -244,6 +185,7 @@ static int stx7108_suspend_core(suspend_state_t state, int suspending)
 	static char *pll1_regs;
 	static long *switch_cfg;
 	int i;
+	unsigned long cfg_a0_0, pwr_a0;
 
 	if (suspending)
 		goto on_suspending;
@@ -315,28 +257,41 @@ on_suspending:
 
 	}
 
+	/* Almost all the A0 clocks are off */
+	cfg_a0_0 = 0xFFC3FCFF;
+	pwr_a0 = 0x3; /* the AO.PLLs are off */
+
 	/*
 	 * WOL needs:
-	 * - eth1.phy under cga_0.pll_1
-	 * - eth1.mac under cga_0.pll_0
+	 *  - gmac_clk enabled (at any frequency)
+	 *  - eth_phy_clk enabled (at 25MHz)
+	 *  - eth_phy_clk's parent PLL enabled (to ensure correct eth_phy_clk)
+	 * Use the same PLL which is driving the phy_clk to drive gmac_clk
+	 * as we don't care about the actual frequency as long as it has a
+	 * clock.
 	 */
-	if (wkd.eth1_phy_can_wakeup)
-		iowrite32(0x6FC3FCFF, cga0 + CKGA_CLKOPSRC_SWITCH_CFG);
-	else
-		iowrite32(0xFFC3FCFF, cga0 + CKGA_CLKOPSRC_SWITCH_CFG);
+	if (wkd.eth1_phy_can_wakeup) {
+		unsigned long pll_id;
+		/* identify the eth_phy_clk parent */
+		pll_id = (clk_get_parent(ca0_eth_phy_clk) == ca0_pll1_clk) ?
+			2 : 1;
+		pwr_a0 &= ~pll_id;
+		cfg_a0_0 &= ~(0x3 << (2 * CLKA0_ETH_PHY_ID));
+		cfg_a0_0 &= ~(0x3 << (2 * CLKA0_ETH_MAC_ID));
+		cfg_a0_0 |= (pll_id << (2 * CLKA0_ETH_PHY_ID));
+		cfg_a0_0 |= (pll_id << (2 * CLKA0_ETH_MAC_ID));
+	}
+
+	iowrite32(cfg_a0_0, cga0 + CKGA_CLKOPSRC_SWITCH_CFG);
 	iowrite32(0xF3FFFFFF, cga1 + CKGA_CLKOPSRC_SWITCH_CFG);
 
 	if (state == PM_SUSPEND_MEM) {
 		/* all the clocks off */
 		iowrite32(0xF, cga0 + CKGA_CLKOPSRC_SWITCH_CFG2);
 		iowrite32(0xF, cga1 + CKGA_CLKOPSRC_SWITCH_CFG2);
-		/*
-		 * WOL on eth1 needs unser cga_0.pll_1!
-		 */
-		if (!wkd.eth1_phy_can_wakeup)
-			/* turn-off cga_1.pll_0 and cga_1.pll_1 */
-			iowrite32(3, cga0 + CKGA_POWER_CFG);
 
+		/* turn-off not required cga_0 plls */
+		iowrite32(pwr_a0, cga0 + CKGA_POWER_CFG);
 		/* turn-off cga_1.pll_0 and cga_1.pll_1 */
 		iowrite32(3, cga1 + CKGA_POWER_CFG);
 	}
@@ -409,11 +364,14 @@ static int __init stx7108_suspend_setup(void)
 		if (!sc[i])
 			goto error;
 
+	ca0_pll1_clk = clk_get(NULL, "CLKA0_PLL1");
+	ca0_eth_phy_clk = clk_get(NULL, "CLKA_ETH_PHY_1");
 	ca1_ref_clk = clk_get(NULL, "CLKA1_REF");
 	ca1_pll1_clk = clk_get(NULL, "CLKA1_PLL1");
 	ca1_ic_lp_on_clk = clk_get(NULL, "CLKA_IC_REG_LP_ON");
 
-	if (!ca1_ref_clk || !ca1_pll1_clk || !ca1_ic_lp_on_clk)
+	if (!ca1_ref_clk || !ca1_pll1_clk || !ca1_ic_lp_on_clk ||
+	    !ca0_pll1_clk || !ca0_eth_phy_clk)
 		goto error;
 
 	cga0 = ioremap(CGA0, 0x1000);

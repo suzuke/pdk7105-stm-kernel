@@ -48,10 +48,11 @@ static void stx7200_emi_power(struct stm_device_state *device_state,
 static struct platform_device stx7200_emi = {
 	.name = "emi",
 	.id = -1,
-	.num_resources = 2,
+	.num_resources = 3,
 	.resource = (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM(0, 128 * 1024 * 1024),
-		STM_PLAT_RESOURCE_MEM(0xfdf00000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 128 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfdf00000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfdd01000, 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
 		.sysconfs_num = 2,
@@ -131,8 +132,8 @@ static struct platform_device stx7200_nand_emi_device = {
 static struct platform_device stx7200_nand_flex_device = {
 	.num_resources		= 2,
 	.resource		= (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM_NAMED("flex_mem", 0xFDF01000, 0x1000),
-		STM_PLAT_RESOURCE_IRQ(ILC_IRQ(123), -1),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xFDF01000, 0x1000),
+		STM_PLAT_RESOURCE_IRQ_NAMED("nand_irq", ILC_IRQ(123), -1),
 	},
 	.dev.platform_data	= &(struct stm_plat_nand_flex_data) {
 	},
@@ -164,6 +165,9 @@ void __init stx7200_configure_nand(struct stm_nand_config *config)
 			"stm-nand-flex" : "stm-nand-afm";
 		platform_device_register(&stx7200_nand_flex_device);
 		break;
+	default:
+		BUG();
+		return;
 	}
 }
 

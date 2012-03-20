@@ -93,6 +93,12 @@ static struct stm_plat_spifsm_data fldb_spifsm_flash = {
 			.offset = MTDPART_OFS_NXTBLK,
 		},
 	},
+	.capabilities = {
+		/* Capabilities may be overriden by SoC configuration */
+		.dual_mode = 1,
+		.quad_mode = 1,
+	},
+
 };
 
 /* NAND Flash */
@@ -304,8 +310,14 @@ static int __init fldb_device_init(void)
 	fli7510_configure_lirc();
 
 	/*
-	 * To use the MMC/SD card with the external
-	 * CNG6 connector, the CNG4 has to be connected to CNG3.
+	 * --------------------------------------------------------
+	 * On Freeman Lite (FLDB_GPD202):
+	 * - Use the MMC/SD card with the external CNG6 connector,
+	 *   the CNG4 has to be connected to CNG3.
+	 *
+	 * On FreeLite B0572-FLTK3D-EUD201:
+	 * - Connect the metallic MMC cover to GND (near CNG7)
+	 *   otherwise the card is not detected.
 	 */
 	fli7510_configure_mmc();
 

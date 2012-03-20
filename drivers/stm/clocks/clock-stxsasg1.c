@@ -733,7 +733,7 @@ static int clkgenax_recalc(clk_t *clk_p)
 	case CLKS_A1_PLL0HS:
 		#if !defined(CLKLLA_NO_PLL)
 		data = CLK_READ(base_address + CKGA_PLL0_CFG);
-		return clk_pll1600_get_rate(clk_p->parent->rate, data & 0x7,
+		return clk_pll1600c45_get_rate(clk_p->parent->rate, data & 0x7,
 					(data >> 8) & 0xff, &clk_p->rate);
 		#else
 		if (clk_p->nominal_rate)
@@ -750,7 +750,7 @@ static int clkgenax_recalc(clk_t *clk_p)
 	case CLKS_A1_PLL1:
 		#if !defined(CLKLLA_NO_PLL)
 		data = CLK_READ(base_address + CKGA_PLL1_CFG);
-		return clk_pll800_get_rate(clk_p->parent->rate, data & 0xff,
+		return clk_pll800c65_get_rate(clk_p->parent->rate, data & 0xff,
 					   (data >> 8) & 0xff,
 					   (data >> 16) & 0x7, &clk_p->rate);
 		#else
@@ -852,7 +852,7 @@ CLOCKGEN A0 clocks groups
 
 static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 {
-	unsigned long div, mdiv, ndiv, pdiv, data;
+	unsigned long div, idf, cp, mdiv, ndiv, pdiv, data;
 	int err = 0;
 	long deviation, new_deviation;
 
@@ -870,8 +870,8 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 	case CLKS_A0_PLL0LS:
 		if (clk_p->id == CLKS_A0_PLL0LS)
 			freq = freq * 2;
-		err = clk_pll1600_get_params(clk_clocks[CLKS_A0_REF].rate,
-					     freq, &mdiv, &ndiv);
+		err = clk_pll1600c45_get_params(clk_clocks[CLKS_A0_REF].rate,
+					     freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -884,7 +884,7 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 		#endif
 		break;
 	case CLKS_A0_PLL1:
-		err = clk_pll800_get_params(clk_clocks[CLKS_A0_REF].rate,
+		err = clk_pll800c65_get_params(clk_clocks[CLKS_A0_REF].rate,
 					     freq, &mdiv, &ndiv, &pdiv);
 		if (err != 0)
 			break;
@@ -987,7 +987,7 @@ CLOCKGEN A1 (A right) clocks group
 
 static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 {
-	unsigned long div, mdiv, ndiv, pdiv, data;
+	unsigned long div, idf, cp, mdiv, ndiv, pdiv, data;
 	int err = 0;
 	long deviation, new_deviation;
 
@@ -1006,8 +1006,8 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 	case CLKS_A1_PLL0LS:
 		if (clk_p->id == CLKS_A1_PLL0LS)
 			freq = freq * 2;
-		err = clk_pll1600_get_params(clk_clocks[CLKS_A1_REF].rate,
-					     freq, &mdiv, &ndiv);
+		err = clk_pll1600c45_get_params(clk_clocks[CLKS_A1_REF].rate,
+					     freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1020,7 +1020,7 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 		#endif
 		break;
 	case CLKS_A1_PLL1:
-		err = clk_pll800_get_params(clk_clocks[CLKS_A1_REF].rate,
+		err = clk_pll800c65_get_params(clk_clocks[CLKS_A1_REF].rate,
 					     freq, &mdiv, &ndiv, &pdiv);
 		if (err != 0)
 			break;
@@ -1287,7 +1287,7 @@ static int clkgenb_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	#if !defined(CLKLLA_NO_PLL)
 
 	/* Computing FSyn params. Should be common function with FSyn type */
-	if (clk_fsyn_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
+	if (clk_fs216c65_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
 	bank = (clk_p->id - CLKS_B_USB48) / 4;
@@ -1394,7 +1394,7 @@ static int clkgenb_fsyn_recalc(clk_t *clk_p)
 	pe = CLK_READ(cgb_base + CKGB_FS_PE(bank, channel));
 	md = CLK_READ(cgb_base + CKGB_FS_MD(bank, channel));
 	sdiv = CLK_READ(cgb_base + CKGB_FS_SDIV(bank, channel));
-	return clk_fsyn_get_rate(clk_p->parent->rate,
+	return clk_fs216c65_get_rate(clk_p->parent->rate,
 				pe, md, sdiv, &clk_p->rate);
 
 	#else
@@ -1498,7 +1498,7 @@ static int clkgenc_fsyn_recalc(clk_t *clk_p)
 	md = sysconf_read(fsynth_vid_channel[channel].md);
 	sdiv = sysconf_read(fsynth_vid_channel[channel].sdiv);
 #endif
-	err = clk_fsyn_get_rate(clk_p->parent->rate, pe, md,
+	err = clk_fs216c65_get_rate(clk_p->parent->rate, pe, md,
 				sdiv, &clk_p->rate);
 
 	#else
@@ -1622,7 +1622,7 @@ static int clkgenc_set_rate(clk_t *clk_p, unsigned long freq)
 		return CLK_ERR_BAD_PARAMETER;
 
 	if ((clk_p->id >= CLKS_C_PIX_HD_VCC) && (clk_p->id <= CLKS_C_FS0_CH4)) {
-		if (clk_fsyn_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
+		if (clk_fs216c65_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
 			return CLK_ERR_BAD_PARAMETER;
 
 		channel = clk_p->id - CLKS_C_PIX_HD_VCC;
@@ -1897,7 +1897,7 @@ static int clkgend_fsyn_recalc(clk_t *clk_p)
 	md = sysconf_read(fsynth_gp_channel[channel].md);
 	sdiv = sysconf_read(fsynth_gp_channel[channel].sdiv);
 #endif
-	err = clk_fsyn_get_rate(clk_p->parent->rate, pe, md, sdiv,
+	err = clk_fs216c65_get_rate(clk_p->parent->rate, pe, md, sdiv,
 		&clk_p->rate);
 
 	return err;
@@ -1959,7 +1959,7 @@ static int clkgend_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 		return CLK_ERR_BAD_PARAMETER;
 
 	/* Computing FSyn params. Should be common function with FSyn type */
-	if (clk_fsyn_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
+	if (clk_fs216c65_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
 	channel = clk_p->id - CLKS_D_CCSC;

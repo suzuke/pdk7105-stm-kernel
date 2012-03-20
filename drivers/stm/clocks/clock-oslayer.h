@@ -39,6 +39,8 @@
 #define SYSCONF_WRITE(type, num, lsb, msb, value)	\
 	sysconf_write(sys_##type##_##num##_##lsb##_##msb, value)
 
+#define __mdelay(x)			mdelay(x)
+#define CLK_DELAYMS(x)			mdelay(x)
 /*
  * New ST chips use a unique ID number for all the sysconf registers
  * On these chips (to maintain the sysconf API Linus has) the
@@ -103,18 +105,12 @@ static struct clk_ops  _name = {					\
 		.rate = (_rate),					\
 }
 
-#define _CLK_FIXED(_id, _rate, _flags)					\
-[_id] = (clk_t) {							\
-		.name = #_id,						\
-		.id = (_id),						\
-		.rate = (_rate),					\
-		.flags = (_flags),					\
-}
+#define _CLK_FIXED(a, b, c)		_CLK_F(a, b)
 
 /* Low level API errors */
 enum clk_err {
 	CLK_ERR_NONE = 0,
-	CLK_ERR_FEATURE_NOT_SUPPORTED = -EPERM,
+	CLK_ERR_FEATURE_NOT_SUPPORTED = 0,
 	CLK_ERR_BAD_PARAMETER = -EINVAL,
 	CLK_ERR_INTERNAL = -EFAULT /* Internal & fatal error */
 };

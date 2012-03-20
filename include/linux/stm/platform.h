@@ -17,6 +17,7 @@
 #include <media/lirc.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
+#include <linux/clkdev.h>
 #include <linux/spi/spi.h>
 #include <linux/clkdev.h>
 #include <linux/stm/pad.h>
@@ -117,6 +118,7 @@ struct stm_plat_rtc_lpc {
 	unsigned int need_wdt_reset:1;	/* W/A on 7141 */
 	unsigned char irq_edge_level;
 	char *clk_id;
+	unsigned long force_clk_rate;
 };
 
 /*** SSC platform data ***/
@@ -283,7 +285,7 @@ struct stm_plat_sysconf_group {
 	int group;
 	unsigned long offset;
 	const char *name;
-	const char *(*reg_name)(int num);
+	void (*reg_name)(char *name, int size, int group, int num);
 };
 
 struct stm_plat_sysconf_data {
@@ -509,7 +511,7 @@ struct stm_plat_ilc3_data {
 	int disable_wakeup:1;
 };
 
-/*** To claim Ethernet PAD resources from thr platform ***/
+/*** To claim Ethernet PAD resources from the platform ***/
 
 static inline int stmmac_claim_resource(struct platform_device *pdev)
 {
@@ -603,7 +605,7 @@ static inline int clk_add_alias_platform_device(const char *alias,
 	struct platform_device *pdev, char *id, struct device *dev)
 {
 	char dev_name_buf[20];
-	const char* dev_name;
+	const char *dev_name;
 
 	if (pdev->id == -1) {
 		dev_name = pdev->name;

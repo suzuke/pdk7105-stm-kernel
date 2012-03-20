@@ -234,6 +234,9 @@ void __cpuinit cpu_probe(void)
 		case 0xa800 ... 0xa8ff:
 			boot_cpu_data.type = CPU_STIH415;
 			break;
+		case 0xaa00 ... 0xaaff:
+			boot_cpu_data.type = CPU_STXH205;
+			break;
 		default:
 			boot_cpu_data.type = CPU_SH_NONE;
 			break;

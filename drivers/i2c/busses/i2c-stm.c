@@ -55,6 +55,8 @@
  *		seems less sensible to the noise on the bus.
  * Version 2.7  (01 Jun 2010) Bruno Strudel <bruno.strudel@st.com>
  *   + Fixed the IIC_FSM_REPSTART_ADDR to wait in case of clock stretching
+ * Version 2.8  (28 Oct 2011) Francesco Virlinzi <francesco.virlinzi@st.com>
+ *   + Fixed Idle state to avoid glitch on SDA
  *
  * --------------------------------------------------------------------
  *
@@ -141,10 +143,15 @@
 #endif
 
 #ifdef CONFIG_I2C_STM_HW_GLITCH
-#if CONFIG_HW_GLITCH_WIDTH > 0
-#define HW_GLITCH_WIDTH			CONFIG_HW_GLITCH_WIDTH
+#if CONFIG_HW_GLITCH_CLK_WIDTH > 0
+#define HW_GLITCH_CLK_WIDTH			CONFIG_HW_GLITCH_CLK_WIDTH
 #else
-#define HW_GLITCH_WIDTH			1	/* in microseconds */
+#define HW_GLITCH_CLK_WIDTH			0	/* in microseconds */
+#endif
+#if CONFIG_HW_GLITCH_DATA_WIDTH > 0
+#define HW_GLITCH_DATA_WIDTH			CONFIG_HW_GLITCH_DATA_WIDTH
+#else
+#define HW_GLITCH_DATA_WIDTH			5	/* in microseconds */
 #endif
 #endif
 
@@ -603,9 +610,9 @@ be_fsm_stop:
 		 * i.e.: it is much less sensible to the noice on the cable
 		 */
 		dbg_print2("-Idle\n");
-		ssc_store32(adap, SSC_I2C, SSC_I2C_I2CM);
 		/* push the data line high */
 		ssc_store32(adap, SSC_TBUF, 0x1ff);
+		ssc_store32(adap, SSC_I2C, SSC_I2C_I2CM);
 		ssc_store32(adap, SSC_CTL, SSC_CTL_EN |
 			    SSC_CTL_PO | SSC_CTL_PH | SSC_CTL_HB | 0x8);
 		/* No break here! */
@@ -982,9 +989,9 @@ static void iic_stm_setup_timing(struct iic_ssc *adap)
 #endif
 	unsigned long ns_per_clk, clock ;
 
-
 	clock = clk_get_rate(adap->clk) + 500000; /* +0.5 Mhz for rounding */
 	dbg_print("Assuming %lu MHz for the Timing Setup\n", clock / 1000000);
+
 	ns_per_clk = NANOSEC_PER_SEC / clock;
 
 	if (check_fastmode(adap)) {
@@ -1051,19 +1058,13 @@ static void iic_stm_setup_timing(struct iic_ssc *adap)
 	ssc_store32(adap, SSC_SLAD, 0x7f);
 
 #ifdef CONFIG_I2C_STM_HW_GLITCH
-	/* See DDTS GNBvd40668 */
-	iic_prescaler = 1;
-	iic_glitch_width = HW_GLITCH_WIDTH * clock / 100000000;	/* in uS */
-	iic_glitch_width_dataout = 1;
+	/* Apply I2C settings for glitch filter as suggested by Validation team
+	   Refer to Bugzilla 14906 */
+	iic_prescaler = clock / 10000000;
+	/* glicth widths (clk/data) are expressed in uS */
+	iic_glitch_width = HW_GLITCH_CLK_WIDTH * clock / 100000000;
+	iic_glitch_width_dataout = HW_GLITCH_DATA_WIDTH * clock / 100000000;
 	iic_prescaler_dataout = clock / 10000000;
-
-/*  This should work, but causes lock-up after repstart
-    iic_prescaler = clock / 10000000;
-    iic_glitch_width = HW_GLITCH_WIDTH;
-    iic_glitch_width_dataout = 1;
-    iic_prescaler_dataout = clock / 10000000;
-    printk("*** iic_prescaler = %d *** \n", iic_prescaler);
-*/
 
 	ssc_store32(adap, SSC_PRSCALER, iic_prescaler);
 	ssc_store32(adap, SSC_NOISE_SUPP_WIDTH, iic_glitch_width);
