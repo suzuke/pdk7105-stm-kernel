@@ -367,6 +367,138 @@ static struct platform_device stx7108_fdma_xbar_device = {
 };
 
 
+/* st231 coprocessor resources -------------------------------------------- */
+
+static struct platform_device stx7108_st231_coprocessor_devices[3] = {
+	{
+		.name = "stm-coproc-st200",
+		.id = 0,
+		.dev.platform_data = &(struct plat_stm_st231_coproc_data) {
+			.name = "video",
+			.id = 0,
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 2,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYS_CFG_BANK(0, 6,
+							6, 31, "BOOT_ADDR"),
+					STM_DEVICE_SYS_CFG_BANK(0, 0,
+							4, 4, "RESET"),
+				},
+			},
+			.boot_shift = 6,
+			.not_reset = 1,
+		},
+	}, {
+		.name = "stm-coproc-st200",
+		.id = 1,
+		.dev.platform_data = &(struct plat_stm_st231_coproc_data) {
+			.name = "audio",
+			.id = 0,
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 2,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYS_CFG_BANK(0, 7,
+							6, 31, "BOOT_ADDR"),
+					STM_DEVICE_SYS_CFG_BANK(0, 0,
+							5, 5, "RESET"),
+				},
+			},
+			.boot_shift = 6,
+			.not_reset = 1,
+		},
+	}, {
+		.name = "stm-coproc-st200",
+		.id = 2,
+		.dev.platform_data = &(struct plat_stm_st231_coproc_data) {
+			.name = "gp",
+			.id = 0,
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 2,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYS_CFG_BANK(0, 8,
+							6, 31, "BOOT_ADDR"),
+					STM_DEVICE_SYS_CFG_BANK(0, 0,
+							6, 6, "RESET"),
+				},
+			},
+			.boot_shift = 6,
+			.not_reset = 1,
+		},
+	},
+};
+
+
+/* NOTE: 7108C2 Rev C datasheet seems to have incorrect bank 0-sysconf5
+ * register description, Refer to
+ * SPIRIT_registers_of_all_banks_sysconf.pdf for correct settings */
+
+#define ST40_BOOT_ADDR_SHIFT		1
+
+static int stx7108_st40_rt_boot(struct stm_device_state *dev_state,
+					unsigned long boot_addr,
+					unsigned long phy_addr)
+{
+
+	stm_device_sysconf_write(dev_state, "MASK_RESET", 1);
+	stm_device_sysconf_write(dev_state, "RESET" , 0);
+	stm_device_sysconf_write(dev_state, "BOOT_ADDR",
+					 boot_addr >> ST40_BOOT_ADDR_SHIFT);
+
+	if (boot_cpu_data.cut_major == 2) { /* bart always enabled */
+		stm_device_sysconf_write(dev_state, "LMI0_NOT_LMI1",
+					(phy_addr & 0x40000000) ? 1 : 0);
+		stm_device_sysconf_write(dev_state, "LMI_SYS_BASE",
+					((phy_addr & 0x3C000000) >> 26));
+	} else {
+		stm_device_sysconf_write(dev_state, "BART_ENABLE", 1);
+		stm_device_sysconf_write(dev_state, "LMI_SYS_BASE",
+					((phy_addr & 0xFC000000) >> 26));
+	}
+
+	stm_device_sysconf_write(dev_state, "RESET", 1);
+	return 0;
+}
+
+static struct plat_stm_st40_coproc_data stx7108_cut1_st40_coproc_dev_data = {
+	.name = "rt",
+	.id = 0,
+	.cpu_boot = stx7108_st40_rt_boot,
+	.device_config = &(struct stm_device_config) {
+		.sysconfs_num = 5,
+		.sysconfs = (struct stm_device_sysconf []){
+			STM_DEVICE_SYS_CFG_BANK(0, 5, 1, 28, "BOOT_ADDR"),
+			STM_DEVICE_SYS_CFG_BANK(0, 1, 1, 1, "MASK_RESET"),
+			STM_DEVICE_SYS_CFG_BANK(0, 0, 1, 1, "RESET"),
+			STM_DEVICE_SYS_CFG_BANK(1, 0, 1, 1, "BART_ENABLE"),
+			STM_DEVICE_SYS_CFG_BANK(1, 1, 8, 13, "LMI_SYS_BASE"),
+		},
+	},
+};
+
+static struct plat_stm_st40_coproc_data stx7108_cut2_st40_coproc_dev_data = {
+	.name = "rt",
+	.id = 0,
+	.cpu_boot = stx7108_st40_rt_boot,
+	.device_config = &(struct stm_device_config) {
+		.sysconfs_num = 7,
+		.sysconfs = (struct stm_device_sysconf []){
+			STM_DEVICE_SYS_CFG_BANK(0, 5, 1, 28, "BOOT_ADDR"),
+			STM_DEVICE_SYS_CFG_BANK(0, 1, 1, 1, "MASK_RESET"),
+			STM_DEVICE_SYS_CFG_BANK(0, 0, 1, 1, "RESET"),
+			STM_DEVICE_SYS_CFG_BANK(1, 0, 2, 5, "LMI_SYS_BASE"),
+			STM_DEVICE_SYS_CFG_BANK(1, 0, 8, 8, "LMI0_NOT_LMI1"),
+			STM_DEVICE_SYS_STA_BANK(1, 13, 0, 31, "BART_STATUS"),
+			STM_DEVICE_SYS_CFG_BANK(1, 0, 16, 16,
+							"BART_LOCK_ENABLE"),
+		},
+	},
+};
+
+static struct platform_device stx7108_st40_coproc_device = {
+	.name = "stm-coproc-st40",
+	.id = 0,
+	.dev.platform_data  = &stx7108_cut2_st40_coproc_dev_data,
+};
 
 /* Hardware RNG resources ------------------------------------------------- */
 
@@ -1097,6 +1229,9 @@ static struct platform_device *stx7108_devices[] __initdata = {
 	&stx7108_fdma_devices[1],
 	&stx7108_fdma_devices[2],
 	&stx7108_fdma_xbar_device,
+	&stx7108_st231_coprocessor_devices[0],
+	&stx7108_st231_coprocessor_devices[1],
+	&stx7108_st231_coprocessor_devices[2],
 	&stx7108_sysconf_devices[0],
 	&stx7108_sysconf_devices[1],
 	&stx7108_sysconf_devices[2],
@@ -1109,7 +1244,18 @@ static struct platform_device *stx7108_devices[] __initdata = {
 
 static int __init stx7108_devices_setup(void)
 {
-	return platform_add_devices(stx7108_devices,
+	platform_add_devices(stx7108_devices,
 			ARRAY_SIZE(stx7108_devices));
+
+	if (boot_cpu_data.cut_major == 1)
+		stx7108_st40_coproc_device.dev.platform_data =
+					&stx7108_cut1_st40_coproc_dev_data;
+	else
+		stx7108_st40_coproc_device.dev.platform_data =
+					&stx7108_cut2_st40_coproc_dev_data;
+
+	platform_device_register(&stx7108_st40_coproc_device);
+
+	return 0;
 }
 device_initcall(stx7108_devices_setup);
