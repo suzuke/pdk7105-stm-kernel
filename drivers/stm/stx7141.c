@@ -273,6 +273,121 @@ static struct platform_device stx7141_fdma_xbar_device = {
 
 
 
+/* st231 coprocessor resources --------------------------------------------- */
+
+static int stx7141_stbus_req_filter(struct stm_device_state *state, int on)
+{
+	stm_device_sysconf_write(state, "BOOT_ENABLE", on ? 1 : 0);
+	return 0;
+}
+
+static int stx7141_cpu_reset_bypass(stm_cpu_reset_bypass_t reset_bypass)
+{
+	static struct sysconf_field *bypass_sc;
+
+	if (!bypass_sc)
+		bypass_sc = sysconf_claim(SYS_CFG, 9, 27, 28,
+						"stm-cpu-reset-bypass");
+
+	if (reset_bypass == stm_bypass_st40_st231_handshake)
+		sysconf_write(bypass_sc, 2);
+	else if (reset_bypass == stm_bypass_st231_handshake)
+		sysconf_write(bypass_sc, 1);
+	else
+		sysconf_write(bypass_sc, 0);
+
+	return 0;
+}
+
+
+static struct platform_device stx7141_st231_coprocessor_devices[2] = {
+	{
+		.name = "stm-coproc-st200",
+		.id = 0,
+		.dev.platform_data = &(struct plat_stm_st231_coproc_data) {
+			.name = "video",
+			.id = 0,
+			.reset_bypass = stx7141_cpu_reset_bypass,
+			.stbus_req_filter = stx7141_stbus_req_filter,
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 3,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYS_CFG(28, 8, 31,
+								"BOOT_ADDR"),
+					STM_DEVICE_SYS_CFG(28, 0, 0,
+								"BOOT_ENABLE"),
+					STM_DEVICE_SYS_CFG(29, 0, 0, "RESET"),
+				},
+			},
+			.boot_shift = 8,
+		},
+	}, {
+		.name = "stm-coproc-st200",
+		.id = 1,
+		.dev.platform_data = &(struct plat_stm_st231_coproc_data) {
+			.name = "audio",
+			.id = 0,
+			.reset_bypass = stx7141_cpu_reset_bypass,
+			.stbus_req_filter = stx7141_stbus_req_filter,
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 3,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYS_CFG(26, 8, 31,
+								"BOOT_ADDR"),
+					STM_DEVICE_SYS_CFG(26, 0, 0,
+								"BOOT_ENABLE"),
+					STM_DEVICE_SYS_CFG(27, 0, 0, "RESET"),
+				},
+			},
+			.boot_shift = 8,
+		},
+	}
+};
+
+#define ST40_BOOT_ADDR_SHIFT		12
+
+static int stx7141_eCM_boot(struct stm_device_state *dev_state,
+					unsigned long boot_addr,
+					unsigned long phy_addr)
+{
+
+	stm_device_sysconf_write(dev_state, "BOOT_ENABLE", 0);
+	stm_device_sysconf_write(dev_state, "MASK_RESET", 1);
+	stm_device_sysconf_write(dev_state, "BOOT_ADDR",
+					 boot_addr >> ST40_BOOT_ADDR_SHIFT);
+	stm_device_sysconf_write(dev_state, "BART_ENABLE", 1);
+	stm_device_sysconf_write(dev_state, "RESET", 1);
+	stm_device_sysconf_write(dev_state, "RESET", 0);
+	stm_device_sysconf_write(dev_state, "BOOT_ENABLE", 1);
+	stm_device_sysconf_write(dev_state, "MASK_RESET", 0);
+
+	return 0;
+}
+
+static struct platform_device stx7141_st40_coprocessor_device = {
+	.name = "stm-coproc-st40",
+	.id = 0,
+	.dev.platform_data  = &(struct plat_stm_st40_coproc_data) {
+		.name = "eCM",
+		.id = 0,
+		.cpu_boot = stx7141_eCM_boot,
+		.stbus_req_filter = stx7141_stbus_req_filter,
+		.device_config = &(struct stm_device_config) {
+			.sysconfs_num = 6,
+			.sysconfs = (struct stm_device_sysconf []) {
+				STM_DEVICE_SYS_CFG(4, 15, 31, "BOOT_ADDR"),
+				STM_DEVICE_SYS_CFG(8, 4, 4, "MASK_RESET"),
+				STM_DEVICE_SYS_CFG(8, 7, 7, "RESET"),
+				STM_DEVICE_SYS_CFG(8, 1, 1, "BOOT_ENABLE"),
+				STM_DEVICE_SYS_CFG(8, 2, 2, "BART_ENABLE"),
+				STM_DEVICE_SYS_CFG(38, 0, 7, "LMI_SYS_BASE"),
+			},
+		},
+	},
+};
+
+
+
 /* Hardware RNG resources ------------------------------------------------- */
 
 static struct platform_device stx7141_rng_hwrandom_device = {
@@ -292,8 +407,6 @@ static struct platform_device stx7141_rng_devrandom_device = {
 		STM_PLAT_RESOURCE_MEM(0xfe250000, 0x1000),
 	}
 };
-
-
 
 /* Internal temperature sensor resources ---------------------------------- */
 static void stx7141_temp_power(struct stm_device_state *device_state,
@@ -813,6 +926,9 @@ static struct platform_device *stx7141_devices[] __initdata = {
 	&stx7141_fdma_devices[0],
 	&stx7141_fdma_devices[1],
 	&stx7141_fdma_xbar_device,
+	&stx7141_st231_coprocessor_devices[0],
+	&stx7141_st231_coprocessor_devices[1],
+	&stx7141_st40_coprocessor_device,
 	&stx7141_sysconf_device,
 	&stx7141_rng_hwrandom_device,
 	&stx7141_rng_devrandom_device,
