@@ -89,70 +89,44 @@ config STM_SH_DMA_API
 	default y if STM_DMA && (!SUPERH)
 	default n
 
-config STM_COPROCESSOR_SUPPORT
-	bool "STMicroelectronics coprocessor support"
-	default y
-	depends on (CPU_SUBTYPE_STX7100 || CPU_SUBTYPE_STX7105 \
-		|| CPU_SUBTYPE_STX7111 || CPU_SUBTYPE_STX7141 \
-		|| CPU_SUBTYPE_STX7200 || CPU_SUBTYPE_STX7108 \
-		|| CPU_SUBTYPE_STX5206 \
-		|| CPU_SUBTYPE_FLI7510)
-	---help---
-        Many of the ST system-on-chip devices have multiple CPUs, where a
-        master CPU running Linux has control over a number of slave CPUs,
-        which are usually used to run dedicated algorithms.
-        Enabling this option will add support to the Linux kernel to
-        control these slave CPUs, reserve memory for them, and thus allow
-        code to be downloaded onto them and executed.
-        Adding in the command line the following string:
-        coprocessor_mem=[offset]:size0[,size1][,size2]...
-        where:
-        offset defines where the co-processors region starts.
-               It's an offset from ST40 RAM start.
-        size{n} defines the region size for the n.th slave core (max 16M).
-
-        Example: coprocessor_mem=32m:16m,16m
-
-config STM_NUM_COPROCESSOR
-	int
-	depends on STM_COPROCESSOR_SUPPORT
-	default 2 if CPU_SUBTYPE_STX7100
-	default 2 if CPU_SUBTYPE_STX7105
-	default 2 if CPU_SUBTYPE_STX7111
-	default 2 if CPU_SUBTYPE_STX7141
-	default 2 if CPU_SUBTYPE_STX5206
-	default 4 if CPU_SUBTYPE_STX7200
-	default 3 if CPU_SUBTYPE_STX7108
-	default 3 if CPU_SUBTYPE_FLI7510
-	default 0
-
-choice
-	prompt "STM coprocessor loading strategy"
-        depends on STM_COPROCESSOR_SUPPORT
-        default STM_COPROCESSOR
-
-config  STM_COPROCESSOR
-	bool "STM coprocessor support"
-	help
-	  Select this option to enable support for the slave coprocessors
-	  found on many ST system-on-chip devices.
-
-config  STM_COPROCESSOR_FRMW
-	bool "The new STM coprocessor firmware support "
+config STM_COPROCESSOR_CLASS
+	tristate "STMicroelectronics coprocessor support"
 	select FW_LOADER
-	help
-	  Select this option to enable support for the slave coprocessors
-	  found on many ST system-on-chip devices.
+	select BPA2
+	select LIBELF
+	---help---
+	  Many of the ST system-on-chip devices have multiple CPUs, where a
+	  master CPU running Linux has control over a number of slave CPUs,
+	  which are usually used to run dedicated algorithms.
+	  Enabling this option will add support to the Linux kernel to
+	  control these slave CPUs, reserve memory for them, and thus allow
+	  code to be downloaded onto them and executed.
 
-endchoice
+	  Memory allocation is managed through BPA2 so, to define a
+	  coprocessor's memory size and address, use the normal BPA2
+	  command line option:
+	    bpa2_parts=<name0>:<size0>:<address0>,<name1>:<size1>:<address1>,...
+	  where:
+	    <nameX> is "coproc_" followed by the coprocessor name, for example
+	    "audio0".
+	    <sizeX> defines the size of the partition
+	    <addressX> defines the base address of memory reserved for the
+	    coprocessor application code and data.
+
+	  For example:
+	    bpa2_parts=coproc_video0:16m:0x06000000,coproc_audio0:16m:0x07000000
+
+	  As with all other BPA2 addresses, addresses are physical addresses,
+	  and so may appear at different virtual addresses when mapped into the
+	  CPU's memory map.
 
 config  COPROCESSOR_DEBUG
-        depends on STM_COPROCESSOR_SUPPORT
+        depends on STM_COPROCESSOR_CLASS
         bool "STM coprocessor debug"
         default n
         ---help---
-        Enable this option to print out information about the slave CPUs
-        addresses and operations you are using for coprocessor.
+          Enable this option to print out information about the slave CPUs
+          addresses and operations you are using for coprocessor.
 
 config STM_RNG
        bool "STM Random Number Generator Support"
