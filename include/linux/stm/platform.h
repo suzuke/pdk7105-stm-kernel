@@ -204,6 +204,19 @@ struct plat_stm_st231_coproc_data {
 	int not_reset;
 };
 
+/* st40 platform data */
+struct plat_stm_st40_coproc_data {
+	const char *name;
+	int id;
+	struct stm_device_config *device_config;
+	int (*cpu_boot)(struct stm_device_state *state,
+				unsigned long boot_addr,
+				unsigned long phys_addr);
+	int (*reset_bypass)(enum stm_cpu_reset_bypass bypass);
+	int (*stbus_req_filter)(struct stm_device_state *state,
+				int on);
+};
+
 
 
 /*** Temperature sensor data ***/

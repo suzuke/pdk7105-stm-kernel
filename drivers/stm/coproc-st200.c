@@ -9,7 +9,7 @@
 struct coproc_st231 {
 	struct coproc coproc;
 	struct stm_device_state *coproc_device_state;
-	int (*reset_bypass)(stm_cpu_reset_bypass_t reset_bypass);
+	int (*reset_bypass)(enum stm_cpu_reset_bypass reset_bypass);
 	int (*stbus_req_filter)(struct stm_device_state *state, int on);
 	int boot_shift;
 	int not_reset;

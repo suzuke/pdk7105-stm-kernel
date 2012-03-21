@@ -1,0 +1,85 @@
+Note that the ST40 boot process is more complicated beacuse the CPU
+always boots in 29 bit mode, and so will send requests to the LMI
+using the 29 bit physical mapping (0x0c000000), while the code is
+loaded using the 32 bit physical mapping of the LMI (0x40000000).
+Hence the boot address is 0x0ff00000 (0x0c000000 + 0x03f00000) when
+viewed from the ST40, but 0x43f00000 when viewed from Linux.
+
+Example:
+
+Copy the example code from the ST40 toolset:
+
+host% cp -r .../st40r2-5.0.0-linux/sh-superh-elf/examples examples
+
+Apply the following patch:
+
+diff -ur /group/mdt/products/st40/st40r2-5.0.0-linux/sh-superh-elf/examples/os21/romloader/build.mkf examples/os21/romloader/build.mkf
+--- /group/mdt/products/st40/st40r2-5.0.0-linux/sh-superh-elf/examples/os21/romloader/build.mkf 2009-12-04 11:29:09.000000000 +0000
++++ examples/os21/romloader/build.mkf       2010-03-17 13:29:12.000000000 +0000
+@@ -67,8 +67,8 @@
+
+ # We need to list the location to link the SE init code for when we have slave
+ # ST40 applications and we are linking to run the system in SE mode.
+-SEINITCODE.eud7141.CPU1=0x0c000000
+-SEINITCODE.mb628.CPU1=0x0c000000
++SEINITCODE.eud7141.CPU1=0x0ff00000
++SEINITCODE.mb628.CPU1=0x0ff00000
+ # These will only work on cut 2 onwards - CPU 1 is disabled above for FLi7510 and STi7108 cut 1
+ SEINITCODE.fldb_gpd201.CPU1=0x14000000
+ SEINITCODE.mb837.CPU1=0x14000000
+
+This changes the entry point for the ST40 bootstrap code from 0x0c000000
+to 0x0ff00000.
+
+Note that we need an address which is in the lower 64M of LMI,
+beacuse of restrictions imposed by the BART.
+
+Build the example code:
+
+host% make -C sh4-examples/os21/romloader TARGET=mb628_estbse
+
+We need to fixup the LMA addresses of the resulting ELF files, as the
+toolset only sets the VMA:
+
+host% sh4-linux-objcopy \
+  `for a in .text .init .fini .rodata .eh_frame .ctors .dtors \
+     .jcr .data .got .bss ; do \
+         echo --change-section-lma ${a}-0x40000000;  \
+   done` \
+  --change-section-lma .alt0text=0x43f00000 \
+  --set-start=0x0ff00000 \
+  --strip-debug examples/os21/romloader/sample40-1.out sample40-1.out
+
+We should get output similar to this:
+
+host% readelf -l sample40-1.out
+
+Elf file type is EXEC (Executable file)
+Entry point 0xff00000
+There are 3 program headers, starting at offset 52
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x0000a0 0x0ff00000 0x43f00000 0x002a0 0x002a0 R E 0x20
+  LOAD           0x001000 0x84001000 0x44001000 0x1b364 0x1b364 R E 0x1000
+  LOAD           0x01c364 0x8401c3e4 0x4401c3e4 0x028c8 0x05000 RW  0x10
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .alt0text
+   01     .text .init .fini .rodata .eh_frame
+   02     .ctors .dtors .jcr .data .got .bss
+
+
+And copy the file to the target filesystem:
+
+host% sudo cp sample40-1.out \
+  /opt/STM/STLinux-2.4/devkit/sh4/target/lib/firmware/st_firmware_eCM0.elf
+
+Boot the kernel specifying the coprocessor memory region:
+
+host% st40load ... -- ... bpa2parts=coproc_eCM0:0x00200000:0x43f00000 ...
+
+And trigger the load and run of the firmware on the target:
+
+target# echo run > /sys/class/stm-coprocessor/eCM0/state
