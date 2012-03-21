@@ -1,0 +1,42 @@
+Copy the example code from the ST40 toolset:
+
+host% cp -r .../st40r2-5.0.0-linux/sh-superh-elf/examples examples
+
+Build the example code:
+
+host% make -C sh4-examples/os21/romloader TARGET=mb628_estbse
+
+We need to fixup the LMA addresses of the resulting ELF files, as the
+toolset only sets the VMA:
+
+host% st200-objcopy \
+  --strip-debug examples/os21/romloader/sample200-2.out sample200-2.out
+
+Which should result in an ELF file looking like this:
+
+host% st200-readelf -l sample200-2.out
+
+Elf file type is EXEC (Executable file)
+Entry point 0x46000300
+There are 1 program headers, starting at offset 52
+
+Program Headers:
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  LOAD           0x001000 0x46000000 0x46000000 0x2fa00 0x32800 RWE 0x1000
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .text .init .fini .rodata .eh_frame .ctors .dtors .data .bss
+
+And copy the file to the target filesystem:
+
+host% sudo cp sample200-2.out \
+  /opt/STM/STLinux-2.4/devkit/sh4/target/lib/firmware/st_firmware_audio0.elf
+
+Boot the kernel specifying the coprocessor memory region:
+
+host% st40load ... -- ... bpa2parts=coproc_audio0:0x01000000:0x46000000 ...
+
+And trigger the load and run of the firmware on the target:
+
+target# echo run > /sys/class/stm-coprocessor/audio0/state

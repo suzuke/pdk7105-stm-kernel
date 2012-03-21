@@ -120,6 +120,12 @@ config STM_COPROCESSOR_CLASS
 	  and so may appear at different virtual addresses when mapped into the
 	  CPU's memory map.
 
+config STM_COPROCESSOR_ST200
+	tristate "ST200 coprocessor support"
+	depends on STM_COPROCESSOR_CLASS
+	---help---
+	  Provide support for ST200 coprocessor hardware.
+
 config  COPROCESSOR_DEBUG
         depends on STM_COPROCESSOR_CLASS
         bool "STM coprocessor debug"

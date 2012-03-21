@@ -17,6 +17,7 @@ obj-$(CONFIG_STM_MIPHY_TAP)		+= miphy_tap.o tap.o
 obj-$(CONFIG_STM_MIPHY_PCIE_MP)		+= miphy_pcie_mp.o
 obj-$(CONFIG_STM_MIPHY_DUMMY)		+= miphy_dummy.o
 obj-$(CONFIG_STM_COPROCESSOR_CLASS)	+= coprocessor.o
+obj-$(CONFIG_STM_COPROCESSOR_ST200)	+= coproc-st200.o
 obj-$(CONFIG_STM_RNG)			+= rng.o
 obj-$(CONFIG_STM_MALI)			+= mali/
 obj-$(CONFIG_STM_AMBA_BRIDGE)		+= amba_bridge.o

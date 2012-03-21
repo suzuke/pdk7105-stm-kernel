@@ -25,6 +25,7 @@
 #include <linux/stm/miphy.h>
 #include <linux/stm/amba_bridge.h>
 #include <linux/stm/mmc.h>
+#include <linux/stm/device.h>
 
 /*** Platform definition helpers ***/
 
@@ -166,6 +167,41 @@ struct stm_plat_lirc_data {
 struct stm_plat_pwm_data {
 	int channel_enabled[STM_PLAT_PWM_NUM_CHANNELS];
 	struct stm_pad_config *channel_pad_config[STM_PLAT_PWM_NUM_CHANNELS];
+};
+
+
+
+/* This Allows bypass of the CPU handshake in the chain of the reset generator
+ * After boot the modepin value can be bypassed by using the system_config
+ * A typical use of this system config bit is to bypass the ST231 resetout,
+ * infact the ST40 may change the boot address of the ST231 (by default 0x0).
+ * To allow the ST231 to take into account this new boot address it must be
+ * reset again via a config register.
+ * In this case, the resetout of the ST231 must not be propagates out to
+ * other IPs which may have been already configured.
+ */
+enum stm_cpu_reset_bypass {
+	/* No bypass */
+	stm_bypass_none,
+	/* bypass SH4 + ST231 handshakes */
+	stm_bypass_st40_st231_handshake,
+	/* bypass ST231 handshakes */
+	stm_bypass_st231_handshake,
+};
+
+/* st231 platform data
+ * at Minimal device_config should contain sysconfig named
+ * "BOOT_ADDR" and "RESET"
+ */
+struct plat_stm_st231_coproc_data {
+	const char *name;
+	int id;
+	struct stm_device_config *device_config;
+	int (*reset_bypass)(enum stm_cpu_reset_bypass bypass);
+	int (*stbus_req_filter)(struct stm_device_state *state,
+				int on);
+	int boot_shift;
+	int not_reset;
 };
 
 
