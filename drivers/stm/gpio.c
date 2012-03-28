@@ -31,6 +31,13 @@
 #include <linux/stm/pio.h>
 #include "reg_pio.h"
 
+#ifndef CONFIG_ARM
+#define chained_irq_enter(chip, desc)	do { } while (0)
+#define chained_irq_exit(chip, desc)	do { } while (0)
+#else
+#include <asm/mach/irq.h>
+#endif
+
 
 
 struct stpio_pin {
@@ -211,16 +218,21 @@ static void __stm_gpio_irq_handler(const struct stm_gpio_port *port)
 static void stm_gpio_irq_handler(unsigned int irq, struct irq_desc *desc)
 {
 	struct stm_gpio_port *port = irq_get_handler_data(irq);
+	struct irq_chip *chip = irq_get_chip(irq);
 
+	chained_irq_enter(chip, desc);
 	__stm_gpio_irq_handler(port);
+	chained_irq_exit(chip, desc);
 }
 
 static void stm_gpio_irqmux_handler(unsigned int irq, struct irq_desc *desc)
 {
+	struct irq_chip *chip = irq_get_chip(irq);
 	struct stm_gpio_irqmux *irqmux = irq_get_handler_data(irq);
 	unsigned long status;
 	int bit;
 
+	chained_irq_enter(chip, desc);
 	status = readl(irqmux->base);
 	while ((bit = ffs(status)) != 0) {
 		struct stm_gpio_port *port;
@@ -230,6 +242,7 @@ static void stm_gpio_irqmux_handler(unsigned int irq, struct irq_desc *desc)
 		__stm_gpio_irq_handler(port);
 		status &= ~(1 << bit);
 	}
+	chained_irq_exit(chip, desc);
 }
 
 static void stm_gpio_irq_chip_disable(struct irq_data *d)
