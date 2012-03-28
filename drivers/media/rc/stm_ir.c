@@ -777,6 +777,7 @@ static void ir_stm_rx_interrupt(int irq, void *data)
 	unsigned int symbol, mark = 0;
 	struct stm_ir_device *dev = data;
 	int lastSymbol = 0, clear_irq = 1;
+	int overrun = 0;
 	DEFINE_IR_RAW_EVENT(ev);
 
 	ir_stm_scd_set_flags(dev);
@@ -788,6 +789,7 @@ static void ir_stm_rx_interrupt(int irq, void *data)
 			pr_info(IR_STM_NAME ": IR RX overrun\n");
 			writel(LIRC_STM_CLEAR_OVERRUN,
 				dev->rx_base + IRB_RX_INT_CLEAR);
+			overrun = 1;
 		}
 
 		/* get the symbol times from FIFO */
@@ -800,6 +802,12 @@ static void ir_stm_rx_interrupt(int irq, void *data)
 			RX_CLEAR_IRQ(dev, LIRC_STM_CLEAR_IRQ);
 			writel(0x07, dev->rx_base + IRB_RX_INT_EN);
 			clear_irq = 0;
+		}
+
+		/* now handle the data depending on error condition */
+		if (overrun) { /*  Try again */
+			overrun = 0;
+			continue;
 		}
 
 		if (symbol == 0xFFFF)
