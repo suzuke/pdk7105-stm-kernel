@@ -10,6 +10,7 @@
  * ------------------------------------------------------------------------- */
 
 #include <linux/stm/pms.h>
+#include <linux/stm/wakeup_devices.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
@@ -436,11 +437,13 @@ struct pms_object *pms_register_device_n(char *name)
 	struct bus_type *bus;
 	struct device *dev;
 	char *bus_name, *dev_name;
-	char *loc_dev_path = kzalloc(strlen(name) + 1, GFP_KERNEL);
+	void *tmp = kzalloc(strlen(name) + 1, GFP_KERNEL);
+	char *loc_dev_path;
 
-	if (!loc_dev_path)
+	if (!tmp)
 		return NULL;
 
+	loc_dev_path = tmp;
 	strncpy(loc_dev_path, name, strlen(name));
 	bus_name = _strsep((char **)&loc_dev_path, "/ \n\t\0");
 	if (!bus_name) {
@@ -462,10 +465,10 @@ struct pms_object *pms_register_device_n(char *name)
 		pr_debug("Device not found\n");
 		goto err_0;
 	}
-	kfree(loc_dev_path);
+	kfree(tmp);
 	return pms_register_device(dev);
 err_0:
-	kfree(loc_dev_path);
+	kfree(tmp);
 	return NULL;
 }
 EXPORT_SYMBOL(pms_register_device_n);
@@ -873,7 +876,6 @@ char *pms_get_current_state(void)
 }
 EXPORT_SYMBOL(pms_get_current_state);
 
-extern unsigned int wokenup_by;
 int pms_global_standby(enum pms_standby_e state)
 {
 	int ret = -EINVAL;
@@ -884,7 +886,7 @@ int pms_global_standby(enum pms_standby_e state)
 		ret = pm_suspend(state == PMS_GLOBAL_STANDBY ?
 				 PM_SUSPEND_STANDBY : PM_SUSPEND_MEM);
 		if (ret >= 0)
-			ret = (int)wokenup_by;
+			ret = stm_get_wakeup_reason();;
 		break;
 #endif
 #ifdef CONFIG_HIBERNATION

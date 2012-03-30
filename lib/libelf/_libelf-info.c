@@ -1,17 +1,18 @@
 /*
- * File     : lib/libelf/info.c
+ * File     : lib/libelf/_libelf-info.c
  * Synopsis : Utility library for handling ELF files (info functions)
  * Author   : Carl Shaw <carl.shaw@st.com>
  * Author   : Giuseppe Condorelli <giuseppe.condorelli@st.com>
+ * Contrib  : Carmelo Amoroso <carmelo.amoroso@st.com>
  *
- * Copyright (c) 2008 STMicroelectronics Limited.
+ * Copyright (c) 2008, 2011 STMicroelectronics Limited.
  *
  */
 
-#include <linux/libelf.h>
+#include <linux/module.h>
 
 /* Useful for debug, this function shows elf header informations */
-void ELF_printHeaderInfo(const struct ELFinfo *elfinfo)
+void ELFW(printHeaderInfo)(const struct ELFW(info) *elfinfo)
 {
 	char *typestr[] = {"NONE", "REL", "EXEC", "DYN", "CORE"};
 	char *osstr[] = {"NONE", "HPUX", "NETBSD", "Linux", "unknown",
@@ -24,7 +25,11 @@ void ELF_printHeaderInfo(const struct ELFinfo *elfinfo)
 	else
 		printk(KERN_INFO"type       : %u\n", (elfinfo->header)->e_type);
 	printk(KERN_INFO"machine    : %u\n", (elfinfo->header)->e_machine);
+#if __LIBELF_WORDSIZE == 32
 	printk(KERN_INFO"entry      : 0x%08x\n", (elfinfo->header)->e_entry);
+#else
+	printk(KERN_INFO"entry      : 0x%08llx\n", (elfinfo->header)->e_entry);
+#endif
 	printk(KERN_INFO"flags      : %u\n", (elfinfo->header)->e_flags);
 	printk(KERN_INFO"sections   : %u\n", elfinfo->numsections);
 	printk(KERN_INFO"segments   : %u\n", elfinfo->numpheaders);
@@ -42,20 +47,20 @@ void ELF_printHeaderInfo(const struct ELFinfo *elfinfo)
 	else if ((elfinfo->header)->e_ident[EI_OSABI] == 255)
 		printk(KERN_INFO"OS         : STANDALONE\n");
 }
-EXPORT_SYMBOL(ELF_printHeaderInfo);
+EXPORT_SYMBOL(ELFW(printHeaderInfo));
 
 /* Useful for debug, this function shows elf section informations */
-void ELF_printSectionInfo(const struct ELFinfo *elfinfo)
+void ELFW(printSectionInfo)(const struct ELFW(info) *elfinfo)
 {
 	uint32_t 	i, n;
 	char 		*str, *type = NULL;
-	Elf32_Shdr	*sec;
+	ElfW(Shdr)	*sec;
 	char		flags[10];
 	struct typess	elftypes[] = {ELF_TYPES};
 
 	printk(KERN_INFO"Number of sections: %u\n", elfinfo->numsections);
 	for (i = 0; i < elfinfo->numsections; i++) {
-		sec = ELF_getSectionByIndex(elfinfo, i);
+		sec = ELFW(getSectionByIndex)(elfinfo, i);
 		if (*str == '\0')
 			str = "<no name>";
 
@@ -85,4 +90,4 @@ void ELF_printSectionInfo(const struct ELFinfo *elfinfo)
 		printk(KERN_INFO"[%02u] %s %s %s \n", i, str, type, flags);
 	}
 }
-EXPORT_SYMBOL(ELF_printSectionInfo);
+EXPORT_SYMBOL(ELFW(printSectionInfo));

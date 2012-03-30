@@ -12,12 +12,21 @@
 #include <linux/export.h>
 #include <linux/platform_device.h>
 
+static int wokenup_by;
+
+int stm_get_wakeup_reason(void)
+{
+	return wokenup_by;
+}
+
+void stm_set_wakeup_reason(int irq)
+{
+	wokenup_by = irq;
+}
+
 static void stm_wake_init(struct stm_wakeup_devices *wkd)
 {
-	wkd->lirc_can_wakeup = 0;
-	wkd->hdmi_can_wakeup = 0;
-	wkd->eth_phy_can_wakeup = 0;
-	wkd->eth1_phy_can_wakeup = 0;
+	memset(wkd, 0, sizeof(*wkd));
 }
 
 static int __check_wakeup_device(struct device *dev, void *data)
@@ -36,6 +45,18 @@ static int __check_wakeup_device(struct device *dev, void *data)
 			wkd->eth_phy_can_wakeup = 1;
 		else if (!strcmp(dev_name(dev), "stmmaceth.1"))
 			wkd->eth1_phy_can_wakeup = 1;
+		else if (!strcmp(dev_name(dev), "stm-hdmi-cec"))
+			wkd->hdmi_cec = 1;
+		else if (!strcmp(dev_name(dev), "stm-hdmi-hot"))
+			wkd->hdmi_hotplug = 1;
+		else if (!strcmp(dev_name(dev), "stm-kscan"))
+			wkd->kscan = 1;
+		else if (!strcmp(dev_name(dev), "stm-rtc"))
+			wkd->rtc = 1;
+		else if (!strcmp(dev_name(dev), "stm-asc"))
+			wkd->asc = 1;
+		else if (!strncmp(dev_name(dev), "stm-asc.", 8))
+			wkd->asc = 1;
 
 	}
 	return 0;
@@ -49,3 +70,4 @@ int stm_check_wakeup_devices(struct stm_wakeup_devices *wkd)
 }
 
 EXPORT_SYMBOL(stm_check_wakeup_devices);
+

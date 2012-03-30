@@ -976,7 +976,7 @@ static int clkgenax_recalc(clk_t *clk_p)
 		#if !defined(CLKLLA_NO_PLL)
 		ndiv = CLK_READ(base_addr + CKGA_PLL0_REG0_CFG) & 0xff;
 		idf = CLK_READ(base_addr + CKGA_PLL0_REG1_CFG) & 0x7;
-		err = clk_pll3200_get_rate(clk_p->parent->rate, idf, ndiv, &clk_p->rate);
+		err = clk_pll3200c32_get_rate(clk_p->parent->rate, idf, ndiv, &clk_p->rate);
 		#endif
 		break;
 	case CLKM_A0_PLL1:
@@ -985,7 +985,7 @@ static int clkgenax_recalc(clk_t *clk_p)
 		#if !defined(CLKLLA_NO_PLL)
 		ndiv = CLK_READ(base_addr + CKGA_PLL1_REG0_CFG) & 0xff;
 		idf = CLK_READ(base_addr + CKGA_PLL1_REG1_CFG) & 0x7;
-		err = clk_pll3200_get_rate(clk_p->parent->rate, idf, ndiv, &clk_p->rate);
+		err = clk_pll3200c32_get_rate(clk_p->parent->rate, idf, ndiv, &clk_p->rate);
 		#endif
 		break;
 	case CLKM_A0_PLL0_PHI0 ... CLKM_A0_PLL0_PHI3:
@@ -1268,7 +1268,7 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 
 	switch (clk_p->id) {
 	case CLKM_A0_PLL0:
-		err = clk_pll3200_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
+		err = clk_pll3200c32_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1283,7 +1283,7 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 		#endif
 		break;
 	case CLKM_A0_PLL1:
-		err = clk_pll3200_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
+		err = clk_pll3200c32_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1367,7 +1367,7 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 
 	switch (clk_p->id) {
 	case CLKM_A1_PLL0:
-		err = clk_pll3200_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
+		err = clk_pll3200c32_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1382,7 +1382,7 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 		#endif
 		break;
 	case CLKM_A1_PLL1:
-		err = clk_pll3200_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
+		err = clk_pll3200c32_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1462,7 +1462,7 @@ static int clkgena2_set_rate(clk_t *clk_p, unsigned long freq)
 
 	switch (clk_p->id) {
 	case CLKM_A2_PLL0:
-		err = clk_pll3200_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
+		err = clk_pll3200c32_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1477,7 +1477,7 @@ static int clkgena2_set_rate(clk_t *clk_p, unsigned long freq)
 		#endif
 		break;
 	case CLKM_A2_PLL1:
-		err = clk_pll3200_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
+		err = clk_pll3200c32_get_params(clk_p->parent->rate, freq, &idf, &ndiv, &cp);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1555,7 +1555,7 @@ static int clkgene_fsyn_recalc(clk_t *clk_p)
 	/* At least analog part (PLL660) is running */
 	ndiv = SYSCONF_READ(0, 562, 24, 26);
 	if (clk_p->id == CLKM_E_FS_VCO)
-		return clk_fs660_vco_get_rate(clk_p->parent->rate, ndiv,
+		return clk_fs660c32_vco_get_rate(clk_p->parent->rate, ndiv,
 					      &clk_p->rate);
 
 	chan = clk_p->id - CLKM_PIX_MDTP1;
@@ -1584,7 +1584,7 @@ static int clkgene_fsyn_recalc(clk_t *clk_p)
 	sdiv = SYSCONF_READ(0, 565, 16, 31);
 	sdiv >>= (4 * chan);
 	sdiv &= 0xf;
-	return clk_fs660_get_rate(clk_p->parent->rate,
+	return clk_fs660c32_get_rate(clk_p->parent->rate, 1,
 				pe, md, sdiv, &clk_p->rate);
 }
 
@@ -1603,7 +1603,7 @@ static int clkgene_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 		return CLK_ERR_BAD_PARAMETER;
 
 	if (clk_p->id == CLKM_E_FS_VCO) {
-		if (clk_fs660_vco_get_params(clk_p->parent->rate, freq, &ndiv))
+		if (clk_fs660c32_vco_get_params(clk_p->parent->rate, freq, &ndiv))
 			return CLK_ERR_BAD_PARAMETER;
 		SYSCONF_WRITE(0, 562, 24, 26, ndiv);
 		SYSCONF_WRITE(0, 562, 27, 27, 1); /* PLL power up */
@@ -1611,7 +1611,7 @@ static int clkgene_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	}
 
 	/* Computing FSyn params. Should be common function with FSyn type */
-	if (clk_fs660_dig_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
+	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, 1, &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
 	chan = clk_p->id - CLKM_PIX_MDTP1;
@@ -1737,7 +1737,7 @@ static int clkgenf_fsyn_recalc(clk_t *clk_p)
 	/* At least analog part (PLL660) is running */
 	ndiv = SYSCONF_READ(0, 558, 24, 26);
 	if (clk_p->id == CLKM_F_FS_VCO)
-		return clk_fs660_vco_get_rate(clk_p->parent->rate, ndiv,
+		return clk_fs660c32_vco_get_rate(clk_p->parent->rate, ndiv,
 					      &clk_p->rate);
 
 	/* Is FSYN digital part UP ? */
@@ -1761,7 +1761,7 @@ static int clkgenf_fsyn_recalc(clk_t *clk_p)
 	md = (md >> (5 * chan)) & 0x1f;
 	sdiv = SYSCONF_READ(0, 561, 16, 31);
 	sdiv = (sdiv >> (4 * chan)) & 0xf;
-	return clk_fs660_get_rate(clk_p->parent->rate,
+	return clk_fs660c32_get_rate(clk_p->parent->rate, 1,
 				pe, md, sdiv, &clk_p->rate);
 }
 
@@ -1964,7 +1964,7 @@ static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 		return CLK_ERR_BAD_PARAMETER;
 
 	if (clk_p->id == CLKM_F_FS_VCO) {
-		if (clk_fs660_vco_get_params(clk_p->parent->rate, freq, &ndiv))
+		if (clk_fs660c32_vco_get_params(clk_p->parent->rate, freq, &ndiv))
 			return CLK_ERR_BAD_PARAMETER;
 		SYSCONF_WRITE(0, 558, 24, 26, ndiv);
 		SYSCONF_WRITE(0, 558, 27, 27, 1); /* PLL power up */
@@ -1972,7 +1972,7 @@ static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	}
 
 	/* Computing FSyn params. Should be common function with FSyn type */
-	if (clk_fs660_dig_get_params(clk_p->parent->rate, freq, &md, &pe, &sdiv))
+	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, 1, &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
 	chan = clk_p->id - CLKM_PIX_MAIN_VIDFS;
@@ -2177,7 +2177,7 @@ static int clkgenddr_recalc(clk_t *clk_p)
 
 		idf = SYSCONF_READ(0, 601, 25, 27);
 		ndiv = SYSCONF_READ(0, 603, 0, 7);
-		err = clk_pll3200_get_rate
+		err = clk_pll3200c32_get_rate
 			(clk_p->parent->rate, idf, ndiv, &vcoby2_rate);
 		if (clk_p->id == CLKM_DDR_IC_LMI0)
 			odf = SYSCONF_READ(0, 603, 8, 13);
@@ -2244,7 +2244,7 @@ static int clkgenddr_set_rate(clk_t *clk_p, unsigned long freq)
 		odf = 1;
 	vcoby2_rate = freq * odf;
 
-	err = clk_pll3200_get_params(clk_p->parent->rate, vcoby2_rate, &idf, &ndiv, &cp);
+	err = clk_pll3200c32_get_params(clk_p->parent->rate, vcoby2_rate, &idf, &ndiv, &cp);
 	if (err != 0)
 		return err;
 
@@ -2292,7 +2292,7 @@ static int clkgena9_recalc(clk_t *clk_p)
 		if (SYSCONF_READ(0, 654, 0, 0))
 			clk_p->rate = 0;	/* PLL disabled */
 		else
-			err = clk_pll3200_get_rate
+			err = clk_pll3200c32_get_rate
 				(clk_p->parent->rate, idf, ndiv, &vcoby2_rate);
 			if (err)
 				return CLK_ERR_BAD_PARAMETER;
@@ -2375,7 +2375,7 @@ static int clkgena9_set_rate(clk_t *clk_p, unsigned long freq)
 	} else
 		odf = 1;
 	vcoby2_rate = freq * odf;
-	err = clk_pll3200_get_params(clk_p->parent->rate, vcoby2_rate, &idf, &ndiv, &cp);
+	err = clk_pll3200c32_get_params(clk_p->parent->rate, vcoby2_rate, &idf, &ndiv, &cp);
 	if (err != 0)
 		return err;
 
@@ -2467,7 +2467,7 @@ static int clkgenmali_init(clk_t *clk_p)
 
 static int clkgenmali_set_rate(clk_t *clk_p, unsigned long freq)
 {
-	unsigned long odf, idf, ndiv;
+	unsigned long odf, idf, ldf;
 	int err = 0;
 
 	if (!clk_p)
@@ -2481,7 +2481,8 @@ static int clkgenmali_set_rate(clk_t *clk_p, unsigned long freq)
 
 	switch (clk_p->id) {
 	case CLKM_MALI_PLL:
-		err = clk_pll1200_get_params(clk_p->parent->rate, freq, &idf, &ndiv);
+		err = clk_pll1200c32_get_params(clk_p->parent->rate, freq,
+						&idf, &ldf, &odf);
 		if (err != 0)
 			break;
 
@@ -2496,7 +2497,6 @@ static int clkgenmali_set_rate(clk_t *clk_p, unsigned long freq)
 		*/
 		break;
 	case CLKM_PHI_GPUPLL:
-		odf = freq / clk_p->parent->rate;
 /* TO BE COMPLETED
 		SYSCONF_WRITE(0, 654, 3, 8, odf);
 		*/

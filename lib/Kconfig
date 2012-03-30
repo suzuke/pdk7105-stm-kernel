@@ -130,7 +130,10 @@ config DECOMPRESS_LZO
 	select LZO_DECOMPRESS
 	tristate
 
-config LIBELF
+config LIBELF_32
+	bool
+
+config LIBELF_64
 	bool
 
 #
@@ -144,7 +147,7 @@ config GENERIC_ALLOCATOR
 #
 config REED_SOLOMON
 	tristate
-	
+
 config REED_SOLOMON_ENC8
 	boolean
 

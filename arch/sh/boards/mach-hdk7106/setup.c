@@ -260,7 +260,11 @@ static struct stm_plat_spifsm_data hdk7106_serial_flash =  {
 	.capabilities = {
 		/* Capabilities may be overriden by SoC configuration */
 		.dual_mode = 1,
+<<<<<<< HEAD
 	},
+=======
+	}
+>>>>>>> merge210
 };
 
 static struct platform_device *hdk7106_devices[] __initdata = {

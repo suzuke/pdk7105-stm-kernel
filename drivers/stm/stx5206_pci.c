@@ -19,7 +19,6 @@
 #include <asm/irq-ilc.h>
 
 
-
 /* PCI Resources ---------------------------------------------------------- */
 
 /* You may pass one of the PCI_PIN_* constants to use dedicated pin or

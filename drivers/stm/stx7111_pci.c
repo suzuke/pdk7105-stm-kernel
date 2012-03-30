@@ -19,7 +19,6 @@
 #include <asm/irq-ilc.h>
 
 
-
 /* PCI Resources ---------------------------------------------------------- */
 
 /* This function assumes you are using the dedicated pins. Production boards

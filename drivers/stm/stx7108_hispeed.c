@@ -31,6 +31,38 @@
  * --------------------------------------------------------------------*/
 
 
+#undef DEBUG_RETIME_CONF
+/* Turn-on to only debug retiming setting for example on eth driver */
+/*#define DEBUG_RETIME_CONF*/
+
+static void stx7108_pio_dump_pad_config(const char *name, int port,
+					struct stm_pad_config *pad_config)
+{
+#ifdef DEBUG_RETIME_CONF
+	int i, gpios_num = pad_config->gpios_num;
+
+	pr_info("%s port=%d, gpios_num = %d\n", name, port, gpios_num);
+
+	pr_info("GPIO   (retime\tclk1notclk0\tclknotdata\tdouble_edge\t"
+		"invertclk\tdelay_input)\n");
+
+	for (i = 0; i < gpios_num; i++) {
+		struct stm_pad_gpio *pad_gpio = &pad_config->gpios[i];
+		struct stx7108_pio_config *priv = pad_gpio->priv;
+		struct stx7108_pio_retime_config *retime = priv->retime;
+
+		pr_info("PIO%d[%d]  %d\t\t%d\t\t%d\t%d\t\t%d\t\t%d\n",
+			stm_gpio_port(pad_gpio->gpio),
+			stm_gpio_pin(pad_gpio->gpio),
+			retime->retime, retime->clk1notclk0,
+			retime->clknotdata, retime->double_edge,
+			retime->invertclk, retime->delay_input);
+
+	}
+#endif
+}
+
+
 #define DATA_IN(_gmac, _port, _pin, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
@@ -118,19 +150,30 @@
 		}, \
 	}
 
+#define TX_CLOCK(_gmac, _port, _pin, _retiming) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_in, \
+		.name = "TXCLK", \
+		.function = _gmac + 1, \
+		.priv = &(struct stx7108_pio_config) { \
+			.retime = _retiming, \
+		}, \
+	}
+
 
 
 static struct stm_pad_config stx7108_ethernet_mii_pad_configs[] = {
 	[0] =  {
 		.gpios_num = 20,
 		.gpios = (struct stm_pad_gpio []) {
-			DATA_OUT(0, 6, 0, RET_BYPASS(0)),/* TXD[0] */
-			DATA_OUT(0, 6, 1, RET_BYPASS(0)),/* TXD[1] */
-			DATA_OUT(0, 6, 2, RET_BYPASS(0)),/* TXD[2] */
-			DATA_OUT(0, 6, 3, RET_BYPASS(0)),/* TXD[3] */
+			DATA_OUT(0, 6, 0, RET_SE_NICLK_IO(0, 0)),/* TXD[0] */
+			DATA_OUT(0, 6, 1, RET_SE_NICLK_IO(0, 0)),/* TXD[1] */
+			DATA_OUT(0, 6, 2, RET_SE_NICLK_IO(0, 0)),/* TXD[2] */
+			DATA_OUT(0, 6, 3, RET_SE_NICLK_IO(0, 0)),/* TXD[3] */
 			DATA_OUT(0, 7, 0, RET_SE_NICLK_IO(0, 0)),/* TXER */
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
-			CLOCK_IN(0, 7, 2, RET_NICLK(1)),/* TXCLK */
+			CLOCK_IN(0, 7, 2, RET_NICLK(-1)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
 			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO*/
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0)),/* MDC */
@@ -280,7 +323,7 @@ static struct stm_pad_config stx7108_ethernet_gmii_pad_configs[] = {
 
 static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 	[0] =  {
-		.gpios_num = 18,
+		.gpios_num = 17,
 		.gpios = (struct stm_pad_gpio []) {
 			DATA_OUT(0, 6, 0, RET_DE_IO(0, 0)),/* TXD[0] */
 			DATA_OUT(0, 6, 1, RET_DE_IO(0, 0)),/* TXD[1] */
@@ -288,11 +331,10 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 			DATA_OUT(0, 6, 3, RET_DE_IO(0, 0)),/* TXD[3] */
 			DATA_OUT(0, 7, 1, RET_DE_IO(0, 0)),/* TXEN */
 			/* TX Clock inversion is not set for 1000Mbps */
-			CLOCK_IN(0, 7, 2, RET_ICLK(-1)),/* TXCLK */
+			TX_CLOCK(0, 7, 2, RET_NICLK(-1)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
 			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0)),/* MDC */
-			DATA_IN(0, 7, 6, RET_BYPASS(0)), /* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)), /* MDINT */
 			DATA_IN(0, 8, 0, RET_DE_IO(0, 0)),/* RXD[0] */
 			DATA_IN(0, 8, 1, RET_DE_IO(0, 0)),/* RXD[1] */
@@ -313,7 +355,7 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 		},
 	},
 	[1] =  {
-		.gpios_num = 18,
+		.gpios_num = 17,
 		.gpios = (struct stm_pad_gpio []) {
 			PHY_CLOCK(1, 15, 5, RET_NICLK(1)), /* GTXCLK*/
 			DATA_IN(1, 15, 6, RET_BYPASS(0)),/* MDINT */
@@ -323,10 +365,9 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 			DATA_OUT(1, 16, 2, RET_DE_IO(0, 1)),/* TXD[2] */
 			DATA_OUT(1, 16, 3, RET_DE_IO(0, 1)),/* TXD[3] */
 			/* TX Clock inversion is not set for 1000Mbps */
-			CLOCK_IN(1, 17, 0, RET_ICLK(-1)),/* TXCLK */
-			DATA_IN(1, 17, 2, RET_BYPASS(0)),/* CRS */
+			TX_CLOCK(1, 17, 0, RET_NICLK(-1)),/* TXCLK */
 			DATA_IN(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(2)),/* MDIO */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_DE_IO(0, 1)),/* RXDV */
 			DATA_IN(1, 18, 0, RET_DE_IO(0, 1)),/* RXD[0] */
@@ -348,14 +389,16 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 };
 static struct stm_pad_config stx7108_ethernet_rmii_pad_configs[] = {
 	[0] = {
-		.gpios_num = 12,
+		.gpios_num = 14,
 		.gpios = (struct stm_pad_gpio []) {
 			DATA_OUT(0, 6, 0, RET_SE_NICLK_IO(0, 1)),/* TXD[0] */
 			DATA_OUT(0, 6, 1, RET_SE_NICLK_IO(0, 1)),/* TXD[1] */
 			DATA_OUT(0, 7, 0, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 1)),/* TXEN */
+			DATA_OUT(0, 7, 3, RET_BYPASS(0)),/* COL */
 			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0)),/* MDC */
+			DATA_IN(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
 			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(2, 1)),/* RXD.0 */
 			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(2, 1)),/* RXD.1 */
@@ -374,7 +417,7 @@ static struct stm_pad_config stx7108_ethernet_rmii_pad_configs[] = {
 		},
 	},
 	[1] =  {
-		.gpios_num = 12,
+		.gpios_num = 14,
 		.gpios = (struct stm_pad_gpio []) {
 			PHY_CLOCK(1, 15, 5, RET_NICLK(0)),/* PHYCLK */
 			DATA_IN(1, 15, 6, RET_BYPASS(0)),/* MDINT */
@@ -382,7 +425,9 @@ static struct stm_pad_config stx7108_ethernet_rmii_pad_configs[] = {
 			DATA_OUT(1, 16, 0, RET_SE_NICLK_IO(0, 0)),/* TXD[0] */
 			DATA_OUT(1, 16, 1, RET_SE_NICLK_IO(0, 0)),/* TXD[1] */
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 0)),/* TXER */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(2)),/* MDIO */
+			DATA_OUT(1, 17, 2, RET_BYPASS(0)),/* CRS */
+			DATA_OUT(1, 17, 3, RET_BYPASS(0)),/* COL */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(2, 0)),/* RXDV */
 			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(2, 0)),/* RX_ER */
@@ -405,15 +450,15 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 	[0] = {
 		.gpios_num = 20,
 		.gpios = (struct stm_pad_gpio []) {
-			DATA_OUT(0, 6, 0, RET_BYPASS(0)),/* TXD[0] */
-			DATA_OUT(0, 6, 1, RET_BYPASS(0)),/* TXD[1] */
-			DATA_OUT(0, 6, 2, RET_BYPASS(0)),/* TXD[2] */
-			DATA_OUT(0, 6, 3, RET_BYPASS(0)),/* TXD[3] */
+			DATA_OUT(0, 6, 0, RET_SE_NICLK_IO(0, 0)),/* TXD[0] */
+			DATA_OUT(0, 6, 1, RET_SE_NICLK_IO(0, 0)),/* TXD[1] */
+			DATA_OUT(0, 6, 2, RET_SE_NICLK_IO(0, 0)),/* TXD[2] */
+			DATA_OUT(0, 6, 3, RET_SE_NICLK_IO(0, 0)),/* TXD[3] */
 			DATA_OUT(0, 7, 0, RET_SE_NICLK_IO(0, 0)),/* TXER */
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
 			CLOCK_IN(0, 7, 2, RET_NICLK(-1)),/* TXCLK */
 			DATA_OUT(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(2)),/* MDIO*/
+			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO*/
 			CLOCK_IN(0, 7, 5, RET_NICLK(0)),/* MDC */
 			DATA_OUT(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
@@ -450,7 +495,7 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_OUT(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_OUT(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(2)),/* MDIO */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
 			CLOCK_IN(1, 17, 5, RET_NICLK(1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(2, 1)),/* RXDV */
 			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(2, 1)),/* RX_ER */
@@ -472,41 +517,68 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 	},
 };
 
-static void stx7108_ethernet_rmii_speed(void *bsp_priv, unsigned int speed)
+struct stx7108_stmmac_priv {
+	struct stm_pad_state *pad_state;
+	struct sysconf_field *mac_speed_sel;
+	void (*txclk_select)(int txclk_250_not_25_mhz);
+} stx7108_stmmac_priv_data[2];
+
+static void stx7108_ethernet_rmii_speed(void *priv, unsigned int speed)
 {
-	struct sysconf_field *mac_speed_sel = bsp_priv;
+	struct stx7108_stmmac_priv *stmmac_priv = priv;
+	struct sysconf_field *mac_speed_sel = stmmac_priv->mac_speed_sel;
 
 	sysconf_write(mac_speed_sel, (speed == SPEED_100) ? 1 : 0);
 }
 
 static void stx7108_ethernet_gtx_speed(void *priv, unsigned int speed)
 {
-	void (*txclk_select)(int txclk_250_not_25_mhz) = priv;
+	struct stx7108_stmmac_priv *stmmac_priv = priv;
+	void (*txclk_select)(int txclk_250_not_25_mhz) = stmmac_priv->txclk_select;
 
 	if (txclk_select)
 		txclk_select(speed == SPEED_1000);
 }
 
-static void stx7108_ethernet_rgmii0_gtx_speed(void *priv, unsigned int speed)
+/*
+ * stm_pad_update_gpio() does not copy the priv struct, so these need
+ * to survive after stx7108_ethernet_rgmii_gtx_speed() returns. They is
+ * never modified however, so can be shared by the two MACs.
+ */
+static struct stm_pio_control_retime_config *stx7108_ethernet_rgmii_gtx_niclk =
+	RET_NICLK(-1);
+static struct stm_pio_control_retime_config *stx7108_ethernet_rgmii_gtx_iclk =
+	RET_ICLK(-1);
+
+static void stx7108_ethernet_rgmii_gtx_speed(void *priv, unsigned int speed)
 {
+	struct stx7108_stmmac_priv *stmmac_priv = priv;
+	struct stm_pio_control_retime_config *rt;
+
 	/* TX Clock inversion is not set for 1000Mbps */
-	if (speed == SPEED_1000)
-		stm_pio_control_config_retime(7, 2, RET_NICLK(-1));
-	else
-		stm_pio_control_config_retime(7, 2, RET_ICLK(-1));
+	stm_pad_update_gpio(stmmac_priv->pad_state, "TXCLK",
+		stm_pad_gpio_direction_ignored, -1, -1, 
+		(speed == SPEED_1000) ? rt = stx7108_ethernet_rgmii_gtx_niclk:
+		stx7108_ethernet_rgmii_gtx_iclk);
 
 	stx7108_ethernet_gtx_speed(priv, speed);
 }
 
-static void stx7108_ethernet_rgmii1_gtx_speed(void *priv, unsigned int speed)
+static inline int stx7108_stmmac_claim_resource(struct platform_device *pdev)
 {
-	/* TX Clock inversion is not set for 1000Mbps */
-	if (speed == SPEED_1000)
-		stm_pio_control_config_retime(17, 0, RET_NICLK(-1));
-	else
-		stm_pio_control_config_retime(17, 0, RET_ICLK(-1));
+	int ret = 0;
+	struct device *dev = &pdev->dev;
+	struct plat_stmmacenet_data *plat_data = dev_get_platdata(dev);
+	struct stx7108_stmmac_priv *stmmac_priv = plat_data->bsp_priv;
 
-	stx7108_ethernet_gtx_speed(priv, speed);
+	stmmac_priv->pad_state = devm_stm_pad_claim(&pdev->dev,
+		plat_data->custom_cfg, dev_name(&pdev->dev));
+	if (!stmmac_priv->pad_state) {
+		pr_err("%s: failed to request pads!\n", __func__);
+		ret = -ENODEV;
+	}
+
+	return ret;
 }
 
 static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
@@ -517,7 +589,8 @@ static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
 		.tx_coe = 1,
 		.bugged_jumbo =1,
 		.pmt = 1,
-		.init = &stmmac_claim_resource,
+		.init = &stx7108_stmmac_claim_resource,
+		.bsp_priv = &stx7108_stmmac_priv_data[0],
 	}, {
 		.pbl = 32,
 		.has_gmac = 1,
@@ -525,7 +598,8 @@ static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
 		.tx_coe = 1,
 		.bugged_jumbo =1,
 		.pmt = 1,
-		.init = &stmmac_claim_resource,
+		.init = &stx7108_stmmac_claim_resource,
+		.bsp_priv = &stx7108_stmmac_priv_data[1],
 	}
 };
 
@@ -573,6 +647,7 @@ void __init stx7108_configure_ethernet(int port,
 	static int configured[ARRAY_SIZE(stx7108_ethernet_devices)];
 	struct stx7108_ethernet_config default_config;
 	struct plat_stmmacenet_data *plat_data;
+	struct stx7108_stmmac_priv *priv_data;
 	struct stm_pad_config *pad_config;
 	int interface;
 
@@ -583,6 +658,7 @@ void __init stx7108_configure_ethernet(int port,
 		config = &default_config;
 
 	plat_data = &stx7108_ethernet_platform_data[port];
+	priv_data = &stx7108_stmmac_priv_data[port];
 
 	switch (config->mode) {
 	case stx7108_ethernet_mode_mii:
@@ -602,7 +678,7 @@ void __init stx7108_configure_ethernet(int port,
 		pad_config = &stx7108_ethernet_gmii_pad_configs[port];
 		stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
 		plat_data->fix_mac_speed = stx7108_ethernet_gtx_speed;
-		plat_data->bsp_priv = config->txclk_select;
+		priv_data->txclk_select = config->txclk_select;
 		interface = PHY_INTERFACE_MODE_GMII;
 		break;
 	case stx7108_ethernet_mode_rgmii_gtx:
@@ -614,14 +690,8 @@ void __init stx7108_configure_ethernet(int port,
 		 */
 		pad_config = &stx7108_ethernet_rgmii_pad_configs[port];
 		stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
-		if (port == 0)
-			plat_data->fix_mac_speed =
-				stx7108_ethernet_rgmii0_gtx_speed;
-		else
-			plat_data->fix_mac_speed =
-				stx7108_ethernet_rgmii1_gtx_speed;
-
-		plat_data->bsp_priv = config->txclk_select;
+		plat_data->fix_mac_speed = stx7108_ethernet_rgmii_gtx_speed;
+		priv_data->txclk_select = config->txclk_select;
 		interface = PHY_INTERFACE_MODE_RGMII;
 		break;
 	case stx7108_ethernet_mode_rmii: /* GMAC1 only tested */
@@ -641,10 +711,10 @@ void __init stx7108_configure_ethernet(int port,
 		plat_data->fix_mac_speed = stx7108_ethernet_rmii_speed;
 		/* MIIx_MAC_SPEED_SEL */
 		if (port == 0)
-			plat_data->bsp_priv = sysconf_claim(SYS_CFG_BANK2,
+			priv_data->mac_speed_sel = sysconf_claim(SYS_CFG_BANK2,
 					27, 1, 1, "stmmac");
 		else
-			plat_data->bsp_priv = sysconf_claim(SYS_CFG_BANK4,
+			priv_data->mac_speed_sel = sysconf_claim(SYS_CFG_BANK4,
 					23, 1, 1, "stmmac");
 		interface = PHY_INTERFACE_MODE_RMII;
 		break;
@@ -670,8 +740,8 @@ void __init stx7108_configure_ethernet(int port,
 	plat_data->phy_addr = config->phy_addr;
 	plat_data->mdio_bus_data = config->mdio_bus_data;
 
-	stm_pio_control_dump_pad_config(stx7108_ethernet_devices[port].name,
-			port, pad_config->gpios, pad_config->gpios_num);
+	stx7108_pio_dump_pad_config(stx7108_ethernet_devices[port].name,
+				    port, pad_config);
 
 	platform_device_register(&stx7108_ethernet_devices[port]);
 }
