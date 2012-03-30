@@ -194,16 +194,6 @@ static void __stm_gpio_irq_handler(const struct stm_gpio_port *port)
 				port_mask &= ~pin_mask;
 			}
 		}
-
-		#warning ******************** GPIO INTERRUPTS NEED WORK
-#if 0
-		if (unlikely((pin_irq_desc->status &
-				(IRQ_PENDING | IRQ_DISABLED)) == IRQ_PENDING)) {
-			#warning HOW TO DO pin_irq_desc->status &= ~IRQ_PENDING;
-			set__PIO_SET_PMASK(port->base, pin_mask);
-		}
-#endif
-
 	}
 
 	/* Re-enable level */
