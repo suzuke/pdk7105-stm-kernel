@@ -25,12 +25,6 @@ config MACH_STM_FLI7610
 	help
 	  Include support for a generic FLI7610 (Newman) platform.
 
-config MACH_STIH415_VELOCE
-	bool "Support STiH415 Veloce emulator platform"
-	select MACH_STM_STIH415
-	help
-	  Include support for a STiH415 Veloce emulator platform.
-
 config MACH_STM_B2000
 	bool "Support B2000 - STiH415 (Orly) MBoard"
 	select MACH_STM_STIH415
