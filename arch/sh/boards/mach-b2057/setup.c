@@ -144,7 +144,8 @@ static struct stm_plat_spifsm_data b2057_serial_flash =  {
 /* NAND Flash */
 static struct stm_nand_bank_data b2057_nand_flash = {
 	.csn		= 1,	/* Controlled by JF3 */
-	.options	= NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT,
+	.options        = NAND_NO_AUTOINCR,
+	.bbt_options	= NAND_BBT_USE_FLASH,
 	.nr_partitions	= 2,
 	.partitions	= (struct mtd_partition []) {
 		{
@@ -288,21 +289,10 @@ static int __init device_init(void)
 }
 arch_initcall(device_init);
 
-static void __iomem *b2057_ioport_map(unsigned long port, unsigned int size)
-{
-	/* If we have PCI then this should never be called because we
-	 * are using the generic iomap implementation. If we don't
-	 * have PCI then there are no IO mapped devices, so it still
-	 * shouldn't be called. */
-	BUG();
-	return NULL;
-}
-
 struct sh_machine_vector mv_b2057 __initmv = {
 	.mv_name = "b2057",
 	.mv_setup = b2057_setup,
 	.mv_nr_irqs = NR_IRQS,
-	.mv_ioport_map = b2057_ioport_map,
 };
 
 #if defined(CONFIG_HIBERNATION_ON_MEMORY)
