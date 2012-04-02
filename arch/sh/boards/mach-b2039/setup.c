@@ -101,7 +101,8 @@ static struct stm_plat_spifsm_data b2039_serial_flash =  {
 /* NAND Flash (via b2006a/b2007a VPMEM module) */
 static struct stm_nand_bank_data b2039_nand_flash = {
 	.csn		= 0,
-	.options	= NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT,
+	.options        = NAND_NO_AUTOINCR,
+	.bbt_options	= NAND_BBT_USE_FLASH,
 	.nr_partitions	= 2,
 	.partitions	= (struct mtd_partition []) {
 		{
@@ -256,9 +257,9 @@ static int __init device_init(void)
 	stxh205_configure_spifsm(&b2039_serial_flash);
 
 
-#ifdef CONFIG_STM_B2048A_MMC_SLOT
+#ifdef CONFIG_STM_B2039_B2048A_MMC_SLOT
 	stxh205_configure_mmc(0);
-#elif defined(CONFIG_STM_B2048A_MMC_EMMC)
+#elif defined(CONFIG_STM_B2039_B2048A_MMC_EMMC)
 	stxh205_configure_mmc(1);
 #endif
 	return platform_add_devices(b2039_devices,
@@ -266,19 +267,8 @@ static int __init device_init(void)
 }
 arch_initcall(device_init);
 
-static void __iomem *b2039_ioport_map(unsigned long port, unsigned int size)
-{
-	/* If we have PCI then this should never be called because we
-	 * are using the generic iomap implementation. If we don't
-	 * have PCI then there are no IO mapped devices, so it still
-	 * shouldn't be called. */
-	BUG();
-	return NULL;
-}
-
 struct sh_machine_vector mv_b2039 __initmv = {
 	.mv_name = "b2039",
 	.mv_setup = b2039_setup,
 	.mv_nr_irqs = NR_IRQS,
-	.mv_ioport_map = b2039_ioport_map,
 };
