@@ -31,7 +31,7 @@ obj-$(CONFIG_CPU_SUBTYPE_STX7108)	+= setup-stx7108.o
 # Primary on-chip clocks (common)
 ifndef CONFIG_CPU_SH4A
 clock-$(CONFIG_CPU_SH4)			:= clock-sh4.o
-clock-$(CONFIG_CPU_SUBTYPE_STIH415)	:= clock-stih415.o
+clock-$(CONFIG_CPU_SUBTYPE_STXH205)	:= clock-stxh205.o
 clock-$(CONFIG_CPU_SUBTYPE_STIH415)	:= clock-stih415.o
 clock-$(CONFIG_CPU_SUBTYPE_STX7108)	:= clock-stx7108.o
 endif

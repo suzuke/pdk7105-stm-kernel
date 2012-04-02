@@ -18,6 +18,7 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("module_clk", NULL, "CLK_A0_IC_REG_LP_ON", NULL);
 	clk_add_alias("comms_clk", NULL, "CLK_A0_IC_REG_LP_ON", NULL);
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
+	clk_add_alias("tmu_fck", NULL, "CLK_A0_IC_REG_LP_ON", NULL);
 
 	/* EMI clock */
 	clk_add_alias("emi_clk", NULL, "CLK_A0_SYS_EMISS", NULL);

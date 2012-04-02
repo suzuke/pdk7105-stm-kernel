@@ -412,10 +412,14 @@ static void stxh205_usb_power(struct stm_device_state *device_state,
 	}
 }
 
+/* STBus Convertor config */
+static struct stm_amba_bridge_config stxh205_amba_usb_config = {
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128)
+};
 static struct stm_plat_usb_data stxh205_usb_platform_data[] = {
 	[0] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stxh205_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stxh205_usb_init,
 			.exit = stxh205_usb_exit,
@@ -439,8 +443,8 @@ static struct stm_plat_usb_data stxh205_usb_platform_data[] = {
 		},
 	},
 	[1] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
+		.amba_config = &stxh205_amba_usb_config,
 		.device_config = &(struct stm_device_config){
 			.init = stxh205_usb_init,
 			.exit = stxh205_usb_exit,
