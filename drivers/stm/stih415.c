@@ -315,6 +315,7 @@ static struct platform_device stih415_asc_devices[] = {
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
 			.pad_config = &stih415_asc_pad_configs[4],
+			.clk_id = "sbc_comms_clk",
 		},
 	},
 	[5] = {
@@ -329,6 +330,7 @@ static struct platform_device stih415_asc_devices[] = {
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
 			.pad_config = &stih415_asc_pad_configs[5],
+			.clk_id = "sbc_comms_clk",
 		},
 	},
 
@@ -384,10 +386,6 @@ void __init stih415_configure_asc(int asc, struct stih415_asc_config *config)
 
 	if (config->is_console)
 		stm_asc_console_device = pdev->id;
-
-	if (asc > 3)
-		clk_add_alias_platform_device(NULL, pdev,
-			"sbc_comms_clk", NULL);
 
 	stm_asc_configured_devices[stm_asc_configured_devices_num++] = pdev;
 }
