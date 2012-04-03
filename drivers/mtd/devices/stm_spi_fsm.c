@@ -1294,7 +1294,7 @@ static void fsm_exit(struct stm_spi_fsm *fsm)
  * Read an address range from the flash chip.  The address range
  * may be any size provided it is within the physical boundaries.
  */
-static int mtd_read(struct mtd_info *mtd, loff_t from, size_t len,
+static int fsm_mtd_read(struct mtd_info *mtd, loff_t from, size_t len,
 		    size_t *retlen, u_char *buf)
 {
 	struct stm_spi_fsm *fsm = mtd->priv;
@@ -1338,7 +1338,7 @@ static int mtd_read(struct mtd_info *mtd, loff_t from, size_t len,
  * FLASH_PAGESIZE chunks.  The address range may be any size provided
  * it is within the physical boundaries.
  */
-static int mtd_write(struct mtd_info *mtd, loff_t to, size_t len,
+static int fsm_mtd_write(struct mtd_info *mtd, loff_t to, size_t len,
 	size_t *retlen, const u_char *buf)
 {
 	struct stm_spi_fsm *fsm = mtd->priv;
@@ -1392,7 +1392,7 @@ static int mtd_write(struct mtd_info *mtd, loff_t to, size_t len,
  * Erase an address range on the flash chip.  The address range may extend
  * one or more erase sectors.  Return an error is there is a problem erasing.
  */
-static int mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
+static int fsm_mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 {
 	struct stm_spi_fsm *fsm = mtd->priv;
 	u32 addr, len;
@@ -1596,9 +1596,9 @@ static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 	fsm->mtd.size = info->sector_size * info->n_sectors;
 	fsm->mtd.erasesize = info->sector_size;
 
-	fsm->mtd.read = mtd_read;
-	fsm->mtd.write = mtd_write;
-	fsm->mtd.erase = mtd_erase;
+	fsm->mtd.read = fsm_mtd_read;
+	fsm->mtd.write = fsm_mtd_write;
+	fsm->mtd.erase = fsm_mtd_erase;
 
 	dev_info(&pdev->dev, "found device: %s, size = %llx (%lldMiB) "
 		 "erasesize = 0x%08x (%uKiB)\n",
