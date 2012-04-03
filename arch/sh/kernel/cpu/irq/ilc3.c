@@ -13,7 +13,6 @@
 
 #include <linux/kernel.h>
 #include <linux/export.h>
-#include <linux/sysdev.h>
 #include <linux/cpu.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -75,7 +74,7 @@ struct ilc {
 	unsigned int first_irq;
 	int disable_wakeup:1;
 	spinlock_t lock;
-	struct sys_device sysdev;
+	struct device dev;
 	struct ilc_irq *irqs;
 #ifdef CONFIG_HIBERNATION
 	pm_message_t state;
@@ -85,9 +84,9 @@ struct ilc {
 
 static LIST_HEAD(ilcs_list);
 
-static struct sysdev_class ilc_sysdev_class;
+static struct bus_type ilc_subsys;
 
-#define sysdev_to_ilc(x) container_of((x), struct ilc, sysdev)
+#define dev_to_ilc(x) container_of((x), struct ilc, dev)
 
 
 /*
@@ -489,10 +488,10 @@ static int __init ilc_probe(struct platform_device *pdev)
 	list_add(&ilc->list, &ilcs_list);
 
 	/* sysdev doesn't appear to like id's of -1 */
-	ilc->sysdev.id = (pdev->id == -1) ? 0 : pdev->id;
+	ilc->dev.id = (pdev->id == -1) ? 0 : pdev->id;
 
-	ilc->sysdev.cls = &ilc_sysdev_class,
-	error = sysdev_register(&ilc->sysdev);
+	ilc->dev.bus = &ilc_subsys,
+	error = device_register(&ilc->dev);
 
 	return error;
 }
@@ -605,7 +604,7 @@ static int ilc_resume_from_hibernation(struct ilc *ilc)
 
 static int ilc_sysdev_suspend(struct sys_device *dev, pm_message_t state)
 {
-	struct ilc *ilc = sysdev_to_ilc(dev);
+	struct ilc *ilc = dev_to_ilc(dev);
 
 	ilc->state = state;
 
@@ -614,7 +613,7 @@ static int ilc_sysdev_suspend(struct sys_device *dev, pm_message_t state)
 
 static int ilc_sysdev_resume(struct sys_device *dev)
 {
-	struct ilc *ilc = sysdev_to_ilc(dev);
+	struct ilc *ilc = dev_to_ilc(dev);
 	if (ilc->state.event == PM_EVENT_FREEZE) {
 		ilc_resume_from_hibernation(ilc);
 		ilc->state = PMSG_ON;
@@ -627,7 +626,7 @@ static int ilc_sysdev_resume(struct sys_device *dev)
 #define ilc_sysdev_resume NULL
 #endif
 
-static struct sysdev_class ilc_sysdev_class = {
+static struct bus_type ilc_subsys = {
 	.name = "ilc3",
 };
 
@@ -635,7 +634,7 @@ static int __init ilc_init(void)
 {
 	int ret;
 
-	ret = sysdev_class_register(&ilc_sysdev_class);
+	ret = subsys_system_register(&ilc_subsys, NULL);
 	if (ret)
 		return ret;
 
