@@ -348,6 +348,7 @@ static void __init b2000_init(void)
 			.phy_addr = 1,
 #endif /* CONFIG_STM_GMAC0_B2032_CARD */
 
+			.phy_bus_name = "gpio",
 			.phy_bus = STMMAC0_MDIO_GPIO_BUS,});
 
 #endif
