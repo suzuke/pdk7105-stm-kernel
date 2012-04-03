@@ -91,6 +91,7 @@ struct stih415_ethernet_config {
 	} mode;
 	int ext_clk;
 	int phy_bus;
+	char *phy_bus_name;
 	int phy_addr;
 	void (*txclk_select)(int txclk_250_not_25_mhz);
 	struct stmmac_mdio_bus_data *mdio_bus_data;

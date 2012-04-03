@@ -809,6 +809,7 @@ void __init stih415_configure_ethernet(int port,
 	plat_data->custom_cfg = (void *) pad_config;
 	plat_data->interface = interface;
 	plat_data->bus_id = config->phy_bus;
+	plat_data->phy_bus_name = config->phy_bus_name;
 	plat_data->phy_addr = config->phy_addr;
 	plat_data->mdio_bus_data = config->mdio_bus_data;
 	if (!config->mdio_bus_data) {
