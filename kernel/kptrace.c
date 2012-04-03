@@ -2092,7 +2092,6 @@ static void init_syscall_logging(void)
 	CALL(sys_setresuid16)
 	CALL(sys_getresuid16)
 	CALL(sys_poll)
-	CALL(sys_nfsservctl)
 	CALL(sys_setresgid16)
 	CALL(sys_getresgid16)
 	CALL_CUSTOM_PRE(sys_prctl, syscall_prctl_pre_handler);
