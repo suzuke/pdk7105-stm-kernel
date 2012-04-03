@@ -9,6 +9,8 @@
 #include <linux/sunrpc/svc.h>
 #include <linux/nfs4.h>
 #include <linux/nfs_fs.h>
+#include <linux/ratelimit.h>
+#include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/sunrpc/bc_xprt.h>
 #include "nfs4_fs.h"
@@ -167,7 +169,7 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
 	if (hdr->minorversion <= 1) {
 		hdr->cb_ident = ntohl(*p++); /* ignored by v4.1 */
 	} else {
-		printk(KERN_WARNING "%s: NFSv4 server callback with "
+		pr_warn_ratelimited("NFS: %s: NFSv4 server callback with "
 			"illegal minor version %u!\n",
 			__func__, hdr->minorversion);
 		return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
@@ -305,6 +307,10 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
 	n = ntohl(*p++);
 	if (n <= 0)
 		goto out;
+	if (n > ULONG_MAX / sizeof(*args->devs)) {
+		status = htonl(NFS4ERR_BADXDR);
+		goto out;
+	}
 
 	args->devs = kmalloc(n * sizeof(*args->devs), GFP_KERNEL);
 	if (!args->devs) {

@@ -9,7 +9,6 @@
 #include <linux/file.h>
 #include <linux/utsname.h>
 #include <net/net_namespace.h>
-#include <linux/mnt_namespace.h>
 #include <linux/ipc_namespace.h>
 #include <linux/pid_namespace.h>
 #include "internal.h"
@@ -54,7 +53,7 @@ static struct dentry *proc_ns_instantiate(struct inode *dir,
 	ei->ns_ops    = ns_ops;
 	ei->ns	      = ns;
 
-	dentry->d_op = &pid_dentry_operations;
+	d_set_d_op(dentry, &pid_dentry_operations);
 	d_add(dentry, inode);
 	/* Close the race of the process dying before we return the dentry */
 	if (pid_revalidate(dentry, NULL))

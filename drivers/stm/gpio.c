@@ -25,7 +25,6 @@
 #include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/sysdev.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/pio.h>
@@ -64,15 +63,15 @@ struct stm_gpio_pin {
 #define to_stm_gpio_port(chip) \
 		container_of(chip, struct stm_gpio_port, gpio_chip)
 
-#define sysdev_to_stm_gpio(dev) \
-		container_of((dev), struct stm_gpio_port, sysdev)
+#define dev_to_stm_gpio(dev) \
+		container_of((dev), struct stm_gpio_port, dev)
 
 struct stm_gpio_port {
 	struct gpio_chip gpio_chip;
 	void *base;
 	unsigned long irq_level_mask;
 	struct stm_gpio_pin pins[STM_GPIO_PINS_PER_PORT];
-	struct sys_device sysdev;
+	struct device dev;
 	pm_message_t pm_state;
 };
 
@@ -81,7 +80,7 @@ struct stm_gpio_irqmux {
 	int port_first;
 };
 
-static struct sysdev_class stm_gpio_sysdev_class;
+static struct bus_type stm_gpio_subsys;
 
 
 
@@ -828,9 +827,10 @@ static int __devinit stm_gpio_probe(struct platform_device *pdev)
 	port->gpio_chip.label = dev_name(&pdev->dev);
 	dev_set_drvdata(&pdev->dev, port);
 
-	port->sysdev.id = port_no;
-	port->sysdev.cls = &stm_gpio_sysdev_class;
-	ret = sysdev_register(&port->sysdev);
+	port->dev.id = port_no;
+	port->dev.bus = &stm_gpio_subsys;
+	dev_set_name(&port->dev, "%s", dev_name(&pdev->dev));
+	ret = device_register(&port->dev);
 	if (ret)
 		return ret;
 
@@ -962,7 +962,7 @@ static int stm_gpio_suspend(struct stm_gpio_port *port)
 
 static int stm_gpio_sysdev_suspend(struct sys_device *dev, pm_message_t state)
 {
-	struct stm_gpio_port *port = sysdev_to_stm_gpio(dev);
+	struct stm_gpio_port *port = dev_to_stm_gpio(dev);
 	int ret = 0;
 
 	switch (state.event) {
@@ -995,7 +995,7 @@ static int stm_gpio_sysdev_resume(struct sys_device *dev)
 #define stm_gpio_sysdev_resume NULL
 #endif
 
-static struct sysdev_class stm_gpio_sysdev_class = {
+static struct bus_type stm_gpio_subsys = {
 	.name = "stm-gpio",
 };
 
@@ -1003,7 +1003,7 @@ static int __init stm_gpio_init(void)
 {
 	int ret;
 
-	ret = sysdev_class_register(&stm_gpio_sysdev_class);
+	ret = subsys_system_register(&stm_gpio_subsys, NULL);
 	if (ret)
 		return ret;
 

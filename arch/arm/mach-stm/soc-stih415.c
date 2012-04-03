@@ -11,7 +11,6 @@
 
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <linux/sysdev.h>
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/stm/clk.h>

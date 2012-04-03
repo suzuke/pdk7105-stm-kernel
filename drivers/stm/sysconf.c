@@ -10,7 +10,6 @@
 #include <linux/module.h>
 #include <linux/bootmem.h>
 #include <linux/io.h>
-#include <linux/sysdev.h>
 #include <linux/list.h>
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>

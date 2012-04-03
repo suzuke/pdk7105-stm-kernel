@@ -1,6 +1,6 @@
 VERSION = 3
-PATCHLEVEL = 2
-SUBLEVEL = 2
+PATCHLEVEL = 3
+SUBLEVEL = 1
 EXTRAVERSION =
 NAME = Saber-toothed Squirrel
 
@@ -312,7 +312,7 @@ endif
 # If the user is running make -s (silent mode), suppress echoing of
 # commands
 
-ifneq ($(findstring s,$(MAKEFLAGS)),)
+ifneq ($(filter s% -s%,$(MAKEFLAGS)),)
   quiet=silent_
 endif
 
@@ -340,8 +340,7 @@ OBJDUMP		= $(CROSS_COMPILE)objdump
 AWK		= awk
 GENKSYMS	= scripts/genksyms/genksyms
 INSTALLKERNEL  := installkernel
-DEPMOD_PATH	?= /sbin
-DEPMOD		= $(DEPMOD_PATH)/depmod
+DEPMOD		= /sbin/depmod
 KALLSYMS	= scripts/kallsyms
 PERL		= perl
 CHECK		= sparse
@@ -443,7 +442,7 @@ asm-generic:
 
 no-dot-config-targets := clean mrproper distclean \
 			 cscope gtags TAGS tags help %docs check% coccicheck \
-			 include/linux/version.h headers_% \
+			 include/linux/version.h headers_% archheaders \
 			 kernelversion %src-pkg
 
 config-targets := 0
@@ -612,10 +611,6 @@ ifdef CONFIG_DYNAMIC_FTRACE
 endif
 endif
 
-ifdef CONFIG_KPTRACE
-KBUILD_CFLAGS	+= -fno-ipa-cp
-endif
-
 # We trigger additional mismatches with less inlining
 ifdef CONFIG_DEBUG_SECTION_MISMATCH
 KBUILD_CFLAGS += $(call cc-option, -fno-inline-functions-called-once)
@@ -765,32 +760,13 @@ vmlinux-all  := $(vmlinux-init) $(vmlinux-main)
 vmlinux-lds  := arch/$(SRCARCH)/kernel/vmlinux.lds
 export KBUILD_VMLINUX_OBJS := $(vmlinux-all)
 
-ifdef CONFIG_LKM_ELF_HASH
-# The temporary vmlinux used to generate an ELF style hash table
-# for symbol lookup
-tmp-vmlinux := .tmp_vmlinux
-# The object file containing the ELF hash table to be linked with
-# the vmlinux
-vmlinux-htable := $(tmp-vmlinux).mod.o
-
-# A temporary vmlinux is built for creating the related ELF
-# hash table through the modpost stage
-.tmp_vmlinux: $(vmlinux-all) FORCE
-	$(call cmd,vmlinux-modpost)
-	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost $@
-
-.tmp_vmlinux.mod.o: .tmp_vmlinux.mod.c FORCE
-.tmp_vmlinux.mod.c: .tmp_vmlinux
-endif
-
 # Rule to link vmlinux - also used during CONFIG_KALLSYMS
 # May be overridden by arch/$(ARCH)/Makefile
 quiet_cmd_vmlinux__ ?= LD      $@
       cmd_vmlinux__ ?= $(LD) $(LDFLAGS) $(LDFLAGS_vmlinux) -o $@ \
       -T $(vmlinux-lds) $(vmlinux-init)                          \
       --start-group $(vmlinux-main) --end-group                  \
-      $(filter-out $(vmlinux-lds) $(vmlinux-init) $(vmlinux-main) vmlinux.o \
-      $(tmp-vmlinux) FORCE ,$^)
+      $(filter-out $(vmlinux-lds) $(vmlinux-init) $(vmlinux-main) vmlinux.o FORCE ,$^)
 
 # Generate new vmlinux version
 quiet_cmd_vmlinux_version = GEN     .version
@@ -893,13 +869,13 @@ quiet_cmd_kallsyms = KSYM    $@
 	$(call cmd,kallsyms)
 
 # .tmp_vmlinux1 must be complete except kallsyms, so update vmlinux version
-.tmp_vmlinux1: $(vmlinux-lds) $(vmlinux-all) $(tmp-vmlinux) $(vmlinux-htable) FORCE
+.tmp_vmlinux1: $(vmlinux-lds) $(vmlinux-all) FORCE
 	$(call if_changed_rule,ksym_ld)
 
-.tmp_vmlinux2: $(vmlinux-lds) $(vmlinux-all) .tmp_kallsyms1.o $(vmlinux-htable) FORCE
+.tmp_vmlinux2: $(vmlinux-lds) $(vmlinux-all) .tmp_kallsyms1.o FORCE
 	$(call if_changed,vmlinux__)
 
-.tmp_vmlinux3: $(vmlinux-lds) $(vmlinux-all) .tmp_kallsyms2.o $(vmlinux-htable) FORCE
+.tmp_vmlinux3: $(vmlinux-lds) $(vmlinux-all) .tmp_kallsyms2.o FORCE
 	$(call if_changed,vmlinux__)
 
 # Needs to visit scripts/ before $(KALLSYMS) can be used.
@@ -930,12 +906,8 @@ define rule_vmlinux-modpost
 	$(Q)echo 'cmd_$@ := $(cmd_vmlinux-modpost)' > $(dot-target).cmd
 endef
 
-include $(srctree)/scripts/Makefile.ksymhash
-
 # vmlinux image - including updated kernel symbols
-vmlinux: $(vmlinux-lds) $(vmlinux-init) $(vmlinux-main) vmlinux.o $(kallsyms.o) \
-	$(vmlinux-htable) FORCE
-
+vmlinux: $(vmlinux-lds) $(vmlinux-init) $(vmlinux-main) vmlinux.o $(kallsyms.o) FORCE
 ifdef CONFIG_HEADERS_CHECK
 	$(Q)$(MAKE) -f $(srctree)/Makefile headers_check
 endif
@@ -948,7 +920,6 @@ endif
 	$(call vmlinux-modpost)
 	$(call if_changed_rule,vmlinux__)
 	$(Q)rm -f .old_version
-	$(rule_ksymhash)
 
 # build vmlinux.o first to catch section mismatch errors early
 ifdef CONFIG_KALLSYMS
@@ -1008,7 +979,7 @@ prepare1: prepare2 include/linux/version.h include/generated/utsrelease.h \
                    include/config/auto.conf
 	$(cmd_crmodverdir)
 
-archprepare: prepare1 scripts_basic
+archprepare: archheaders prepare1 scripts_basic
 
 prepare0: archprepare FORCE
 	$(Q)$(MAKE) $(build)=.
@@ -1075,8 +1046,11 @@ hdr-inst := -rR -f $(srctree)/scripts/Makefile.headersinst obj
 # If we do an all arch process set dst to asm-$(hdr-arch)
 hdr-dst = $(if $(KBUILD_HEADERS), dst=include/asm-$(hdr-arch), dst=include/asm)
 
+PHONY += archheaders
+archheaders:
+
 PHONY += __headers
-__headers: include/linux/version.h scripts_basic asm-generic FORCE
+__headers: include/linux/version.h scripts_basic asm-generic archheaders FORCE
 	$(Q)$(MAKE) $(build)=scripts build_unifdef
 
 PHONY += headers_install_all

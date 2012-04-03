@@ -293,7 +293,7 @@ int __tlb_remove_page(struct mmu_gather *tlb, struct page *page)
 {
 	struct mmu_gather_batch *batch;
 
-	tlb->need_flush = 1;
+	VM_BUG_ON(!tlb->need_flush);
 
 	if (tlb_fast_mode(tlb)) {
 		free_page_and_swap_cache(page);
@@ -878,15 +878,24 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 			}
 			if (likely(!non_swap_entry(entry)))
 				rss[MM_SWAPENTS]++;
-			else if (is_write_migration_entry(entry) &&
-					is_cow_mapping(vm_flags)) {
-				/*
-				 * COW mappings require pages in both parent
-				 * and child to be set to read.
-				 */
-				make_migration_entry_read(&entry);
-				pte = swp_entry_to_pte(entry);
-				set_pte_at(src_mm, addr, src_pte, pte);
+			else if (is_migration_entry(entry)) {
+				page = migration_entry_to_page(entry);
+
+				if (PageAnon(page))
+					rss[MM_ANONPAGES]++;
+				else
+					rss[MM_FILEPAGES]++;
+
+				if (is_write_migration_entry(entry) &&
+				    is_cow_mapping(vm_flags)) {
+					/*
+					 * COW mappings require pages in both
+					 * parent and child to be set to read.
+					 */
+					make_migration_entry_read(&entry);
+					pte = swp_entry_to_pte(entry);
+					set_pte_at(src_mm, addr, src_pte, pte);
+				}
 			}
 		}
 		goto out_set_pte;
@@ -1191,6 +1200,16 @@ again:
 
 			if (!non_swap_entry(entry))
 				rss[MM_SWAPENTS]--;
+			else if (is_migration_entry(entry)) {
+				struct page *page;
+
+				page = migration_entry_to_page(entry);
+
+				if (PageAnon(page))
+					rss[MM_ANONPAGES]--;
+				else
+					rss[MM_FILEPAGES]--;
+			}
 			if (unlikely(!free_swap_and_cache(entry)))
 				print_bad_pte(vma, addr, ptent, NULL);
 		}
@@ -1228,16 +1247,24 @@ static inline unsigned long zap_pmd_range(struct mmu_gather *tlb,
 	do {
 		next = pmd_addr_end(addr, end);
 		if (pmd_trans_huge(*pmd)) {
-			if (next-addr != HPAGE_PMD_SIZE) {
+			if (next - addr != HPAGE_PMD_SIZE) {
 				VM_BUG_ON(!rwsem_is_locked(&tlb->mm->mmap_sem));
 				split_huge_page_pmd(vma->vm_mm, pmd);
-			} else if (zap_huge_pmd(tlb, vma, pmd))
-				continue;
+			} else if (zap_huge_pmd(tlb, vma, pmd, addr))
+				goto next;
 			/* fall through */
 		}
-		if (pmd_none_or_clear_bad(pmd))
-			continue;
+		/*
+		 * Here there can be other concurrent MADV_DONTNEED or
+		 * trans huge page faults running, and if the pmd is
+		 * none or trans huge it can change under us. This is
+		 * because MADV_DONTNEED holds the mmap_sem in read
+		 * mode.
+		 */
+		if (pmd_none_or_trans_huge_or_clear_bad(pmd))
+			goto next;
 		next = zap_pte_range(tlb, vma, pmd, addr, next, details);
+next:
 		cond_resched();
 	} while (pmd++, addr = next, addr != end);
 

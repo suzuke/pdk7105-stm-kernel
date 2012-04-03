@@ -25,6 +25,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 
+#include <asm/hardware/gic.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/mach-types.h>
 #include <asm/memory.h>
@@ -479,5 +480,6 @@ MACHINE_START(STM_B2000, "STMicroelectronics B2000 - STiH415 MBoard")
 	.init_early	= b2000_init_early,
 	.init_irq	= stih415_gic_init_irq,
 	.timer		= &stih415_timer,
+	.handle_irq	= gic_handle_irq,
 	.init_machine	= b2000_init,
 MACHINE_END

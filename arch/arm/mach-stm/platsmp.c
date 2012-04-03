@@ -190,8 +190,7 @@ printk("%s: start - ncores %d\n", __FUNCTION__, ncores);
 		 * moving, and/or tell it the address of stm_secondary_startup?
 		 * The equivalent of poke_milo?
 		 */
-		__raw_writel(BSYM(virt_to_phys(stm_secondary_startup)),
-                     0xc0000200);
+		__raw_writel(virt_to_phys(stm_secondary_startup), 0xc0000200);
 	}
 printk("%s: finish\n", __FUNCTION__);
 }

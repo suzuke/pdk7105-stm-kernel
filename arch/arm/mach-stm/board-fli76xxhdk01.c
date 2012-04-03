@@ -24,6 +24,7 @@
 #include <asm/mach-types.h>
 #include <asm/memory.h>
 
+#include <asm/hardware/gic.h>
 #include <mach/soc-fli7610.h>
 #include <mach/hardware.h>
 #define ZB_SEL stm_gpio(3, 0)
@@ -95,4 +96,5 @@ MACHINE_START(STM_NMHDK_FLI7610, "STMicroelectronics Newman FLI76XXHDK01")
 	.timer		= &fli7610_timer,
 	.init_machine	= fli76xxhdk01_init,
 	.init_early     = fli76xxhdk01_init_early,
+	.handle_irq	= gic_handle_irq,
 MACHINE_END
