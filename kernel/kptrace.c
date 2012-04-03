@@ -1678,20 +1678,6 @@ static int mutex_unlock_pre_handler(struct kprobe *p, struct pt_regs *regs)
 
 }
 
-static int lock_kernel_pre_handler(struct kprobe *p, struct pt_regs *regs)
-{
-	kptrace_write_trace_record(p, regs, "ZL");
-	return 0;
-
-}
-
-static int unlock_kernel_pre_handler(struct kprobe *p, struct pt_regs *regs)
-{
-	kptrace_write_trace_record(p, regs, "Zl");
-	return 0;
-
-}
-
 static int down_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
 	char tbuf[KPTRACE_SMALL_BUF];
@@ -2363,11 +2349,6 @@ static void init_synchronization_logging(void)
 	create_late_tracepoint(set, "mutex_lock", mutex_lock_pre_handler, NULL);
 	create_late_tracepoint(set, "mutex_unlock", mutex_unlock_pre_handler,
 			       NULL);
-
-	kptrace_create_tracepoint(set, "lock_kernel", lock_kernel_pre_handler,
-				  NULL);
-	kptrace_create_tracepoint(set, "unlock_kernel",
-				  unlock_kernel_pre_handler, NULL);
 
 	kptrace_create_tracepoint(set, "down", down_pre_handler, NULL);
 	kptrace_create_tracepoint(set, "down_interruptible",
