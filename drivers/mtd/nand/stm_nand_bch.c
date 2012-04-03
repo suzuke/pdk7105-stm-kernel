@@ -451,7 +451,7 @@ static uint8_t bch_write_page(struct nandi_controller *nandi,
 	return status;
 }
 
-/* Helper function for mtd_read, to handle multi-page or non-aligned reads */
+/* Helper function for bch_mtd_read, to handle multi-page or non-aligned reads */
 static int bch_read(struct nandi_controller *nandi,
 		    loff_t from, size_t len,
 		    size_t *retlen, u_char *buf)
@@ -1368,7 +1368,7 @@ static int bch_load_bbt(struct nandi_controller *nandi,
 /*
  * MTD Interface: Standard set of callbacks for MTD functionality
  */
-static int mtd_read(struct mtd_info *mtd, loff_t from, size_t len,
+static int bch_mtd_read(struct mtd_info *mtd, loff_t from, size_t len,
 		    size_t *retlen, uint8_t *buf)
 {
 	struct nand_chip *chip = mtd->priv;
@@ -1395,7 +1395,7 @@ static int mtd_read(struct mtd_info *mtd, loff_t from, size_t len,
 	return ret;
 }
 
-static int mtd_write(struct mtd_info *mtd, loff_t to, size_t len,
+static int bch_mtd_write(struct mtd_info *mtd, loff_t to, size_t len,
 			  size_t *retlen, const uint8_t *buf)
 {
 	struct nand_chip *chip = mtd->priv;
@@ -1558,7 +1558,7 @@ static int flex_do_write_ops(struct nandi_controller *nandi,
 }
 
 static char *mtd_oob_mode_strs[] = {"PLACE", "AUTO", "RAW"};
-static int mtd_read_oob(struct mtd_info *mtd, loff_t from,
+static int bch_mtd_read_oob(struct mtd_info *mtd, loff_t from,
 			struct mtd_oob_ops *ops)
 {
 	struct nand_chip *chip = mtd->priv;
@@ -1628,7 +1628,7 @@ static int mtd_read_oob(struct mtd_info *mtd, loff_t from,
 	return ret;
 }
 
-static int mtd_write_oob(struct mtd_info *mtd, loff_t to,
+static int bch_mtd_write_oob(struct mtd_info *mtd, loff_t to,
 			  struct mtd_oob_ops *ops)
 {
 	struct nand_chip *chip = mtd->priv;
@@ -1700,7 +1700,7 @@ static int mtd_write_oob(struct mtd_info *mtd, loff_t to,
 	return ret;
 }
 
-static int mtd_block_isbad(struct mtd_info *mtd, loff_t offs)
+static int bch_mtd_block_isbad(struct mtd_info *mtd, loff_t offs)
 {
 	struct nand_chip *chip = mtd->priv;
 	struct nandi_controller *nandi = chip->priv;
@@ -1720,7 +1720,7 @@ static int mtd_block_isbad(struct mtd_info *mtd, loff_t offs)
 	return bbt_is_block_bad(nandi->info.bbt_info.bbt, block);
 }
 
-static int mtd_block_markbad(struct mtd_info *mtd, loff_t offs)
+static int bch_mtd_block_markbad(struct mtd_info *mtd, loff_t offs)
 {
 	struct nand_chip *chip = mtd->priv;
 	struct nandi_controller *nandi = chip->priv;
@@ -1749,7 +1749,7 @@ static int mtd_block_markbad(struct mtd_info *mtd, loff_t offs)
 	return ret;
 }
 
-static int mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
+static int bch_mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 {
 	struct nand_chip *chip = mtd->priv;
 	struct nandi_controller *nandi = chip->priv;
@@ -2176,13 +2176,13 @@ static void nandi_set_mtd_defaults(struct nandi_controller *nandi,
 	mtd->oobavail = 0;
 	mtd->subpage_sft = 0;
 
-	mtd->read = mtd_read;
-	mtd->write = mtd_write;
-	mtd->erase = mtd_erase;
-	mtd->read_oob = mtd_read_oob;
-	mtd->write_oob = mtd_write_oob;
-	mtd->block_isbad = mtd_block_isbad;
-	mtd->block_markbad = mtd_block_markbad;
+	mtd->read = bch_mtd_read;
+	mtd->write = bch_mtd_write;
+	mtd->erase = bch_mtd_erase;
+	mtd->read_oob = bch_mtd_read_oob;
+	mtd->write_oob = bch_mtd_write_oob;
+	mtd->block_isbad = bch_mtd_block_isbad;
+	mtd->block_markbad = bch_mtd_block_markbad;
 
 	mtd->point = NULL;
 	mtd->unpoint = NULL;
