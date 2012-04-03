@@ -741,13 +741,28 @@ struct kp_tracepoint *kptrace_create_aliased_tracepoint(
  */
 #ifdef CONFIG_KPTRACE_SYNC
 static struct kp_tracepoint*
-create_late_tracepoint(struct kp_tracepoint_set *set,
+kptrace_create_late_tracepoint(struct kp_tracepoint_set *set,
 	const char *name,
 	int (*entry_handler) (struct kprobe *, struct pt_regs *),
 	int (*return_handler) (struct kretprobe_instance *, struct pt_regs *))
 {
 	return __create_tracepoint(set, name, entry_handler,
 					return_handler, 1, NULL);
+}
+
+/*
+ * Combines the functionality of kptrace_create_aliased_tracepoint() and
+ * kptrace_create_late_tracepoint().
+ */
+struct kp_tracepoint *kptrace_create_late_aliased_tracepoint(
+		struct kp_tracepoint_set *set,
+		const char *name,
+		int (*entry_handler) (struct kprobe *, struct pt_regs *),
+		int (*return_handler) (struct kretprobe_instance *,
+		struct pt_regs *), const char *alias)
+{
+	return __create_tracepoint(set, name, entry_handler,
+					return_handler, 1, alias);
 }
 #endif
 
@@ -2345,9 +2360,15 @@ static void init_synchronization_logging(void)
 		return;
 	}
 
-	create_late_tracepoint(set, "mutex_lock", mutex_lock_pre_handler, NULL);
-	create_late_tracepoint(set, "mutex_unlock", mutex_unlock_pre_handler,
-			       NULL);
+#ifndef CONFIG_DEBUG_LOCK_ALLOC
+	kptrace_create_late_tracepoint(set, "mutex_lock",
+					mutex_lock_pre_handler, NULL);
+#else
+	kptrace_create_late_aliased_tracepoint(set, "mutex_lock_nested",
+				mutex_lock_pre_handler, NULL, "mutex_lock");
+#endif
+	kptrace_create_late_tracepoint(set, "mutex_unlock",
+				mutex_unlock_pre_handler, NULL);
 
 	kptrace_create_tracepoint(set, "down", down_pre_handler, NULL);
 	kptrace_create_tracepoint(set, "down_interruptible",
