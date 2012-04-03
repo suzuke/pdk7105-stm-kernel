@@ -21,6 +21,7 @@
 #include <linux/gpio.h>
 #include <linux/slab.h>
 #include <linux/ioport.h>
+#include <linux/sh_pfc.h>
 
 static void pfc_iounmap(struct pinmux_info *pip)
 {
