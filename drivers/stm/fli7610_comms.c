@@ -262,6 +262,9 @@ void __init fli7610_configure_lirc(void)
 
 	BUG_ON(configured++);
 
+	clk_add_alias_platform_device(NULL, &fli7610_lirc_device,
+		"sbc_comms_clk", NULL);
+
 	platform_device_register(&fli7610_lirc_device);
 }
 
