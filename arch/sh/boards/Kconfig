@@ -405,14 +405,6 @@ config SH_ST_B2068
 	  Select B2068 if configuring for an
 	  STMicroelectronics STx7167 Reference Board.
 
-config SH_ST_CAB5197
-	bool "CAB5197: STx5197 CAB reference board"
-	depends on CPU_SUBTYPE_STX5197
-	default n
-	help
-	  Select STx5197 CAB Reference if configuring for an
-	  STMicroelectronics STx5197 CAB reference Board.
-
 config SH_ST_EUD7141
 	bool "EUD7141 board"
 	depends on CPU_SUBTYPE_STX7141
@@ -581,17 +573,6 @@ config SH_ST_MB680
 	  Select STx7105 Validation if configuring for an
 	  STMicroelectronics STx7105 Validation Board (product code:
 	  STi7105-MBOARD, ST board ID: mb680).
-
-config SH_ST_MB704
-	bool "mb704: STx5197 Validation board"
-	depends on CPU_SUBTYPE_STX5197
-	select SH_ST_STEM
-	select SH_ST_STPM_SD
-	default n
-	help
-	  Select STx5197 Validation if configuring for an
-	  STMicroelectronics STx5197 Validation Board (product code:
-	  STx5197-MBOARD, ST board ID: mb704).
 
 config SH_ST_MB837
 	bool "mb837: STx7108 Validation board"

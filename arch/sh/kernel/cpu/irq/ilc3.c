@@ -124,12 +124,10 @@ int ilc2irq(unsigned int evtcode)
 	struct ilc *ilc = irq_get_handler_data(evt2irq(evtcode));
 #if	defined(CONFIG_CPU_SUBTYPE_STXH205) || \
 	defined(CONFIG_CPU_SUBTYPE_STIH415) || \
-	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7141)
 	unsigned int priority = 7;
 #elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
-	defined(CONFIG_CPU_SUBTYPE_STX5197) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7105)
 	unsigned int priority = 14 - evt2irq(evtcode);
 #endif
@@ -158,12 +156,10 @@ void ilc_irq_demux(unsigned int irq, struct irq_desc *desc)
 	struct ilc *ilc = irq_get_handler_data(irq);
 #if	defined(CONFIG_CPU_SUBTYPE_STXH205) || \
 	defined(CONFIG_CPU_SUBTYPE_STIH415) || \
-	defined(CONFIG_CPU_SUBTYPE_STX5206) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7141)
 	unsigned int priority = 7;
 #elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
-	defined(CONFIG_CPU_SUBTYPE_STX5197) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7105)
 	unsigned int priority = 14 - irq;
 #endif
@@ -236,14 +232,7 @@ static unsigned int startup_ilc_irq(struct irq_data *d)
 	ilc->priority[priority][_BANK(input)] |= _BIT(input);
 	spin_unlock_irqrestore(&ilc->lock, flags);
 
-#if	defined(CONFIG_CPU_SUBTYPE_STX5206)
-	/* ILC_EXT_OUT[4] -> IRL[0] (default priority 13 = irq  2) */
-	/* ILC_EXT_OUT[5] -> IRL[1] (default priority 10 = irq  5) */
-	/* ILC_EXT_OUT[6] -> IRL[2] (default priority  7 = irq  8) */
-	/* ILC_EXT_OUT[7] -> IRL[3] (default priority  4 = irq 11) */
-	ILC_SET_PRI(ilc->base, input, 0x8007);
-#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
-	defined(CONFIG_CPU_SUBTYPE_STX5197) || \
+#if	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7105)
 	ILC_SET_PRI(ilc->base, input, priority);
 #elif	defined(CONFIG_CPU_SUBTYPE_STXH205) || \
