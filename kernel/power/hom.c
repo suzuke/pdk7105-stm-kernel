@@ -18,6 +18,8 @@
 
 #include <linux/hom.h>
 #include <linux/freezer.h>
+#include <linux/export.h>
+#include <linux/kmod.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/init.h>
@@ -25,6 +27,7 @@
 #include <linux/cpu.h>
 #include <linux/fs.h>
 #include <linux/syscalls.h>
+#include <linux/syscore_ops.h>
 
 #include <asm-generic/sections.h>
 
@@ -171,8 +174,8 @@ static int hibernation_on_memory_enter(void)
 
 	local_irq_disable();
 
-	pr_debug("[STM]:[PM]: Suspend sysdevices\n");
-	error = sysdev_suspend(PMSG_FREEZE);
+	pr_debug("[STM]:[PM]: Suspend syscore\n");
+	error = syscore_suspend();
 	if (error)
 		goto Enable_irqs;
 
@@ -197,7 +200,7 @@ static int hibernation_on_memory_enter(void)
 	platform_complete();
 
 	pr_debug("[STM]:[PM]: Resumed sysdevices\n");
-	sysdev_resume();
+	syscore_resume();
 
  Enable_irqs:
 	local_irq_enable();
