@@ -440,32 +440,6 @@ config SH_ST_FUDB
 	  Select this if configuring for a
 	  Freeman Ultra Development Board.
 
-config SH_ST_HDK5289
-	bool "HDK5289 : STx5289 HDK Reference board"
-	depends on CPU_SUBTYPE_STX5206
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select this if configuring for an
-	  STMicroelectronics STi5289 HDK Reference Board.
-
-config SH_ST_DTT5250
-	bool "DTT5250 : STx5250 DTT Reference board"
-	depends on CPU_SUBTYPE_STX5206
-	default n
-	help
-	  Select this if configuring for an
-	  STMicroelectronics STi5250 DTT Reference Board.
-
-config SH_ST_HDK5250
-	bool "HDK5250 : STx5250 HDK Reference board"
-	depends on CPU_SUBTYPE_STX5206
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select this if configuring for an
-	  STMicroelectronics STi5250 HDK Reference Board.
-
 config SH_ST_HDK7105
 	bool "HDK7105 : STx7105 HDK Reference board"
 	depends on CPU_SUBTYPE_STX7105
@@ -618,17 +592,6 @@ config SH_ST_MB704
 	  Select STx5197 Validation if configuring for an
 	  STMicroelectronics STx5197 Validation Board (product code:
 	  STx5197-MBOARD, ST board ID: mb704).
-
-config SH_ST_MB796
-	bool "mb796: STx5206 Validation board"
-	depends on CPU_SUBTYPE_STX5206
-	select SH_ST_STEM
-	select SH_ST_STPM_HD_V2
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select this if configuring for an STMicroelectronics STx5289
-	  Validation Board (product code: STi5289-MBOARD, ST board ID: mb796).
 
 config SH_ST_MB837
 	bool "mb837: STx7108 Validation board"
