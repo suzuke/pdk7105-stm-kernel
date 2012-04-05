@@ -142,7 +142,7 @@ static clk_t clk_clocks[] = {
    Returns:     'clk_err_t' error code.
    ======================================================================== */
 
-int plat_clk_init(void)
+int __init plat_clk_init(void)
 {
 	clk_t *clk_main = NULL, *clk_aux = NULL;
 

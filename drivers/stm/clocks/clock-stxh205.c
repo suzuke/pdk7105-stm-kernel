@@ -265,7 +265,7 @@ static sysconf_base_t sysconf_base[] = {
    Returns:     'clk_err_t' error code.
    ======================================================================== */
 
-int plat_clk_init(void)
+int __init plat_clk_init(void)
 {
 	int ret;
 	printf("Registering clocks\n");
