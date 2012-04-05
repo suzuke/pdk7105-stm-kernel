@@ -6,3 +6,5 @@ obj-$(CONFIG_MACH_STM_FLI76XXHDK01)	+= board-fli76xxhdk01.o
 obj-$(CONFIG_MACH_STM_B2000)	+= board-b2000.o
 obj-$(CONFIG_LOCAL_TIMERS)	+= localtimer.o
 obj-$(CONFIG_PCI)		+= pci-glue.o
+
+obj-$(CONFIG_HOTPLUG_CPU)	+= hotplug.o
