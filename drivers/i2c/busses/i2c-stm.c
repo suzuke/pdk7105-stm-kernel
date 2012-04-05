@@ -1285,6 +1285,9 @@ static int iic_stm_resume(struct device *dev)
 	}
 #endif
 	clk_enable(i2c_bus->clk);
+
+	stm_pad_setup(i2c_bus->pad_state);
+
 	/* enable RX, TX FIFOs - clear SR bit */
 	ssc_store32(i2c_bus, SSC_CTL, SSC_CTL_EN |
 		    SSC_CTL_PO | SSC_CTL_PH | SSC_CTL_HB | 0x8);
