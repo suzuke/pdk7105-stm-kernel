@@ -264,12 +264,30 @@ static inline int __init mdio_ofgpio_init(void) { return 0; }
 static inline void __exit mdio_ofgpio_exit(void) { }
 #endif /* CONFIG_OF_GPIO */
 
+#ifdef CONFIG_HIBERNATION
+static int mdio_gpio_restore(struct device *dev)
+{
+	struct mii_bus *bus = dev_get_drvdata(dev);
+	struct mdio_gpio_info *bitbang = bus->priv;
+
+	gpio_direction_output(bitbang->mdc, 0);
+	return 0;
+}
+
+static struct dev_pm_ops mdio_gpio_pm_ops = {
+	.restore = mdio_gpio_restore,
+};
+#endif
+
 static struct platform_driver mdio_gpio_driver = {
 	.probe = mdio_gpio_probe,
 	.remove = __devexit_p(mdio_gpio_remove),
 	.driver		= {
 		.name	= "mdio-gpio",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_HIBERNATION
+		.pm	= &mdio_gpio_pm_ops,
+#endif
 	},
 };
 
