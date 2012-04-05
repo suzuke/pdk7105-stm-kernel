@@ -25,7 +25,6 @@ obj-$(CONFIG_STM_AMBA_BRIDGE)		+= amba_bridge.o
 
 obj-$(CONFIG_PM)			+= wakeup_devices.o
 obj-$(CONFIG_PM)			+= pm_notify.o
-obj-$(CONFIG_PMS)			+= pms.o
 obj-$(CONFIG_PM_RUNTIME)		+= pm_runtime.o
 
 obj-$(CONFIG_STM_PCI_EMISS)		+= pci-emiss.o
