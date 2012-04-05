@@ -1366,6 +1366,7 @@ static int stm_sata_restore(struct device *dev)
 	if (dev->power.runtime_status == RPM_SUSPENDED)
 		return 0; /* sata wants resume via runtime_resume... */
 #endif
+	stm_device_setup(hpriv->device_state);
 
 	stm_device_power(hpriv->device_state, stm_device_power_on);
 
