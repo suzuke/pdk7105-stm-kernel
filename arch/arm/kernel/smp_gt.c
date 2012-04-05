@@ -179,12 +179,27 @@ static cycle_t gt_clocksource_read(struct clocksource *cs)
 	return res.cycles;
 }
 
+#ifdef CONFIG_HIBERNATION
+static void gt_clocksource_resume(struct clocksource *cs)
+{
+	writel(0, gt_base + GT_CONTROL);
+	writel(0, gt_base + GT_COUNTER0);
+	writel(0, gt_base + GT_COUNTER1);
+
+	writel(GT_CONTROL_TIMER_ENABLE, gt_base + GT_CONTROL);
+}
+
+#else
+#define gt_clocksource_resume	NULL
+#endif
+
 static struct clocksource gt_clocksource = {
 	.name	= "Global Timer CS",
 	.rating	= 300,
 	.read	= gt_clocksource_read,
 	.mask	= CLOCKSOURCE_MASK(64),
 	.flags	= CLOCK_SOURCE_IS_CONTINUOUS,
+	.resume = gt_clocksource_resume,
 };
 
 static void __init gt_clocksource_init(void)
