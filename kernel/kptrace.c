@@ -480,8 +480,8 @@ static ssize_t
 userspace_store_attrs(struct kobject *kobj,
 		      struct attribute *attr, const char *buffer, size_t size)
 {
-	if (strcmp(attr->name, "new_record") == 0)
-		kptrace_write_trace_record_no_callstack(buffer);
+	/* No need to check the attr name, as 'new_record' is the only one. */
+	kptrace_write_trace_record_no_callstack(buffer);
 
 	return size;
 }
