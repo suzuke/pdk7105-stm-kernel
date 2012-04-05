@@ -211,6 +211,7 @@ int stm_pad_init(int gpios_num, int gpio_function_in, int gpio_function_out,
 
 struct stm_pad_state *stm_pad_claim(struct stm_pad_config *config,
 		const char *owner);
+void stm_pad_setup(struct stm_pad_state *state);
 void stm_pad_release(struct stm_pad_state *state);
 
 struct stm_pad_state *devm_stm_pad_claim(struct device *dev,

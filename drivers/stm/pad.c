@@ -124,7 +124,31 @@ int __init stm_pad_init(int gpios_num,
 	return 0;
 }
 
+void stm_pad_setup(struct stm_pad_state *state)
+{
+	struct stm_pad_config *config = state->config;
+	int i;
 
+	mutex_lock(&stm_pad_mutex);
+
+	for (i = 0; i < config->gpios_num; i++) {
+		struct stm_pad_gpio *pad_gpio = &config->gpios[i];
+		unsigned gpio = pad_gpio->gpio;
+
+		if (pad_gpio->direction == stm_pad_gpio_direction_ignored)
+			continue;
+
+		stm_pad_gpio_config(gpio, pad_gpio->direction,
+			pad_gpio->function, pad_gpio->priv);
+	}
+
+	for (i = 0; i < config->sysconfs_num; i++) {
+		struct stm_pad_sysconf *sysconf = &config->sysconfs[i];
+		sysconf_write(state->sysconf_fields[i], sysconf->value);
+	}
+
+	mutex_unlock(&stm_pad_mutex);
+}
 
 static int __stm_pad_claim(struct stm_pad_config *config,
 		struct stm_pad_state *state, const char *owner)
