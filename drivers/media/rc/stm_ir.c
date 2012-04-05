@@ -1127,8 +1127,9 @@ static int ir_stm_probe(struct platform_device *pdev)
 		       " in %s mode\n", irb_irq,
 		       ir_dev->pdata->rxuhfmode ? "UHF" : "IR");
 
-		if (!devm_stm_pad_claim(dev, ir_dev->pdata->pads,
-					IR_STM_NAME)) {
+		ir_dev->pad_state = devm_stm_pad_claim(dev,
+			ir_dev->pdata->pads, IR_STM_NAME);
+		if (!ir_dev->pad_state) {
 			pr_err(IR_STM_NAME ": Failed to claim "
 			       "pads!\n");
 			return -EIO;
@@ -1236,6 +1237,9 @@ static int ir_stm_restore(struct device *dev)
 	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
 	clk_enable(ir_dev->sys_clock);
+
+	stm_pad_setup(ir_dev->pad_state);
+
 	ir_stm_hardware_init(ir_dev);
 	/* enable interrupts and receiver */
 	writel(LIRC_STM_ENABLE_IRQ, ir_dev->rx_base + IRB_RX_INT_EN);
