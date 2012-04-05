@@ -155,14 +155,6 @@ struct fdma {
 	char name[FDMA_NAME_LEN];
 	char fw_name[NAME_MAX_LEN + 1];
 	struct platform_device *pdev;
-	/*
-	 * The FDMA-IP needs 4 clocks
-	 * - a T1 port
-	 * - a T2 port (High priority)
-	 * - a T2 port (Low priority)
-	 * - a slim clock
-	 */
-	struct clk *clks[4];
 	struct dma_info dma_info;
 	struct fdma_channel channels[FDMA_CHANS];
 	spinlock_t channels_lock; /* protects channels array */

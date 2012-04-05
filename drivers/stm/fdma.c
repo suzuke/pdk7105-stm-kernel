@@ -12,19 +12,15 @@
 #include <linux/device.h>
 #include <linux/firmware.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/dmapool.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/stm-dma.h>
 #include <linux/libelf.h>
 #include <linux/stm/clk.h>
+#include <linux/pm_clock.h>
 
 #include "fdma.h"
-
-#define FDMA_CLKS_NR		4
-#define FDMA_SLIM_CLK	0
-#define FDMA_HI_CLK	1
-#define FDMA_LOW_CLK	2
-#define FDMA_IC_CLK	3
 
 #define FDMA_MIN_CHANNEL 0
 #define FDMA_MAX_CHANNEL 15
@@ -1328,32 +1324,6 @@ static void __init fdma_channels_parse(struct fdma *fdma)
 	fdma->ch_max = max;
 }
 
-static void stm_fdma_clk_xxable(struct fdma *fdma, int enable)
-{
-	int i;
-	struct clk *clk;
-
-	for (i = 0; i < FDMA_CLKS_NR; ++i) {
-		clk = fdma->clks[i];
-		if (!clk || IS_ERR(clk))
-			continue;
-		if (enable)
-			clk_enable(clk);
-		else
-			clk_disable(clk);
-	}
-}
-
-static void stm_fdma_clk_enable(struct fdma *fdma)
-{
-	stm_fdma_clk_xxable(fdma, 1);
-}
-
-static void stm_fdma_clk_disable(struct fdma *fdma)
-{
-	stm_fdma_clk_xxable(fdma, 0);
-}
-
 static struct dma_ops fdma_ops = {
 	.request	= fdma_request,
 	.free		= fdma_free,
@@ -1365,11 +1335,11 @@ static struct dma_ops fdma_ops = {
 
 static int __devinit fdma_driver_probe(struct platform_device *pdev)
 {
-	static __devinitdata char *fdma_clks_n[FDMA_CLKS_NR] = {
-		[FDMA_SLIM_CLK] = "fdma_slim_clk",
-		[FDMA_HI_CLK] = "fdma_hi_clk",
-		[FDMA_LOW_CLK] = "fdma_low_clk",
-		[FDMA_IC_CLK] = "fdma_ic_clk",
+	static __devinitdata char *fdma_clks_n[] = {
+		"fdma_slim_clk",
+		"fdma_hi_clk",
+		"fdma_low_clk",
+		"fdma_ic_clk",
 	};
 	struct stm_plat_fdma_data *plat_data;
 	struct fdma *fdma = NULL;
@@ -1383,14 +1353,14 @@ static int __devinit fdma_driver_probe(struct platform_device *pdev)
 	if (fdma == NULL)
 		return -ENOMEM;
 
-	for (i = 0; i < FDMA_CLKS_NR; ++i) {
-		fdma->clks[i] = clk_get(&pdev->dev, fdma_clks_n[i]);
-		if (!fdma->clks[i] || IS_ERR(fdma->clks[i]))
-			pr_warning("%s: clk %s not found\n",
-				dev_name(&pdev->dev), fdma_clks_n[i]);
+	pm_clk_init(&pdev->dev);
+	for (i = 0; i < ARRAY_SIZE(fdma_clks_n); ++i) {
+		struct clk *clk = clk_get(&pdev->dev, fdma_clks_n[i]);
+		if (IS_ERR(clk))
+			continue;
+		clk_enable(clk);
+		pm_clk_add(&pdev->dev, fdma_clks_n[i]);
 	}
-
-	stm_fdma_clk_enable(fdma);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res)
@@ -1496,7 +1466,7 @@ static int __devexit fdma_driver_remove(struct platform_device *pdev)
 	struct fdma *fdma = platform_get_drvdata(pdev);
 
 	fdma_disable_all_channels(fdma);
-	stm_fdma_clk_disable(fdma);
+	pm_clk_destroy(&pdev->dev);
 	iounmap(fdma->io_base);
 	dma_pool_destroy(fdma->llu_pool);
 	free_irq(fdma->irq, fdma);
@@ -1525,7 +1495,7 @@ static int fdma_suspend_freeze_noirq(struct device *dev)
 
 	fdma_disable_all_channels(fdma);
 
-	stm_fdma_clk_disable(fdma);
+	pm_clk_suspend(dev);
 
 	return 0;
 }
@@ -1537,7 +1507,7 @@ static int fdma_resume_noirq(struct device *dev)
 	if (fdma->firmware_loaded != 1)
 		return 0;
 
-	stm_fdma_clk_enable(fdma);
+	pm_clk_resume(dev);
 
 	fdma_enable_all_channels(fdma);
 
@@ -1553,7 +1523,7 @@ static int fdma_restore_noirq(struct device *dev)
 	if (fdma->firmware_loaded != 1)
 		return 0;
 
-	stm_fdma_clk_enable(fdma);
+	pm_clk_resume(dev);
 
 	for (i = 0; i < 2; ++i)
 		memcpy_toio(fdma->io_base + fdma->segment_pm[i].offset,
