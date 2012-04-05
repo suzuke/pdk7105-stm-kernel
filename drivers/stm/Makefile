@@ -39,4 +39,3 @@ obj-$(CONFIG_CPU_SUBTYPE_STIH415)	+= stih415.o stih415_clock.o stih415_audio.o s
 					   stih415_comms.o stih415_pci.o pio-control.o mpe41_devices.o
 obj-$(CONFIG_CPU_SUBTYPE_STX7105)	+= stx7105.o stx7105_clock.o stx7105_audio.o stx7105_comms.o stx7105_hispeed.o stx7105_pci.o
 obj-$(CONFIG_CPU_SUBTYPE_STX7108)	+= stx7108.o stx7108_clock.o stx7108_audio.o stx7108_comms.o stx7108_hispeed.o stx7108_pci.o pio-control.o
-obj-$(CONFIG_CPU_SUBTYPE_STX7141)	+= stx7141.o stx7141_clock.o stx7141_audio.o stx7141_comms.o stx7141_hispeed.o

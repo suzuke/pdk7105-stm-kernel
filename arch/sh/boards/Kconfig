@@ -405,14 +405,6 @@ config SH_ST_B2068
 	  Select B2068 if configuring for an
 	  STMicroelectronics STx7167 Reference Board.
 
-config SH_ST_EUD7141
-	bool "EUD7141 board"
-	depends on CPU_SUBTYPE_STX7141
-	default n
-	help
-	  Select this if configuring for an
-	  STMicroelectronics STx7141 EUD Reference Board.
-
 config SH_ST_FLDB
 	bool "fldb: Freeman Lite Development Board"
 	depends on CPU_SUBTYPE_FLI7510
@@ -440,14 +432,6 @@ config SH_ST_HDK7105
 	help
 	  Select HDK7105 if configuring for an
 	  STMicroelectronics STi7105 HDK Reference Board.
-
-config SH_ST_HDKH225
-	bool "HDKH225 : STiH225 HDK Reference board"
-	depends on CPU_SUBTYPE_STX7141
-	default n
-	help
-	  Select this if configuring for an
-	  STMicroelectronics STiH225 HDK Reference Board.
 
 config SH_ST_HDKH246
 	bool "HDKH246 : STi235/236/246 Reference boards"
@@ -548,19 +532,6 @@ config SH_ST_MB374
 	  STMicroelectronics ST40RA Starter Board (also known as the
 	  ST40RA DDR Eval board) (product code: ST40RA-Starter,
 	  ST board ID: mb374).
-
-config SH_ST_MB628
-	bool "mb628: STx7141 Mboard"
-	depends on CPU_SUBTYPE_STX7141
-	select SH_ST_EPLD
-	select SH_ST_STEM
-	select SND_STM_CONV_DUMMY if SND_STM
-	select SND_STM_CONV_EPLD if SND_STM
-	default n
-	help
-	  Select STx7141 Mboard if configuring for an
-	  STMicroelectronics STx7141 MBoard (product code:
-	  STi7141-MBOARD, ST board ID: mb628).
 
 config SH_ST_MB680
 	bool "mb680: STx7105 Validation board"
@@ -673,12 +644,9 @@ source "arch/sh/boards/mach-migor/Kconfig"
 source "arch/sh/boards/mach-rsk/Kconfig"
 source "arch/sh/boards/mach-b2039/Kconfig"
 source "arch/sh/boards/mach-b2057/Kconfig"
-source "arch/sh/boards/mach-eud7141/Kconfig"
-source "arch/sh/boards/mach-mb628/Kconfig"
 source "arch/sh/boards/mach-mb837/Kconfig"
 source "arch/sh/boards/mach-hdk7106/Kconfig"
 source "arch/sh/boards/mach-hdk7108/Kconfig"
-source "arch/sh/boards/mach-hdkh225/Kconfig"
 source "arch/sh/boards/mach-adi7108/Kconfig"
 source "arch/sh/boards/mach-b2000/Kconfig"
 

@@ -9,6 +9,5 @@ clock-$(CONFIG_CPU_SUBTYPE_STXH205)	+= clock-stxh205.o
 clock-$(CONFIG_CPU_SUBTYPE_STIH415)	+= clock-stih415.o clock-stxmpe41.o clock-stxsasg1.o
 clock-$(CONFIG_CPU_SUBTYPE_STX7105)	+= clock-stx7105.o
 clock-$(CONFIG_CPU_SUBTYPE_STX7108)	+= clock-stx7108.o
-clock-$(CONFIG_CPU_SUBTYPE_STX7141)	+= clock-stx7141.o
 
 obj-y	+= $(clock-y)

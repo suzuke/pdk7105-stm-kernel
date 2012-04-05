@@ -38,7 +38,6 @@ config STM_MIPHY_TAP
 	depends on STM_MIPHY
 	default y if CPU_SUBTYPE_STX7105
 	default y if CPU_SUBTYPE_STX7108
-	default y if CPU_SUBTYPE_STX7141
 	default y if CPU_SUBTYPE_STIH415
 	default n
 

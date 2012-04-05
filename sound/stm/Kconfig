@@ -150,21 +150,6 @@ config SND_STM_STX7108
 		If you compile this driver as a module, it will be
 		called snd-stm-stx7108.ko
 
-config SND_STM_STX7141
-	tristate "STx7141 support"
-	depends on SND_STM
-	default y if CPU_SUBTYPE_STX7141
-	select SND_STM_PCM_PLAYER
-	select SND_STM_PCM_READER
-	select SND_STM_SPDIF_PLAYER
-	select SND_STM_CONV_DAC_MEMORY_MAPPED
-	select SND_STM_CONV_I2S_TO_SPDIF
-	help
-		Select this to get ALSA driver for STx7141 chip.
-
-		If you compile this driver as a module, it will be
-		called snd-stm-stx7141.ko
-
 
 config SND_STM_STIH415
 	tristate "STih415 support"
