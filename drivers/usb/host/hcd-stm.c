@@ -278,6 +278,8 @@ static int stm_usb_resume(struct device *dev)
 
 	pm_clk_resume(dev);
 
+	stm_device_setup(dr_data->device_state);
+
 	stm_device_power(dr_data->device_state, stm_device_power_on);
 
 	stm_usb_boot(pdev);
@@ -292,6 +294,10 @@ static int stm_usb_resume(struct device *dev)
 static struct dev_pm_ops stm_usb_pm = {
 	.suspend = stm_usb_suspend,  /* on standby/memstandby */
 	.resume = stm_usb_resume,    /* resume from standby/memstandby */
+
+	.freeze = stm_usb_suspend,
+	.restore = stm_usb_resume,
+
 	.runtime_suspend = stm_usb_suspend,
 	.runtime_resume = stm_usb_resume,
 };
