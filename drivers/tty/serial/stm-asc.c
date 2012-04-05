@@ -504,6 +504,9 @@ static int asc_serial_restore(struct device *dev)
 	struct uart_port *port   = &(ascport->port);
 
 	clk_enable(ascport->clk);
+
+	stm_pad_setup(ascport->pad_state);
+
 	/* program the port but do not enable it */
 	asc_out(port, CTL, ascport->pm_ctrl & ~ASC_CTL_RUN);
 	asc_out(port, TIMEOUT, 20);		/* hardcoded */
