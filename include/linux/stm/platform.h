@@ -610,9 +610,11 @@ static inline int stmmac_claim_resource(struct platform_device *pdev)
 	int ret = 0;
 	struct plat_stmmacenet_data *plat_dat = pdev->dev.platform_data;
 
-	if (!(devm_stm_pad_claim(&pdev->dev,
-				(struct stm_pad_config *) plat_dat->custom_cfg,
-				dev_name(&pdev->dev)))) {
+	plat_dat->custom_data = devm_stm_pad_claim(&pdev->dev,
+		(struct stm_pad_config *) plat_dat->custom_cfg,
+		dev_name(&pdev->dev));
+
+	if (!plat_dat->custom_data) {
 		pr_err("%s: failed to request pads!\n", __func__);
 
 		ret = -ENODEV;
@@ -621,6 +623,15 @@ static inline int stmmac_claim_resource(struct platform_device *pdev)
 	return ret;
 }
 
+static inline void stmmac_release_resource(struct platform_device *pdev)
+{
+	struct plat_stmmacenet_data *plat_dat = pdev->dev.platform_data;
+
+	if (!plat_dat->custom_data)
+		return;
+	devm_stm_pad_release(&pdev->dev, plat_dat->custom_data);
+	plat_dat->custom_data = NULL;
+}
 /* Mali specific */
 struct stm_mali_resource {
 	resource_size_t start;
