@@ -161,13 +161,10 @@ static struct platform_driver sdhci_stm_driver = {
 	.driver = {
 		   .name = "sdhci-stm",
 		   .owner = THIS_MODULE,
+		   .pm = SDHCI_PLTFM_PMOPS,
 		   },
 	.probe = sdhci_stm_probe,
 	.remove = __devexit_p(sdhci_stm_remove),
-#ifdef CONFIG_PM
-	.suspend = sdhci_pltfm_suspend,
-	.resume = sdhci_pltfm_resume,
-#endif
 };
 
 static int __init sdhci_stm_init(void)

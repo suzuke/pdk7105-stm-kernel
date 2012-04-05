@@ -219,6 +219,9 @@ static int sdhci_pltfm_resume(struct device *dev)
 const struct dev_pm_ops sdhci_pltfm_pmops = {
 	.suspend	= sdhci_pltfm_suspend,
 	.resume		= sdhci_pltfm_resume,
+	.freeze		= sdhci_pltfm_suspend,
+	.thaw		= sdhci_pltfm_resume,
+	.restore	= sdhci_pltfm_resume,
 };
 EXPORT_SYMBOL_GPL(sdhci_pltfm_pmops);
 #endif	/* CONFIG_PM */
