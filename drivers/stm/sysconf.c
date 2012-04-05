@@ -49,9 +49,6 @@ struct sysconf_block {
 	void __iomem *base;
 	unsigned long size;
 	struct platform_device *pdev;
-#ifdef CONFIG_PM
-	unsigned long *snapshot;
-#endif
 };
 
 static int sysconf_blocks_num;
@@ -322,127 +319,6 @@ void sysconf_reg_name(char *name, int size, int group, int num)
 		snprintf(name, size, "%s%d", sysconf_groups[group].name, num);
 }
 EXPORT_SYMBOL(sysconf_reg_name);
-
-#ifdef CONFIG_PM
-static int sysconf_pm_freeze(void)
-{
-	int result = 0;
-	int i;
-
-	pr_debug("%s()\n", __func__);
-
-	for (i = 0; i < sysconf_blocks_num; i++) {
-		struct sysconf_block *block = &sysconf_blocks[i];
-		int j;
-
-		block->snapshot = kmalloc(block->size, GFP_NOWAIT);
-		if (!block->snapshot) {
-			pr_err("Failed to freeze %s!\n",
-			       dev_name(&block->pdev->dev));
-			result = -ENOMEM;
-			continue;
-		}
-
-		for (j = 0; j < block->size; j += sizeof(unsigned long))
-			block->snapshot[j / sizeof(unsigned long)] =
-					readl(block->base + j);
-	}
-
-	pr_debug("%s()=%d\n", __func__, result);
-
-	return result;
-}
-
-static int sysconf_pm_restore(void)
-{
-	int result = 0;
-	int i;
-
-	pr_debug("%s()\n", __func__);
-
-	for (i = 0; i < sysconf_blocks_num; i++) {
-		struct sysconf_block *block = &sysconf_blocks[i];
-		int j;
-
-		if (!block->snapshot) {
-			pr_err("Failed to restore %s!\n",
-			       dev_name(&block->pdev->dev));
-			result = -EINVAL;
-			continue;
-		}
-
-		for (j = 0; j < block->size; j += sizeof(unsigned long))
-			writel(block->snapshot[j / sizeof(unsigned long)],
-					block->base + j);
-
-		kfree(block->snapshot);
-		block->snapshot = NULL;
-	}
-
-	pr_debug("%s()=%d\n", __func__, result);
-
-	return result;
-}
-
-static int sysconf_sysdev_suspend(struct sys_device *dev, pm_message_t state)
-{
-	int result = 0;
-	static unsigned long prev_state = PM_EVENT_ON;
-
-	pr_debug("%s()\n", __func__);
-
-	switch (state.event) {
-	case PM_EVENT_ON:
-		if (prev_state == PM_EVENT_FREEZE)
-			result = sysconf_pm_restore();
-		break;
-	case PM_EVENT_SUSPEND:
-		break;
-	case PM_EVENT_FREEZE:
-		result = sysconf_pm_freeze();
-		break;
-	}
-
-	prev_state = state.event;
-
-	pr_debug("%s()=%d\n", __func__, result);
-
-	return result;
-}
-
-static int sysconf_sysdev_resume(struct sys_device *dev)
-{
-	return sysconf_sysdev_suspend(dev, PMSG_ON);
-}
-
-static struct sysdev_class sysconf_sysdev_class = {
-	.name = "sysconf",
-};
-
-struct sys_device sysconf_sysdev_dev = {
-	.id = 0,
-	.cls = &sysconf_sysdev_class,
-};
-
-static int __init sysconf_sysdev_init(void)
-{
-	int ret;
-
-	ret = sysdev_class_register(&sysconf_sysdev_class);
-	if (ret)
-		return ret;
-
-	ret = sysdev_register(&sysconf_sysdev_dev);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
-module_init(sysconf_sysdev_init);
-#endif
-
-
 
 #ifdef CONFIG_DEBUG_FS
 
