@@ -12,8 +12,7 @@ menu "STM specific devices"
 config STM_PCI_EMISS
 	bool "STMicroelectronics PCI controller"
 	depends on PCI && (CPU_SUBTYPE_FLI7510 || CPU_SUBTYPE_STX5206 || \
-			   CPU_SUBTYPE_STX7105 || CPU_SUBTYPE_STX7108 || \
-			   CPU_SUBTYPE_STX7111)
+			   CPU_SUBTYPE_STX7105 || CPU_SUBTYPE_STX7108)
 	def_bool n
 	select GENERIC_IOMAP
 	---help---

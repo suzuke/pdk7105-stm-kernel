@@ -533,15 +533,6 @@ config SH_ST_HDK7108
 	  Select SH_ST_HDK7108 if configuring for a
 	  STMicroelectronics STi7108 Reference Board.
 
-config SH_ST_HDK7111
-	bool "HDK7111 : STx7111 HDK board"
-	depends on CPU_SUBTYPE_STX7111
-	select SYS_SUPPORTS_PCI
-	select SH_ST_SYNOPSYS_PCI if PCI
-	help
-	  Select STx7111 HDK if configuring for an
-	  STMicroelectronics STx7111 HDK Reference Board
-
 config SH_ST_HDREF
 	bool "ST HDref board"
 	depends on CPU_SUBTYPE_STX7100
@@ -590,14 +581,6 @@ config SH_ST_NGB7167
 	help
 	  Select NGB7167 if configuring for an
 	  STMicroelectronics STi7167-NGB Reference Board.
-
-config SH_ST_SAT7111
-	bool "sat7111: sat7111 board"
-	depends on CPU_SUBTYPE_STX7111
-	default n
-	help
-	  Select this if configuring for an
-	  STMicroelectronics sat7111 Reference Board.
 
 config SH_ST_MB360
 	bool "mb360: ST40RA Eval"
@@ -673,19 +656,6 @@ config SH_ST_MB602
 	  Select SH_ST_MB602 if configuring for an
 	  STMicroelectronics STB5202 Reference Board
 	  (product code: STB5202-REF, ST board ID: mb602).
-
-config SH_ST_MB618
-	bool "mb618: STx7111 Validation board"
-	depends on CPU_SUBTYPE_STX7111
-	select SH_ST_EPLD
-	select SH_ST_STEM
-	select SYS_SUPPORTS_PCI
-	select I2C
-	default n
-	help
-	  Select STx7111 Validation if configuring for an
-	  STMicroelectronics STx7111 Validation Board (product code:
-	  STB7111-MBOARD, ST board ID: mb618).
 
 config SH_ST_MB628
 	bool "mb628: STx7141 Mboard"

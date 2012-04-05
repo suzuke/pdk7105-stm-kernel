@@ -25,7 +25,6 @@ static const char *cpu_name[] = {
 	[CPU_STX7100]   = "STx7100",	[CPU_STX7105]   = "STx7105",
 	[CPU_STX7106]   = "STx7106",	[CPU_STX7108]   = "STx7108",
 	[CPU_STX7109]   = "STx7109",	[CPU_STXH205]	= "STxH205",
-	[CPU_STX7111]   = "STx7111",	[CPU_STX7141]   = "STx7141",
 	[CPU_STX7200]   = "STx7200",	[CPU_STIH415]   = "STiH415",
 
 	[CPU_SH7763]	= "SH7763",	[CPU_SH7770]	= "SH7770",

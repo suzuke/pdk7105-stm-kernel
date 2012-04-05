@@ -19,7 +19,6 @@
 #include <linux/io.h>
 
 #include <linux/stm/clk.h>
-#include <linux/stm/stx7111.h>
 #include <linux/stm/sysconf.h>
 #include <linux/stm/wakeup_devices.h>
 

@@ -46,12 +46,6 @@
 #define ILC_FIRST_IRQ	65
 #define ILC_NR_IRQS	190
 #define ILC_IRQ(x)	(ILC_FIRST_IRQ + (x))
-#elif	defined(CONFIG_CPU_SUBTYPE_STX7111)
-#define ILC_FIRST_IRQ	176
-#define ILC_NR_IRQS	(64+36)
-#define ILC_INT_IRQ(x)	(ILC_FIRST_IRQ + (x))
-#define ILC_EXT_IRQ(x)	(ILC_FIRST_IRQ + 64 + (x))
-#define ILC_IRQ(x)	ILC_INT_IRQ(x)
 #elif	defined(CONFIG_CPU_SUBTYPE_STX7141)
 /* set this to 65 to allow 64 (INTEVT 0xa00) to demux */
 #define ILC_FIRST_IRQ	65

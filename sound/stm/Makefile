@@ -46,9 +46,6 @@ snd-stm-stx7105-y := stx7105.o
 obj-$(CONFIG_SND_STM_STX7108) += snd-stm-stx7108.o
 snd-stm-stx7108-y := stx7108.o
 
-obj-$(CONFIG_SND_STM_STX7111) += snd-stm-stx7111.o
-snd-stm-stx7111-y := stx7111.o
-
 obj-$(CONFIG_SND_STM_STX7141) += snd-stm-stx7141.o
 snd-stm-stx7141-y := stx7141.o
 
