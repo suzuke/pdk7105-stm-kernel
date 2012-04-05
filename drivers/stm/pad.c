@@ -226,6 +226,9 @@ static int __stm_pad_release(struct stm_pad_state *state)
 
 	for (i = 0; i < config->gpios_num; i++) {
 		unsigned gpio = config->gpios[i].gpio;
+		if (config->gpios[i].direction ==
+			stm_pad_gpio_direction_ignored)
+				continue;
 
 		BUG_ON(stm_pad_gpios[gpio] != stm_pad_gpio_claimed);
 		stm_pad_gpios[gpio] = stm_pad_gpio_unused;
