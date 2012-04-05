@@ -62,24 +62,6 @@ void sysconf_write(struct sysconf_field *field, unsigned long value);
 unsigned long sysconf_read(struct sysconf_field *field);
 
 /**
- * sysconf_address - Return the address memory of sysconfig register
- * @field: the sysconfig field to return
- *
- * This returns the address memory of sysconfig register
- * @field must have been claimed using sysconf_claim().
- */
-void *sysconf_address(struct sysconf_field *field);
-
-/**
- * sysconf_mask - Return the bitmask of sysconfig register
- * @field: the sysconfig field to return
- *
- * This returns the bitmask of sysconfig register
- * @field must have been claimed using sysconf_claim().
- */
-unsigned long sysconf_mask(struct sysconf_field *field);
-
-/**
  * sysconf_early_init - Used by board initialization code
  */
 void sysconf_early_init(struct platform_device *pdevs, int pdevs_num);

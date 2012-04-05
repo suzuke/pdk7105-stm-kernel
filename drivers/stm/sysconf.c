@@ -272,43 +272,6 @@ unsigned long sysconf_read(struct sysconf_field *field)
 }
 EXPORT_SYMBOL(sysconf_read);
 
-void *sysconf_address(struct sysconf_field *field)
-{
-	pr_debug("%s(field=0x%p)\n", __func__, field);
-
-	BUG_ON(!field);
-	MAGIC_CHECK(field);
-
-	pr_debug("%s()=0x%p\n", __func__, field->reg);
-
-	return field->reg;
-}
-EXPORT_SYMBOL(sysconf_address);
-
-unsigned long sysconf_mask(struct sysconf_field *field)
-{
-	int field_bits;
-	u32 result;
-
-	pr_debug("%s(field=0x%p)\n", __func__, field);
-
-	BUG_ON(!field);
-	MAGIC_CHECK(field);
-
-	field_bits = field->msb - field->lsb + 1;
-	BUG_ON(field_bits < 1 || field_bits > 32);
-
-	if (field_bits == 32)
-		result = ~0UL;
-	else
-		result = ((1 << field_bits) - 1) << field->lsb;
-
-	pr_debug("%s()=0x%u\n", __func__, result);
-
-	return result;
-}
-EXPORT_SYMBOL(sysconf_mask);
-
 void sysconf_reg_name(char *name, int size, int group, int num)
 {
 	BUG_ON(group < 0 || group >= sysconf_groups_num);
