@@ -70,7 +70,6 @@ config USB_ARCH_HAS_OHCI
 	default y if CPU_SUBTYPE_STX7105
 	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STX7141
-	default y if CPU_SUBTYPE_STX7200
 	# more:
 	default PCI
 
@@ -101,7 +100,6 @@ config USB_ARCH_HAS_EHCI
 	default y if CPU_SUBTYPE_STX7105
 	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STX7141
-	default y if CPU_SUBTYPE_STX7200
 	default y if ARCH_MMP
 	default PCI
 

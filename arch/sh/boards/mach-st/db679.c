@@ -20,7 +20,6 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/stm/platform.h>
-#include <linux/stm/stx7200.h>
 #include <mach/stem.h>
 
 
@@ -38,11 +37,6 @@ static int __init db679_init(void)
 			.emi_bank = STEM_CS1_BANK,
 			.pc_mode = 0,
 			.irq = STEM_INTR1_IRQ });
-#elif defined(CONFIG_CPU_SUBTYPE_STX7200)
-	stx7200_configure_pata(&(struct stx7200_pata_config) {
-			.emi_bank = STEM_CS0_BANK,
-			.pc_mode = 0,
-			.irq = STEM_INTR0_IRQ });
 #else
 #	error Unsupported SOC.
 #endif

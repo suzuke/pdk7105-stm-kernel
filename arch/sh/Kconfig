@@ -481,16 +481,6 @@ config CPU_SUBTYPE_STX7141
 	help
 	  Select STX7141 if you have an STx7141 CPU.
 
-config CPU_SUBTYPE_STX7200
-	bool "Support STx7200 processor"
-	select CPU_SUBTYPE_ST40
-	# Note this doesn't select CPU_ST40_300 because cut 1 was an ST40-200.
-	# Boards designed to take cut 2 or later must set CPU_ST40_300.
-	select SUPPORTS_32BIT
-	select STM_MIPHY
-	help
-	  Select STx7200 if you have an STx7200 CPU.
-
 config CPU_SUBTYPE_STXH205
 	bool "Support STxH205/7 (Lille/Liege) processors"
 	select CPU_ST40_300
@@ -659,7 +649,7 @@ config SH_TIMER_MTU2
 
 config SH_EXTERNAL_CLOCK
 	int "External clock"
-	depends on CPU_SUBTYPE_STX7100 || CPU_SUBTYPE_STX7200
+	depends on CPU_SUBTYPE_STX7100
 	default "30000000" if SH_ST_MB442
 	default "27000000" if SH_ST_HMP7100
 	default "27000000"

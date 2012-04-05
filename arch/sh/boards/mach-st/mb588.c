@@ -62,8 +62,6 @@
 
 #if defined(CONFIG_CPU_SUBTYPE_STX7105)
 #include <linux/stm/stx7105.h>
-#elif defined(CONFIG_CPU_SUBTYPE_STX7200)
-#include <linux/stm/stx7200.h>
 #elif defined(CONFIG_CPU_SUBTYPE_STX7108)
 #include <linux/stm/stx7108.h>
 #else
@@ -112,12 +110,6 @@ static int __init mb588_init(void)
 {
 #if defined(CONFIG_CPU_SUBTYPE_STX7105)
 	stx7105_configure_nand(&(struct stm_nand_config) {
-			.driver = stm_nand_flex,
-			.nr_banks = 1,
-			.banks = &nand_bank_data,
-			.rbn.flex_connected = STEM_NAND_RDY,});
-#elif defined(CONFIG_CPU_SUBTYPE_STX7200)
-	stx7200_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_flex,
 			.nr_banks = 1,
 			.banks = &nand_bank_data,

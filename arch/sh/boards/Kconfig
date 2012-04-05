@@ -636,26 +636,6 @@ config SH_ST_MB448
 	  STMicroelectronics STB7109E Reference Board (product code:
 	  STB7109E-REF, ST board ID: mb448).
 
-config SH_ST_MB519
-	bool "mb519: STx7200 Mboard"
-	depends on CPU_SUBTYPE_STX7200
-	select SH_ST_EPLD
-	select SH_ST_STEM
-	select SH_ST_STPM_HD_V1
-	default n
-	help
-	  Select SH_ST_MB519 if configuring for an
-	  STMicroelectronics STx7200 Mboard (product code: STB7200-MBOARD,
-	  ST board ID: mb519).
-
-config SH_ST_MB602
-	bool "mb602: STx5202 Reference board"
-	depends on CPU_SUBTYPE_STX7100
-	default n
-	help
-	  Select SH_ST_MB602 if configuring for an
-	  STMicroelectronics STB5202 Reference Board
-	  (product code: STB5202-REF, ST board ID: mb602).
 
 config SH_ST_MB628
 	bool "mb628: STx7141 Mboard"
@@ -669,18 +649,6 @@ config SH_ST_MB628
 	  Select STx7141 Mboard if configuring for an
 	  STMicroelectronics STx7141 MBoard (product code:
 	  STi7141-MBOARD, ST board ID: mb628).
-
-config SH_ST_MB671
-	bool "mb671: STx7200 cut 2.0 Mboard"
-	depends on CPU_SUBTYPE_STX7200
-	select CPU_ST40_300
-	select SH_ST_EPLD
-	select SH_ST_STEM
-	select SH_ST_STPM_HD_V1
-	default n
-	help
-	  Select SH_ST_MB671 if configuring for an STMicroelectronics
-	  STx7200 cut 2.0 Mboard (ST board ID: mb671).
 
 config SH_ST_MB680
 	bool "mb680: STx7105 Validation board"
@@ -763,27 +731,6 @@ config SH_ST_DB679
 	  Supports DB679 STEM board. See "arch/sh/boards/st/common/db679.c"
 	  for configuration informations.
 
-config SH_ST_MB520
-	bool "mb520: STB peripherals board"
-	depends on SH_ST_STPM_HD_V1
-	select I2C
-	select I2C_BOARDINFO
-	select I2C_STM
-	select GPIO_PCF857X
-	select SND_STM_CONV_GPIO if SND_STM
-	default n
-	help
-	  Select SH_ST_MB520 if your processor board is connected
-	  to this STB-like peripherals board.
-
-config SH_ST_MB562
-	bool "mb562: BD-DVD peripherals board"
-	depends on SH_ST_STPM_HD_V1
-	default n
-	help
-	  Select SH_ST_MB562 if your processor board is connected
-	  to this multi-audio-outputs board.
-
 config SH_ST_MB588
 	bool "mb588: NAND Flash STEM board"
 	depends on SH_ST_STEM
@@ -839,7 +786,6 @@ source "arch/sh/boards/mach-b2057/Kconfig"
 source "arch/sh/boards/mach-eud7141/Kconfig"
 source "arch/sh/boards/mach-mb628/Kconfig"
 source "arch/sh/boards/mach-mb837/Kconfig"
-source "arch/sh/boards/mach-mb671/Kconfig"
 source "arch/sh/boards/mach-hdk7106/Kconfig"
 source "arch/sh/boards/mach-hdk7108/Kconfig"
 source "arch/sh/boards/mach-hdkh225/Kconfig"
