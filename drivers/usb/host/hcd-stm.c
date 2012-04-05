@@ -14,8 +14,10 @@
 #include <linux/stm/device.h>
 #include <linux/stm/amba_bridge.h>
 #include <linux/pm_runtime.h>
+#include <linux/pm_clock.h>
 #include <linux/delay.h>
 #include <linux/usb.h>
+#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include "hcd-stm.h"
@@ -29,41 +31,13 @@
 #define dgb_print(fmt, args...)
 #endif
 
-#define USB_48_CLK	0
-#define USB_IC_CLK	1
-#define USB_PHY_CLK	2
-
-static void stm_usb_clk_xxable(struct drv_usb_data *drv_data, int enable)
-{
-	int i;
-	struct clk *clk;
-	for (i = 0; i < USB_CLKS_NR; ++i) {
-		clk = drv_data->clks[i];
-		if (!clk || IS_ERR(clk))
-			continue;
-		if (enable) {
-			/*
-			 * On some chip the USB_48_CLK comes from
-			 * ClockGen_B. In this case a clk_set_rate
-			 * is welcome because the code becomes
-			 * target_pack independant
-			 */
-			if (clk_enable(clk) == 0 && i == USB_48_CLK)
-				clk_set_rate(clk, 48000000);
-		} else
-			clk_disable(clk);
-	}
-}
-
-static void stm_usb_clk_enable(struct drv_usb_data *drv_data)
-{
-	stm_usb_clk_xxable(drv_data, 1);
-}
-
-static void stm_usb_clk_disable(struct drv_usb_data *drv_data)
-{
-	stm_usb_clk_xxable(drv_data, 0);
-}
+/*
+ * USB-IP needs 3 clocks:
+ * - a 48 MHz oscillator (to generate a final 480 MHz)
+ * - a 100 MHz oscillator (for the NI)
+ * - an oscillator for Phy
+ * other clocks are generated internally using
+ */
 
 static int stm_usb_boot(struct platform_device *pdev)
 {
@@ -104,9 +78,9 @@ static int stm_usb_remove(struct platform_device *pdev)
 {
 	struct drv_usb_data *dr_data = platform_get_drvdata(pdev);
 
-	stm_device_power(dr_data->device_state, stm_device_power_off);
+	pm_clk_destroy(&pdev->dev);
 
-	stm_usb_clk_disable(dr_data);
+	stm_device_power(dr_data->device_state, stm_device_power_off);
 
 	platform_device_unregister(dr_data->ehci_device);
 	platform_device_unregister(dr_data->ohci_device);
@@ -145,17 +119,17 @@ error:
 	return ERR_PTR(retval);
 }
 
-static int stm_usb_probe(struct platform_device *pdev)
+static int __devinit stm_usb_probe(struct platform_device *pdev)
 {
 	struct stm_plat_usb_data *plat_data = pdev->dev.platform_data;
 	struct drv_usb_data *dr_data;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	int i;
-	static char *usb_clks_n[USB_CLKS_NR] = {
-		[USB_48_CLK] = "usb_48_clk",
-		[USB_IC_CLK] = "usb_ic_clk",
-		[USB_PHY_CLK] = "usb_phy_clk"
+	static __devinitdata char *usb_clks_n[] = {
+		"usb_48_clk",
+		"usb_ic_clk",
+		"usb_phy_clk"
 	};
 	resource_size_t len;
 	void __iomem *amba_base;
@@ -167,14 +141,26 @@ static int stm_usb_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dr_data);
 
-	for (i = 0; i < USB_CLKS_NR; ++i) {
-		dr_data->clks[i] = clk_get(dev, usb_clks_n[i]);
-		if (!dr_data->clks[i] || IS_ERR(dr_data->clks[i]))
-			pr_warning("%s: %s clock not found for %s\n",
-				__func__, usb_clks_n[i], dev_name(dev));
+#ifdef CONFIG_PM
+	pm_clk_init(dev);
+	for (i = 0; i < ARRAY_SIZE(usb_clks_n); ++i) {
+		struct clk *clk = clk_get(dev, usb_clks_n[i]);
+		if (IS_ERR(clk)) {
+			pr_warning("clk %s not found\n", usb_clks_n[i]);
+			continue;
+		}
+		clk_enable(clk);
+		if (!i)
+			/*
+			 * On some chip the USB_48_CLK comes from
+			 * ClockGen_B. In this case a clk_set_rate
+			 * is welcome because the code becomes
+			 * target_pack independant
+			 */
+			clk_set_rate(clk, 48000000);
+		pm_clk_add(dev, usb_clks_n[i]);
 	}
-
-	stm_usb_clk_enable(dr_data);
+#endif
 
 	dr_data->device_state =
 		devm_stm_device_init(&pdev->dev, plat_data->device_config);
@@ -245,9 +231,8 @@ static void stm_usb_shutdown(struct platform_device *pdev)
 	struct drv_usb_data *dr_data = platform_get_drvdata(pdev);
 	dgb_print("\n");
 
+	pm_clk_destroy(&pdev->dev);
 	stm_device_power(dr_data->device_state, stm_device_power_off);
-
-	stm_usb_clk_disable(dr_data);
 }
 
 #ifdef CONFIG_PM
@@ -276,8 +261,7 @@ static int stm_usb_suspend(struct device *dev)
 
 	stm_device_power(dr_data->device_state, stm_device_power_off);
 
-	stm_usb_clk_disable(dr_data);
-
+	pm_clk_suspend(dev);
 	return 0;
 }
 
@@ -293,7 +277,7 @@ static int stm_usb_resume(struct device *dev)
 
 	dgb_print("\n");
 
-	stm_usb_clk_enable(dr_data);
+	pm_clk_resume(dev);
 
 	stm_device_power(dr_data->device_state, stm_device_power_on);
 
