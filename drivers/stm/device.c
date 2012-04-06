@@ -210,7 +210,16 @@ unsigned long long stm_device_sysconf_read(struct stm_device_state *state,
 }
 EXPORT_SYMBOL(stm_device_sysconf_read);
 
+void stm_device_setup(struct stm_device_state *device_state)
+{
+	if (device_state->config &&
+	    device_state->config->pad_config)
+		stm_pad_setup(device_state->pad_state);
 
+	if (device_state->config->init)
+		device_state->config->init(device_state);
+}
+EXPORT_SYMBOL(stm_device_setup);
 
 void stm_device_power(struct stm_device_state *device_state,
 		enum stm_device_power_state power_state)

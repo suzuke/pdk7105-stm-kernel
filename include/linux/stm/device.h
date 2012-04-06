@@ -103,6 +103,7 @@ struct stm_device_state *devm_stm_device_init(struct device *dev,
 void devm_stm_device_exit(struct device *dev,
 		struct stm_device_state *state);
 
+void stm_device_setup(struct stm_device_state *state);
 void stm_device_power(struct stm_device_state *state,
 		enum stm_device_power_state);
 
