@@ -8,3 +8,7 @@ obj-$(CONFIG_LOCAL_TIMERS)	+= localtimer.o
 obj-$(CONFIG_PCI)		+= pci-glue.o
 
 obj-$(CONFIG_HOTPLUG_CPU)	+= hotplug.o
+
+# Hibernation on Disk
+obj-$(CONFIG_HIBERNATION)	+= swsusp.o swsusp-asm.o
+
