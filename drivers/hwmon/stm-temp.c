@@ -204,11 +204,20 @@ static int stm_temp_resume(struct device *dev)
 	return 0;
 }
 
+static int stm_temp_restore(struct device *dev)
+{
+	struct stm_temp_sensor *sensor = dev_get_drvdata(dev);
+	stm_device_setup(sensor->device_state);
+
+	return stm_temp_resume(dev);
+}
+
 static struct dev_pm_ops stm_temp_pm = {
 	.suspend = stm_temp_suspend,  /* on standby/memstandby */
 	.resume = stm_temp_resume,    /* resume from standby/memstandby */
 	.freeze = stm_temp_suspend,
-	.restore = stm_temp_resume,
+	.thaw = stm_temp_restore,
+	.restore = stm_temp_restore,
 	.runtime_suspend = stm_temp_suspend,
 	.runtime_resume = stm_temp_resume,
 };
