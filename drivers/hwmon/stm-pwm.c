@@ -24,6 +24,7 @@ struct stm_pwm {
 	void* base;
 	struct device *hwmon_dev;
 	struct stm_plat_pwm_data *platform_data;
+	struct stm_pad_state *pad_state[STM_PLAT_PWM_NUM_CHANNELS];
 };
 
 /* PWM registers */
@@ -101,11 +102,9 @@ static struct attribute_group stm_pwm_attr_group = {
 	.attrs = stm_pwm_attributes,
 };
 
-static int
-stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
+static void stm_pwm_enable(struct stm_pwm *pwm)
 {
 	u32 reg = 0;
-	int channel;
 
 	/* disable PWM if currently running */
 	reg = readl(pwm->base + PWM_CTRL);
@@ -127,14 +126,24 @@ stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
 	/* enable */
 	reg |= PWM_CTRL_PWM_EN;
 	writel(reg, pwm->base + PWM_CTRL);
+}
+
+static int
+stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
+{
+	int channel;
+
+	stm_pwm_enable(pwm);
 
 	for (channel = 0; channel < STM_PLAT_PWM_NUM_CHANNELS; channel++) {
 		if (pwm->platform_data->channel_enabled[channel]) {
 			/* Initial value */
 			writel(0, pwm->base + PWM_VAL(channel));
-			if (!devm_stm_pad_claim(&pdev->dev,
+			pwm->pad_state[channel] =
+				devm_stm_pad_claim(&pdev->dev,
 				pwm->platform_data->channel_pad_config[channel],
-				dev_name(&pdev->dev)))
+				dev_name(&pdev->dev));
+			if (!pwm->pad_state[channel])
 				return -ENODEV;
 		}
 	}
@@ -213,9 +222,35 @@ static int stm_pwm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_HIBERNATION
+static int stm_pwm_restore(struct device *dev)
+{
+	struct stm_pwm *pwm = dev_get_drvdata(dev);
+	int channel;
+
+	stm_pwm_enable(pwm);
+
+	for (channel = 0; channel < STM_PLAT_PWM_NUM_CHANNELS; channel++) {
+		if (!pwm->platform_data->channel_enabled[channel])
+			continue;
+		writel(0, pwm->base + PWM_VAL(channel));
+		stm_pad_setup(pwm->pad_state[channel]);
+	}
+	return 0;
+}
+
+static const struct dev_pm_ops stm_pwm_pm_ops = {
+	.thaw = stm_pwm_restore,
+	.restore = stm_pwm_restore,
+};
+#endif
+
 static struct platform_driver stm_pwm_driver = {
 	.driver = {
 		.name		= "stm-pwm",
+#ifdef CONFIG_HIBERNATION
+		.pm		= &stm_pwm_pm_ops,
+#endif
 	},
 	.probe		= stm_pwm_probe,
 	.remove		= stm_pwm_remove,
