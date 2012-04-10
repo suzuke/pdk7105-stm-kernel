@@ -427,18 +427,10 @@ static int __init mb903_device_init(void)
 arch_initcall(mb903_device_init);
 
 
-static void __iomem *mb903_ioport_map(unsigned long port, unsigned int size)
-{
-	/* Shouldn't be here! */
-	BUG();
-	return NULL;
-}
-
 struct sh_machine_vector mv_mb903 __initmv = {
 	.mv_name = "mb903",
 	.mv_setup = mb903_setup,
 	.mv_nr_irqs = NR_IRQS,
-	.mv_ioport_map = mb903_ioport_map,
 };
 
 
