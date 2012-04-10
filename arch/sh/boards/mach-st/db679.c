@@ -26,13 +26,7 @@
 
 static int __init db679_init(void)
 {
-#if defined(CONFIG_CPU_SUBTYPE_STX7100)
-	stx7100_configure_pata(&(struct stx7100_pata_config) {
-			.emi_bank = STEM_CS0_BANK,
-			.pcm_mode = 0,
-			.irq = STEM_INTR0_IRQ });
-#elif defined(CONFIG_CPU_SUBTYPE_STX7105)
-	/* Need to use STEM bank 1 as bank 0 isn't big enough */
+#if defined(CONFIG_CPU_SUBTYPE_STX7105)
 	stx7105_configure_pata(&(struct stx7105_pata_config) {
 			.emi_bank = STEM_CS1_BANK,
 			.pc_mode = 0,

@@ -533,22 +533,6 @@ config SH_ST_HDK7108
 	  Select SH_ST_HDK7108 if configuring for a
 	  STMicroelectronics STi7108 Reference Board.
 
-config SH_ST_HDREF
-	bool "ST HDref board"
-	depends on CPU_SUBTYPE_STX7100
-	default n
-	help
-	  Select ST HDref board if configuring for an
-	  STMicroelectronics ST HD Reference Board
-
-config SH_ST_HMP7100
-	bool "STx7100 HMP board"
-	depends on CPU_SUBTYPE_STX7100
-	default n
-	help
-	  Select STx7100 HMP board if configuring for an
-	  STMicroelectronics STB71xx HMP Reference Board
-
 config SH_ST_HMP7105
 	bool "HMP7105: STx7105 Reference board"
 	depends on CPU_SUBTYPE_STX7105
@@ -557,13 +541,6 @@ config SH_ST_HMP7105
 	help
 	  Select HMP7105 if configuring for an STMicroelectronics
 	  HMP7105 reference board.
-
-config SH_ST_HMS1
-	bool "HMS1"
-	depends on CPU_SUBTYPE_STX7100
-	default n
-	help
-	  Select HMS1 if configuring for a HMS1 board.
 
 config SH_ST_IPTV7105
 	bool "iptv7105: STx7105 IPTV pluggin board"
@@ -605,37 +582,6 @@ config SH_ST_MB374
 	  STMicroelectronics ST40RA Starter Board (also known as the
 	  ST40RA DDR Eval board) (product code: ST40RA-Starter,
 	  ST board ID: mb374).
-
-config SH_ST_MB411
-	bool "mb411: STx7100 Validation board"
-	depends on CPU_SUBTYPE_STX7100
-	select SH_ST_HARP_IRQ
-	select SH_ST_EPLD
-	select SH_ST_STEM
-	default n
-	help
-	  Select STb7100 Validation if configuring for an
-	  STMicroelectronics STb7100 Validation Board (product code:
-	  STi7100-MBOARD, ST board ID: mb411).
-
-config SH_ST_MB442
-	bool "mb442: STb7100 Reference board"
-	depends on CPU_SUBTYPE_STX7100
-	default n
-	help
-	  Select STb7100 Reference if configuring for an
-	  STMicroelectronics STb7100 Reference Board (product code:
-	  STb7100-REF). This is sometimes referred to as the CoCo board.
-
-config SH_ST_MB448
-	bool "mb448: STb7109E Reference board"
-	depends on CPU_SUBTYPE_STX7100
-	default n
-	help
-	  Select STb7109E Reference if configuring for an
-	  STMicroelectronics STB7109E Reference Board (product code:
-	  STB7109E-REF, ST board ID: mb448).
-
 
 config SH_ST_MB628
 	bool "mb628: STx7141 Mboard"

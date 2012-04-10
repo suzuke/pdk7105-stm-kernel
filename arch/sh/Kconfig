@@ -451,13 +451,6 @@ config CPU_SUBTYPE_STX5206
 	help
 	  Select this if you have a STx5206 CPU (or derivative).
 
-config CPU_SUBTYPE_STX7100
-	bool "Support STx7100/7109 processors"
-	select CPU_SUBTYPE_ST40
-	select SUPPORTS_32BIT
-	help
-	  Select STX7100 if you have an STx7100 or STx7109 (or derivative).
-
 config CPU_SUBTYPE_STX7105
 	bool "Support STx7105/7106 processors"
 	select CPU_ST40_300
@@ -646,20 +639,6 @@ config SH_TIMER_MTU2
 	default y
 	help
 	  This enables build of the MTU2 timer driver.
-
-config SH_EXTERNAL_CLOCK
-	int "External clock"
-	depends on CPU_SUBTYPE_STX7100
-	default "30000000" if SH_ST_MB442
-	default "27000000" if SH_ST_HMP7100
-	default "27000000"
-	help
-	  The kernel needs to know what the frequency of chip's external
-	  clock is, so that it can calculate what frequency the internal
-	  clocks are running at.
-
-	  The usual symptoms of getting this wrong are the serial port
-	  output being corrupted.
 
 config GENERIC_CALIBRATE_DELAY
 	bool "Auto calibration of the BogoMIPS value"

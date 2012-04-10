@@ -66,7 +66,6 @@ config USB_ARCH_HAS_OHCI
 	default y if CPU_SUBTYPE_STIH415
 	default y if CPU_SUBTYPE_STX5197
 	default y if CPU_SUBTYPE_STX5206
-	default y if CPU_SUBTYPE_STX7100
 	default y if CPU_SUBTYPE_STX7105
 	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STX7141
@@ -96,7 +95,6 @@ config USB_ARCH_HAS_EHCI
 	default y if CPU_SUBTYPE_STIH415
 	default y if CPU_SUBTYPE_STX5197
 	default y if CPU_SUBTYPE_STX5206
-	default y if CPU_SUBTYPE_STX7100
 	default y if CPU_SUBTYPE_STX7105
 	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STX7141
