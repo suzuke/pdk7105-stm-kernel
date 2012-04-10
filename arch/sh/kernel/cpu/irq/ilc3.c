@@ -126,8 +126,7 @@ int ilc2irq(unsigned int evtcode)
 	defined(CONFIG_CPU_SUBTYPE_STIH415) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108)
 	unsigned int priority = 7;
-#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
-	defined(CONFIG_CPU_SUBTYPE_STX7105)
+#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510)
 	unsigned int priority = 14 - evt2irq(evtcode);
 #endif
 	unsigned long status;
@@ -157,8 +156,7 @@ void ilc_irq_demux(unsigned int irq, struct irq_desc *desc)
 	defined(CONFIG_CPU_SUBTYPE_STIH415) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7108)
 	unsigned int priority = 7;
-#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
-	defined(CONFIG_CPU_SUBTYPE_STX7105)
+#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510)
 	unsigned int priority = 14 - irq;
 #endif
 	int handled = 0;
@@ -230,8 +228,7 @@ static unsigned int startup_ilc_irq(struct irq_data *d)
 	ilc->priority[priority][_BANK(input)] |= _BIT(input);
 	spin_unlock_irqrestore(&ilc->lock, flags);
 
-#if	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
-	defined(CONFIG_CPU_SUBTYPE_STX7105)
+#if	defined(CONFIG_CPU_SUBTYPE_FLI7510)
 	ILC_SET_PRI(ilc->base, input, priority);
 #elif	defined(CONFIG_CPU_SUBTYPE_STXH205) || \
 	defined(CONFIG_CPU_SUBTYPE_STIH415) || \

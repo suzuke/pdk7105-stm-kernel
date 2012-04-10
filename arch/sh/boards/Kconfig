@@ -397,14 +397,6 @@ config SH_ST_B2057
 	  Select SH_ST_B2057 if configuring for a
 	  STMicroelectronics STxH207-HDK Reference Board.
 
-config SH_ST_B2068
-	bool "B2068 : STx7167 Reference board"
-	depends on CPU_SUBTYPE_STX7105
-	default n
-	help
-	  Select B2068 if configuring for an
-	  STMicroelectronics STx7167 Reference Board.
-
 config SH_ST_FLDB
 	bool "fldb: Freeman Lite Development Board"
 	depends on CPU_SUBTYPE_FLI7510
@@ -424,56 +416,6 @@ config SH_ST_FUDB
 	  Select this if configuring for a
 	  Freeman Ultra Development Board.
 
-config SH_ST_HDK7105
-	bool "HDK7105 : STx7105 HDK Reference board"
-	depends on CPU_SUBTYPE_STX7105
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select HDK7105 if configuring for an
-	  STMicroelectronics STi7105 HDK Reference Board.
-
-config SH_ST_HDKH246
-	bool "HDKH246 : STi235/236/246 Reference boards"
-	depends on CPU_SUBTYPE_STX7105
-	default n
-	help
-	  Select HDKH246 if configuring for an
-	  STMicroelectronics STiH235/H236/H246 Reference Boards.
-
-config SH_ST_HDKH251
-	bool "HDKH251 : STiH251 HDK Reference board"
-	depends on CPU_SUBTYPE_STX7105
-	default n
-	help
-	  Select HDKH251 if configuring for an
-	  STMicroelectronics STiH251 HDK Reference Board.
-
-config SH_ST_HDK7197
-	bool "HDK7197 : STx7197 HDK Reference board"
-	depends on CPU_SUBTYPE_STX7105
-	default n
-	help
-	  Select HDK7197 if configuring for an
-	  STMicroelectronics STi7197 HDK Reference Board.
-
-config SH_ST_7102ISDB
-	bool "7102ISDB : STi7102 ISDB board"
-	depends on CPU_SUBTYPE_STX7105
-	default n
-	help
-	  Select 7102ISDB if configuring for an
-	  STMicroelectronics 7102ISDB Board.
-
-config SH_ST_HDK7106
-	bool "HDK7106 : STx7106 HDK Reference board"
-	depends on CPU_SUBTYPE_STX7105
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select HDK7106 if configuring for an
-	  STMicroelectronics STi7106 HDK Reference Board.
-
 config SH_ST_HDK7108
 	bool "HDK7108: STx7108 Reference board"
 	depends on CPU_SUBTYPE_STX7108
@@ -482,32 +424,6 @@ config SH_ST_HDK7108
 	help
 	  Select SH_ST_HDK7108 if configuring for a
 	  STMicroelectronics STi7108 Reference Board.
-
-config SH_ST_HMP7105
-	bool "HMP7105: STx7105 Reference board"
-	depends on CPU_SUBTYPE_STX7105
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select HMP7105 if configuring for an STMicroelectronics
-	  HMP7105 reference board.
-
-config SH_ST_IPTV7105
-	bool "iptv7105: STx7105 IPTV pluggin board"
-	depends on CPU_SUBTYPE_STX7105
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select SH_ST_IPTV7105 if configuring for an STx7105 IPTV board
-
-config SH_ST_NGB7167
-	bool "NGB7167 : STi7167-NGB Reference board"
-	depends on CPU_SUBTYPE_STX7105
-	select FIXED_PHY
-	default n
-	help
-	  Select NGB7167 if configuring for an
-	  STMicroelectronics STi7167-NGB Reference Board.
 
 config SH_ST_MB360
 	bool "mb360: ST40RA Eval"
@@ -533,18 +449,6 @@ config SH_ST_MB374
 	  ST40RA DDR Eval board) (product code: ST40RA-Starter,
 	  ST board ID: mb374).
 
-config SH_ST_MB680
-	bool "mb680: STx7105 Validation board"
-	depends on CPU_SUBTYPE_STX7105
-	select SH_ST_STEM
-	select SH_ST_STPM_HD_V2
-	select SYS_SUPPORTS_PCI
-	default n
-	help
-	  Select STx7105 Validation if configuring for an
-	  STMicroelectronics STx7105 Validation Board (product code:
-	  STi7105-MBOARD, ST board ID: mb680).
-
 config SH_ST_MB837
 	bool "mb837: STx7108 Validation board"
 	depends on CPU_SUBTYPE_STX7108
@@ -556,14 +460,6 @@ config SH_ST_MB837
 	  Select STx7108 Validation if configuring for an
 	  STMicroelectronics STx7108 Validation Board (product code:
 	  STi7108-MBOARD, ST board ID: mb837).
-
-config SH_ST_MB839
-	bool "mb839: STi7105 Reference Board"
-	depends on CPU_SUBTYPE_STX7105
-	default n
-	help
-	  Select MB839 if configuring for an
-	  STMicroelectronics STi7105 MB839 Reference Board.
 
 config SH_ST_MB903
 	bool "mb903: STi7108M Reference board"
@@ -584,14 +480,6 @@ config SH_ST_DB641
 	  See "arch/sh/boards/st/common/db641.c" for configuration
 	  informations.
 
-config SH_ST_DB679
-	bool "db679: STEM based EMI to ATAPI drive interface"
-	depends on SH_ST_STEM
-	default n
-	help
-	  Supports DB679 STEM board. See "arch/sh/boards/st/common/db679.c"
-	  for configuration informations.
-
 config SH_ST_MB588
 	bool "mb588: NAND Flash STEM board"
 	depends on SH_ST_STEM
@@ -599,43 +487,6 @@ config SH_ST_MB588
 	help
 	  Supports MB588 STEM board. See "arch/sh/boards/st/common/mb588.c"
 	  for configuration informations.
-
-config SH_ST_MB705
-	bool "mb705: Generic HD peripherals board"
-	depends on SH_ST_STPM_HD_V2
-	select SH_ST_EPLD
-	default n
-	help
-	  Select SH_ST_MB705 if your processor board is connected
-	  to this STB-like peripherals board.
-
-config SH_ST_MB705_AUDIO
-	tristate "Driver for audio peripherals on mb705"
-	depends on SH_ST_MB705
-	depends on SND_STM
-	default y
-	help
-	  Select this option to enable support for audio perypeharals
-	  on the mb705 (DACs and SPDIF-I2S converter).
-
-	  If you compile this driver as a module, it will be
-	  called mb705-audio.ko
-
-config SH_ST_MB705_DISPLAY
-	bool "Driver for LED display on mb705"
-	depends on SH_ST_MB705
-	default y
-	help
-	  Select this option to enable a simple driver for the alphanumeric
-	  LED display on the mb705.
-
-config SH_ST_MB705_FPBUTTON
-	bool "Driver for the front pannel button on mb705"
-	depends on SH_ST_MB705
-	default y
-	help
-	  Select this option to enable a simple driver for the front
-	  pannel button on the mb705.
 
 source "arch/sh/boards/mach-r2d/Kconfig"
 source "arch/sh/boards/mach-highlander/Kconfig"
@@ -645,7 +496,6 @@ source "arch/sh/boards/mach-rsk/Kconfig"
 source "arch/sh/boards/mach-b2039/Kconfig"
 source "arch/sh/boards/mach-b2057/Kconfig"
 source "arch/sh/boards/mach-mb837/Kconfig"
-source "arch/sh/boards/mach-hdk7106/Kconfig"
 source "arch/sh/boards/mach-hdk7108/Kconfig"
 source "arch/sh/boards/mach-adi7108/Kconfig"
 source "arch/sh/boards/mach-b2000/Kconfig"

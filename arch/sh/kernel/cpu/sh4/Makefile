@@ -28,7 +28,6 @@ obj-$(CONFIG_CPU_SUBTYPE_FLI7510)	+= setup-fli7510.o
 obj-$(CONFIG_CPU_SUBTYPE_ST40STB1)	+= setup-st40ra.o
 obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= setup-stxh205.o
 obj-$(CONFIG_CPU_SUBTYPE_STIH415)	+= setup-stih415.o
-obj-$(CONFIG_CPU_SUBTYPE_STX7105)	+= setup-stx7105.o
 obj-$(CONFIG_CPU_SUBTYPE_STX7108)	+= setup-stx7108.o
 
 # Primary on-chip clocks (common)
@@ -37,7 +36,6 @@ clock-$(CONFIG_CPU_SH4)			:= clock-sh4.o
 clock-$(CONFIG_CPU_SUBTYPE_FLI7510)	:= clock-fli7510.o
 clock-$(CONFIG_CPU_SUBTYPE_STIH415)	:= clock-stih415.o
 clock-$(CONFIG_CPU_SUBTYPE_STIH415)	:= clock-stih415.o
-clock-$(CONFIG_CPU_SUBTYPE_STX7105)	:= clock-stx7105.o
 clock-$(CONFIG_CPU_SUBTYPE_STX7108)	:= clock-stx7108.o
 endif
 
@@ -50,12 +48,10 @@ obj-$(CONFIG_PERF_EVENTS)		+= $(perf-y)
 obj-$(CONFIG_CPU_SUBTYPE_ST40)		+= stm-tmu.o
 
 cpufreq-y				:= cpufreq-stm.o
-cpufreq-$(CONFIG_CPU_SUBTYPE_STX7105)	+= cpufreq-stx7105.o
 cpufreq-$(CONFIG_CPU_SUBTYPE_STX7108)	+= cpufreq-stx7108.o
 obj-$(CONFIG_STM_CPU_FREQ)		+= $(cpufreq-y)
 
 suspend-y				:= stm_suspend.o stm_suspend-core.o
-suspend-$(CONFIG_CPU_SUBTYPE_STX7105)	+= suspend-stx7105.o
 suspend-$(CONFIG_CPU_SUBTYPE_STX7108)	+= suspend-stx7108.o
 suspend-$(CONFIG_CPU_SUBTYPE_FLI7510)	+= suspend-fli7510.o
 obj-$(CONFIG_SUSPEND)			+= $(suspend-y)

@@ -437,14 +437,6 @@ config CPU_SUBTYPE_STIH415
 	help
 	  Select STIH415 if you have an STiH415 (Orly) CPU.
 
-config CPU_SUBTYPE_STX7105
-	bool "Support STx7105/7106 processors"
-	select CPU_ST40_300
-	select SUPPORTS_32BIT
-	select STM_MIPHY
-	help
-	  Select this if you have STx7105 or STx7106 CPU (or derivative).
-
 config CPU_SUBTYPE_STX7108
 	bool "Support STx7108 processors"
 	select CPU_ST40_300
