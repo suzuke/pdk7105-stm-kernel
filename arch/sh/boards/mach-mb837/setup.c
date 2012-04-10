@@ -211,7 +211,7 @@ void __init mbxxx_configure_serial_flash(struct spi_board_info *serial_flash)
 
 
 
-int pcibios_map_platform_irq(struct pci_dev *dev, u8 slot, u8 pin)
+int pcibios_map_platform_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {
 	/* We can use the standard function on this board */
 	return stx7108_pcibios_map_platform_irq(&mb837_pci_config, pin);
@@ -330,21 +330,9 @@ static int __init mb837_devices_init(void)
 arch_initcall(mb837_devices_init);
 
 
-
-static void __iomem *mb837_ioport_map(unsigned long port, unsigned int size)
-{
-	/* However picking somewhere safe isn't as easy as you might
-	 * think.  I used to use external ROM, but that can cause
-	 * problems if you are in the middle of updating Flash. So I'm
-	 * now using the processor core version register, which is
-	 * guaranteed to be available, and non-writable. */
-	return (void __iomem *)CCN_PVR;
-}
-
 struct sh_machine_vector mv_mb837 __initmv = {
 	.mv_name		= "mb837",
 	.mv_setup		= mb837_setup,
 	.mv_nr_irqs		= NR_IRQS,
-	.mv_ioport_map		= mb837_ioport_map,
 	STM_PCI_IO_MACHINE_VEC
 };
