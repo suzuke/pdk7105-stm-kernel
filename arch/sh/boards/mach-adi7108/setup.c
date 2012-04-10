@@ -373,21 +373,10 @@ static int __init device_init(void)
 arch_initcall(device_init);
 
 
-static void __iomem *adi7108_ioport_map(unsigned long port, unsigned int size)
-{
-	/* If we have PCI then this should never be called because we
-	 * are using the generic iomap implementation. If we don't
-	 * have PCI then there are no IO mapped devices, so it still
-	 * shouldn't be called. */
-	BUG();
-	return NULL;
-}
-
 struct sh_machine_vector mv_adi7108 __initmv = {
 	.mv_name = "adi7108",
 	.mv_setup = adi7108_setup,
 	.mv_nr_irqs = NR_IRQS,
-	.mv_ioport_map = adi7108_ioport_map,
 };
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY
