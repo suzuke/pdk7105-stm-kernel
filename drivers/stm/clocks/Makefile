@@ -3,7 +3,6 @@
 #
 
 clock-y					:= clock-common.o
-clock-$(CONFIG_CPU_SUBTYPE_FLI7510)	+= clock-fli7510.o
 clock-$(CONFIG_CPU_SUBTYPE_FLI7610)	+= clock-fli7610.o clock-stxmpe41.o clock-stxtae.o
 clock-$(CONFIG_CPU_SUBTYPE_STXH205)	+= clock-stxh205.o
 clock-$(CONFIG_CPU_SUBTYPE_STIH415)	+= clock-stih415.o clock-stxmpe41.o clock-stxsasg1.o

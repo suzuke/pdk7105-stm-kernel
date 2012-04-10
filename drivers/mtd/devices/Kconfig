@@ -105,7 +105,6 @@ config M25PXX_USE_FAST_READ
 config MTD_STM_SPI_FSM
 	tristate "ST Microelectronics SPI-FSM Serial Flash Controller"
 	depends on (CPU_SUBTYPE_STX7108 || \
-		    CPU_SUBTYPE_FLI7510 || \
 		    CPU_SUBTYPE_STXH205 || \
 		    CPU_SUBTYPE_STIH415)
 	help
