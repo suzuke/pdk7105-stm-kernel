@@ -684,7 +684,7 @@ late_initcall(stm_l2_sysfs_init);
 
 /* Driver initialization */
 
-static int __init stm_l2_probe(struct platform_device *pdev)
+static int __devinit stm_l2_probe(struct platform_device *pdev)
 {
 	struct resource *mem;
 	unsigned long addr, size;

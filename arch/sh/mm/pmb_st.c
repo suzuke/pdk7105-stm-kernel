@@ -715,7 +715,7 @@ apply_boot_mappings(struct pmb_mapping *uc_mapping, struct pmb_mapping *ram_mapp
 struct pmb_mapping *uc_mapping, *ram_mapping
 	__attribute__ ((__section__ (".uncached.data")));
 
-void __init pmb_init(void)
+void __devinit pmb_init(void)
 {
 	int i;
 	int entry;

@@ -99,7 +99,7 @@ static void stm_rng_poll(unsigned long arg)
  * Platform bus support
  */
 
-static int __init stm_rng_probe(struct platform_device *rng_device)
+static int __devinit stm_rng_probe(struct platform_device *rng_device)
 {
 	struct resource *res;
 
@@ -149,7 +149,7 @@ static int __init stm_rng_probe(struct platform_device *rng_device)
 	return 0;
 }
 
-static int stm_rng_remove(struct platform_device *dev)
+static int __devexit stm_rng_remove(struct platform_device *dev)
 {
 	del_timer_sync(&stm_rng_timer);
 	iounmap(stm_rng_base);
