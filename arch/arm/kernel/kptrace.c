@@ -26,7 +26,6 @@
 #include <linux/prctl.h>
 #include <linux/relay.h>
 #include <linux/debugfs.h>
-#include <linux/sysdev.h>
 #include <linux/futex.h>
 #include <linux/version.h>
 #include <trace/kptrace.h>

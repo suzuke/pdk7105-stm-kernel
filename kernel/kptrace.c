@@ -26,7 +26,7 @@
 #include <linux/prctl.h>
 #include <linux/relay.h>
 #include <linux/debugfs.h>
-#include <linux/sysdev.h>
+#include <linux/device.h>
 #include <linux/futex.h>
 #include <linux/version.h>
 #include <trace/kptrace.h>
@@ -267,16 +267,16 @@ tracepoint_store_attrs(struct kobject *kobj,
 
 /* call stack depth parameter */
 static ssize_t
-kptrace_stackdepth_show_attrs(struct sys_device *device,
-			      struct sysdev_attribute *attr, char *buffer)
+kptrace_stackdepth_show_attrs(struct device *device,
+			      struct device_attribute *attr, char *buffer)
 {
 	return snprintf(buffer, PAGE_SIZE, "Callstack depth is %d\n",
 			stackdepth);
 }
 
 static ssize_t
-kptrace_stackdepth_store_attrs(struct sys_device *device,
-			       struct sysdev_attribute *attr,
+kptrace_stackdepth_store_attrs(struct device *device,
+			       struct device_attribute *attr,
 			       const char *buffer, size_t size)
 {
 	unsigned long tmp;
@@ -288,15 +288,15 @@ kptrace_stackdepth_store_attrs(struct sys_device *device,
 }
 
 static ssize_t
-kptrace_configured_show_attrs(struct sys_device *device,
-			      struct sysdev_attribute *attr, char *buffer)
+kptrace_configured_show_attrs(struct device *device,
+			      struct device_attribute *attr, char *buffer)
 {
 	return snprintf(buffer, PAGE_SIZE, "Used to start/stop tracing\n");
 }
 
 static ssize_t
-kptrace_configured_store_attrs(struct sys_device *device,
-			       struct sysdev_attribute *attr,
+kptrace_configured_store_attrs(struct device *device,
+			       struct device_attribute *attr,
 			       const char *buffer, size_t size)
 {
 	if (*buffer == '1')
@@ -307,15 +307,15 @@ kptrace_configured_store_attrs(struct sys_device *device,
 }
 
 static ssize_t
-kptrace_version_show_attrs(struct sys_device *device,
-			   struct sysdev_attribute *attr, char *buffer)
+kptrace_version_show_attrs(struct device *device,
+			   struct device_attribute *attr, char *buffer)
 {
 	return snprintf(buffer, PAGE_SIZE, "%d\n", interface_version);
 }
 
 static ssize_t
-kptrace_version_store_attrs(struct sys_device *device,
-			    struct sysdev_attribute *attr,
+kptrace_version_store_attrs(struct device *device,
+			    struct device_attribute *attr,
 			    const char *buffer, size_t size)
 {
 	/* Nothing happens */
@@ -323,16 +323,16 @@ kptrace_version_store_attrs(struct sys_device *device,
 }
 
 static ssize_t
-kptrace_pause_show_attrs(struct sys_device *device,
-			 struct sysdev_attribute *attr, char *buffer)
+kptrace_pause_show_attrs(struct device *device,
+			 struct device_attribute *attr, char *buffer)
 {
 	return snprintf(buffer, PAGE_SIZE,
 			"Write to this file to pause tracing\n");
 }
 
 static ssize_t
-kptrace_pause_store_attrs(struct sys_device *device,
-			  struct sysdev_attribute *attr, const char *buffer,
+kptrace_pause_store_attrs(struct device *device,
+			  struct device_attribute *attr, const char *buffer,
 			  size_t size)
 {
 	kptrace_pause();
@@ -340,16 +340,16 @@ kptrace_pause_store_attrs(struct sys_device *device,
 }
 
 static ssize_t
-kptrace_restart_show_attrs(struct sys_device *device,
-			   struct sysdev_attribute *attr, char *buffer)
+kptrace_restart_show_attrs(struct device *device,
+			   struct device_attribute *attr, char *buffer)
 {
 	return snprintf(buffer, PAGE_SIZE,
 			"Write to this file to restart tracing\n");
 }
 
 static ssize_t
-kptrace_restart_store_attrs(struct sys_device *device,
-			    struct sysdev_attribute *attr,
+kptrace_restart_store_attrs(struct device *device,
+			    struct device_attribute *attr,
 			    const char *buffer, size_t size)
 {
 	kptrace_restart();
@@ -531,8 +531,8 @@ EXPORT_SYMBOL(kptrace_unregister_output_driver);
 /*
  * Display the currently selected output driver
  */
-static ssize_t output_driver_show_attrs(struct sys_device *device,
-			struct sysdev_attribute *attr, char *buffer)
+static ssize_t output_driver_show_attrs(struct device *device,
+			struct device_attribute *attr, char *buffer)
 {
 	int ret = 0;
 
@@ -549,8 +549,8 @@ static ssize_t output_driver_show_attrs(struct sys_device *device,
 /*
  * Select the output driver according to the name passed in
  */
-static ssize_t output_driver_store_attrs(struct sys_device *device,
-			struct sysdev_attribute *attr,
+static ssize_t output_driver_store_attrs(struct device *device,
+			struct device_attribute *attr,
 			const char *buffer, size_t size)
 {
 	struct list_head *p;
@@ -576,27 +576,28 @@ static ssize_t output_driver_store_attrs(struct sys_device *device,
 	return size;
 }
 
-/* Main control is a sysdev */
-struct sysdev_class kptrace_sysdev = {
-	.name = "kptrace"
+/* Main control is a subsys */
+struct bus_type kptrace_subsys = {
+	.name = "kptrace",
+	.dev_name = "kptrace",
 };
 
-SYSDEV_ATTR(configured, S_IRUGO|S_IWUSR, kptrace_configured_show_attrs,
+DEVICE_ATTR(configured, S_IRUGO|S_IWUSR, kptrace_configured_show_attrs,
 		kptrace_configured_store_attrs);
-SYSDEV_ATTR(stackdepth, S_IRUGO|S_IWUSR, kptrace_stackdepth_show_attrs,
+DEVICE_ATTR(stackdepth, S_IRUGO|S_IWUSR, kptrace_stackdepth_show_attrs,
 		kptrace_stackdepth_store_attrs);
-SYSDEV_ATTR(version, S_IRUGO|S_IWUSR, kptrace_version_show_attrs,
+DEVICE_ATTR(version, S_IRUGO|S_IWUSR, kptrace_version_show_attrs,
 		kptrace_version_store_attrs);
-SYSDEV_ATTR(pause, S_IRUGO|S_IWUSR, kptrace_pause_show_attrs,
+DEVICE_ATTR(pause, S_IRUGO|S_IWUSR, kptrace_pause_show_attrs,
 		kptrace_pause_store_attrs);
-SYSDEV_ATTR(restart, S_IRUGO|S_IWUSR, kptrace_restart_show_attrs,
+DEVICE_ATTR(restart, S_IRUGO|S_IWUSR, kptrace_restart_show_attrs,
 		kptrace_restart_store_attrs);
-SYSDEV_ATTR(output_driver, S_IRUGO|S_IWUSR, output_driver_show_attrs,
+DEVICE_ATTR(output_driver, S_IRUGO|S_IWUSR, output_driver_show_attrs,
 		output_driver_store_attrs);
 
-static struct sys_device kptrace_device = {
+static struct device kptrace_device = {
 	.id = 0,
-	.cls = &kptrace_sysdev,
+	.bus = &kptrace_subsys,
 };
 
 /* Operations for the three kobj types */
@@ -833,12 +834,10 @@ static struct kp_tracepoint_set *create_tracepoint_set(const char *name)
 		return NULL;
 
 	list_add(&set->list, &tracepoint_sets);
-
 	if (kobject_init_and_add(&set->kobj, &kp_tracepoint_setype,
-				 &kptrace_sysdev.kset.kobj, name) < 0)
+				 &kptrace_subsys.dev_root->kobj, name) < 0)
 		printk(KERN_WARNING "kptrace: Failed to add kobject %s\n",
 		       name);
-
 	set->enabled = 0;
 
 	return set;
@@ -1851,38 +1850,41 @@ static int up_write_pre_handler(struct kprobe *p, struct pt_regs *regs)
 /* Add the main sysdev and the "user" tracepoint set */
 static int create_sysfs_tree(void)
 {
-	sysdev_class_register(&kptrace_sysdev);
-	sysdev_register(&kptrace_device);
+	int ret;
+	subsys_system_register(&kptrace_subsys, NULL);
+	ret = device_register(&kptrace_device);
+	if (ret)
+		return ret;
 
 	/* in /sys/devices/system/kptrace/kptrace0 */
 
-	sysdev_create_file(&kptrace_device, &attr_configured);
-	sysdev_create_file(&kptrace_device, &attr_stackdepth);
-	sysdev_create_file(&kptrace_device, &attr_version);
-	sysdev_create_file(&kptrace_device, &attr_pause);
-	sysdev_create_file(&kptrace_device, &attr_restart);
-	sysdev_create_file(&kptrace_device, &attr_output_driver);
+	device_create_file(&kptrace_device, &dev_attr_configured);
+	device_create_file(&kptrace_device, &dev_attr_stackdepth);
+	device_create_file(&kptrace_device, &dev_attr_version);
+	device_create_file(&kptrace_device, &dev_attr_pause);
+	device_create_file(&kptrace_device, &dev_attr_restart);
+	device_create_file(&kptrace_device, &dev_attr_output_driver);
 
 	user_set = kzalloc(sizeof(*user_set), GFP_KERNEL);
 	if (!user_set) {
 		printk(KERN_WARNING
 		       "kptrace: Failed to allocate memory for sysdev\n");
-		return 0;
+		return -ENOMEM;
 	}
 	list_add(&user_set->list, &tracepoint_sets);
 
 	if (kobject_init_and_add(&user_set->kobj, &user_type,
-				 &kptrace_sysdev.kset.kobj, "user") < 0)
+				 &kptrace_subsys.dev_root->kobj, "user") < 0)
 		printk(KERN_WARNING "kptrace: Failed to add kobject user\n");
 	user_set->enabled = 0;
 
-	if (kobject_init_and_add(&userspace,
-				 &userspace_type, &kptrace_sysdev.kset.kobj,
+	if (kobject_init_and_add(&userspace, &userspace_type,
+				&kptrace_subsys.dev_root->kobj,
 				 "userspace") < 0)
 		printk(KERN_WARNING
 		       "kptrace: Failed to add kobject userspace\n");
 
-	return 1;
+	return 0;
 }
 
 static void remove_sysfs_tree(void)
@@ -1891,17 +1893,17 @@ static void remove_sysfs_tree(void)
 
 	/* in /sys/devices/system/kptrace/kptrace0 */
 
-	sysdev_remove_file(&kptrace_device, &attr_configured);
-	sysdev_remove_file(&kptrace_device, &attr_stackdepth);
-	sysdev_remove_file(&kptrace_device, &attr_version);
-	sysdev_remove_file(&kptrace_device, &attr_pause);
-	sysdev_remove_file(&kptrace_device, &attr_restart);
-	sysdev_remove_file(&kptrace_device, &attr_output_driver);
-	sysdev_unregister(&kptrace_device);
+	device_remove_file(&kptrace_device, &dev_attr_configured);
+	device_remove_file(&kptrace_device, &dev_attr_stackdepth);
+	device_remove_file(&kptrace_device, &dev_attr_version);
+	device_remove_file(&kptrace_device, &dev_attr_pause);
+	device_remove_file(&kptrace_device, &dev_attr_restart);
+	device_remove_file(&kptrace_device, &dev_attr_output_driver);
+	device_unregister(&kptrace_device);
 
-	kptrace_printk(KERN_DEBUG "sysdev_class_unregister: dir=%8x\n",
-		       (unsigned int)&kptrace_sysdev);
-	sysdev_class_unregister(&kptrace_sysdev);
+	kptrace_printk(KERN_DEBUG "bus_unregister: %8x\n",
+		       (unsigned int)&kptrace_subsys);
+	bus_unregister(&kptrace_subsys);
 }
 
 static void init_core_event_logging(void)
@@ -2504,7 +2506,7 @@ subbuf_start_handler(struct rchan_buf *buf, void *subbuf,
  */
 static struct dentry *create_buf_file_handler(const char *filename,
 					      struct dentry *parent,
-					      int mode,
+					      umode_t mode,
 					      struct rchan_buf *buf,
 					      int *is_global)
 {
@@ -3032,7 +3034,7 @@ static int __init kptrace_init(void)
 
 	/* in /sys/device/system/kptrace/... */
 
-	if (!create_sysfs_tree()) {
+	if (create_sysfs_tree()) {
 		debugfs_remove(dir);
 		printk(KERN_ERR "Couldn't create sysfs tree\n");
 		return -ENOSYS;
