@@ -340,10 +340,6 @@ config SH_APSH4AD0A
 
 comment "ST Main Boards"
 
-config SH_ST_HARP_IRQ
-	bool
-	default n
-
 config SH_ST_EPLD
 	bool
 	default n
@@ -405,30 +401,6 @@ config SH_ST_HDK7108
 	help
 	  Select SH_ST_HDK7108 if configuring for a
 	  STMicroelectronics STi7108 Reference Board.
-
-config SH_ST_MB360
-	bool "mb360: ST40RA Eval"
-	depends on CPU_SUBTYPE_ST40STB1
-	select SH_ST_HARP_IRQ
-	select SH_ST_STEM
-	default n
-	help
-	  Select ST40RA-Eval if configuring for an
-	  STMicroelectronics ST40RA Eval Board (product code: ST40RA-Eval,
-	  ST board ID: mb360).
-
-config SH_ST_MB374
-	bool "mb374: ST40RA Starter"
-	depends on CPU_SUBTYPE_ST40STB1
-	select SYS_SUPPORTS_PCI
-	select SH_ST_HARP_IRQ
-	select SH_ST_STEM
-	default n
-	help
-	  Select ST40RA-Starter if configuring for an
-	  STMicroelectronics ST40RA Starter Board (also known as the
-	  ST40RA DDR Eval board) (product code: ST40RA-Starter,
-	  ST board ID: mb374).
 
 config SH_ST_MB837
 	bool "mb837: STx7108 Validation board"

@@ -9,7 +9,6 @@ obj-$(CONFIG_CPU_SUBTYPE_SH7763)	+= pci-sh7780.o ops-sh4.o
 obj-$(CONFIG_CPU_SUBTYPE_SH7780)	+= pci-sh7780.o ops-sh4.o
 obj-$(CONFIG_CPU_SUBTYPE_SH7785)	+= pci-sh7780.o ops-sh4.o
 obj-$(CONFIG_CPU_SUBTYPE_SH7786)	+= pcie-sh7786.o ops-sh7786.o
-obj-$(CONFIG_CPU_SUBTYPE_ST40STB1)	+= pci-st40.o
 obj-$(CONFIG_STM_PCI_EMISS)		+= pci-stmglue.o
 obj-$(CONFIG_STM_PCIE)			+= pci-stmglue.o
 obj-$(CONFIG_CPU_SH5)			+= pci-sh5.o ops-sh5.o

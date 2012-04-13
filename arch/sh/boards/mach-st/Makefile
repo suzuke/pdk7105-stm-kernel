@@ -2,7 +2,6 @@
 # Makefile for STMicroelectronics boards common implementation
 #
 
-obj-$(CONFIG_SH_ST_HARP_IRQ) += harp-irq.o
 obj-$(CONFIG_SH_ST_EPLD) += epld.o
 
 obj-$(CONFIG_SH_ST_DB641) += db641.o
