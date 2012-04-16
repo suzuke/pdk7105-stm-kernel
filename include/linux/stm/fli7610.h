@@ -130,4 +130,8 @@ struct fli7610_audio_config {
 };
 void fli7610_configure_audio(struct fli7610_audio_config *config);
 
+void fli7610_configure_nand(struct stm_nand_config *config);
+
+void fli7610_configure_spifsm(struct stm_plat_spifsm_data *data);
+
 #endif
