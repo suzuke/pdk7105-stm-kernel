@@ -279,7 +279,17 @@ static void nandi_disable_interrupts(struct nandi_controller *nandi,
 static inline void bch_load_prog_cpu(struct nandi_controller *nandi,
 				     struct bch_prog *prog)
 {
-	stm_nand_memcpy_toio(nandi->base + NANDBCH_ADDRESS_REG_1, prog, 64);
+	uint32_t *src = (uint32_t *)prog;
+	uint32_t *dst = (uint32_t *)(nandi->base + NANDBCH_ADDRESS_REG_1);
+	int i;
+
+	for (i = 0; i < 16; i++) {
+		/* Skip registers marked as "reserved" */
+		if (i != 11 && i != 14)
+			writel(*src, dst);
+		dst++;
+		src++;
+	}
 }
 
 static void bch_wait_seq(struct nandi_controller *nandi)
