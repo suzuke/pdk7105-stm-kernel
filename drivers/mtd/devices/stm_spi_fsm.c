@@ -1592,6 +1592,7 @@ static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 
 	fsm->mtd.type = MTD_NORFLASH;
 	fsm->mtd.writesize = 4;
+	fsm->mtd.writebufsize = fsm->mtd.writesize;
 	fsm->mtd.flags = MTD_CAP_NORFLASH;
 	fsm->mtd.size = info->sector_size * info->n_sectors;
 	fsm->mtd.erasesize = info->sector_size;
