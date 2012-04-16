@@ -499,7 +499,7 @@ static int clkgena_recalc(clk_t *clk_p)
 		break;
 	case CLKA_PLL0HS:
 		data = CLK_READ(cga_base + CKGA_PLL0_CFG);
-		err = clk_pll1600_get_rate(clk_p->parent->rate, data & 0x7,
+		err = clk_pll1600c65_get_rate(clk_p->parent->rate, data & 0x7,
 				(data >> 8) & 0xff, &clk_p->rate);
 		return err;
 	case CLKA_PLL0LS:
@@ -507,7 +507,7 @@ static int clkgena_recalc(clk_t *clk_p)
 		return 0;
 	case CLKA_PLL1:
 		data = CLK_READ(cga_base + CKGA_PLL1_CFG);
-		return clk_pll800_get_rate(clk_p->parent->rate, data & 0xff,
+		return clk_pll800c65_get_rate(clk_p->parent->rate, data & 0xff,
 			(data >> 8) & 0xff, (data >> 16) & 0x7, &clk_p->rate);
 
 	default:
@@ -630,7 +630,7 @@ static int clksouth_fsyn_recalc(clk_t *clk_p)
 		err = clk_4fs432_get_rate(clk_p->parent->rate, pe, md, sdiv,
 				nsdv3, &clk_p->rate);
 	else
-		err = clk_fsyn_get_rate(clk_p->parent->rate, pe, md, sdiv,
+		err = clk_fs216c65_get_rate(clk_p->parent->rate, pe, md, sdiv,
 			&clk_p->rate);
 
 
@@ -686,7 +686,7 @@ static int clksouth_set_rate(clk_t *clk_p, unsigned long freq)
 			&pe, &sdiv, &sdiv3))
 			return CLK_ERR_BAD_PARAMETER;
 	} else {
-		if (clk_fsyn_get_params(clk_p->parent->rate, freq, &md,
+		if (clk_fs216c65_get_params(clk_p->parent->rate, freq, &md,
 			&pe, &sdiv))
 			return CLK_ERR_BAD_PARAMETER;
 	}
@@ -808,7 +808,7 @@ static int clkaudio_fsyn_recalc(clk_t *clk_p)
 	sdiv = (val & SDIV__MASK) >> SDIV;
 	pe = (val & PE__MASK) >> PE;
 
-	err = clk_fsyn_get_rate(clk_p->parent->rate, pe, md, sdiv,
+	err = clk_fs216c65_get_rate(clk_p->parent->rate, pe, md, sdiv,
 			&clk_p->rate);
 
 	if (!err) {
@@ -891,7 +891,7 @@ static int clkaudio_set_rate(clk_t *clk_p, unsigned long freq)
 		freq *= divider;
 
 	/* Compute FSyn params */
-	if (clk_fsyn_get_params(clk_p->parent->rate, freq, &md,
+	if (clk_fs216c65_get_params(clk_p->parent->rate, freq, &md,
 			&pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
