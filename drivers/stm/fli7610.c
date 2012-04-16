@@ -12,6 +12,7 @@
 
 #include <linux/init.h>
 #include <linux/gpio.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
@@ -481,6 +482,42 @@ static void __init fli7610_pio_init(void)
 			     ARRAY_SIZE(fli7610_pio_control_configs));
 }
 
+/* EMI resources ---------------------------------------------------------- */
+/* PM support NOT TESTED */
+static void fli7610_emi_power(struct stm_device_state *device_state,
+			      enum stm_device_power_state power)
+{
+	int i;
+	int value = (power == stm_device_power_on) ? 0 : 1;
+
+	stm_device_sysconf_write(device_state, "EMI_PWR", value);
+	for (i = 5; i; --i) {
+		if (stm_device_sysconf_read(device_state, "EMI_ACK")
+		    == value)
+			break;
+		mdelay(10);
+	}
+}
+
+static struct platform_device fli7610_emi = {
+	.name = "emi",
+	.id = -1,
+	.num_resources = 3,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 256 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfe900000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfef01000, 0x80),
+	},
+	.dev.platform_data = &(struct stm_device_config){
+		.sysconfs_num = 2,
+		.sysconfs = (struct stm_device_sysconf []){
+			STM_DEVICE_SYSCONF(TAE_SYSCONF(364), 0, 0, "EMI_PWR"),
+			STM_DEVICE_SYSCONF(TAE_SYSCONF(368), 0, 0, "EMI_ACK"),
+		},
+		.power = fli7610_emi_power,
+	},
+};
+
 /* FDMA resources --------------------------------------------------------- */
 
 static struct stm_plat_fdma_fw_regs fli7610_fdma_fw = {
@@ -865,6 +902,19 @@ void __init fli7610_early_device_init(void)
 	stm_pad_init(ARRAY_SIZE(fli7610_pio_devices) * STM_GPIO_PINS_PER_PORT,
 		     0, 0, fli7610_pio_config);
 }
+
+/* Pre-arch initialisation ------------------------------------------------ */
+static int __init fli7610_postcore_setup(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(fli7610_pio_devices); i++)
+		platform_device_register(&fli7610_pio_devices[i]);
+
+	return platform_device_register(&fli7610_emi);
+}
+postcore_initcall(fli7610_postcore_setup);
+
 
 /* Late initialisation ---------------------------------------------------- */
 static struct platform_device *fli7610_devices[] __initdata = {
