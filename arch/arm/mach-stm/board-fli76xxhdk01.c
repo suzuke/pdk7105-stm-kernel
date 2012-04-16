@@ -19,6 +19,8 @@
 #include <linux/input.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/fli7610.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/partitions.h>
 
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/mach-types.h>
@@ -49,6 +51,67 @@ static void __init fli76xxhdk01_init_early(void)
 			.hw_flow_control = 1,
 			.is_console = 1	 });
 }
+
+/* NAND Flash */
+static struct stm_nand_bank_data fli76xxhdk01_nand_flash = {
+	.csn            = 0,
+	.options        = NAND_NO_AUTOINCR,
+	.bbt_options	= NAND_BBT_USE_FLASH,
+	.nr_partitions  = 3,
+	.partitions     = (struct mtd_partition []) {
+		{
+			.name   = "NAND Flash 1",
+			.offset = 0,
+			.size   = 0x00800000
+		}, {
+			.name   = "NAND Flash 2",
+			.offset = MTDPART_OFS_NXTBLK,
+			.size   = 0x01000000
+		}, {
+			.name   = "NAND Flash 3",
+			.offset = MTDPART_OFS_NXTBLK,
+			.size   = MTDPART_SIZ_FULL
+		},
+	},
+	.timing_data = &(struct stm_nand_timing_data) {
+		.sig_setup      = 10,		/* times in ns */
+		.sig_hold       = 10,
+		.CE_deassert    = 0,
+		.WE_to_RBn      = 100,
+		.wr_on          = 10,
+		.wr_off         = 30,
+		.rd_on          = 10,
+		.rd_off         = 30,
+		.chip_delay     = 30,		/* in us */
+	},
+};
+
+/* Serial FLASH */
+static struct stm_plat_spifsm_data fli76xxhdk01_serial_flash =  {
+	.name		= "n25q128",
+	.nr_parts	= 3,
+	.parts = (struct mtd_partition []) {
+		{
+			.name = "Serial Flash 1",
+			.size = 0x00200000,
+			.offset = 0,
+		}, {
+			.name = "Serial Flash 2",
+			.size = 0x00400000,
+			.offset = MTDPART_OFS_NXTBLK,
+		}, {
+			.name = "Serial Flash 3",
+			.size = MTDPART_SIZ_FULL,
+			.offset = MTDPART_OFS_NXTBLK,
+		},
+	},
+	.capabilities = {
+		/* Capabilities may be overriden by SoC configuration */
+		.dual_mode = 1,
+		.quad_mode = 1,
+	},
+};
+
 
 static void __init fli76xxhdk01_init(void)
 {
@@ -83,6 +146,14 @@ static void __init fli76xxhdk01_init(void)
 
 	/* reset */
 	stm_board_reset = fli7610_reset;
+
+	fli7610_configure_nand(&(struct stm_nand_config) {
+			.driver = stm_nand_bch,
+			.nr_banks = 1,
+			.banks = &fli76xxhdk01_nand_flash,
+			.rbn.flex_connected = 1,});
+
+	fli7610_configure_spifsm(&fli76xxhdk01_serial_flash);
 
 }
 
