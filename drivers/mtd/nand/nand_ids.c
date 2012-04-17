@@ -552,11 +552,13 @@ void nand_derive_bbm(struct mtd_info *mtd, struct nand_chip *chip, uint8_t *id)
 
 	/* Scan at least the first page */
 	chip->bbm = NAND_BBM_PAGE_0;
-	/* Also 2nd page for SLC Samsung, Hynix, Toshiba (LP), AMD/Spansion */
+	/* Also 2nd page for SLC Samsung, Hynix, Macronix, Toshiba (LP),
+	 * AMD/Spansion */
 	if (bits_per_cell == 1 &&
 	    (id[0] == NAND_MFR_SAMSUNG ||
 	     id[0] == NAND_MFR_HYNIX ||
 	     id[0] == NAND_MFR_AMD ||
+	     id[0] == NAND_MFR_MACRONIX ||
 	     (id[0] == NAND_MFR_TOSHIBA && mtd->writesize > 512)))
 		chip->bbm |= NAND_BBM_PAGE_1;
 

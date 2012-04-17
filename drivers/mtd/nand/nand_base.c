@@ -2825,7 +2825,8 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 
 	while (len) {
 		/* Check if we have a bad block, we do not erase bad blocks! */
-		if (nand_block_checkbad(mtd, ((loff_t) page) <<
+		if (!nand_erasebb &&
+		    nand_block_checkbad(mtd, ((loff_t) page) <<
 					chip->page_shift, 0, allowbbt)) {
 			pr_warn("%s: attempt to erase a bad block at page 0x%08x\n",
 				    __func__, page);
@@ -3312,34 +3313,10 @@ ident_done:
 		chip->chip_shift += 32 - 1;
 	}
 
-	chip->badblockbits = 8;
-
-	/* Set the bad block position */
-	if (mtd->writesize > 512 || (busw & NAND_BUSWIDTH_16))
-		chip->badblockpos = NAND_LARGE_BADBLOCK_POS;
-	else
-		chip->badblockpos = NAND_SMALL_BADBLOCK_POS;
-
 	/*
-	 * Bad block marker is stored in the last page of each block
-	 * on Samsung and Hynix MLC devices; stored in first two pages
-	 * of each block on Micron devices with 2KiB pages and on
-	 * SLC Samsung, Hynix, Toshiba, AMD/Spansion, and Macronix.
-	 * All others scan only the first page.
+	 * Determine manufacturer's bad-block marker scheme
 	 */
-	if ((chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
-			(*maf_id == NAND_MFR_SAMSUNG ||
-			 *maf_id == NAND_MFR_HYNIX))
-		chip->bbt_options |= NAND_BBT_SCANLASTPAGE;
-	else if ((!(chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
-				(*maf_id == NAND_MFR_SAMSUNG ||
-				 *maf_id == NAND_MFR_HYNIX ||
-				 *maf_id == NAND_MFR_TOSHIBA ||
-				 *maf_id == NAND_MFR_AMD ||
-				 *maf_id == NAND_MFR_MACRONIX)) ||
-			(mtd->writesize == 2048 &&
-			 *maf_id == NAND_MFR_MICRON))
-		chip->bbt_options |= NAND_BBT_SCAN2NDPAGE;
+	nand_derive_bbm(mtd, chip, id_data);
 
 	/* Check for AND chips with 4 page planes */
 	if (chip->options & NAND_4PAGE_ARRAY)
@@ -3350,11 +3327,6 @@ ident_done:
 	/* Do not replace user supplied command function! */
 	if (mtd->writesize > 512 && chip->cmdfunc == nand_command)
 		chip->cmdfunc = nand_command_lp;
-
-	pr_info("NAND device: Manufacturer ID:"
-		" 0x%02x, Chip ID: 0x%02x (%s %s)\n", *maf_id, *dev_id,
-		nand_manuf_ids[maf_idx].name,
-		chip->onfi_version ? chip->onfi_params.model : type->name);
 
 	return type;
 }
