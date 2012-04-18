@@ -638,9 +638,13 @@ static void stih415_ethernet_rgmii1_gtx_speed(void *priv, unsigned int speed)
 	stih415_ethernet_rgmii_speed(1, priv, speed);
 }
 
+static struct stmmac_dma_cfg gmac_dma_setting = {
+        .pbl = 32,
+};
+
 static struct plat_stmmacenet_data stih415_ethernet_platform_data[] = {
 	{
-		.pbl = 32,
+		.dma_cfg = &gmac_dma_setting,
 		.has_gmac = 1,
 		.enh_desc = 1,
 		.tx_coe = 0,
@@ -649,7 +653,7 @@ static struct plat_stmmacenet_data stih415_ethernet_platform_data[] = {
 		.pmt = 1,
 		.init = &stmmac_claim_resource,
 	}, {
-		.pbl = 32,
+		.dma_cfg = &gmac_dma_setting,
 		.has_gmac = 1,
 		.enh_desc = 1,
 		.tx_coe = 0,
