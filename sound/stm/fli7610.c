@@ -50,6 +50,24 @@ MODULE_PARM_DESC(id, "ID string for FLi7610 audio subsystem card.");
 
 
 /*
+ * AATV register offset defines
+ */
+#define AATV_CMD_MUX_I2S_OUT	0x00076800
+#define AATV_SCART_IN_STDBY	0x00077800
+#define AATV_ANA_OUT_STDBY	0x00077804
+#define AATV_DAC_STDBY		0x00077808
+#define AATV_DAC_CONTROL	0x00077810
+#define AATV_DAC_ATTN_CONT	0x00077814
+#define AATV_DAC_ATTN_MSB	0x00077818
+#define AATV_DAC_ATTN_LSB	0x0007781c
+#define AATV_SCART_CONF_LOAD	0x00077820
+#define AATV_SCART_0_1_2	0x00077824
+#define AATV_SCART_0_3_ADC	0x00077828
+#define AATV_ANTI_POP_CONTROL	0x00077834
+#define AATV_ANTI_POP_STATUS	0x00077838
+
+
+/*
  * TAE_SYSCONF fields
  */
 
@@ -83,33 +101,51 @@ static void __init snd_stm_fli7610_configure_aatv(void)
 		goto error_ioremap;
 	}
 
+	/* AATV power down sequence */
+	writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
+	writel(0x00, aatv_base + AATV_SCART_0_1_2);
+	writel(0x00, aatv_base + AATV_SCART_0_3_ADC);
+	writel(0x01, aatv_base + AATV_SCART_CONF_LOAD);
+	writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
+	writel(0xff, aatv_base + AATV_SCART_IN_STDBY);
+	writel(0x7c, aatv_base + AATV_ANA_OUT_STDBY);
+	writel(0x07, aatv_base + AATV_DAC_STDBY);
+	writel(0x0e, aatv_base + AATV_DAC_CONTROL);
+
+	writel(0x00, aatv_base + AATV_ANTI_POP_CONTROL);
+	udelay(200);
+	writel(0x2a, aatv_base + AATV_ANTI_POP_CONTROL);
+	udelay(200);
+	writel(0x00, aatv_base + AATV_ANTI_POP_CONTROL);
+	udelay(200);
+
 	/* Read anti-pop status to ensure everything is ready */
-	if ((readl(aatv_base + 0x77838) & 0x1e) == 0x1e) {
+	if ((readl(aatv_base + AATV_ANTI_POP_STATUS) & 0x1e) == 0x1e) {
 		/* Set SCARTs, analog outputs and DACs to active and unmute */
-		writel(0x00, aatv_base + 0x77800);
-		writel(0x01, aatv_base + 0x77804);
-		writel(0x00, aatv_base + 0x77808);
-		writel(0x00, aatv_base + 0x77810);
+		writel(0x00, aatv_base + AATV_SCART_IN_STDBY);
+		writel(0x01, aatv_base + AATV_ANA_OUT_STDBY);
+		writel(0x00, aatv_base + AATV_DAC_STDBY);
+		writel(0x00, aatv_base + AATV_DAC_CONTROL);
 
 		/* Disable SCART matrix configuration clock */
-		writel(0x00, aatv_base + 0x77820);
+		writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
 
 		/* Disable SCART 1/2/3 output */
-		writel(0x00, aatv_base + 0x77824);
-		writel(0x00, aatv_base + 0x77828);
+		writel(0x00, aatv_base + AATV_SCART_0_1_2);
+		writel(0x00, aatv_base + AATV_SCART_0_3_ADC);
 
 		/* Toggle SCART matrix configuration clock */
-		writel(0x01, aatv_base + 0x77820);
-		writel(0x00, aatv_base + 0x77820);
+		writel(0x01, aatv_base + AATV_SCART_CONF_LOAD);
+		writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
 
 		/* Enable SCART 1/2/3 output and load configuration */
-		writel(0x00, aatv_base + 0x77834);
+		writel(0x00, aatv_base + AATV_ANTI_POP_CONTROL);
 		udelay(200);
-		writel(0x15, aatv_base + 0x77834);
+		writel(0x15, aatv_base + AATV_ANTI_POP_CONTROL);
 		udelay(200);
-		writel(0x3f, aatv_base + 0x77834);
+		writel(0x3f, aatv_base + AATV_ANTI_POP_CONTROL);
 		udelay(200);
-		writel(0x15, aatv_base + 0x77834);
+		writel(0x15, aatv_base + AATV_ANTI_POP_CONTROL);
 		udelay(200);
 	} else {
 		snd_stm_printe("Anti-pop status indicates not ready!\n");
@@ -117,29 +153,29 @@ static void __init snd_stm_fli7610_configure_aatv(void)
 	}
 
 	/* Update I2S mux (0=PCMP0, 1=HP, 2=AVOUT, 3=PCMP0 4=PCMP0) */
-	writel(0x00980, aatv_base + 0x76800);
+	writel(0x00980, aatv_base + AATV_CMD_MUX_I2S_OUT);
 
 	/* DAC attenuation (coarse volume control) */
-	writel(0x50, aatv_base + 0x77818);
-	writel(0x01, aatv_base + 0x7781c);
-	writel(0x04, aatv_base + 0x77814);
-	writel(0x05, aatv_base + 0x77814);
-	writel(0x06, aatv_base + 0x77814);
-	writel(0x07, aatv_base + 0x77814);
+	writel(0x50, aatv_base + AATV_DAC_ATTN_MSB);
+	writel(0x01, aatv_base + AATV_DAC_ATTN_LSB);
+	writel(0x04, aatv_base + AATV_DAC_ATTN_CONT);
+	writel(0x05, aatv_base + AATV_DAC_ATTN_CONT);
+	writel(0x06, aatv_base + AATV_DAC_ATTN_CONT);
+	writel(0x07, aatv_base + AATV_DAC_ATTN_CONT);
 
 	/* DAC attenuation (coarse volume control) */
-	writel(0x37, aatv_base + 0x77818);
-	writel(0x01, aatv_base + 0x7781c);
-	writel(0x08, aatv_base + 0x77814);
-	writel(0x09, aatv_base + 0x77814);
-	writel(0x0a, aatv_base + 0x77814);
-	writel(0x0b, aatv_base + 0x77814);
+	writel(0x37, aatv_base + AATV_DAC_ATTN_MSB);
+	writel(0x01, aatv_base + AATV_DAC_ATTN_LSB);
+	writel(0x08, aatv_base + AATV_DAC_ATTN_CONT);
+	writel(0x09, aatv_base + AATV_DAC_ATTN_CONT);
+	writel(0x0a, aatv_base + AATV_DAC_ATTN_CONT);
+	writel(0x0b, aatv_base + AATV_DAC_ATTN_CONT);
 
 	/* Enable SCART 1/2 output for DAC */
-	writel(0x11, aatv_base + 0x77824);
+	writel(0x11, aatv_base + AATV_SCART_0_1_2);
 
 	/* Enable SCART matrix configuration clock */
-	writel(0x01, aatv_base + 0x77820);
+	writel(0x01, aatv_base + AATV_SCART_CONF_LOAD);
 
 error_anti_pop:
 	iounmap(aatv_base);
