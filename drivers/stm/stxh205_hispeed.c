@@ -234,8 +234,12 @@ static struct stm_pad_config stxh205_ethernet_reverse_mii_pad_config = {
 	},
 };
 
+static struct stmmac_dma_cfg gmac_dma_setting = {
+        .pbl = 32,
+};
+
 static struct plat_stmmacenet_data stxh205_ethernet_platform_data = {
-	.pbl = 32,
+	.dma_cfg = &gmac_dma_setting,
 	.has_gmac = 1,
 	.enh_desc = 1,
 	.tx_coe = 1,
