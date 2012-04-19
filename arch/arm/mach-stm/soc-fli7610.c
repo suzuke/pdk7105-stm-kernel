@@ -174,3 +174,7 @@ static void __init fli7610_timer_init(void)
 struct sys_timer fli7610_timer = {
 	.init		= fli7610_timer_init,
 };
+
+#ifdef CONFIG_SMP
+void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(FLI7610_SCU_BASE));
+#endif

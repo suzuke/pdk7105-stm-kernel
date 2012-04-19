@@ -15,5 +15,6 @@
 #include <linux/io.h>
 
 extern void __iomem *gic_cpu_base_addr;
+extern void __iomem *scu_base_addr;
 
 #endif

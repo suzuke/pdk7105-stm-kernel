@@ -155,3 +155,7 @@ static void __init stih415_timer_init(void)
 struct sys_timer stih415_timer = {
 	.init		= stih415_timer_init,
 };
+
+#ifdef CONFIG_SMP
+void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(STIH415_SCU_BASE));
+#endif

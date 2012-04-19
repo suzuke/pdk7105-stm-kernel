@@ -22,7 +22,6 @@
 #include <asm/localtimer.h>
 #include <asm/unified.h>
 
-#include <mach/soc-stih415.h>
 
 #include <asm/smp_scu.h>
 #include <asm/hardware/gic.h>
@@ -37,17 +36,9 @@ extern void stm_secondary_startup(void);
  */
 volatile int __cpuinitdata pen_release = -1;
 
-static void __iomem *scu_base_addr(void)
-{
-	return __io_address(STIH415_SCU_BASE);
-}
-
 static inline unsigned int get_core_count(void)
 {
-	void __iomem *scu_base = scu_base_addr();
-	if (scu_base)
-		return scu_get_core_count(scu_base);
-	return 1;
+	return scu_get_core_count(scu_base_addr);
 }
 
 static DEFINE_SPINLOCK(boot_lock);
@@ -184,7 +175,7 @@ printk("%s: start - ncores %d\n", __FUNCTION__, ncores);
 	 * WFI
 	 */
 	if (max_cpus > 1) {
-		scu_enable(scu_base_addr());
+		scu_enable(scu_base_addr);
 
 		/* Do we need to do something here to get the boot monitor
 		 * moving, and/or tell it the address of stm_secondary_startup?
