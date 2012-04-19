@@ -112,7 +112,7 @@ hw_mac_done:
 	return 0;
 }
 
-device_initcall(nwhw_config);
+late_initcall(nwhw_config);
 
 /**
  * nwhw_config_setup - parse the nwhwconfig parameters

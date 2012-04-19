@@ -21,7 +21,9 @@ obj-$(CONFIG_NET_TEAM) += team/
 obj-$(CONFIG_TUN) += tun.o
 obj-$(CONFIG_VETH) += veth.o
 obj-$(CONFIG_VIRTIO_NET) += virtio_net.o
-# This needs to be after any devices which may use it
+# This is a late_initcall, it needs to run before ip_auto_config() which is
+# also a late_initcall. It works because "drivers" comes before "net" in the
+# top level Makefile
 obj-$(CONFIG_NWHW_CONFIG) += nwhwconfig.o
 
 #
