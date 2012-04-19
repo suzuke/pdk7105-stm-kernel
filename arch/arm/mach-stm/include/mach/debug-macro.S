@@ -13,30 +13,24 @@
 
 #ifdef CONFIG_MACH_STM_STIH415
 #include <mach/soc-stih415.h>
-
-//#define DEBUG_LL_UART_OFFSET	(STIH415_ASC0_BASE & 0x03ffffff)
-#define DEBUG_LL_UART_OFFSET	(STIH415_SBC_ASC0_BASE & 0x03ffffff)
+#define DEBUG_LL_UART_BASE	STIH415_SBC_ASC0_BASE
 #endif
 
 
 #ifdef CONFIG_MACH_STM_FLI7610
 #include <mach/soc-fli7610.h>
-#define DEBUG_LL_UART_OFFSET	(FLI7610_CONSOLE_BASE & 0x03ffffff)
+#define DEBUG_LL_UART_BASE	FLI7610_CONSOLE_BASE
 #endif
 
-
-
-#ifndef DEBUG_LL_UART_OFFSET
+#ifndef DEBUG_LL_UART_BASE
 #error "Unknown platform"
 #endif
 
-		.macro	addruart,rx
-		mrc	p15, 0, \rx, c1, c0
-		tst	\rx, #1			@ MMU enabled?
-		moveq	\rx,      #0xfc000000	@ physical base
-		movne	\rx,      #0xfb000000	@ virtual base
-		add	\rx, \rx, #(DEBUG_LL_UART_OFFSET & 0x03fc0000)
-		add	\rx, \rx, #(DEBUG_LL_UART_OFFSET & 0x0003f000)
+#include <mach/hardware.h>
+
+		.macro	addruart, rp, rv, tmp
+		ldr	\rp,      =DEBUG_LL_UART_BASE	@ physical base
+		ldr	\rv,      =IO_ADDRESS(DEBUG_LL_UART_BASE) @ virtual base
 		.endm
 
 #include <asm/hardware/debug-stm-asc.S>
