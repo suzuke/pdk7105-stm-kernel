@@ -970,6 +970,7 @@ config ARCH_STM
 	select ARM_GIC
 	select HAVE_ARM_GT
 	select STM_DRIVERS
+	select HAVE_CLK
 	select MIGHT_HAVE_PCI
 	select MIGHT_HAVE_CACHE_L2X0
 	select HAVE_SMP
