@@ -11,6 +11,8 @@
 #include <linux/string.h>
 #include <linux/export.h>
 #include <linux/platform_device.h>
+#include <linux/string.h>
+#include <linux/export.h>
 
 static int wokenup_by;
 
