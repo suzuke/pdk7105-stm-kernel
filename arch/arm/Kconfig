@@ -2183,6 +2183,9 @@ endif
 
 source "drivers/cpuidle/Kconfig"
 
+config ARCH_HIBERNATION_POSSIBLE
+	def_bool y
+
 endmenu
 
 menu "Floating point emulation"
