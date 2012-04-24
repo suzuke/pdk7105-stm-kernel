@@ -93,7 +93,6 @@ config PM_STD_PARTITION
 
 config HIBERNATION_ON_MEMORY
 	bool "Hibernation on memory"
-	depends on PM
 	select HIBERNATION
 	---help---
 	  Enable the hibernation on memory (HoM) functionality. This techniques
