@@ -83,7 +83,7 @@
    never used.
  */
 #define END_MARKER							\
-	.long OP_END_POKES
+	.long OP_END_POKES, 0, 0
 
 #else
 /* Poke table commands */
@@ -108,7 +108,7 @@
 #define DELAY(ITERATIONS)			OP_DELAY, ITERATIONS
 #define IF_DEVID_GE(NESTLEVEL, VAL)
 #define IF_DEVID_LE(NESTLEVEL, VAL)
-#define END_MARKER				OP_END_POKES
+#define END_MARKER				OP_END_POKES, 0, 0
 
 #endif
 

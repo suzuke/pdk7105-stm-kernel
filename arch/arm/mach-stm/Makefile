@@ -9,6 +9,8 @@ obj-$(CONFIG_PCI)		+= pci-glue.o
 
 obj-$(CONFIG_HOTPLUG_CPU)	+= hotplug.o
 
+obj-$(CONFIG_PM)		+= pokeloop.o
+
 # Hibernation on Disk
 obj-$(CONFIG_HIBERNATION)	+= swsusp.o swsusp-asm.o
 
