@@ -770,6 +770,8 @@ static int iic_stm_xfer(struct i2c_adapter *i2c_adap,
 		.waitcondition = 1,
 	};
 
+	pm_runtime_get_sync(i2c_adap->dev.parent);
+
 	dbg_print("\n");
 
 	adap->trns = &transaction;
@@ -943,6 +945,8 @@ iic_xfer_retry:
 #ifdef CONFIG_I2C_DEBUG_BUS
 	printk(KERN_INFO "i2c-stm: i2c_stm_xfer returned %d\n", result);
 #endif
+
+	pm_runtime_put(i2c_adap->dev.parent);
 	return result;
 }
 
@@ -1211,7 +1215,6 @@ static int iic_stm_probe(struct platform_device *pdev)
 
 	/* by default the device is on */
 	pm_runtime_set_active(&pdev->dev);
-	pm_suspend_ignore_children(&pdev->dev, 1);
 	pm_runtime_enable(&pdev->dev);
 
 	return 0;
@@ -1241,6 +1244,11 @@ static int iic_stm_suspend(struct device *dev)
 	struct platform_device *pdev =
 		container_of(dev, struct platform_device, dev);
 	struct iic_ssc *i2c_bus = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_PM_RUNTIME
+	if (pm_runtime_status_suspended(dev))
+		return 0; /* it wants resume via runtime_resume... */
+#endif
 #if 0
 	struct ssc_pio_t *pio_info =
 		(struct ssc_pio_t *)pdev->dev.platform_data;
@@ -1260,6 +1268,11 @@ static int iic_stm_resume(struct device *dev)
 	struct platform_device *pdev =
 		container_of(dev, struct platform_device, dev);
 	struct iic_ssc *i2c_bus = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_PM_RUNTIME
+	if (pm_runtime_status_suspended(dev))
+		return 0; /* it wants resume via runtime_resume... */
+#endif
 #if 0
 	struct ssc_pio_t *pio_info =
 		(struct ssc_pio_t *)pdev->dev.platform_data;
