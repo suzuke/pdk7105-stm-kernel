@@ -254,43 +254,25 @@ static struct stm_mali_config b2000_mali_config = {
 	.ext_mem = b2000_mali_ext_mem,
 };
 
-static void __init b2000_init(void)
+static void b2000_ethphy_gpio_init(int cold_boot)
 {
-#ifdef CONFIG_CACHE_L2X0
-	/* We have to ensure that bit 22 is set. This bit controls if
-	 * shared uncacheable normal memory accesses are looked up in the cache
-	 * or not. By default they are looked up in the cache. This can cause
-	 * problems because the cache line can be speculated in via the kernel
-	 * alias of the same physical page. For coherent dma mappings this means
-	 * that the CPU will potentially see stale values, rather than what the 
-	 * device has put into main memory. The stale value should not cause any
-	 * problems as it should never be accessed via the kernel mapping.
-	 */
-        l2x0_init(__io_address(STIH415_PL310_BASE), 0x1<<22, 0xffbfffff);
-#endif
-
 	/* Reset */
-	gpio_request(GMII0_PHY_NOT_RESET, "GMII0_PHY_NOT_RESET");
+	if (cold_boot) {
+		gpio_request(GMII0_PHY_NOT_RESET, "GMII0_PHY_NOT_RESET");
+		gpio_request(GMII1_PHY_NOT_RESET, "GMII1_PHY_NOT_RESET");
+	}
 	gpio_direction_output(GMII0_PHY_NOT_RESET, 0);
-
-	gpio_request(GMII1_PHY_NOT_RESET, "GMII1_PHY_NOT_RESET");
 	gpio_direction_output(GMII1_PHY_NOT_RESET, 0);
 
 #if !defined(CONFIG_STM_CN23_NONE)
 	/* Default to 100 Mbps */
 	gpio_request(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, "GMII1_TXCLK_SEL");
-
 #if defined(CONFIG_STM_GMAC1_B2032_GIGA_MODE)
 	gpio_direction_output(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, 1);
 #else
 	gpio_direction_output(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL, 0);
 #endif
 	gpio_free(GMII1_PHY_CLKOUT_NOT_TXCLK_SEL);
-#else
-	/* Default to HDMI HotPlug */
-	if (stm_pad_claim(&stih415_hdmi_hp_pad_config, "HDMI_Hotplug") == NULL)
-		printk(KERN_ERR "Failed to claim HDMI-Hotplug pad!\n");
-
 #endif
 
 #if !defined(CONFIG_STM_CN22_NONE)
@@ -305,6 +287,37 @@ static void __init b2000_init(void)
 	gpio_free(GMII0_PHY_CLKOUT_NOT_TXCLK_SEL);
 #endif
 
+
+#if defined(CONFIG_STM_GMAC0_B2035_CARD) || defined(CONFIG_STM_GMAC0_B2032_CARD)
+	b2000_gmii0_reset(NULL);
+#endif
+
+#if defined(CONFIG_STM_GMAC1_B2035_CARD) || defined(CONFIG_STM_GMAC1_B2032_CARD)
+	b2000_gmii1_reset(NULL);
+#endif
+}
+
+static void __init b2000_init(void)
+{
+#ifdef CONFIG_CACHE_L2X0
+	/* We have to ensure that bit 22 is set. This bit controls if
+	 * shared uncacheable normal memory accesses are looked up in the cache
+	 * or not. By default they are looked up in the cache. This can cause
+	 * problems because the cache line can be speculated in via the kernel
+	 * alias of the same physical page. For coherent dma mappings this means
+	 * that the CPU will potentially see stale values, rather than what the
+	 * device has put into main memory. The stale value should not cause any
+	 * problems as it should never be accessed via the kernel mapping.
+	 */
+	l2x0_init(__io_address(STIH415_PL310_BASE), 0x1<<22, 0xffbfffff);
+#endif
+
+	b2000_ethphy_gpio_init(1);
+#if defined(CONFIG_STM_CN23_NONE)
+	/* Default to HDMI HotPlug */
+	if (stm_pad_claim(&stih415_hdmi_hp_pad_config, "HDMI_Hotplug") == NULL)
+		printk(KERN_ERR "Failed to claim HDMI-Hotplug pad!\n");
+#endif
 /*
  * B2032A (MII or GMII) Ethernet card
  * GMII Mode on B2032A needs R26 to be fitted with 51R
@@ -487,3 +500,26 @@ MACHINE_START(STM_B2000, "STMicroelectronics B2000 - STiH415 MBoard")
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= b2000_init,
 MACHINE_END
+
+#ifdef CONFIG_HIBERNATION_ON_MEMORY
+
+#include <linux/stm/hom.h>
+
+static int b2000_hom_restore(void)
+{
+	b2000_ethphy_gpio_init(0);
+	return 0;
+}
+
+static struct stm_hom_board b2000_hom = {
+	.restore = b2000_hom_restore,
+};
+
+static int __init b2000_hom_init(void)
+{
+	return stm_hom_board_register(&b2000_hom);
+}
+
+late_initcall(b2000_hom_init);
+#endif
+
