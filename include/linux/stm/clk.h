@@ -54,8 +54,6 @@ struct clk {
 	struct list_head	children_node;
 };
 
-#define CLK_ALWAYS_ENABLED	(1 << 0)
-
 /* drivers/stm/clks/clock-... */
 
 /* SoC specific clock initialisation */

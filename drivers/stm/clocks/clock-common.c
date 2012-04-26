@@ -38,6 +38,9 @@
 #include <linux/stm/clk.h>
 #include <linux/clkdev.h>
 
+#include "clock-oslayer.h"
+#include "clock-common.h"
+
 int __init clk_register_table(struct clk *clks, int num, int enable)
 {
 	int i;
@@ -65,7 +68,7 @@ int __init clk_register_table(struct clk *clks, int num, int enable)
 		 * the LLA enables functions claim to support an
 		 * enables function, but then fail if you call it!
 		 */
-		if (enable) {
+		if (enable || clk->flags & CLK_ALWAYS_ENABLED) {
 			ret = clk_enable(clk);
 			if (ret)
 				pr_warning("Failed to enable clk %s, "
@@ -114,10 +117,6 @@ static unsigned int most_significant_set_bit(unsigned int x)
 	/* now count the number of set bits [clz is population(~x)] */
 	return population(x) - 1;
 }
-
-#include "clock-oslayer.h"
-#include "clock-common.h"
-
 
 /*
  * PLL800

@@ -22,6 +22,7 @@
 #define clk_t	struct clk
 
 #define CLK_RATE_PROPAGATES		0
+#define CLK_ALWAYS_ENABLED		(1 << 0)
 /* Register access macros */
 #define CLK_READ(addr)	  		ioread32((void *)addr)
 #define CLK_WRITE(addr, val)		iowrite32(val, (void *)addr)

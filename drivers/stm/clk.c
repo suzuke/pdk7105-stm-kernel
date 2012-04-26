@@ -106,11 +106,6 @@ static int __clk_get_measure(struct clk *clk)
 	return ret;
 }
 
-static inline int clk_is_always_enabled(struct clk *clk)
-{
-	return clk->flags & CLK_ALWAYS_ENABLED;
-}
-
 static int __clk_for_each_child(struct clk *clk,
 		int (*fn)(struct clk *clk, void *data), void *data)
 {
@@ -186,18 +181,6 @@ void _clk_disable(struct clk *clk)
 {
 	int ret;
 
-	if (clk_is_always_enabled(clk)) {
-		/*
-		 * this clock can not be disabled;
-		 * This means this is:
-		 * - an external oscillator
-		 * - a system critical clock
-		 */
-		if (--clk->usage_counter == 0)
-			clk->usage_counter = 1;
-		return;
-	}
-
 	if (--clk->usage_counter == 0) {
 		ret = __clk_disable(clk);
 		if (ret) {/* on error */
@@ -243,9 +226,6 @@ int clk_register(struct clk *clk)
 	kref_init(&clk->kref);
 
 	mutex_unlock(&clks_list_sem);
-
-	if (clk_is_always_enabled(clk))
-		clk_enable(clk);
 
 	return 0;
 }
@@ -415,14 +395,10 @@ static void clk_seq_show_clk(struct seq_file *s, struct clk *clk, int depth)
 	unsigned long rate = clk_get_rate(clk);
 	struct clk *child_clk;
 
-	seq_printf(s, "%*s%-*s: %4ld.%02ldMHz",
+	seq_printf(s, "%*s%-*s: %4ld.%02ldMHz users=%ld\n",
 		depth*2, "", 30-(depth*2), clk->name,
-		rate / 1000000, (rate % 1000000) / 10000);
-	if (clk_is_always_enabled(clk))
-		seq_printf(s, " always enabled");
-	else
-		seq_printf(s, " users=%ld", clk->usage_counter);
-	seq_printf(s, "\n");
+		rate / 1000000, (rate % 1000000) / 10000,
+		clk->usage_counter);
 
 	list_for_each_entry(child_clk, &clk->children, children_node)
 		clk_seq_show_clk(s, child_clk, depth+1);
