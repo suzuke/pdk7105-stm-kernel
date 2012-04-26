@@ -12,16 +12,12 @@ config CPU_SUBTYPE_FLI7610
 config MACH_STM_STIH415
 	bool "Support STiH415 generic platform"
 	select CPU_SUBTYPE_STIH415
-	select ARM_GIC
-	select CPU_V7
 	help
 	  Include support for a generic STiH415 (Orly) platform.
 
 config MACH_STM_FLI7610
 	bool "Support FLI7610 generic platform"
 	select CPU_SUBTYPE_FLI7610
-	select ARM_GIC
-	select CPU_V7
 	help
 	  Include support for a generic FLI7610 (Newman) platform.
 
