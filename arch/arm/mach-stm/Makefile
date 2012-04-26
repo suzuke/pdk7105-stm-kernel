@@ -11,6 +11,8 @@ obj-$(CONFIG_HOTPLUG_CPU)	+= hotplug.o
 
 obj-$(CONFIG_PM)		+= pokeloop.o
 
+# Suspend/MemSuspend
+obj-$(CONFIG_SUSPEND)		+= suspend.o suspend-asm.o
+
 # Hibernation on Disk
 obj-$(CONFIG_HIBERNATION)	+= swsusp.o swsusp-asm.o
-
