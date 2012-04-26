@@ -25,7 +25,11 @@
 /*
  * Get the number of CPU cores from the SCU configuration
  */
+#ifdef CONFIG_HIBERNATION_ON_MEMORY
+unsigned int scu_get_core_count(void __iomem *scu_base)
+#else
 unsigned int __init scu_get_core_count(void __iomem *scu_base)
+#endif
 {
 	unsigned int ncores = __raw_readl(scu_base + SCU_CONFIG);
 	return (ncores & 0x03) + 1;

@@ -28,12 +28,14 @@
 #include <asm-generic/bug.h>
 #include <asm/mmu.h>
 #include <asm/hardware/gic.h>
+#include <asm/smp_scu.h>
 #include <asm/mmu_context.h>
 #include <asm/tlbflush.h>
 #include <asm/system.h>
 #include <asm/pgtable-hwdef.h>
 #include <asm/pgalloc.h>
 
+#include "core.h"
 #include "hom.h"
 #include "pokeloop.h"
 
@@ -248,6 +250,13 @@ static int __cpuinitdata stm_hom_enter(void)
 	 */
 	memset(__va(PFN_PHYS(page_to_pfn(empty_zero_page))), 0, 0x1000);
 
+#ifdef CONFIG_SMP
+	/*
+	 * Enable the SCU if required
+	 */
+	if (scu_get_core_count(scu_base_addr) > 1)
+		scu_enable(scu_base_addr);
+#endif
 	return 0;
 }
 
