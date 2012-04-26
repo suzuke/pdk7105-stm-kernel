@@ -10,6 +10,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include "./hcd-stm.h"
 
 /* Define a bus wrapper IN/OUT threshold of 128 */
@@ -113,15 +114,19 @@ static int ehci_hcd_stm_remove(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(pdev);
 
+	if (!hcd)
+		return 0;
+
 	usb_remove_hcd(hcd);
 	iounmap(hcd->regs);
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 	usb_put_hcd(hcd);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }
 
-static int ehci_hcd_stm_probe(struct platform_device *pdev)
+static int ehci_hcd_stm_init(struct platform_device *pdev)
 {
 	int retval = 0;
 	struct usb_hcd *hcd;
@@ -192,45 +197,62 @@ err0:
 	return retval;
 }
 
+static int ehci_hcd_stm_probe(struct platform_device *pdev)
+{
+	int ret;
+	ret = ehci_hcd_stm_init(pdev);
+	if (ret)
+		return ret;
+	/* by default the device is on */
+	pm_runtime_set_active(&pdev->dev);
+	pm_suspend_ignore_children(&pdev->dev, true);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get(&pdev->dev);	/* notify the ehci is used
+					 * the pm_runtime will take
+					 * care to resume the hcd
+					 */
+	return 0;
+}
+
+#ifdef CONFIG_PM_RUNTIME
+static DEFINE_MUTEX(stm_ehci_usb_mutex); /* to serialize the operations.. */
+
+static int stm_ehci_runtime_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	mutex_lock(&stm_ehci_usb_mutex);
+	ehci_hcd_stm_remove(pdev);
+	mutex_unlock(&stm_ehci_usb_mutex);
+	return 0;
+
+}
+
+static int stm_ehci_runtime_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	mutex_lock(&stm_ehci_usb_mutex);
+	ehci_hcd_stm_init(pdev);
+	mutex_unlock(&stm_ehci_usb_mutex);
+
+	return 0;
+}
+
+static const struct dev_pm_ops stm_ehci_pm = {
+	.runtime_suspend = stm_ehci_runtime_suspend,
+	.runtime_resume = stm_ehci_runtime_resume,
+};
+#else
+static const struct dev_pm_ops stm_ehci_pm;
+#endif
+
 static struct platform_driver ehci_hcd_stm_driver = {
 	.probe = ehci_hcd_stm_probe,
 	.remove = ehci_hcd_stm_remove,
 	.shutdown = usb_hcd_platform_shutdown,
 	.driver = {
 		.name = "stm-ehci",
+		.pm = &stm_ehci_pm,
 	},
 };
-
-#ifdef CONFIG_PM_RUNTIME
-static DEFINE_MUTEX(stm_ehci_usb_mutex); /* to serialize the operations.. */
-
-int stm_ehci_hcd_unregister(struct platform_device *dev)
-{
-	struct usb_hcd *hcd = platform_get_drvdata(dev);
-	int ret = 0;
-	if (!hcd)
-		return ret;
-
-	mutex_lock(&stm_ehci_usb_mutex);
-	ret = ehci_hcd_stm_remove(dev);
-	mutex_unlock(&stm_ehci_usb_mutex);
-	if (ret)
-		dgb_print("[STM][USB] Error on %s %p\n", __func__, dev);
-	return ret;
-
-}
-EXPORT_SYMBOL(stm_ehci_hcd_unregister);
-
-int stm_ehci_hcd_register(struct platform_device *dev)
-{
-	int ret = 0;
-
-	mutex_lock(&stm_ehci_usb_mutex);
-	ret = ehci_hcd_stm_probe(dev);
-	mutex_unlock(&stm_ehci_usb_mutex);
-	if (ret)
-		dgb_print("[STM][USB] Error on %s %p\n", __func__, dev);
-	return ret;
-}
-EXPORT_SYMBOL(stm_ehci_hcd_register);
-#endif

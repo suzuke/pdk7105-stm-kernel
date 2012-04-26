@@ -220,7 +220,6 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 
 	/* Initialize the pm_runtime fields */
 	pm_runtime_set_active(&pdev->dev);
-	pm_suspend_ignore_children(&pdev->dev, 1);
 	pm_runtime_enable(&pdev->dev);
 
 	return 0;
@@ -246,7 +245,7 @@ static int stm_usb_suspend(struct device *dev)
 	dgb_print("\n");
 
 #ifdef CONFIG_PM_RUNTIME
-	if (dev->power.runtime_status != RPM_ACTIVE)
+	if (pm_runtime_status_suspended(dev))
 		return 0; /* usb already suspended via runtime_suspend */
 #endif
 
@@ -271,7 +270,7 @@ static int stm_usb_resume(struct device *dev)
 	struct drv_usb_data *dr_data = dev_get_drvdata(dev);
 
 #ifdef CONFIG_PM_RUNTIME
-	if (dev->power.runtime_status == RPM_SUSPENDED)
+	if (pm_runtime_status_suspended(dev))
 		return 0; /* usb wants resume via runtime_resume... */
 #endif
 
@@ -290,60 +289,11 @@ static int stm_usb_resume(struct device *dev)
 #define stm_usb_resume NULL
 #endif
 
-#ifdef CONFIG_PM_RUNTIME
-static int stm_usb_runtime_suspend(struct device *dev)
-{
-	struct drv_usb_data *dr_data = dev_get_drvdata(dev);
-
-	if (dev->power.runtime_status == RPM_SUSPENDED) {
-		dgb_print("%s already suspended\n", dev_name(dev));
-		return 0;
-	}
-
-	dgb_print("Runtime suspending %s\n", dev_name(dev));
-#if defined(CONFIG_USB_EHCI_HCD) || defined(CONFIG_USB_EHCI_HCD_MODULE)
-	if (dr_data->ehci_device)
-		stm_ehci_hcd_unregister(dr_data->ehci_device);
-#endif
-
-#if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)
-	if (dr_data->ohci_device)
-		stm_ohci_hcd_unregister(dr_data->ohci_device);
-#endif
-
-	return stm_usb_suspend(dev);
-}
-static int stm_usb_runtime_resume(struct device *dev)
-{
-	struct drv_usb_data *dr_data = dev_get_drvdata(dev);
-
-	if (dev->power.runtime_status == RPM_ACTIVE) {
-		dgb_print("%s already active\n", dev_name(dev));
-		return 0;
-	}
-	dgb_print("Runtime resuming: %s\n", dev_name(dev));
-	stm_usb_resume(dev);
-#if defined(CONFIG_USB_EHCI_HCD) || defined(CONFIG_USB_EHCI_HCD_MODULE)
-	if (dr_data->ehci_device)
-		stm_ehci_hcd_register(dr_data->ehci_device);
-#endif
-
-#if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)
-	if (dr_data->ohci_device)
-		stm_ohci_hcd_register(dr_data->ohci_device);
-#endif
-	return 0;
-}
-#else
-#define stm_usb_runtime_suspend		NULL
-#define stm_usb_runtime_resume		NULL
-#endif
-
 static struct dev_pm_ops stm_usb_pm = {
 	.suspend = stm_usb_suspend,  /* on standby/memstandby */
 	.resume = stm_usb_resume,    /* resume from standby/memstandby */
-	.runtime_suspend = stm_usb_runtime_suspend,
-	.runtime_resume = stm_usb_runtime_resume,
+	.runtime_suspend = stm_usb_suspend,
+	.runtime_resume = stm_usb_resume,
 };
 
 static struct platform_driver stm_usb_driver = {

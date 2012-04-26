@@ -12,6 +12,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/interrupt.h>
 #include "./hcd-stm.h"
 
@@ -86,7 +87,7 @@ static const struct hc_driver ohci_st40_hc_driver = {
 	.start_port_reset =	ohci_start_port_reset,
 };
 
-static int ohci_hcd_stm_probe(struct platform_device *pdev)
+static int ohci_hcd_stm_init(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd = NULL;
 	int retval;
@@ -155,8 +156,56 @@ static int ohci_hcd_stm_remove(struct platform_device *pdev)
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 	usb_put_hcd(hcd);
 
+	platform_set_drvdata(pdev, NULL);
+
 	return 0;
 }
+
+static int ohci_hcd_stm_probe(struct platform_device *pdev)
+{
+	int ret;
+	ret = ohci_hcd_stm_init(pdev);
+	if (ret)
+		return ret;
+	pm_runtime_set_active(&pdev->dev);
+	pm_suspend_ignore_children(&pdev->dev, true);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get(&pdev->dev);	/* notify the ehci is used
+					 * the pm_runtime will take
+					 * care to resume the hcd
+					*/
+	return 0;
+}
+
+#ifdef CONFIG_PM_RUNTIME
+static DEFINE_MUTEX(stm_ohci_usb_mutex); /* to serialize the operations.. */
+
+static int stm_ohci_runtime_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	mutex_lock(&stm_ohci_usb_mutex);
+	ohci_hcd_stm_remove(pdev);
+	mutex_unlock(&stm_ohci_usb_mutex);
+	return 0;
+}
+
+static int stm_ohci_runtime_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	mutex_lock(&stm_ohci_usb_mutex);
+	ohci_hcd_stm_init(pdev);
+	mutex_unlock(&stm_ohci_usb_mutex);
+
+	return 0;
+}
+
+static const struct dev_pm_ops stm_ohci_pm = {
+	.runtime_suspend = stm_ohci_runtime_suspend,
+	.runtime_resume = stm_ohci_runtime_resume,
+};
+#endif
 
 static struct platform_driver ohci_hcd_stm_driver = {
 	.probe = ohci_hcd_stm_probe,
@@ -164,40 +213,8 @@ static struct platform_driver ohci_hcd_stm_driver = {
 	.shutdown = usb_hcd_platform_shutdown,
 	.driver = {
 		.name = "stm-ohci",
+#ifdef CONFIG_PM_RUNTIME
+		.pm = &stm_ohci_pm,
+#endif
 	},
 };
-
-#ifdef CONFIG_PM
-static DEFINE_MUTEX(stm_ohci_usb_mutex); /* to serialize the operations.. */
-
-int stm_ohci_hcd_unregister(struct platform_device *dev)
-{
-	struct usb_hcd *hcd = platform_get_drvdata(dev);
-	int ret = 0;
-
-	if (!hcd)
-		return ret;
-
-	mutex_lock(&stm_ohci_usb_mutex);
-	ret = ohci_hcd_stm_remove(dev);
-	mutex_unlock(&stm_ohci_usb_mutex);
-	if (ret)
-		dgb_print("[STM][USB] Error on %s %p\n", __func__, dev);
-	return ret;
-}
-EXPORT_SYMBOL(stm_ohci_hcd_unregister);
-
-int stm_ohci_hcd_register(struct platform_device *dev)
-{
-	int ret = 0;
-
-	mutex_lock(&stm_ohci_usb_mutex);
-	ret = ohci_hcd_stm_probe(dev);
-	mutex_unlock(&stm_ohci_usb_mutex);
-	if (ret)
-		dgb_print("[STM][USB] Error on %s %p\n", __func__, dev);
-
-	return ret;
-}
-EXPORT_SYMBOL(stm_ohci_hcd_register);
-#endif

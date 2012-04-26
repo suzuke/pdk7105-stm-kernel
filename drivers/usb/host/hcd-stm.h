@@ -33,11 +33,4 @@ struct drv_usb_data {
 	struct stm_amba_bridge *amba_bridge;
 };
 
-#ifdef CONFIG_PM_RUNTIME
-int stm_ehci_hcd_register(struct platform_device *);
-int stm_ehci_hcd_unregister(struct platform_device *);
-
-int stm_ohci_hcd_register(struct platform_device *);
-int stm_ohci_hcd_unregister(struct platform_device *);
-#endif
 #endif
