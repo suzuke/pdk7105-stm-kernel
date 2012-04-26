@@ -36,6 +36,18 @@ extern void stm_secondary_startup(void);
  */
 volatile int __cpuinitdata pen_release = -1;
 
+#ifdef CONFIG_HIBERNATION_ON_MEMORY
+void write_pen_release(int val)
+#else
+static write_pen_release(int val)
+#endif
+{
+	pen_release = val;
+	smp_wmb();
+	__cpuc_flush_dcache_area((void *)&pen_release, sizeof(pen_release));
+	outer_clean_range(__pa(&pen_release), __pa(&pen_release + 1));
+}
+
 static inline unsigned int get_core_count(void)
 {
 	return scu_get_core_count(scu_base_addr);
@@ -59,8 +71,7 @@ printk("%s(%d)\n", __FUNCTION__, cpu);
 	 * let the primary processor know we're out of the
 	 * pen, then head off into the C entry point
 	 */
-	pen_release = -1;
-	smp_wmb();
+	write_pen_release(-1);
 
 	/*
 	 * Synchronise with the boot thread.
@@ -88,9 +99,7 @@ printk("%s(%d)\n", __FUNCTION__, cpu);
 	 * Note that "pen_release" is the hardware CPU ID, whereas
 	 * "cpu" is Linux's internal ID.
 	 */
-	flush_cache_all();
-	pen_release = cpu;
-	flush_cache_all();
+	write_pen_release(cpu);
 
 #if 1
 	/*

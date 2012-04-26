@@ -162,7 +162,7 @@ static int __cpuinitdata stm_hom_enter(void)
 	/*
 	 * Initialize the pen to be consistend on resume
 	 */
-	pen_release = -1;
+	write_pen_release(-1);
 #endif
 
 	local_irq_save(flag);

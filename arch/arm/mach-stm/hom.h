@@ -29,6 +29,8 @@
 #include <linux/hom.h>
 #include <linux/compiler.h>
 
+void write_pen_release(int val);
+
 struct hom_frozen_data {
 	long pg_dir;
 	long sp;
