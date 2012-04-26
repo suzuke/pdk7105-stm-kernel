@@ -142,7 +142,7 @@ ENDPROC(lookup_processor_type)
  *	r9 = cpuid (preserved)
  */
 	__CPUINIT
-__lookup_processor_type:
+ENTRY(__lookup_processor_type)
 	adr	r3, __lookup_processor_type_data
 	ldmia	r3, {r4 - r6}
 	sub	r3, r3, r4			@ get offset between virt&phys

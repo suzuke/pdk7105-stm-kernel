@@ -102,8 +102,10 @@ config HIBERNATION_ON_MEMORY
 config HOM_TAG_VIRTUAL_ADDRESS
 	hex "Hibernation on memory - Tag virtual addess"
 	depends on HIBERNATION_ON_MEMORY
-	depends on SUPERH32
-	default "0x80001800"
+	depends on SUPERH32 || ARM
+	default "0x80001800" if SUPERH32
+	default "0xc0001800" if ARM && VMSPLIT_3G
+	default "0x80001800" if ARM && VMSPLIT_2G
 	---help---
 	  Set the Absolute Virtual Address where the Hibernation,
 	  FIXME FINISH THIS SENTENCE
@@ -111,7 +113,6 @@ config HOM_TAG_VIRTUAL_ADDRESS
 config HOM_DEBUG
 	bool "Hibernation on memory - Debug"
 	depends on HIBERNATION_ON_MEMORY
-	depends on SUPERH32
 	default n
 	---help---
 	  This option enables the hom_printk function. This works
