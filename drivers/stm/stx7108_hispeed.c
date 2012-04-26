@@ -518,7 +518,6 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 };
 
 struct stx7108_stmmac_priv {
-	struct stm_pad_state *pad_state;
 	struct sysconf_field *mac_speed_sel;
 	void (*txclk_select)(int txclk_250_not_25_mhz);
 } stx7108_stmmac_priv_data[2];
@@ -552,33 +551,17 @@ static struct stm_pio_control_retime_config *stx7108_ethernet_rgmii_gtx_iclk =
 
 static void stx7108_ethernet_rgmii_gtx_speed(void *priv, unsigned int speed)
 {
-	struct stx7108_stmmac_priv *stmmac_priv = priv;
 	struct stm_pio_control_retime_config *rt;
+	struct plat_stmmacenet_data *plat_data =
+		container_of(priv, struct plat_stmmacenet_data, bsp_priv);
 
 	/* TX Clock inversion is not set for 1000Mbps */
-	stm_pad_update_gpio(stmmac_priv->pad_state, "TXCLK",
+	stm_pad_update_gpio(plat_data->custom_data, "TXCLK",
 		stm_pad_gpio_direction_ignored, -1, -1, 
 		(speed == SPEED_1000) ? rt = stx7108_ethernet_rgmii_gtx_niclk:
 		stx7108_ethernet_rgmii_gtx_iclk);
 
 	stx7108_ethernet_gtx_speed(priv, speed);
-}
-
-static inline int stx7108_stmmac_claim_resource(struct platform_device *pdev)
-{
-	int ret = 0;
-	struct device *dev = &pdev->dev;
-	struct plat_stmmacenet_data *plat_data = dev_get_platdata(dev);
-	struct stx7108_stmmac_priv *stmmac_priv = plat_data->bsp_priv;
-
-	stmmac_priv->pad_state = devm_stm_pad_claim(&pdev->dev,
-		plat_data->custom_cfg, dev_name(&pdev->dev));
-	if (!stmmac_priv->pad_state) {
-		pr_err("%s: failed to request pads!\n", __func__);
-		ret = -ENODEV;
-	}
-
-	return ret;
 }
 
 static struct stmmac_dma_cfg gmac_dma_setting = {
@@ -593,7 +576,8 @@ static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
 		.tx_coe = 1,
 		.bugged_jumbo =1,
 		.pmt = 1,
-		.init = &stx7108_stmmac_claim_resource,
+		.init = &stmmac_claim_resource,
+		.exit = &stmmac_release_resource,
 		.bsp_priv = &stx7108_stmmac_priv_data[0],
 	}, {
 		.dma_cfg = &gmac_dma_setting,
@@ -602,7 +586,8 @@ static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
 		.tx_coe = 1,
 		.bugged_jumbo =1,
 		.pmt = 1,
-		.init = &stx7108_stmmac_claim_resource,
+		.init = &stmmac_claim_resource,
+		.exit = &stmmac_release_resource,
 		.bsp_priv = &stx7108_stmmac_priv_data[1],
 	}
 };
