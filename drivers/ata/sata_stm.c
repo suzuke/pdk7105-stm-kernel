@@ -1288,8 +1288,8 @@ static int __devinit stm_sata_probe(struct platform_device *pdev)
 	else {
 		/* by default the device is on */
 		pm_runtime_set_active(&pdev->dev);
-		pm_suspend_ignore_children(&pdev->dev, 1);
 		pm_runtime_enable(&pdev->dev);
+		pm_runtime_get(&pdev->dev);
 	}
 
 	return ret;
