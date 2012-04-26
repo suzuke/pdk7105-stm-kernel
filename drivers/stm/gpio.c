@@ -25,6 +25,7 @@
 #include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/syscore_ops.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/pio.h>
@@ -56,7 +57,6 @@ struct stm_gpio_pin {
 #define PIN_IGNORE_FALLING_EDGE	(PIN_IGNORE_EDGE_FLAG | 1)
 #define PIN_IGNORE_EDGE_MASK	(PIN_IGNORE_EDGE_FLAG | PIN_IGNORE_EDGE_VAL)
 
-	unsigned char direction;
 	struct stpio_pin stpio;
 };
 
@@ -71,18 +71,13 @@ struct stm_gpio_port {
 	void *base;
 	unsigned long irq_level_mask;
 	struct stm_gpio_pin pins[STM_GPIO_PINS_PER_PORT];
-	struct device dev;
-	pm_message_t pm_state;
+	struct platform_device *pdev;
 };
 
 struct stm_gpio_irqmux {
 	void *base;
 	int port_first;
 };
-
-static struct bus_type stm_gpio_subsys;
-
-
 
 int stm_gpio_num; /* Number of available internal PIOs (pins) */
 EXPORT_SYMBOL(stm_gpio_num);
@@ -380,7 +375,6 @@ static inline void __stm_gpio_direction(struct stm_gpio_port *port,
 			direction != STM_GPIO_DIRECTION_ALT_OUT &&
 			direction != STM_GPIO_DIRECTION_ALT_BIDIR);
 
-	port->pins[offset].direction = direction;
 	set__PIO_PCx(port->base, offset, direction);
 }
 
@@ -799,7 +793,6 @@ static int __devinit stm_gpio_probe(struct platform_device *pdev)
 	struct stm_gpio_port *port = &stm_gpio_ports[port_no];
 	struct resource *memory;
 	int irq;
-	int ret;
 
 	BUG_ON(port_no < 0);
 	BUG_ON(port_no >= stm_gpio_num);
@@ -826,13 +819,7 @@ static int __devinit stm_gpio_probe(struct platform_device *pdev)
 
 	port->gpio_chip.label = dev_name(&pdev->dev);
 	dev_set_drvdata(&pdev->dev, port);
-
-	port->dev.id = port_no;
-	port->dev.bus = &stm_gpio_subsys;
-	dev_set_name(&port->dev, "%s", dev_name(&pdev->dev));
-	ret = device_register(&port->dev);
-	if (ret)
-		return ret;
+	port->pdev = pdev;
 
 	/* This is a good time to check consistency of linux/stm/gpio.h
 	 * declarations with the proper source... */
@@ -925,23 +912,7 @@ static struct platform_driver stm_gpio_irqmux_driver = {
 /*** Drivers initialization ***/
 
 #ifdef CONFIG_PM
-static int stm_gpio_hibernation_resume(struct stm_gpio_port *port)
-{
-	int pin_no;
-
-	for (pin_no = 0; pin_no < port->gpio_chip.ngpio; ++pin_no)
-		/*
-		 * Direction can not be zero!
-		 * Zero means 'un-claimed'
-		 */
-		if (port->pins[pin_no].direction)
-			__stm_gpio_direction(port, pin_no,
-					     port->pins[pin_no].direction);
-
-	return 0;
-}
-
-static int stm_gpio_suspend(struct stm_gpio_port *port)
+static void stm_gpio_port_suspend(struct stm_gpio_port *port)
 {
 	int port_no = port - stm_gpio_ports;
 	int pin_no;
@@ -956,56 +927,35 @@ static int stm_gpio_suspend(struct stm_gpio_port *port)
 		else
 			stm_gpio_irq_chip_disable(data);
 	}
+}
+
+static int stm_gpio_suspend(void)
+{
+	int port_no;
+	int port_num = stm_gpio_num / STM_GPIO_PINS_PER_PORT;
+
+	for (port_no = 0; port_no < port_num; ++port_no)
+		stm_gpio_port_suspend(&stm_gpio_ports[port_no]);
 
 	return 0;
 }
 
-static int stm_gpio_sysdev_suspend(struct sys_device *dev, pm_message_t state)
-{
-	struct stm_gpio_port *port = dev_to_stm_gpio(dev);
-	int ret = 0;
-
-	switch (state.event) {
-	case PM_EVENT_ON:
-		if (port->pm_state.event != PM_EVENT_FREEZE)
-			break;
-		ret = stm_gpio_hibernation_resume(port);
-		break;
-
-	case PM_EVENT_SUSPEND:
-		ret = stm_gpio_suspend(port);
-		break;
-
-	case PM_EVENT_FREEZE:
-		/* do nothing */
-		break;
-	}
-
-	port->pm_state = state;
-
-	return ret;
-}
-
-static int stm_gpio_sysdev_resume(struct sys_device *dev)
-{
-	return stm_gpio_sysdev_suspend(dev, PMSG_ON);
-}
-#else
-#define stm_gpio_sysdev_suspend NULL
-#define stm_gpio_sysdev_resume NULL
-#endif
-
-static struct bus_type stm_gpio_subsys = {
-	.name = "stm-gpio",
+static struct syscore_ops stm_gpio_syscore = {
+	.suspend = stm_gpio_suspend,
 };
+
+static __init int stm_gpio_syscore_init(void)
+{
+	register_syscore_ops(&stm_gpio_syscore);
+	return 0;
+}
+
+module_init(stm_gpio_syscore_init);
+#endif
 
 static int __init stm_gpio_init(void)
 {
 	int ret;
-
-	ret = subsys_system_register(&stm_gpio_subsys, NULL);
-	if (ret)
-		return ret;
 
 	ret = platform_driver_register(&stm_gpio_driver);
 	if (ret)
