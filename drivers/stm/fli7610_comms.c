@@ -147,7 +147,7 @@ static struct platform_device fli7610_ssc_devices[] = {
 
 static int __initdata fli7610_ssc_configured[ARRAY_SIZE(fli7610_ssc_devices)];
 
-int __init fli7610_configure_ssc_i2c(int ssc)
+int __init fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config)
 {
 	static int i2c_busnum;
 	struct stm_plat_ssc_data *plat_data;
@@ -167,6 +167,8 @@ int __init fli7610_configure_ssc_i2c(int ssc)
 	pad_config = &fli7610_ssc_i2c_pad_configs[ssc];
 
 	plat_data->pad_config = pad_config;
+	if (config)
+		plat_data->i2c_fastmode = config->i2c_fastmode;
 
 	/* I2C bus number reservation (to prevent any hot-plug device
 	 * from using it) */

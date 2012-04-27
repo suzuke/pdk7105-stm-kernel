@@ -123,10 +123,13 @@ static void __init fli76xxhdk01_init(void)
 	fli7610_configure_usb(1);
 	fli7610_configure_usb(2);
 
-	fli7610_configure_ssc_i2c(FLI7610_SSC(0));
-	fli7610_configure_ssc_i2c(FLI7610_SSC(1));
+	fli7610_configure_ssc_i2c(FLI7610_SSC(0),
+			&(struct fli7610_ssc_config) {.i2c_fastmode = 0,});
+	fli7610_configure_ssc_i2c(FLI7610_SSC(1),
+			&(struct fli7610_ssc_config) {.i2c_fastmode = 0,});
 	/* SBC I2C */
-	fli7610_configure_ssc_i2c(FLI7610_SBC_SSC(0));
+	fli7610_configure_ssc_i2c(FLI7610_SBC_SSC(0),
+			&(struct fli7610_ssc_config) {.i2c_fastmode = 0,});
 
 	fli7610_configure_lirc();
 

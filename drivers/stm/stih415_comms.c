@@ -310,7 +310,7 @@ static struct platform_device stih415_ssc_devices[] = {
 
 static int __initdata stih415_ssc_configured[ARRAY_SIZE(stih415_ssc_devices)];
 
-int __init stih415_configure_ssc_i2c(int ssc)
+int __init stih415_configure_ssc_i2c(int ssc, struct stih415_ssc_config *config)
 {
 	static int i2c_busnum;
 	struct stm_plat_ssc_data *plat_data;
@@ -330,6 +330,8 @@ int __init stih415_configure_ssc_i2c(int ssc)
 	pad_config = &stih415_ssc_i2c_pad_configs[ssc];
 
 	plat_data->pad_config = pad_config;
+	if (config)
+		plat_data->i2c_fastmode = config->i2c_fastmode;
 
 	/* I2C bus number reservation (to prevent any hot-plug device
 	 * from using it) */

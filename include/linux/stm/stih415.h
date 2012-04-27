@@ -101,6 +101,7 @@ void stih415_configure_ethernet(int port,
 
 struct stih415_ssc_config {
 	void (*spi_chipselect)(struct spi_device *spi, int is_on);
+	unsigned int i2c_fastmode:1;
 };
 
 #define STIH415_SBC_SSC(num)		(num + 7)
@@ -108,7 +109,7 @@ struct stih415_ssc_config {
 
 /* Use the above macros while passing SSC number. */
 int stih415_configure_ssc_spi(int ssc, struct stih415_ssc_config *config);
-int stih415_configure_ssc_i2c(int ssc);
+int stih415_configure_ssc_i2c(int ssc, struct stih415_ssc_config *config);
 
 
 struct stih415_lirc_config {

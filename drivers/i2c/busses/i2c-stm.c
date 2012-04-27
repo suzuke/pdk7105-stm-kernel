@@ -1186,6 +1186,8 @@ static int iic_stm_probe(struct platform_device *pdev)
 	i2c_stm->adapter.nr = pdev->id;
 	i2c_stm->adapter.algo = &iic_stm_algo;
 	i2c_stm->adapter.dev.parent = &(pdev->dev);
+	if (plat_data->i2c_fastmode)
+		i2c_stm->config = IIC_STM_CONFIG_SPEED_FAST;
 	i2c_stm->clk = clk_get(&(pdev->dev), "comms_clk");
 	if (IS_ERR(i2c_stm->clk)) {
 		dev_err(&pdev->dev, "Comms clock not found!\n");
