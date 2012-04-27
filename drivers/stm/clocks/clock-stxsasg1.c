@@ -11,6 +11,12 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+07/nov/11 fabrice.charpentier@st.com
+	  Clocks rename to match datasheet:
+	  FDMAx=>FDMA_x, IC_REG=>ICN_REG_0, IC_IF_0=>ICN_IF_0, etc etc
+02/nov/11 fabrice.charpentier@st.com
+	  clk_pll1600_xxx() renamed to clk_pll1600c65_xxx().
+	  A0 & A1 measure functions revisited.
 04/May/11 Francesco Virlinzi
 	  Inter-dies clock management
 	  Linux-Arm (anticipation)
@@ -33,13 +39,6 @@
 #include "clock.h"
 
 #define CLKLLA_SYSCONF_UNIQREGS			1
-
-static sysconf_base_t sysconf_base[] = {
-	{ 0, 99, SYS_SBC_BASE_ADDRESS },
-	{ 100, 299, SYS_FRONT_BASE_ADDRESS },
-	{ 300, 399, SYS_REAR_BASE_ADDRESS },
-	{ 0, 0, 0 }
-};
 
 #else /* Linux */
 
@@ -87,7 +86,6 @@ static int clkgenc_vcc_recalc(clk_t *clk_p);
 static int clkgenc_recalc(clk_t *clk_p);
 static int clkgend_recalc(clk_t *clk_p);
 static int clkgend_fsyn_recalc(clk_t *clk_p);
-static int clkgene_recalc(clk_t *clk_p);     /* Added to get infos for USB */
 static int clkgenax_enable(clk_t *clk_p);
 static int clkgenb_enable(clk_t *clk_p);
 static int clkgenc_enable(clk_t *clk_p);
@@ -96,12 +94,21 @@ static int clkgenax_disable(clk_t *clk_p);
 static int clkgenb_disable(clk_t *clk_p);
 static int clkgenc_disable(clk_t *clk_p);
 static int clkgend_disable(clk_t *clk_p);
-static unsigned long clkgena1_get_measure(clk_t *clk_p);
-static unsigned long clkgena0_get_measure(clk_t *clk_p);
+static unsigned long clkgenax_get_measure(clk_t *clk_p);
 static int clkgenax_init(clk_t *clk_p);
 static int clkgenb_init(clk_t *clk_p);
 static int clkgenc_init(clk_t *clk_p);
 static int clkgend_init(clk_t *clk_p);
+
+
+#ifdef ST_OS21
+static sysconf_base_t sysconf_base[] = {
+	{ 0, 99, SYS_SBC_BASE_ADDRESS },
+	{ 100, 299, SYS_FRONT_BASE_ADDRESS },
+	{ 300, 399, SYS_REAR_BASE_ADDRESS },
+	{ 0, 0, 0 }
+};
+#endif
 
 static void *cga0_base;
 static void *cga1_base;
@@ -110,7 +117,7 @@ static void *cgc_base;
 static void *cgd_base;
 
 _CLK_OPS(clkgena0,
-	"A0/REAR",
+	"A0",
 	clkgenax_init,
 	clkgenax_set_parent,
 	clkgena0_set_rate,
@@ -118,11 +125,11 @@ _CLK_OPS(clkgena0,
 	clkgenax_enable,
 	clkgenax_disable,
 	clkgenax_observe,
-	clkgena0_get_measure,
+	clkgenax_get_measure,
 	"PIO12[0]"       /* Observation point */
 );
 _CLK_OPS(clkgena1,
-	"A1/FRONT",
+	"A1",
 	clkgenax_init,
 	clkgenax_set_parent,
 	clkgena1_set_rate,
@@ -130,7 +137,7 @@ _CLK_OPS(clkgena1,
 	clkgenax_enable,
 	clkgenax_disable,
 	clkgenax_observe,
-	clkgena1_get_measure,
+	clkgenax_get_measure,
 	"PIO12[1]"       /* Observation point */
 );
 _CLK_OPS(clkgenb,
@@ -172,7 +179,7 @@ _CLK_OPS(clkgend,
 
 /* Physical clocks description */
 static clk_t clk_clocks[] = {
-/* Clockgen A0/REAR */
+/* Clockgen A0 */
 _CLK(CLKS_A0_REF, &clkgena0, 0,
 	  CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
 _CLK_P(CLKS_A0_PLL0HS, &clkgena0, 1000000000,
@@ -182,17 +189,17 @@ _CLK_P(CLKS_A0_PLL0LS, &clkgena0, 500000000,
 _CLK_P(CLKS_A0_PLL1, &clkgena0, 800000000,
 	CLK_RATE_PROPAGATES, &clk_clocks[CLKS_A0_REF]),
 
-_CLK(CLKS_FDMA0,	&clkgena0,    400000000,    0),
-_CLK(CLKS_FDMA1,	&clkgena0,    400000000,    0),
-_CLK(CLKS_JIT_SENSE,	&clkgena0,    400000000,    0),
-_CLK(CLKS_IC_REG,	&clkgena0,    100000000, 0),
-_CLK(CLKS_IC_IF_0,	&clkgena0,    200000000,    0),
-_CLK(CLKS_IC_REG_LP,	&clkgena0,    100000000,    0),
-_CLK(CLKS_EMI_SS,	&clkgena0,    100000000,    0),
+_CLK(CLKS_FDMA_0,	&clkgena0,    400000000,    0),
+_CLK(CLKS_FDMA_1,	&clkgena0,    400000000,    0),
+_CLK(CLKS_JIT_SENSE,	&clkgena0,    0,    0),
+_CLK(CLKS_ICN_REG_0,	&clkgena0,    100000000, CLK_ALWAYS_ENABLED),
+_CLK(CLKS_ICN_IF_0,	&clkgena0,    200000000, CLK_ALWAYS_ENABLED),
+_CLK(CLKS_ICN_REG_LP_0,	&clkgena0,    100000000, CLK_ALWAYS_ENABLED),
+_CLK(CLKS_EMISS,	&clkgena0,    100000000,    0),
 _CLK(CLKS_ETH1_PHY,	&clkgena0,    50000000,    0),
-_CLK(CLKS_MII1_REF,	&clkgena0,    200000000,    0),
+_CLK(CLKS_MII1_REF_CLK_OUT,	&clkgena0,    200000000,    0),
 
-/* Clockgen A1/FRONT */
+/* Clockgen A1 */
 _CLK(CLKS_A1_REF, &clkgena1, 0,
 	CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
 _CLK_P(CLKS_A1_PLL0HS, &clkgena1, 1800000000,
@@ -202,18 +209,18 @@ _CLK_P(CLKS_A1_PLL0LS, &clkgena1, 900000000,
 _CLK_P(CLKS_A1_PLL1, &clkgena1, 800000000,
 	CLK_RATE_PROPAGATES, &clk_clocks[CLKS_A1_REF]),
 
-_CLK(CLKS_ADP_WC_STAC,	&clkgena1,   450000000,    0),
-_CLK(CLKS_ADP_WC_VTAC,	&clkgena1,   450000000,    0),
-_CLK(CLKS_STAC_TX_CLK_PLL,	&clkgena1,   900000000,    0),
-_CLK(CLKS_STAC,		&clkgena1,   400000000,    0),
-_CLK(CLKS_IC_IF_2,	&clkgena1,   200000000,    0),
+_CLK(CLKS_ADP_WC_STAC,	&clkgena1,   0,    0),
+_CLK(CLKS_ADP_WC_VTAC,	&clkgena1,   0,    0),
+_CLK(CLKS_STAC_TX_CLK_PLL,	&clkgena1,   900000000, CLK_ALWAYS_ENABLED),
+_CLK(CLKS_STAC,		&clkgena1,   400000000, CLK_ALWAYS_ENABLED),
+_CLK(CLKS_ICN_IF_2,	&clkgena1,   200000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKS_CARD_MMC,	&clkgena1,   50000000,    0),
-_CLK(CLKS_IC_IF_1,	&clkgena1,   200000000,    0),
+_CLK(CLKS_ICN_IF_1,	&clkgena1,   200000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKS_GMAC0_PHY,	&clkgena1,   50000000,    0),
 _CLK(CLKS_NAND_CTRL,	&clkgena1,   200000000,    0),
 _CLK(CLKS_DCEIMPD_CTRL,	&clkgena1,   25000000,    0),
-_CLK(CLKS_MII0_REF,	&clkgena1,   129000000,    0),
-_CLK(CLKS_TST_MVTAC_SYS,	&clkgena1,   100000000,    0),
+_CLK(CLKS_MII0_PHY_REF_CLK,	&clkgena1,   129000000,    0),
+_CLK(CLKS_TST_MVTAC_SYS,	&clkgena1,   0,    0),
 
 /* Clockgen B */
 _CLK(CLKS_B_REF, &clkgenb, 0,
@@ -223,10 +230,10 @@ _CLK_P(CLKS_B_USB48, &clkgenb, 48000000, 0, &clk_clocks[CLKS_B_REF]),
 _CLK_P(CLKS_B_DSS, &clkgenb, 36864000,	0, &clk_clocks[CLKS_B_REF]),
 _CLK_P(CLKS_B_DAA, &clkgenb, 32768000,	0, &clk_clocks[CLKS_B_REF]),
 _CLK_P(CLKS_B_THSENS_SCARD, &clkgenb, 27000000, 0, &clk_clocks[CLKS_B_REF]),
-_CLK_P(CLKS_B_PCM_FSYN0, &clkgenb, 50000000, 0, &clk_clocks[CLKS_B_REF]),
-_CLK_P(CLKS_B_PCM_FSYN1, &clkgenb, 50000000, 0, &clk_clocks[CLKS_B_REF]),
-_CLK_P(CLKS_B_PCM_FSYN2, &clkgenb, 50000000, 0, &clk_clocks[CLKS_B_REF]),
-_CLK_P(CLKS_B_PCM_FSYN3, &clkgenb, 50000000, 0, &clk_clocks[CLKS_B_REF]),
+_CLK_P(CLKS_B_PCM_FSYN0, &clkgenb, 0, 0, &clk_clocks[CLKS_B_REF]),
+_CLK_P(CLKS_B_PCM_FSYN1, &clkgenb, 0, 0, &clk_clocks[CLKS_B_REF]),
+_CLK_P(CLKS_B_PCM_FSYN2, &clkgenb, 0, 0, &clk_clocks[CLKS_B_REF]),
+_CLK_P(CLKS_B_PCM_FSYN3, &clkgenb, 0, 0, &clk_clocks[CLKS_B_REF]),
 
 /* Clockgen video FS+control (called "C") */
 _CLK(CLKS_C_REF, &clkgenc, 0,
@@ -372,23 +379,17 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	cgc_base = ioremap_nocache(CKGC_BASE_ADDRESS , 0x1000);
 	cgd_base = ioremap_nocache(CKGD_BASE_ADDRESS , 0x1000);
 
-	/* Set clock gen B to use crystal, remove 1024 divisor on spdif clock */
-	CLK_WRITE(cgb_base + CKGB_LOCK, 0xc0de);
-	CLK_WRITE(cgb_base + CKGB_CRISTAL_SEL, 0);
-	CLK_WRITE(cgb_base + CKGB_POWER_DOWN, 0);
-	CLK_WRITE(cgb_base + CKGB_LOCK, 0xc1a0);
-
 #ifdef ST_OS21
 	printf("Registering SASG1 clocks\n");
-        clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
-        printf("done");
+	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
+	printf(" => done\n");
 #else
 	ret = clk_register_table(clk_clocks, CLKS_B_REF, 1);
 
 	ret |= clk_register_table(&clk_clocks[CLKS_B_REF],
 				ARRAY_SIZE(clk_clocks) - CLKS_B_REF, 0);
 #endif
-	return 0;
+	return ret;
 }
 
 /******************************************************************************
@@ -419,8 +420,8 @@ static int clkgenax_get_index(int clkid, unsigned long *srcreg, int *shift)
 {
 	int idx;
 
-	if (clkid >= CLKS_FDMA0 && clkid <= CLKS_A0_SPARE_17)
-		idx = clkid - CLKS_FDMA0;
+	if (clkid >= CLKS_FDMA_0 && clkid <= CLKS_A0_SPARE_17)
+		idx = clkid - CLKS_FDMA_0;
 	else if (clkid >= CLKS_ADP_WC_STAC && clkid <= CLKS_TST_MVTAC_SYS)
 		idx = clkid - CLKS_ADP_WC_STAC;
 	else
@@ -733,7 +734,7 @@ static int clkgenax_recalc(clk_t *clk_p)
 	case CLKS_A1_PLL0HS:
 		#if !defined(CLKLLA_NO_PLL)
 		data = CLK_READ(base_address + CKGA_PLL0_CFG);
-		return clk_pll1600c45_get_rate(clk_p->parent->rate, data & 0x7,
+		return clk_pll1600c65_get_rate(clk_p->parent->rate, data & 0x7,
 					(data >> 8) & 0xff, &clk_p->rate);
 		#else
 		if (clk_p->nominal_rate)
@@ -794,11 +795,12 @@ static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p)
 
 	if (!clk_p || !div_p)
 		return CLK_ERR_BAD_PARAMETER;
-	if (clk_p->id >= CLKS_FDMA0 && clk_p->id <= CLKS_MII1_REF) {
-		src = 0x8 + clk_p->id - CLKS_FDMA0;
-	} else if (clk_p->id >= CLKS_ADP_WC_STAC && clk_p->id <= CLKS_TST_MVTAC_SYS) {
+	if (clk_p->id >= CLKS_FDMA_0 && clk_p->id <= CLKS_A0_SPARE_17)
+		src = 0x8 + clk_p->id - CLKS_FDMA_0;
+	else if (clk_p->id >= CLKS_ADP_WC_STAC &&
+		clk_p->id <= CLKS_TST_MVTAC_SYS)
 		src = 0x8 + clk_p->id - CLKS_ADP_WC_STAC;
-	} else if (clk_p->id == CLKS_A0_PLL0HS && clk_p->id == CLKS_A1_PLL0HS) {
+	else if (clk_p->id == CLKS_A0_PLL0HS && clk_p->id == CLKS_A1_PLL0HS) {
 		src = 0x1;
 		*div_p = 4;	/* Predivided by 4 */
 	} else if (clk_p->id == CLKS_A0_PLL1 || clk_p->id == CLKS_A1_PLL1) {
@@ -827,7 +829,7 @@ static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p)
 	   A1 => PIO12[1] */
 
 	/* Configuring PIO for clock output */
-	if (base_addr == cga0_base) {
+	if (base_addr == (unsigned long)cga0_base) {
 		SYSCONF_WRITE(0, 107, 0, 1, 3);	/* Selecting alternate 3 */
 		SYSCONF_WRITE(0, 109, 24, 24, 1);	/* Enabling output */
 	} else {
@@ -838,6 +840,60 @@ static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p)
 #warning "clk_observe disabled"
 #endif
 	return 0;
+}
+
+/* ========================================================================
+   Name:	clkgenax_get_measure
+   Description: Use internal HW feature (when avail.) to measure clock
+   Returns:     'clk_err_t' error code.
+   ======================================================================== */
+
+static unsigned long clkgenax_get_measure(clk_t *clk_p)
+{
+	unsigned long src, base_addr;
+	unsigned long data, measure;
+	int i;
+
+	if (!clk_p)
+		return 0;
+	if (clk_p->id >= CLKS_FDMA_0 && clk_p->id <= CLKS_A0_SPARE_17)
+		src = 0x8 + clk_p->id - CLKS_FDMA_0;
+	else if (clk_p->id >= CLKS_ADP_WC_STAC &&
+		clk_p->id <= CLKS_TST_MVTAC_SYS)
+		src = 0x8 + clk_p->id - CLKS_ADP_WC_STAC;
+	else
+		return 0;
+
+	measure = 0;
+	base_addr = clkgenax_get_base_address(clk_p->id);
+
+	/* Loading the MAX Count 1000 in 30MHz Oscillator Counter */
+	CLK_WRITE(base_addr + CKGA_CLKOBS_MASTER_MAXCOUNT, 0x3E8);
+	CLK_WRITE(base_addr + CKGA_CLKOBS_CMD, 3);
+
+	/* Selecting clock to observe */
+	CLK_WRITE(base_addr + CKGA_CLKOBS_MUX1_CFG, (1 << 7) | src);
+
+	/* Start counting */
+	CLK_WRITE(base_addr + CKGA_CLKOBS_CMD, 0);
+
+	for (i = 0; i < 10; i++) {
+		__mdelay(10);
+
+		data = CLK_READ(base_addr + CKGA_CLKOBS_STATUS);
+		if (data & 1)
+			break; /* IT */
+	}
+	if (i == 10)
+		return 0;
+
+	/* Reading value */
+	data = CLK_READ(base_addr + CKGA_CLKOBS_SLAVE0_COUNT);
+	measure = 30 * data * 1000;
+
+	CLK_WRITE(base_addr + CKGA_CLKOBS_CMD, 3);
+
+	return measure;
 }
 
 /******************************************************************************
@@ -852,13 +908,12 @@ CLOCKGEN A0 clocks groups
 
 static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 {
-	unsigned long div, idf, cp, mdiv, ndiv, pdiv, data;
+	unsigned long div, mdiv, ndiv, pdiv, data;
 	int err = 0;
-	long deviation, new_deviation;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
-	if (clk_p->id < CLKS_A0_PLL0HS || clk_p->id > CLKS_MII1_REF)
+	if (clk_p->id < CLKS_A0_PLL0HS || clk_p->id > CLKS_MII1_REF_CLK_OUT)
 		return CLK_ERR_BAD_PARAMETER;
 
 	/* We need a parent for these clocks */
@@ -870,8 +925,8 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 	case CLKS_A0_PLL0LS:
 		if (clk_p->id == CLKS_A0_PLL0LS)
 			freq = freq * 2;
-		err = clk_pll1600c45_get_params(clk_clocks[CLKS_A0_REF].rate,
-					     freq, &idf, &ndiv, &cp);
+		err = clk_pll1600c65_get_params(clk_clocks[CLKS_A0_REF].rate,
+					     freq, &mdiv, &ndiv);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -895,12 +950,8 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 		CLK_WRITE(cga0_base + CKGA_PLL1_CFG, data);
 		#endif
 		break;
-	case CLKS_FDMA0 ... CLKS_MII1_REF:
-		div = clk_p->parent->rate / freq;
-		deviation = (clk_p->parent->rate / div) - freq;
-		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
-		if (new_deviation < 0) new_deviation = -new_deviation;
-		if (new_deviation < deviation) div++;
+	case CLKS_FDMA_0 ... CLKS_MII1_REF_CLK_OUT:
+		div = clk_best_div(clk_p->parent->rate, freq);
 		err = clkgenax_set_div(clk_p, &div);
 		break;
 	default:
@@ -910,69 +961,6 @@ static int clkgena0_set_rate(clk_t *clk_p, unsigned long freq)
 	if (!err)
 		err = clkgenax_recalc(clk_p);
 	return err;
-}
-
-/* ========================================================================
-   Name:	clkgena0_get_measure
-   Description: Use internal HW feature (when avail.) to measure clock
-   Returns:     'clk_err_t' error code.
-   ======================================================================== */
-
-static unsigned long clkgena0_get_measure(clk_t *clk_p)
-{
-	unsigned long src, data;
-	unsigned long measure;
-	/* WARNING: the measure_table[] must strictly follows clockgen
-	 * enum order taking into account any "holes" (reserved/spare)
-	 * filled with 0xff
-	 */
-	static const unsigned char measure_table_a0[] = {
-		0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11,
-		0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19
-	};
-	int i;
-
-	if (!clk_p)
-		return 0;
-	if (clk_p->id < CLKS_FDMA0 || clk_p->id > CLKS_MII1_REF)
-		return 0;
-
-	src = measure_table_a0[clk_p->id - CLKS_FDMA0];
-	if (src == 0xff)
-		return 0;
-	measure = 0;
-
-	/* Loading the MAX Count 1000 in 30MHz Oscillator Counter */
-	CLK_WRITE(cga0_base + CKGA_CLKOBS_MASTER_MAXCOUNT, 0x3E8);
-	CLK_WRITE(cga0_base + CKGA_CLKOBS_CMD, 3);
-
-	/* Selecting clock to observe */
-	CLK_WRITE(cga0_base + CKGA_CLKOBS_MUX1_CFG, (1 << 7) | src);
-
-	/* Start counting */
-	CLK_WRITE(cga0_base + CKGA_CLKOBS_CMD, 0);
-
-	for (i = 0; i < 10; i++) {
-#ifdef ST_OS21
-		task_delay(time_ticks_per_sec() / 100);   /* Every 10ms */
-#else
-		mdelay(10);
-#endif
-
-		data = CLK_READ(cga0_base + CKGA_CLKOBS_STATUS);
-		if (data & 1)
-			break; /* IT */
-	}
-	if (i == 10)
-		return 0;
-
-	/* Reading value */
-	data = CLK_READ(cga0_base + CKGA_CLKOBS_SLAVE0_COUNT);
-	measure = 30 * data * 1000;
-
-	CLK_WRITE(cga0_base + CKGA_CLKOBS_CMD, 3);
-
-	return measure;
 }
 
 /******************************************************************************
@@ -987,10 +975,8 @@ CLOCKGEN A1 (A right) clocks group
 
 static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 {
-	unsigned long div, idf, cp, mdiv, ndiv, pdiv, data;
+	unsigned long div, mdiv, ndiv, pdiv, data;
 	int err = 0;
-	long deviation, new_deviation;
-
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -1006,8 +992,8 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 	case CLKS_A1_PLL0LS:
 		if (clk_p->id == CLKS_A1_PLL0LS)
 			freq = freq * 2;
-		err = clk_pll1600c45_get_params(clk_clocks[CLKS_A1_REF].rate,
-					     freq, &idf, &ndiv, &cp);
+		err = clk_pll1600c65_get_params(clk_clocks[CLKS_A1_REF].rate,
+					     freq, &mdiv, &ndiv);
 		if (err != 0)
 			break;
 		#if !defined(CLKLLA_NO_PLL)
@@ -1031,13 +1017,9 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 		CLK_WRITE(cga1_base + CKGA_PLL1_CFG, data);
 		#endif
 		break;
-	case CLKS_ADP_WC_STAC ... CLKS_MII0_REF:
+	case CLKS_ADP_WC_STAC ... CLKS_MII0_PHY_REF_CLK:
 	case CLKS_TST_MVTAC_SYS:
-		div = clk_p->parent->rate / freq;
-		deviation = (clk_p->parent->rate / div) - freq;
-		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
-		if (new_deviation < 0) new_deviation = -new_deviation;
-		if (new_deviation < deviation) div++;
+		div = clk_best_div(clk_p->parent->rate, freq);
 		err = clkgenax_set_div(clk_p, &div);
 		break;
 	default:
@@ -1048,69 +1030,6 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq)
 		err = clkgenax_recalc(clk_p);
 
 	return err;
-}
-
-/* ========================================================================
-   Name:	clkgena1_get_measure
-   Description: Use internal HW feature (when avail.) to measure clock
-   Returns:     'clk_err_t' error code.
-   ======================================================================== */
-
-static unsigned long clkgena1_get_measure(clk_t *clk_p)
-{
-	unsigned long src, data;
-	unsigned long measure;
-	/* WARNING: the measure_table[] must strictly follows clockgen
-	 * enum order taking into account any "holes" (reserved/spare)
-	 * filled with 0xff
-	 */
-	static const unsigned char measure_table_a1[] = {
-		0x9, 0xa, 0xb, 0xc, 0xd, 0xff, 0x0f, 0x10, 0x11,
-		0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19
-	};
-	int i;
-
-	if (!clk_p)
-		return 0;
-	if (clk_p->id < CLKS_ADP_WC_STAC || clk_p->id > CLKS_TST_MVTAC_SYS)
-		return 0;
-
-	src = measure_table_a1[clk_p->id - CLKS_ADP_WC_STAC];
-	if (src == 0xff)
-		return 0;
-
-	measure = 0;
-
-	/* Loading the MAX Count 1000 in 30MHz Oscillator Counter */
-	CLK_WRITE(cga1_base + CKGA_CLKOBS_MASTER_MAXCOUNT, 0x3E8);
-	CLK_WRITE(cga1_base + CKGA_CLKOBS_CMD, 3);
-
-	/* Selecting clock to observe */
-	CLK_WRITE(cga1_base + CKGA_CLKOBS_MUX1_CFG, (1 << 7) | src);
-
-	/* Start counting */
-	CLK_WRITE(cga1_base + CKGA_CLKOBS_CMD, 0);
-
-	for (i = 0; i < 10; i++) {
-#ifdef ST_OS21
-		task_delay(time_ticks_per_sec() / 100); /* Every 10ms */
-#else
-		mdelay(10);
-#endif
-		data = CLK_READ(cga1_base + CKGA_CLKOBS_STATUS);
-		if (data & 1)
-			break;	/* IT */
-	}
-	if (i == 10)
-		return 0;
-
-	/* Reading value */
-	data = CLK_READ(cga1_base + CKGA_CLKOBS_SLAVE0_COUNT);
-	measure = 30 * data * 1000;
-
-	CLK_WRITE(cga1_base + CKGA_CLKOBS_CMD, 3);
-
-	return measure;
 }
 
 /******************************************************************************
@@ -1612,7 +1531,6 @@ static int clkgenc_vcc_set_div(clk_t *clk_p, unsigned long *div_p)
 static int clkgenc_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long md, pe, sdiv;
-	unsigned long data;
 	unsigned long val;
 	int channel, err;
 
@@ -1647,13 +1565,8 @@ static int clkgenc_set_rate(clk_t *clk_p, unsigned long freq)
 #endif
 	} else { /* Video Clock Controller clocks */
 		unsigned long div;
-		long deviation, new_deviation;
 
-		div = clk_p->parent->rate / freq;
-		deviation = (clk_p->parent->rate / div) - freq;
-		new_deviation = (clk_p->parent->rate / (div + 1)) - freq;
-		if (new_deviation < 0) new_deviation = -new_deviation;
-		if (new_deviation < deviation) div++;
+		div = clk_best_div(clk_p->parent->rate, freq);
 		err = clkgenc_vcc_set_div(clk_p, &div);
 	}
 

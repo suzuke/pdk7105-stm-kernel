@@ -84,6 +84,12 @@ static struct clk_ops  _name = {					\
 	.get_measure = _measure,					\
 }
 
+#define _CLK_OPS2(_name, _desc, _init, _setparent, _setfreq, _recalc,	\
+	_enable, _disable, _observe, _measure, _obspoint,		\
+	_obspoint2, _observe2)						\
+	_CLK_OPS(_name, _desc, _init, _setparent, _setfreq, _recalc,	\
+		_enable, _disable, _observe, _measure, _obspoint)
+
 #define _CLK(_id, _ops, _nominal, _flags) 				\
 [_id] = (clk_t){ .name = #_id,						\
 		 .id = (_id),						\
