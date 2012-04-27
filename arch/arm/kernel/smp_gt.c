@@ -43,6 +43,14 @@ static void __iomem *gt_base;
  * the units for all operations. */
 static unsigned long gt_periphclk;
 
+#ifndef CONFIG_CPU_FREQ
+#define gt_history	0
+#define gt_multiplier	1
+#else
+static unsigned long gt_multiplier = 1;
+static cycle_t gt_history;
+#endif
+
 union gt_counter {
 	cycle_t cycles;
 	struct {
@@ -176,6 +184,9 @@ static cycle_t gt_clocksource_read(struct clocksource *cs)
 {
 	union gt_counter res = gt_counter_read();
 
+	res.cycles *= gt_multiplier;
+	res.cycles += gt_history;
+
 	return res.cycles;
 }
 
@@ -207,7 +218,7 @@ static void __init gt_clocksource_init(void)
 	writel(0, gt_base + GT_CONTROL);
 	writel(0, gt_base + GT_COUNTER0);
 	writel(0, gt_base + GT_COUNTER1);
-	writel(GT_CONTROL_TIMER_ENABLE, gt_base + GT_CONTROL);
+	writel(GT_CONTROL_TIMER_ENABLE,	gt_base + GT_CONTROL);
 
 	gt_clocksource.shift = 20;
 	gt_clocksource.mult =
@@ -226,4 +237,77 @@ void __init global_timer_init(void __iomem *base, unsigned int timer_irq,
 	evt->irq = timer_irq;
 	evt->cpumask = cpumask_of(cpu);
 	gt_clockevents_init(evt);
+
 }
+
+#ifdef CONFIG_CPU_FREQ
+
+#include <linux/cpufreq.h>
+
+static int gt_cpufre_update(struct notifier_block *nb,
+		unsigned long val, void *_data)
+{
+	unsigned long new_multiplier;
+	struct cpufreq_freqs *cpufreq = _data;
+	struct clock_event_device **clk;
+	unsigned long flags;
+	unsigned long periph_timer_rate;
+
+	if (val != CPUFREQ_POSTCHANGE)
+		return NOTIFY_OK;
+
+	/*
+	 * Convert the CPUfreq rate (in KHz and CPU_clk based)
+	 * to the gt_clk rate
+	 */
+	periph_timer_rate = (cpufreq->new * 500);
+	/*
+	 * Evaluate the gt_clocksource multiplier to hide
+	 * the clock scaling
+	 */
+	new_multiplier = gt_periphclk / periph_timer_rate;
+
+	if (!new_multiplier) {
+		pr_err("gt_multipler equals zero!\n");
+		new_multiplier = 1;
+	}
+	local_irq_save(flags);
+	writel(0, gt_base + GT_CONTROL);
+
+	gt_history += (gt_counter_read().cycles * gt_multiplier);
+	gt_multiplier = new_multiplier;
+
+	/*
+	 * restart gt_clocksource
+	 */
+	writel(0, gt_base + GT_COUNTER0);
+	writel(0, gt_base + GT_COUNTER1);
+	writel(GT_CONTROL_TIMER_ENABLE, gt_base + GT_CONTROL);
+
+	/*
+	 * Reconfigure clock_event_device
+	 */
+	clk = __this_cpu_ptr(gt_evt);
+	(*clk)->mult = div_sc(periph_timer_rate, NSEC_PER_SEC, (*clk)->shift);
+	(*clk)->max_delta_ns = clockevent_delta2ns(0xffffffff, *clk);
+	(*clk)->min_delta_ns = clockevent_delta2ns(0xf, *clk);
+	if ((*clk)->mode == CLOCK_EVT_MODE_PERIODIC)
+		gt_compare_set(periph_timer_rate, 1);
+
+
+	local_irq_restore(flags);
+	return NOTIFY_OK;
+}
+
+static struct notifier_block gt_nb = {
+	.notifier_call = gt_cpufre_update,
+};
+
+static int __init gt_cpufreq_init(void)
+{
+	cpufreq_register_notifier(&gt_nb, CPUFREQ_TRANSITION_NOTIFIER);
+	return 0;
+}
+
+module_init(gt_cpufreq_init);
+#endif

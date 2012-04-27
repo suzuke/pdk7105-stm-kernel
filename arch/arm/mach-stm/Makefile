@@ -14,6 +14,10 @@ obj-$(CONFIG_PM)		+= pokeloop.o
 # Suspend/MemSuspend
 obj-$(CONFIG_SUSPEND)		+= suspend.o suspend-asm.o
 
+ifdef CONFIG_STM_CPU_FREQ
+obj-$(CONFIG_CPU_SUBTYPE_STIH415)	+= cpufreq.o
+endif
+
 # Hibernation on Disk
 obj-$(CONFIG_HIBERNATION)	+= swsusp.o swsusp-asm.o
 

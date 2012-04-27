@@ -5,6 +5,7 @@ menu "STMicroelectronics Consumer Electronics platform type"
 
 config CPU_SUBTYPE_STIH415
        def_bool n
+	select ARCH_HAS_CPUFREQ
 
 config CPU_SUBTYPE_FLI7610
        def_bool n
@@ -180,5 +181,9 @@ config MACH_STM_FLI76XXHDK01
 	select MACH_STM_FLI7610
 	help
 	  Include support for a FLI76XX HDK01 (Newman) Board.
+
+config STM_CPU_FREQ
+	def_bool CPU_FREQ
+	select CPU_FREQ_TABLE
 
 endmenu
