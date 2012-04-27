@@ -157,6 +157,25 @@ static ssize_t rtpm_suspended_time_show(struct device *dev,
 
 static DEVICE_ATTR(runtime_suspended_time, 0444, rtpm_suspended_time_show, NULL);
 
+static ssize_t
+rtpm_status_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (dev->power.disable_depth)
+		return count;
+
+	if (!strncmp(buf, disabled, 8)) {
+		if (pm_runtime_status_suspended(dev))
+			return count;
+		pm_runtime_put(dev);
+	} else if (!strncmp(buf, enabled, 7)) {
+		if (pm_runtime_status_suspended(dev))
+			pm_runtime_get_sync(dev);
+	}
+
+	return count;
+}
+
 static ssize_t rtpm_status_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -187,7 +206,7 @@ static ssize_t rtpm_status_show(struct device *dev,
 	return sprintf(buf, p);
 }
 
-static DEVICE_ATTR(runtime_status, 0444, rtpm_status_show, NULL);
+static DEVICE_ATTR(runtime_status, 0444, rtpm_status_show, rtpm_status_store);
 
 static ssize_t autosuspend_delay_ms_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -448,6 +467,7 @@ static struct attribute *power_attrs[] = {
 	&dev_attr_runtime_enabled.attr,
 #endif
 #endif /* CONFIG_PM_ADVANCED_DEBUG */
+
 	NULL,
 };
 static struct attribute_group pm_attr_group = {
