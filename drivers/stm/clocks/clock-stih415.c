@@ -95,6 +95,23 @@ static clk_t clk_clocks[] = {
 		  CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
 };
 
+#ifdef CONFIG_ARM
+static int arm_periph_recalc(struct clk *clk)
+{
+	clk->rate = clk_get_rate(clk_get_parent(clk)) / 2;
+	return 0;
+}
+static struct clk_ops arm_periph_ops = {
+	.recalc = arm_periph_recalc,
+	.init = arm_periph_recalc,
+};
+
+static struct clk arm_periph_clk = {
+	.name = "arm_periph_clk",
+	.ops = &arm_periph_ops,
+};
+#endif
+
 /* ========================================================================
    Name:        plat_clk_init()
    Description: SOC specific LLA initialization
@@ -118,6 +135,11 @@ int __init plat_clk_init(void)
 
 	/* MPE41 clocks */
 	mpe41_clk_init(&clk_clocks[0], &clk_clocks[1], clk_main, clk_aux);
+
+#if defined(CONFIG_ARM) && defined(CONFIG_HAVE_ARM_TWD)
+	arm_periph_clk.parent = clk_get(NULL, "CLKM_A9");
+	clk_register_table(&arm_periph_clk, 1, 0);
+#endif
 
 	return 0;
 }
