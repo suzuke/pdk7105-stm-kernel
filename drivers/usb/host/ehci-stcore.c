@@ -35,18 +35,6 @@ static int ehci_st40_reset(struct usb_hcd *hcd)
 
 #ifdef CONFIG_PM
 static int
-stm_ehci_bus_suspend(struct usb_hcd *hcd)
-{
-	ehci_bus_suspend(hcd);
-/*
- * force the root hub to be resetted on resume!
- * re-enumerates everything during a standby, mem and hibernation...
- */
-	usb_root_hub_lost_power(hcd->self.root_hub);
-	return 0;
-}
-
-static int
 stm_ehci_bus_resume(struct usb_hcd *hcd)
 {
 	struct ehci_hcd *ehci;
@@ -57,7 +45,6 @@ stm_ehci_bus_resume(struct usb_hcd *hcd)
 	return ehci_bus_resume(hcd);
 }
 #else
-#define stm_ehci_bus_suspend		NULL
 #define stm_ehci_bus_resume		NULL
 #endif
 
@@ -102,7 +89,7 @@ static const struct hc_driver ehci_stm_hc_driver = {
  * The ehci_bus_suspend suspends all the root hub ports but
  * it leaves all the interrupts enabled on insert/remove devices
  */
-	.bus_suspend = stm_ehci_bus_suspend,
+	.bus_suspend = ehci_bus_suspend,
 	.bus_resume = stm_ehci_bus_resume,
 	.relinquish_port = ehci_relinquish_port,
 	.port_handed_over = ehci_port_handed_over,

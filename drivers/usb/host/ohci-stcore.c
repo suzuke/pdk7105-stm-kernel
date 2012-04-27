@@ -45,16 +45,6 @@ stm_ohci_start(struct usb_hcd *hcd)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int stm_ohci_bus_suspend(struct usb_hcd *hcd)
-{
-	dgb_print("\n");
-	ohci_bus_suspend(hcd);
-	usb_root_hub_lost_power(hcd->self.root_hub);
-	return 0;
-}
-#endif
-
 static const struct hc_driver ohci_st40_hc_driver = {
 	.description =		hcd_name,
 	.product_desc =		"stm-ohci",
@@ -80,10 +70,10 @@ static const struct hc_driver ohci_st40_hc_driver = {
 	/* root hub support */
 	.hub_status_data =	ohci_hub_status_data,
 	.hub_control =		ohci_hub_control,
-#ifdef CONFIG_PM
-	.bus_suspend =		stm_ohci_bus_suspend,
+
+	.bus_suspend =		ohci_bus_suspend,
 	.bus_resume =		ohci_bus_resume,
-#endif
+
 	.start_port_reset =	ohci_start_port_reset,
 };
 
