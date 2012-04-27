@@ -350,23 +350,23 @@ void emiss_nandi_select(enum nandi_controllers controller)
 EXPORT_SYMBOL_GPL(emiss_nandi_select);
 
 #ifdef CONFIG_PM
-/*
- * Note on Power Management of EMI device
- * ======================================
- * The EMI is registered twice on different view:
- * 1. as platform_device to acquire the platform specific
- *    capability (via sysconf)
- * 2. as sysdev_device to really manage the suspend/resume
- *    operation on standby and hibernation
- */
 
-/*
- * emi_num_common_cfg = 12 common config	+
- * 			emi_bank_enable(0x280)	+
- *			emi_bank_number(0x860)	+
- *			emiss_config		+
- *			emiss_arbiter_config
- */
+static int emi_suspend(struct device *dev)
+{
+	stm_device_power(emi_device_state, stm_device_power_off);
+	emi_clk_disable();
+	return 0;
+}
+
+static int emi_resume(struct device *dev)
+{
+	emi_clk_enable();
+	stm_device_power(emi_device_state, stm_device_power_on);
+	return 0;
+}
+
+#ifdef CONFIG_HIBERNATION
+
 #define emi_num_common_cfg	(12 + 4)
 #define emi_num_bank		5
 #define emi_num_bank_cfg	4
@@ -381,14 +381,13 @@ struct emi_pm {
 	struct emi_pm_bank bank[emi_num_bank];
 };
 
-static int emi_sysdev_suspend(struct sys_device *dev, pm_message_t state)
+static int emi_hibernation(int resuming)
 {
 	int idx;
 	int bank, data;
 	static struct emi_pm *emi_saved_data;
 
-	switch (state.event) {
-	case PM_EVENT_ON:
+	if (resuming)
 		if (emi_saved_data) {
 			/* restore the previous common value */
 			for (idx = 0; idx < emi_num_common_cfg-4; ++idx)
@@ -411,76 +410,70 @@ static int emi_sysdev_suspend(struct sys_device *dev, pm_message_t state)
 			}
 			kfree(emi_saved_data);
 			emi_saved_data = NULL;
-		} else
 			emi_clk_enable();
-		stm_device_power(emi_device_state, stm_device_power_on);
-		break;
-	case PM_EVENT_SUSPEND:
-		stm_device_power(emi_device_state, stm_device_power_off);
-		emi_clk_disable();
-		break;
-	case PM_EVENT_FREEZE:
-		emi_saved_data = kmalloc(sizeof(struct emi_pm), GFP_NOWAIT);
-		if (!emi_saved_data) {
-			printk(KERN_ERR "Unable to freeze the emi registers\n");
-			return -ENOMEM;
+			stm_device_power(emi_device_state,
+				stm_device_power_on);
 		}
-		/* save the emi common values */
-		for (idx = 0; idx < emi_num_common_cfg-4; ++idx)
-			emi_saved_data->common_cfg[idx] =
-				readl(emi_control + EMI_COMMON_CFG(idx));
-		emi_saved_data->common_cfg[12] =
-				readl(emi_control + EMI_BANK_ENABLE);
-		emi_saved_data->common_cfg[13] =
-				readl(emi_control + EMI_BANKNUMBER);
-		emi_saved_data->common_cfg[14] =
-				readl(emiss_config + EMISS_CONFIG);
-		emi_saved_data->common_cfg[15] =
-				readl(emiss_config + EMISS_ARBITER_CONFIG);
-		/* save the emi bank value */
-		for (bank  = 0; bank < emi_num_bank; ++bank) {
-		  emi_saved_data->bank[bank].base_address =
+		return 0;
+	/*
+	 * hibernationg...
+	 */
+	emi_saved_data = kmalloc(sizeof(struct emi_pm), GFP_NOWAIT);
+	if (!emi_saved_data) {
+		printk(KERN_ERR "Unable to freeze the emi registers\n");
+		return -ENOMEM;
+	}
+
+	/* save the emi common values */
+	for (idx = 0; idx < emi_num_common_cfg-4; ++idx)
+		emi_saved_data->common_cfg[idx] =
+			readl(emi_control + EMI_COMMON_CFG(idx));
+	emi_saved_data->common_cfg[12] =
+			readl(emi_control + EMI_BANK_ENABLE);
+	emi_saved_data->common_cfg[13] =
+			readl(emi_control + EMI_BANKNUMBER);
+	emi_saved_data->common_cfg[14] =
+			readl(emiss_config + EMISS_CONFIG);
+	emi_saved_data->common_cfg[15] =
+			readl(emiss_config + EMISS_ARBITER_CONFIG);
+	/* save the emi bank value */
+	for (bank  = 0; bank < emi_num_bank; ++bank) {
+		emi_saved_data->bank[bank].base_address =
 			readl(emi_control + BANK_BASEADDRESS(bank));
-		  for (data = 0; data < emi_num_bank_cfg; ++data)
+		for (data = 0; data < emi_num_bank_cfg; ++data)
 			emi_saved_data->bank[bank].cfg[data] =
-			   readl(emi_control + BANK_EMICONFIGDATA(bank, data));
-		}
-		/* on hibernation don't turn-off emi for harddisk issue */
-		break;
+			  readl(emi_control + BANK_EMICONFIGDATA(bank, data));
 	}
 	return 0;
 }
 
-static int emi_sysdev_resume(struct sys_device *dev)
-{
-	return emi_sysdev_suspend(dev, PMSG_ON);
-}
-
-static struct sysdev_class emi_sysdev_class = {
-	.name = "emi",
-};
-
-struct sys_device emi_sysdev_dev = {
-	.id = 0,
-	.cls = &emi_sysdev_class,
-};
-
-static int __init emi_sysdev_register(void)
+static int emi_freeze(struct device *dev)
 {
 	int ret;
-
-	ret = sysdev_class_register(&emi_sysdev_class);
+	ret = emi_hibernation(0);
 	if (ret)
 		return ret;
-
-	ret = sysdev_register(&emi_sysdev_dev);
-	if (ret)
-		return ret;
-
+	emi_suspend(dev);
 	return 0;
 }
+
+static int emi_restore(struct device *dev)
+{
+	emi_resume(dev);
+	return emi_hibernation(1);
+}
 #else
-#define emi_sysdev_register()
+#define emi_freeze      NULL
+#define emi_restore     NULL
+#endif
+
+static const struct dev_pm_ops emi_pm_ops = {
+	.suspend_noirq = emi_suspend,
+	.resume_noirq = emi_resume,
+	.freeze_noirq = emi_freeze,
+	.thaw_noirq = emi_restore,
+	.restore_noirq = emi_restore,
+};
 #endif
 
 static int __devinit remap_named_resource(struct platform_device *pdev,
@@ -557,12 +550,14 @@ static int __devinit emi_driver_probe(struct platform_device *pdev)
 static struct platform_driver emi_driver = {
 	.driver.name = "emi",
 	.driver.owner = THIS_MODULE,
+#ifdef CONFIG_PM
+	.driver.pm = &emi_pm_ops,
+#endif
 	.probe = emi_driver_probe,
 };
 
 static int __init stm_emi_driver_init(void)
 {
-	emi_sysdev_register();
 	return platform_driver_register(&emi_driver);
 }
 
