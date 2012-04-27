@@ -307,6 +307,106 @@ static void l2x0_unlock(__u32 cache_id)
 	}
 }
 
+#ifdef CONFIG_HIBERNATION_ON_MEMORY
+
+#include <linux/pm.h>
+#include <linux/device.h>
+#include <linux/platform_device.h>
+#include <linux/slab.h>
+
+struct l2x0_drv_data {
+	void __iomem *iobase;
+	__u32 aux;
+};
+
+static int l2x0_freeze_noirq(struct device *dev)
+{
+	l2x0_disable();
+	memset(&outer_cache, 0, sizeof(outer_cache));
+	return 0;
+}
+
+static int l2x0_restore_noirq(struct device *dev)
+{
+	struct l2x0_drv_data *data = dev_get_drvdata(dev);
+
+	if (readl_relaxed(data->iobase + L2X0_CTRL) & 1)
+		return 0;
+
+	/* l2x0 controller is disabled */
+	writel_relaxed(data->aux, data->iobase + L2X0_AUX_CTRL);
+
+	l2x0_inv_all();
+
+	/* enable L2X0 */
+	writel_relaxed(1, data->iobase + L2X0_CTRL);
+
+	outer_cache.inv_range = l2x0_inv_range;
+	outer_cache.clean_range = l2x0_clean_range;
+	outer_cache.flush_range = l2x0_flush_range;
+	outer_cache.sync = l2x0_cache_sync;
+	outer_cache.flush_all = l2x0_flush_all;
+	outer_cache.inv_all = l2x0_inv_all;
+	outer_cache.disable = l2x0_disable;
+	outer_cache.set_debug = l2x0_set_debug;
+
+	return 0;
+}
+
+static const struct dev_pm_ops l2x0_pm_ops = {
+	.freeze_noirq = l2x0_freeze_noirq,
+	.thaw_noirq = l2x0_restore_noirq,
+	.restore_noirq = l2x0_restore_noirq,
+};
+
+static int l2x0_probe(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static const struct platform_driver l2x0_drv = {
+	.driver = {
+		.name = "cache-l2x0",
+		.pm = &l2x0_pm_ops,
+	},
+	.probe = l2x0_probe,
+};
+
+static void l2x0_pm_init(void __iomem *base, __u32 aux)
+{
+	struct platform_device *pdev;
+	struct l2x0_drv_data *data;
+
+	pdev = kzalloc(sizeof(*pdev), GFP_KERNEL);
+	if (!pdev)
+		return;
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+	if (!data)
+		goto err_0;
+
+	pdev->name = "cache-l2x0";
+
+	data->iobase = base;
+	data->aux = aux;
+
+	platform_driver_register(&l2x0_drv);
+	platform_device_register(pdev);
+	dev_set_drvdata(&pdev->dev, data);
+
+	return;
+
+err_0:
+	kfree(pdev);
+	return;
+}
+
+#else
+static void l2x0_pm_init(void __iomem *base, __u32 aux)
+{
+	return;
+}
+#endif
+
 void __init l2x0_init(void __iomem *base, __u32 aux_val, __u32 aux_mask)
 {
 	__u32 aux;
@@ -380,6 +480,8 @@ void __init l2x0_init(void __iomem *base, __u32 aux_val, __u32 aux_mask)
 	outer_cache.inv_all = l2x0_inv_all;
 	outer_cache.disable = l2x0_disable;
 	outer_cache.set_debug = l2x0_set_debug;
+
+	l2x0_pm_init(base, aux);
 
 	printk(KERN_INFO "%s cache controller enabled\n", type);
 	printk(KERN_INFO "l2x0: %d ways, CACHE_ID 0x%08x, AUX_CTRL 0x%08x, Cache size: %d B\n",
