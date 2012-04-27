@@ -103,7 +103,10 @@ static void twd_update_frequency(void *data)
 {
 	twd_timer_rate = clk_get_rate(twd_clk);
 
-	clockevents_update_freq(*__this_cpu_ptr(twd_evt), twd_timer_rate);
+	if ((*__this_cpu_ptr(twd_evt))->mode == CLOCK_EVT_MODE_ONESHOT)
+		clockevents_update_freq(*__this_cpu_ptr(twd_evt), twd_timer_rate);
+	else
+		twd_set_mode(CLOCK_EVT_MODE_PERIODIC, *__this_cpu_ptr(twd_evt));
 }
 
 static int twd_cpufreq_transition(struct notifier_block *nb,
