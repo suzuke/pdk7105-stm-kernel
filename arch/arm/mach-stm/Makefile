@@ -16,3 +16,5 @@ obj-$(CONFIG_SUSPEND)		+= suspend.o suspend-asm.o
 
 # Hibernation on Disk
 obj-$(CONFIG_HIBERNATION)	+= swsusp.o swsusp-asm.o
+
+obj-$(CONFIG_PM)		+= pm/
