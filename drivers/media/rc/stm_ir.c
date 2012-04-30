@@ -475,7 +475,7 @@ static void ir_stm_scd_prefix_symbols(struct stm_ir_device *dev,
 	}
 
 	for (i = 0; i < *offscd; i++)
-		ir_raw_event_store_with_filter(dev->rdev, &lscd[i]);
+		ir_raw_event_store(dev->rdev, &lscd[i]);
 	return;
 }
 
@@ -833,11 +833,11 @@ static void ir_stm_rx_interrupt(int irq, void *data)
 				ir_stm_scd_prefix_symbols(dev, &ev);
 				dev->insert_scd_timing = false;
 			}
-			ir_raw_event_store_with_filter(dev->rdev, &ev);
+			ir_raw_event_store(dev->rdev, &ev);
 
 			ev.duration = US_TO_NS(symbol);
 			ev.pulse = false;
-			ir_raw_event_store_with_filter(dev->rdev, &ev);
+			ir_raw_event_store(dev->rdev, &ev);
 			DPRINTK("PULSE : %d SPACE %d \n", mark, symbol);
 
 			if (lastSymbol) {
