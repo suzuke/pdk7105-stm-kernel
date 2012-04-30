@@ -149,9 +149,9 @@ static int stm_pci_setup(int nr, struct pci_sys_data *sys)
 		return res;
 	}
 
-	/* Copy local pointers into arm specific struct */
+	/* Add the PCI resources, we skip the first one if we have no IO */
 	for (i = 0 ; i < 3 ; i++)
-		sys->resource[i] = info->res + i;
+		pci_add_resource(&sys->resources, info->res + i);
 
 	/* Anybody who does any IO will blow up */
 	sys->io_offset = 0;
@@ -165,7 +165,8 @@ static struct pci_bus __devinit *stm_pci_scan(int nr, struct pci_sys_data *sys)
 {
 	struct stm_pci_info *info = sysdata_to_info(sys);
 
-	return pci_scan_bus(sys->busnr, info->ops, sys);
+	return pci_scan_root_bus(NULL, sys->busnr, info->ops,
+				 sys, &sys->resources);
 }
 
 /* This is only for PCI express, for PCI we have to call through to the BSP
