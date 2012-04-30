@@ -1333,8 +1333,8 @@ static int snd_stm_uniperif_player_prepare_iec958(
 	/* Disable one-bit audio mode */
 	set__AUD_UNIPERIF_CONFIG__ONE_BIT_AUD_DISABLE(player);
 
-	/* Set repetition of Z preamble in consecutive frames disabled */
-	set__AUD_UNIPERIF_CONFIG__REPEAT_CHL_STS_DISABLE(player);
+	/* Enable consecutive frames repetition of Z preamble (not for HBRA) */
+	set__AUD_UNIPERIF_CONFIG__REPEAT_CHL_STS_ENABLE(player);
 
 	/* Change to SUF0_SUBF1 and left/right channels swap! */
 	set__AUD_UNIPERIF_CONFIG__SUBFRAME_SEL_SUBF1_SUBF0(player);
