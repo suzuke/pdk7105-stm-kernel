@@ -133,6 +133,7 @@ int stih415_gmac0_claim(struct stm_pad_state *state, void *priv)
 	if (!gbit_sc[0])
 		return -1;
 
+	sysconf_write(gbit_sc[0], 0);
 	return 0;
 }
 
@@ -148,6 +149,7 @@ int stih415_gmac1_claim(struct stm_pad_state *state, void *priv)
 
 	if (!gbit_sc[1])
 		return -1;
+	sysconf_write(gbit_sc[1], 0);
 	return 0;
 }
 
@@ -607,7 +609,7 @@ static void stih415_ethernet_rgmii_speed(int port, void *priv,
 		 * 125Mhz Clock from PHY is used for retiming
 		 * and also to drive GTXCLK
 		 * */
-		sysconf_write(gbit_sc[port], 1);
+		sysconf_write(gbit_sc[port], 0);
 	} else {
 
 		static struct clk *phy_clk;
