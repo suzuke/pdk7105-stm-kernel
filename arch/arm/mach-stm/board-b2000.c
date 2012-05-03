@@ -473,7 +473,7 @@ static void __init b2000_init(void)
 	stih415_configure_sata(0, &(struct stih415_sata_config) { });
 
 	stih415_configure_pcie(&(struct stih415_pcie_config) {
-				.reset_gpio = stm_gpio(6, 5),
+				.reset_gpio = stm_gpio(STIH415_PIO(106), 5),
 				});
 	return;
 }
