@@ -47,7 +47,7 @@ stm_ohci_start(struct usb_hcd *hcd)
 
 static const struct hc_driver ohci_st40_hc_driver = {
 	.description =		hcd_name,
-	.product_desc =		"stm-ohci",
+	.product_desc =		"STMicroelectronics OHCI Host Controller",
 	.hcd_priv_size =	sizeof(struct ohci_hcd),
 
 	/* generic hardware linkage */
