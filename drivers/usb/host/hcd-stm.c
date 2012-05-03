@@ -78,12 +78,12 @@ static int stm_usb_remove(struct platform_device *pdev)
 {
 	struct drv_usb_data *dr_data = platform_get_drvdata(pdev);
 
+	platform_device_unregister(dr_data->ehci_device);
+	platform_device_unregister(dr_data->ohci_device);
+
 	pm_clk_destroy(&pdev->dev);
 
 	stm_device_power(dr_data->device_state, stm_device_power_off);
-
-	platform_device_unregister(dr_data->ehci_device);
-	platform_device_unregister(dr_data->ohci_device);
 
 	return 0;
 }
