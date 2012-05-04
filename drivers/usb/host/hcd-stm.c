@@ -141,7 +141,6 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dr_data);
 
-#ifdef CONFIG_PM
 	pm_clk_init(dev);
 	for (i = 0; i < ARRAY_SIZE(usb_clks_n); ++i) {
 		struct clk *clk = clk_get(dev, usb_clks_n[i]);
@@ -160,7 +159,6 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 			clk_set_rate(clk, 48000000);
 		pm_clk_add(dev, usb_clks_n[i]);
 	}
-#endif
 
 	dr_data->device_state =
 		devm_stm_device_init(&pdev->dev, plat_data->device_config);
