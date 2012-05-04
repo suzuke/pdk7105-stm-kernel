@@ -58,6 +58,8 @@ module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
 /* The sample count field (NSAMPLES in CTRL register) is 19 bits wide */
 #define MAX_SAMPLES_PER_PERIOD ((1 << 20) - 1)
 
+#define MIN_IEC958_SAMPLE_RATE	32000
+
 #define PARKING_NODE_INIT	0
 #define PARKING_NODE_LOOP	1
 #define PARKING_NODE_EXIT	2
@@ -172,7 +174,7 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_pcm_hw = {
 				SNDRV_PCM_FMTBIT_S16_LE),
 
 	.rates		= SNDRV_PCM_RATE_CONTINUOUS,
-	.rate_min	= 32000,
+	.rate_min	= 8000,
 	.rate_max	= 192000,
 
 	.channels_min	= 2,
@@ -431,6 +433,7 @@ static int snd_stm_uniperif_player_hw_free(struct snd_pcm_substream *substream)
 			snd_stm_uniperif_player_hw_free(substream);
 			break;
 
+		case SND_STM_UNIPERIF_PLAYER_STATE_IDLE:
 		case SND_STM_UNIPERIF_PLAYER_STATE_STOP:
 			/* Let the FDMA stop */
 			dma_wait_for_completion(player->fdma_channel);
@@ -1190,6 +1193,13 @@ static int snd_stm_uniperif_player_prepare_iec958(
 	/* Oversampling must be multiple of 128 as spdif frame is 32-bits */
 	BUG_ON(oversampling <= 0);
 	BUG_ON(oversampling % 128 != 0);
+
+	/* No sample rates below 32kHz are supported for iec958 */
+	if (runtime->rate < MIN_IEC958_SAMPLE_RATE) {
+		snd_stm_printe("Player %s: Invalid sample rate (%d)\n",
+			       dev_name(player->device), runtime->rate);
+		return -EINVAL;
+	}
 
 	if (player->stream_settings.input_mode ==
 			SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL) {

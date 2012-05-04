@@ -99,7 +99,7 @@ static struct snd_pcm_hardware snd_stm_uniperif_reader_hw = {
 	.formats	= (SNDRV_PCM_FMTBIT_S32_LE),
 
 	.rates		= SNDRV_PCM_RATE_CONTINUOUS,
-	.rate_min	= 32000,
+	.rate_min	= 8000,
 	.rate_max	= 192000,
 
 	.channels_min	= 2,
