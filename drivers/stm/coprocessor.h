@@ -42,7 +42,7 @@ struct coproc {
 
 struct coproc_fns {
 	Elf32_Half machine;
-	int (*check_elf)(struct coproc *cop, struct ELFinfo *elfinfo);
+	int (*check_elf)(struct coproc *cop, struct ELF32_info *elfinfo);
 	int (*cpu_grant)(struct coproc *cop, unsigned long boot_addr);
 	int (*mode)(struct coproc *cop, int mode);
 };

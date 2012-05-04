@@ -79,7 +79,8 @@ static int coproc_st231_mode(struct coproc *cop, int mode)
 	return 0;
 }
 
-static int coproc_st231_check_elf(struct coproc *cop, struct ELFinfo *elfinfo)
+static int coproc_st231_check_elf(struct coproc *cop,
+				  struct ELF32_info *elfinfo)
 {
 	Elf32_Ehdr *hdr;
 	Elf32_Shdr *sechdrs;
@@ -91,9 +92,9 @@ static int coproc_st231_check_elf(struct coproc *cop, struct ELFinfo *elfinfo)
 	sechdrs = elfinfo->secbase;
 
 	/* Jump to section header */
-	ELF_getSectionByNameCheck(elfinfo, ".boot", &boot_index,
+	ELF32_getSectionByNameCheck(elfinfo, ".boot", &boot_index,
 				SHF_ALLOC, SHT_PROGBITS);
-	prev_index = ELF_findBaseAddrCheck(hdr, sechdrs,
+	prev_index = ELF32_findBaseAddrCheck(hdr, sechdrs,
 			 &base_address, SHF_ALLOC, SHT_PROGBITS);
 	if (boot_index != 0) {
 		sechdrs[boot_index].sh_addr =

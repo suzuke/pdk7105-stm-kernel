@@ -48,7 +48,7 @@ static struct bpa2_part *coproc_get_bpa2_area(struct coproc *cop)
 	return bpa2_find_part(coproc_bpa2_name);
 }
 
-static int coproc_load_segments(struct coproc *cop, struct ELFinfo *elfinfo)
+static int coproc_load_segments(struct coproc *cop, struct ELF32_info *elfinfo)
 {
 	Elf32_Phdr *phdr = elfinfo->progbase;
 	void *data = elfinfo->base;
@@ -90,11 +90,11 @@ static int coproc_load_segments(struct coproc *cop, struct ELFinfo *elfinfo)
 static int coproc_load_elf(const struct firmware *fw, struct coproc *cop)
 {
 	int ret;
-	struct ELFinfo *elfinfo = NULL;
+	struct ELF32_info *elfinfo = NULL;
 	unsigned long boot_address;
 	unsigned long n_pages;
 
-	elfinfo = ELF_initFromMem((uint8_t *)fw->data, fw->size, 0);
+	elfinfo = ELF32_initFromMem((uint8_t *)fw->data, fw->size, 0);
 	if (elfinfo == NULL) {
 		coproc_dbg(cop, "Unable to parse ELF file\n");
 		ret = -ENOMEM;
@@ -157,7 +157,7 @@ static int coproc_load_elf(const struct firmware *fw, struct coproc *cop)
 	coproc_dbg(cop, "boot address	= 0x%lx\n", boot_address);
 	coproc_dbg(cop, "Run the Firmware code\n");
 
-	ELF_free(elfinfo);
+	ELF32_free(elfinfo);
 	cop->fns->cpu_grant(cop, boot_address);
 	return 0;
 
@@ -169,7 +169,7 @@ err_ioremap:
 err_bpa2_alloc:
 err_bpa2_get:
 err_machine:
-	ELF_free(elfinfo);
+	ELF32_free(elfinfo);
 err_elf:
 	return ret;
 }

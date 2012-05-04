@@ -49,7 +49,7 @@ static int coproc_st40_mode(struct coproc *cop, int mode)
 /* 6 Bits [31:26] */
 #define BART_ADDR_MASK		0xFC000000
 
-static int coproc_st40_check_elf(struct coproc *cop, struct ELFinfo *elfinfo)
+static int coproc_st40_check_elf(struct coproc *cop, struct ELF32_info *elfinfo)
 {
 	struct coproc_st40 *cop_st40 = coproc_to_coproc_st40(cop);
 	unsigned long boot_address = elfinfo->header->e_entry;

@@ -88,7 +88,7 @@ config STM_COPROCESSOR_CLASS
 	tristate "STMicroelectronics coprocessor support"
 	select FW_LOADER
 	select BPA2
-	select LIBELF
+	select LIBELF_32
 	---help---
 	  Many of the ST system-on-chip devices have multiple CPUs, where a
 	  master CPU running Linux has control over a number of slave CPUs,
