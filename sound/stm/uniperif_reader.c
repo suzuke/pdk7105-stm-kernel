@@ -577,8 +577,8 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 
 	set__AUD_UNIPERIF_I2S_FMT__ORDER_MSB(reader);
 
-	/* Data clocking (changing) on the falling edge */
-	set__AUD_UNIPERIF_I2S_FMT__SCLK_EDGE_FALLING(reader);
+	/* Data clocking (changing) on the rising edge */
+	set__AUD_UNIPERIF_I2S_FMT__SCLK_EDGE_RISING(reader);
 
 	/* Number of channels... */
 
