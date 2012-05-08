@@ -837,6 +837,7 @@ static void ir_stm_rx_interrupt(int irq, void *data)
 
 			ev.duration = US_TO_NS(symbol);
 			ev.pulse = false;
+			ev.timeout = lastSymbol ? true : false;
 			ir_raw_event_store(dev->rdev, &ev);
 			DPRINTK("PULSE : %d SPACE %d \n", mark, symbol);
 
