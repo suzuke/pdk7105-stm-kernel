@@ -28,6 +28,12 @@ config MACH_STM_B2000
 	help
 	  Include support for a B2000 - STiH415 (Orly) MBoard.
 
+config MACH_STM_B2020
+	bool "Support B2020 - STiH415 (Orly) ADI Board"
+	select MACH_STM_STIH415
+	help
+	  Include support for a B2020 - STiH415 (Orly) ADI Board.
+
 if MACH_STM_B2000
 
 choice
@@ -175,6 +181,14 @@ config MACH_STM_B2000_MALI_OS_MEMORY_SIZE
 	  from Linux kernel.
 
 endif
+
+config MACH_STM_B2020_MALI_OS_MEMORY_SIZE
+	depends on MACH_STM_B2020
+	hex "Maximum Mali GPU OS memory size"
+	default "0x5000000"
+	help
+	  Specify the size of memory which the Mali driver is allowed to allocate
+	  from Linux kernel.
 
 config MACH_STM_FLI76XXHDK01
 	bool "Support FLI76XX HDK01 (Newman) Board"
