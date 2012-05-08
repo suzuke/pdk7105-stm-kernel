@@ -946,11 +946,9 @@ static struct stm_amba_bridge_config stih415_amba_sata_config = {
 	.write_posting		=	stm_amba_write_posting_disabled,
 	.max_opcode		=	stm_amba_opc_LD64_ST64,
 	.type2.threshold	=	128,
+	.type2.sd_config_missing =	1,
 	.type2.trigger_mode	=	stm_amba_stbus_threshold_based,
 	.type2.read_ahead	=	stm_amba_read_ahead_enabled,
-	.type2.req_notify	=	stm_amba_ahb_burst_based,
-	.type2.cont_on_error	=	stm_amba_complete_transaction,
-	.type2.msg_merge	=	stm_amba_msg_merge_disabled,
 };
 
 static struct sysconf_field *sc_sata_hc_pwr[MAX_PORTS];
