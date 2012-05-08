@@ -467,8 +467,15 @@ static void __init b2000_init(void)
 
 	/* 1 SATA + 1 PCIe*/
 	stih415_configure_miphy(&(struct stih415_miphy_config) {
+		/* The UNUSED is to improve resiliance to broken
+		 * PCIe clock chips, you need a valid clock to the PCIe
+		 * block in order to talk to the miphy. If you have a duff
+		 * clock chip disabling CONFIG_PCI will at least get you
+		 * working SATA
+		 */
 		.modes = (enum miphy_mode[2]) {
-			SATA_MODE, PCIE_MODE },
+			SATA_MODE, IS_ENABLED(CONFIG_PCI) ?
+				      PCIE_MODE : UNUSED_MODE },
 		});
 	stih415_configure_sata(0, &(struct stih415_sata_config) { });
 
