@@ -39,7 +39,7 @@ volatile int __cpuinitdata pen_release = -1;
 #ifdef CONFIG_HIBERNATION_ON_MEMORY
 void write_pen_release(int val)
 #else
-static write_pen_release(int val)
+static void write_pen_release(int val)
 #endif
 {
 	pen_release = val;
