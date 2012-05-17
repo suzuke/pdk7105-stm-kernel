@@ -568,6 +568,49 @@ static struct stmmac_dma_cfg gmac_dma_setting = {
         .pbl = 32,
 };
 
+/* STBus Convertor config */
+static struct stm_amba_bridge_config stx7108_amba_stmmac_config = {
+	.type =	stm_amba_type2,
+	.chunks_in_msg = 1,
+	.packets_in_chunk = 2,
+	.write_posting = stm_amba_write_posting_disabled,
+	.max_opcode = stm_amba_opc_LD64_ST64,
+	.type2.threshold = 128,
+	.type2.sd_config_missing = 1,
+	.type2.trigger_mode = stm_amba_stbus_threshold_based,
+	.type2.read_ahead = stm_amba_read_ahead_enabled,
+};
+
+#define GMAC_AHB2STBUS_BASE         (0x7000 - 4)
+static void *stx7108_ethernet_bus_setup(void __iomem *ioaddr,
+					struct device *dev, void *data)
+{
+	struct stm_amba_bridge *amba;
+
+	if (!data) {
+		static struct stm_amba_bridge_config *bridge_config;
+
+		bridge_config = &stx7108_amba_stmmac_config;
+
+		if (unlikely(boot_cpu_data.cut_major == 1)) {
+			bridge_config->packets_in_chunk = 1;
+			bridge_config->type2.threshold = 64;
+		}
+
+		amba = stm_amba_bridge_create(dev, ioaddr + GMAC_AHB2STBUS_BASE,
+					      bridge_config);
+		if (IS_ERR(amba)) {
+			dev_err(dev, " Unable to create amba plug\n");
+			return NULL;
+		}
+	} else
+		amba = (struct stm_amba_bridge *) data;
+
+	stm_amba_bridge_init(amba);
+
+	return (void *) amba;
+}
+
 static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
 	{
 		.dma_cfg = &gmac_dma_setting,
@@ -579,6 +622,7 @@ static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
 		.init = &stmmac_claim_resource,
 		.exit = &stmmac_release_resource,
 		.bsp_priv = &stx7108_stmmac_priv_data[0],
+		.bus_setup = &stx7108_ethernet_bus_setup,
 	}, {
 		.dma_cfg = &gmac_dma_setting,
 		.has_gmac = 1,
@@ -589,6 +633,7 @@ static struct plat_stmmacenet_data stx7108_ethernet_platform_data[] = {
 		.init = &stmmac_claim_resource,
 		.exit = &stmmac_release_resource,
 		.bsp_priv = &stx7108_stmmac_priv_data[1],
+		.bus_setup = &stx7108_ethernet_bus_setup,
 	}
 };
 
@@ -613,22 +658,6 @@ static struct platform_device stx7108_ethernet_devices[] = {
 		.dev.platform_data = &stx7108_ethernet_platform_data[1],
 	}
 };
-
-#define GMAC_AHB_CONFIG         0x7000
-static void stx7108_ethernet_bus_setup(void __iomem *ioaddr)
-{
-	/* Configure the bridge to generate more efficient STBus traffic.
-	 *
-	 * Cut Version	| Ethernet AD_CONFIG[21:0]
-	 * ---------------------------------------
-	 *	1.1	|	0x00264006
-	 *	2.0	|	0x00264207
-	 */
-	if (boot_cpu_data.cut_major == 1)
-		writel(0x00264006, ioaddr + GMAC_AHB_CONFIG);
-	else if (boot_cpu_data.cut_major == 2)
-		writel(0x00264207, ioaddr + GMAC_AHB_CONFIG);
-}
 
 void __init stx7108_configure_ethernet(int port,
 		struct stx7108_ethernet_config *config)
@@ -719,9 +748,6 @@ void __init stx7108_configure_ethernet(int port,
 		BUG();
 		return;
 	}
-
-	stx7108_ethernet_platform_data[port].bus_setup =
-			stx7108_ethernet_bus_setup;
 
 	plat_data->custom_cfg = (void *) pad_config;
 	plat_data->interface = interface;
