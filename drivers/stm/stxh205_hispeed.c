@@ -238,6 +238,40 @@ static struct stmmac_dma_cfg gmac_dma_setting = {
         .pbl = 32,
 };
 
+/* STBus Convertor config */
+static struct stm_amba_bridge_config stxh205_amba_stmmac_config = {
+	.type =	stm_amba_type2,
+	.chunks_in_msg = 1,
+	.packets_in_chunk = 2,
+	.write_posting = stm_amba_write_posting_enabled,
+	.max_opcode = stm_amba_opc_LD64_ST64,
+	.type2.threshold = 512,
+	.type2.sd_config_missing = 1,
+	.type2.trigger_mode = stm_amba_stbus_threshold_based,
+	.type2.read_ahead = stm_amba_read_ahead_enabled,
+};
+
+#define GMAC_AHB2STBUS_BASE	 (0x2000 - 4)
+static void *stxh205_ethernet_bus_setup(void __iomem *ioaddr,
+					struct device *dev, void *data)
+{
+	struct stm_amba_bridge *amba;
+
+	if (!data) {
+		amba = stm_amba_bridge_create(dev, ioaddr + GMAC_AHB2STBUS_BASE,
+					      &stxh205_amba_stmmac_config);
+		if (IS_ERR(amba)) {
+			dev_err(dev, " Unable to create amba plug\n");
+			return NULL;
+		}
+	} else
+		amba = (struct stm_amba_bridge *) data;
+
+	stm_amba_bridge_init(amba);
+
+	return (void *) amba;
+}
+
 static struct plat_stmmacenet_data stxh205_ethernet_platform_data = {
 	.dma_cfg = &gmac_dma_setting,
 	.has_gmac = 1,
@@ -246,6 +280,7 @@ static struct plat_stmmacenet_data stxh205_ethernet_platform_data = {
 	.bugged_jumbo = 1,
 	.pmt = 1,
 	.init = &stmmac_claim_resource,
+	.bus_setup = &stxh205_ethernet_bus_setup,
 };
 
 static struct platform_device stxh205_ethernet_device = {
