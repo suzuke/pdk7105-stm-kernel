@@ -23,6 +23,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stih415.h>
 #include <linux/stm/stih415-periphs.h>
+#include <linux/stm/amba_bridge.h>
 #include <linux/delay.h>
 #include <asm/irq-ilc.h>
 #include "pio-control.h"
@@ -645,6 +646,40 @@ static struct stmmac_dma_cfg gmac_dma_setting = {
 	.mixed_burst = 1,
 };
 
+/* STBus Convertor config */
+static struct stm_amba_bridge_config stih415_amba_stmmac_config = {
+	.type =	stm_amba_type2,
+	.chunks_in_msg = 1,
+	.packets_in_chunk = 2,
+	.write_posting = stm_amba_write_posting_enabled,
+	.max_opcode = stm_amba_opc_LD64_ST64,
+	.type2.threshold = 512,
+	.type2.sd_config_missing = 1,
+	.type2.trigger_mode = stm_amba_stbus_threshold_based,
+	.type2.read_ahead = stm_amba_read_ahead_enabled,
+};
+
+#define GMAC_AHB2STBUS_BASE	 (0x2000 - 4)
+static void *stih415_ethernet_bus_setup(void __iomem *ioaddr,
+					struct device *dev, void *data)
+{
+	struct stm_amba_bridge *amba;
+
+	if (!data) {
+		amba = stm_amba_bridge_create(dev, ioaddr + GMAC_AHB2STBUS_BASE,
+					      &stih415_amba_stmmac_config);
+		if (IS_ERR(amba)) {
+			dev_err(dev, " Unable to create amba plug\n");
+			return NULL;
+		}
+	} else
+		amba = (struct stm_amba_bridge *) data;
+
+	stm_amba_bridge_init(amba);
+
+	return (void *) amba;
+}
+
 static struct plat_stmmacenet_data stih415_ethernet_platform_data[] = {
 	{
 		.dma_cfg = &gmac_dma_setting,
@@ -656,6 +691,7 @@ static struct plat_stmmacenet_data stih415_ethernet_platform_data[] = {
 		.pmt = 1,
 		.init = &stmmac_claim_resource,
 		.exit = &stmmac_release_resource,
+		.bus_setup = &stih415_ethernet_bus_setup,
 	}, {
 		.dma_cfg = &gmac_dma_setting,
 		.has_gmac = 1,
@@ -666,6 +702,7 @@ static struct plat_stmmacenet_data stih415_ethernet_platform_data[] = {
 		.pmt = 1,
 		.init = &stmmac_claim_resource,
 		.exit = &stmmac_release_resource,
+		.bus_setup = &stih415_ethernet_bus_setup,
 	}
 };
 
@@ -701,16 +738,6 @@ static struct platform_device stih415_ethernet_devices[] = {
 	}
 };
 
-#define GMAC_AHB_CONFIG	 0x2000
-static void stih415_ethernet_bus_setup(void __iomem *ioaddr)
-{
-	/* Configure the bridge to generate more efficient STBus traffic.
-	 *
-	 * Cut Version	| Ethernet AD_CONFIG[21:0]
-	 *	1.0	|	0x00264207
-	 */
-	writel(0x00264207, ioaddr + GMAC_AHB_CONFIG);
-}
 
 /* ONLY MII mode on GMAC1 is tested */
 void __init stih415_configure_ethernet(int port,
@@ -811,9 +838,6 @@ void __init stih415_configure_ethernet(int port,
 		BUG();
 		return;
 	}
-
-	stih415_ethernet_platform_data[port].bus_setup =
-			stih415_ethernet_bus_setup;
 
 	plat_data->custom_cfg = (void *) pad_config;
 	plat_data->interface = interface;
