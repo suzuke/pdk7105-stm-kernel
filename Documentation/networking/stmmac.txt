@@ -121,7 +121,7 @@ and detailed below as well:
 	int pmt;
 	int force_sf_dma_mode;
 	void (*fix_mac_speed)(void *priv, unsigned int speed);
-	void (*bus_setup)(void __iomem *ioaddr);
+	void *(*bus_setup)(void __iomem *ioaddr, struct device *dev, void *d);
 	int (*init)(struct platform_device *pdev);
 	void (*exit)(struct platform_device *pdev);
 	void *bsp_priv;
@@ -156,6 +156,7 @@ Where:
  o bus_setup: perform HW setup of the bus. For example, on some ST platforms
 	     this field is used to configure the AMBA  bridge to generate more
 	     efficient STBus traffic.
+ o bus_data: saved custom data for custom bus setting.
  o init/exit: callbacks used for calling a custom initialisation;
 	     this is sometime necessary on some platforms (e.g. ST boxes)
 	     where the HW needs to have set some PIO lines or system cfg

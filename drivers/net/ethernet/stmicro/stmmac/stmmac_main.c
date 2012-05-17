@@ -999,10 +999,6 @@ static int stmmac_open(struct net_device *dev)
 	/* Copy the MAC addr into the HW  */
 	priv->hw->mac->set_umac_addr(priv->ioaddr, dev->dev_addr, 0);
 
-	/* If required, perform hw setup of the bus. */
-	if (priv->plat->bus_setup)
-		priv->plat->bus_setup(priv->ioaddr);
-
 	/* Initialize the MAC Core */
 	priv->hw->mac->core_init(priv->ioaddr);
 
@@ -1951,6 +1947,15 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 		goto error;
 	}
 
+	/* On some platforms, is is possible to perform some hw setup of the bus
+	 * and this is done by calling the bus_setup (when implemented).
+	 * Data from bus_setup can be saved in the patform structure to be
+	 * restored when resume for example form standby.
+	 */
+	if (priv->plat->bus_setup)
+		priv->plat->bus_data =
+			priv->plat->bus_setup(priv->ioaddr, priv->device,
+					      priv->plat->bus_data);
 	return priv;
 
 error:
@@ -2059,6 +2064,8 @@ int stmmac_resume(struct net_device *ndev)
 	priv->hw->dma->start_tx(priv->ioaddr);
 	priv->hw->dma->start_rx(priv->ioaddr);
 
+	priv->plat->bus_data = priv->plat->bus_setup(priv->ioaddr, priv->device,
+						     priv->plat->bus_data);
 #ifdef CONFIG_STMMAC_TIMER
 	if (likely(priv->tm->enable))
 		priv->tm->timer_start(tmrate);
@@ -2085,9 +2092,13 @@ int stmmac_freeze(struct net_device *ndev)
 
 int stmmac_restore(struct net_device *ndev)
 {
+	struct stmmac_priv *priv = netdev_priv(ndev);
+
 	if (!ndev || !netif_running(ndev))
 		return 0;
 
+	priv->plat->bus_data = priv->plat->bus_setup(priv->ioaddr, priv->device,
+						     priv->plat->bus_data);
 	return stmmac_open(ndev);
 }
 #endif /* CONFIG_PM */
