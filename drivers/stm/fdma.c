@@ -1313,7 +1313,7 @@ static int fdma_extended(struct dma_channel *dma_chan,
  *---------------------------------------------------------------------*
  *---------------------------------------------------------------------*/
 
-static void __init fdma_channels_parse(struct fdma *fdma)
+static void __devinit fdma_channels_parse(struct fdma *fdma)
 {
 	char *str;
 	int min, max;

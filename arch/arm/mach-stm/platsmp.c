@@ -37,9 +37,9 @@ extern void stm_secondary_startup(void);
 volatile int __cpuinitdata pen_release = -1;
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY
-void write_pen_release(int val)
+void __cpuinit write_pen_release(int val)
 #else
-static void write_pen_release(int val)
+static void __cpuinit write_pen_release(int val)
 #endif
 {
 	pen_release = val;

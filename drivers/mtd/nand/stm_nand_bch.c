@@ -2319,7 +2319,7 @@ static int __devinit remap_named_resource(struct platform_device *pdev,
 	return 0;
 }
 
-static struct nandi_controller * __init
+static struct nandi_controller * __devinit
 nandi_init_resources(struct platform_device *pdev)
 {
 	struct nandi_controller *nandi;

@@ -609,7 +609,7 @@ static void afm_set_timings(struct stm_nand_afm_controller *afm,
 }
 
 /* Initialise the AFM NAND controller */
-static struct stm_nand_afm_controller * __init
+static struct stm_nand_afm_controller * __devinit
 afm_init_controller(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
