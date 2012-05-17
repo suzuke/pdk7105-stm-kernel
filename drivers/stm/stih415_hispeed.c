@@ -642,6 +642,7 @@ static void stih415_ethernet_rgmii1_gtx_speed(void *priv, unsigned int speed)
 
 static struct stmmac_dma_cfg gmac_dma_setting = {
         .pbl = 32,
+	.mixed_burst = 1,
 };
 
 static struct plat_stmmacenet_data stih415_ethernet_platform_data[] = {
