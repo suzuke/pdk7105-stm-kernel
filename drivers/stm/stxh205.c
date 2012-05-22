@@ -597,6 +597,17 @@ void __init stxh205_configure_nand(struct stm_nand_config *config)
 	}
 }
 
+/* Hardware RNG resources ------------------------------------------------- */
+
+static struct platform_device stxh205_devhwrandom_device = {
+	.name		= "stm-hwrandom",
+	.id		= -1,
+	.num_resources	= 1,
+	.resource	= (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfdabd000, 0x1000),
+	}
+};
+
 /* Pre-arch initialisation ------------------------------------------------ */
 
 static int __init stxh205_postcore_setup(void)
@@ -621,6 +632,7 @@ static struct platform_device *stxh205_devices[] __initdata = {
 	&stxh205_sysconf_devices[3],
 	&stxh205_sysconf_devices[4],
 	&sth205_temp,
+	&stxh205_devhwrandom_device,
 };
 
 static int __init stxh205_devices_setup(void)
