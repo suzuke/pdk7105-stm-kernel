@@ -188,6 +188,9 @@ static int __init device_init(void)
 
 #if !defined(CONFIG_STM_B2039_INT_PHY_NONE) || \
     !defined(CONFIG_STM_B2039_CN14_NONE)
+	/* Configure GMII MDINT for active low */
+	irq_set_irq_type(ILC_IRQ(25), IRQ_TYPE_LEVEL_LOW);
+
 	stxh205_configure_ethernet(&(struct stxh205_ethernet_config) {
 #if defined(CONFIG_STM_B2039_IC101_MII) || \
     defined(CONFIG_STM_B2039_CN14_B2032)
