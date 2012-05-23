@@ -99,8 +99,7 @@ static void thomson_dtt759x_bw(struct dvb_frontend *fe, u8 *buf)
 		buf[3] |= 0x10;
 }
 
-static void thomson_dtt7546x_bw(struct dvb_frontend *fe, u8 *buf,
-			       const struct dvb_frontend_parameters *params)
+static void thomson_dtt7546x_bw(struct dvb_frontend *fe, u8 *buf)
 {
 	/* set CB2 reg - set ATC, XTO */
 	buf[4] = 0xe3;
