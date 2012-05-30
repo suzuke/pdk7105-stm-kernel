@@ -778,7 +778,19 @@ static void ir_stm_rx_interrupt(int irq, void *data)
 	struct stm_ir_device *dev = data;
 	int lastSymbol = 0, clear_irq = 1;
 	int overrun = 0;
+	static int start_sync;
 	DEFINE_IR_RAW_EVENT(ev);
+
+	if (!start_sync) {
+		/* for LIRC_MODE_MODE2 or LIRC_MODE_PULSE or LIRC_MODE_RAW
+		 * lircd expects a long space first before a signal train
+		 * to sync. */
+		DEFINE_IR_RAW_EVENT(start_ev);
+		start_ev.timeout = true;
+		start_ev.pulse = false;
+		start_sync = 1;
+		ir_raw_event_store(dev->rdev, &start_ev);
+	}
 
 	ir_stm_scd_set_flags(dev);
 
