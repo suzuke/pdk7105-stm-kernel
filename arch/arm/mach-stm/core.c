@@ -11,3 +11,11 @@
 
 #include "core.h"
 
+#include <linux/elfnote.h>
+
+/* Expose PHYS_OFFSET in an ELF note */
+#ifdef CONFIG_ARM_PATCH_PHYS_VIRT
+ELFNOTE32("PHYS_OFFSET", 0, 0xffffffff);
+#else
+ELFNOTE32("PHYS_OFFSET", 0, PHYS_OFFSET);
+#endif
