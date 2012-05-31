@@ -157,11 +157,47 @@ static int __devexit sdhci_stm_remove(struct platform_device *pdev)
 	return sdhci_pltfm_unregister(pdev);
 }
 
+#ifdef CONFIG_PM
+static int sdhci_stm_suspend(struct device *dev)
+{
+	struct sdhci_host *host = dev_get_drvdata(dev);
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+
+	if (pltfm_host->clk)
+		clk_disable(pltfm_host->clk);
+
+	return sdhci_suspend_host(host);
+}
+
+static int sdhci_stm_resume(struct device *dev)
+{
+	struct sdhci_host *host = dev_get_drvdata(dev);
+
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+
+	if (pltfm_host->clk)
+		clk_enable(pltfm_host->clk);
+
+	return sdhci_resume_host(host);
+}
+
+const struct dev_pm_ops sdhci_stm_pmops = {
+	.suspend	= sdhci_stm_suspend,
+	.resume		= sdhci_stm_resume,
+	.freeze		= sdhci_stm_suspend,
+	.thaw		= sdhci_stm_resume,
+	.restore	= sdhci_stm_resume,
+};
+#define SDHCI_STM_PMOPS (&sdhci_stm_pmops)
+#else
+#define SDHCI_STM_PMOPS NULL
+#endif	/* CONFIG_PM */
+
 static struct platform_driver sdhci_stm_driver = {
 	.driver = {
 		   .name = "sdhci-stm",
 		   .owner = THIS_MODULE,
-		   .pm = SDHCI_PLTFM_PMOPS,
+		   .pm = SDHCI_STM_PMOPS,
 		   },
 	.probe = sdhci_stm_probe,
 	.remove = __devexit_p(sdhci_stm_remove),
