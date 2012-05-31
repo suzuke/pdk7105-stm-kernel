@@ -13,7 +13,6 @@ config STM_PCI_EMISS
 	bool "STMicroelectronics PCI controller"
 	depends on PCI && (CPU_SUBTYPE_STX7108)
 	def_bool n
-	select GENERIC_IOMAP
 	---help---
 	  This option adds support for the PCI controller found on some
 	  STMicroelectronics SOCs.
