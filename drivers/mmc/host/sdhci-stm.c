@@ -89,7 +89,6 @@ static struct sdhci_pltfm_data sdhci_stm_pdata = {
 static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 {
 	struct sdhci_host *host;
-	const struct platform_device_id *platid = platform_get_device_id(pdev);
 	struct stm_mmc_platform_data *pdata;
 	struct sdhci_pltfm_host *pltfm_host;
 	struct clk *clk;
@@ -97,10 +96,7 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 
 	pr_debug("sdhci STM platform driver\n");
 
-	if (platid && platid->driver_data)
-		pdata = (void *)platid->driver_data;
-	else
-		pdata = pdev->dev.platform_data;
+	pdata = pdev->dev.platform_data;
 
 	host = sdhci_pltfm_init(pdev, &sdhci_stm_pdata);
 	if (IS_ERR(host))
@@ -114,7 +110,7 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 
 	/* Invoke specific MMC function to configure HW resources */
 	if (pdata && pdata->init) {
-		ret = pdata->init(host);
+		ret = pdata->init(pdev);
 		if (ret)
 			return ret;
 	}
@@ -133,6 +129,25 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 		sdhci_pltfm_free(pdev);
 		goto err_out;
 	}
+
+	if (pdata->amba_config) {
+
+		pdata->amba_bridge = stm_amba_bridge_create(host->mmc->parent,
+							    host->ioaddr +
+							    MMC_AHB2STBUS_BASE,
+							    pdata->amba_config);
+		if (IS_ERR(pdata->amba_bridge)) {
+			dev_err(host->mmc->parent, "Cannot create amba plug\n");
+			ret = PTR_ERR(pdata->amba_bridge);
+			goto err_out;
+		}
+
+		stm_amba_bridge_init(pdata->amba_bridge);
+	} else
+		pr_warning("%s: amba bridge not supported\n", __func__);
+
+	platform_set_drvdata(pdev, host);
+
 	return ret;
 
 err_out:
@@ -149,10 +164,12 @@ static int __devexit sdhci_stm_remove(struct platform_device *pdev)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 
 	if (pdata && pdata->exit)
-		pdata->exit(host);
+		pdata->exit(pdev);
 
 	clk_disable(pltfm_host->clk);
 	clk_put(pltfm_host->clk);
+
+	platform_set_drvdata(pdev, NULL);
 
 	return sdhci_pltfm_unregister(pdev);
 }
@@ -172,26 +189,55 @@ static int sdhci_stm_suspend(struct device *dev)
 static int sdhci_stm_resume(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
-
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
 
 	if (pltfm_host->clk)
 		clk_enable(pltfm_host->clk);
 
+	if (pdata->amba_bridge)
+		stm_amba_bridge_init(pdata->amba_bridge);
+
 	return sdhci_resume_host(host);
 }
 
+static int sdhci_stm_freeze(struct device *dev)
+{
+	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+
+	if (pdata && pdata->exit)
+		pdata->exit(pdev);
+
+	return sdhci_stm_suspend(dev);
+}
+
+static int sdhci_stm_restore(struct device *dev)
+{
+	int ret;
+	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+
+	if (pdata && pdata->init) {
+		ret = pdata->init(pdev);
+		if (ret)
+			return ret;
+	}
+	return sdhci_stm_resume(dev);
+}
+
 const struct dev_pm_ops sdhci_stm_pmops = {
-	.suspend	= sdhci_stm_suspend,
-	.resume		= sdhci_stm_resume,
-	.freeze		= sdhci_stm_suspend,
-	.thaw		= sdhci_stm_resume,
-	.restore	= sdhci_stm_resume,
+	.suspend = sdhci_stm_suspend,
+	.resume = sdhci_stm_resume,
+	.freeze = sdhci_stm_freeze,
+	.thaw = sdhci_stm_restore,
+	.restore = sdhci_stm_restore,
 };
+
 #define SDHCI_STM_PMOPS (&sdhci_stm_pmops)
 #else
 #define SDHCI_STM_PMOPS NULL
-#endif	/* CONFIG_PM */
+#endif /* CONFIG_PM */
 
 static struct platform_driver sdhci_stm_driver = {
 	.driver = {

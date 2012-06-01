@@ -16,13 +16,22 @@
 #include <linux/types.h>
 #include <linux/device.h>
 #include <linux/mmc/sdhci.h>
+#include <linux/stm/amba_bridge.h>
+
+#define MMC_AHB2STBUS_BASE	 (0x104 - 4)
 
 struct stm_mmc_platform_data {
-	/* Initialize board-specific MMC resources */
-	int (*init)(struct sdhci_host *host);
-	void (*exit)(struct sdhci_host *host);
+	/* Initialize board-specific MMC resources (e.g. PAD) */
+	int (*init)(struct platform_device *pdev);
+	void (*exit)(struct platform_device *pdev);
+	void *custom_cfg;
+	void *custom_data;
 
-	/* nonremovable e.g. eMMC */
+	/* AMBA bridge structure */
+	struct stm_amba_bridge_config *amba_config;
+	struct stm_amba_bridge *amba_bridge;
+
+	/* Non removable e.g. eMMC */
 	unsigned nonremovable;
 };
 
