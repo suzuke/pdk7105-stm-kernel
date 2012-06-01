@@ -716,20 +716,23 @@ static struct stm_pad_config stih415_mmc_pad_config = {
 	},
 };
 
-static int mmc_pad_resources(struct sdhci_host *sdhci)
-{
-
-	pr_debug("sdhci: init hw resources\n");
-
-	if (!devm_stm_pad_claim(sdhci->mmc->parent, &stih415_mmc_pad_config,
-				dev_name(sdhci->mmc->parent)))
-		return -ENODEV;
-
-	return 0;
-}
+static struct stm_amba_bridge_config stih415_amba_mmc_config = {
+	.type =	stm_amba_type2,
+	.chunks_in_msg = 1,
+	.packets_in_chunk = 2,
+	.write_posting = stm_amba_write_posting_enabled,
+	.max_opcode = stm_amba_opc_LD64_ST64,
+	.type2.threshold = 128,
+	.type2.sd_config_missing = 1,
+	.type2.trigger_mode = stm_amba_stbus_threshold_based,
+	.type2.read_ahead = stm_amba_read_ahead_enabled,
+};
 
 static struct stm_mmc_platform_data stih415_mmc_platform_data = {
-	.init = mmc_pad_resources,
+	.init = &mmc_claim_resource,
+	.exit = &mmc_release_resource,
+	.amba_config = &stih415_amba_mmc_config,
+	.custom_cfg = &stih415_mmc_pad_config,
 	.nonremovable = false,
 };
 
@@ -757,8 +760,6 @@ void __init stih415_configure_mmc(int emmc)
 
 	platform_device_register(&stih415_mmc_device);
 }
-
-
 
 /* FDMA resources --------------------------------------------------------- */
 
