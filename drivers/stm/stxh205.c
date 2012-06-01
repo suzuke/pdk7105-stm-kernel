@@ -456,17 +456,24 @@ static struct stm_pad_config stxh205_mmc_pad_config  = {
 	},
 };
 
-static int mmc_pad_resources(struct sdhci_host *sdhci)
-{
-	if (!devm_stm_pad_claim(sdhci->mmc->parent, &stxh205_mmc_pad_config,
-				dev_name(sdhci->mmc->parent)))
-		return -ENODEV;
-
-	return 0;
-}
+static struct stm_amba_bridge_config stxh205_amba_mmc_config = {
+	.type =	stm_amba_type2,
+	.chunks_in_msg = 0,
+	.packets_in_chunk = 0,
+	.write_posting = stm_amba_write_posting_enabled,
+	.max_opcode = stm_amba_opc_LD32_ST32,
+	.type2.threshold = 128,
+	.type2.sd_config_missing = 1,
+	.type2.trigger_mode = stm_amba_stbus_threshold_based,
+	.type2.read_ahead = stm_amba_read_ahead_enabled,
+};
 
 static struct stm_mmc_platform_data stxh205_mmc_platform_data = {
-	.init = mmc_pad_resources,
+	.init = &mmc_claim_resource,
+	.exit = &mmc_release_resource,
+	.custom_cfg = &stxh205_mmc_pad_config,
+	.amba_config = &stxh205_amba_mmc_config,
+	.custom_cfg = &stxh205_mmc_pad_config,
 	.nonremovable = false,
 };
 
@@ -487,7 +494,6 @@ static struct platform_device stxh205_mmc_device = {
 void __init stxh205_configure_mmc(int emmc)
 {
 	struct stm_mmc_platform_data *plat_data;
-	struct sysconf_field *sc;
 
 	plat_data = &stxh205_mmc_platform_data;
 
