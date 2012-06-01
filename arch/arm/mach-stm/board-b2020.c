@@ -33,6 +33,8 @@
 
 static void __init b2020_init_early(void)
 {
+	printk(KERN_INFO
+	       "STMicroelectronics STiH415 (Orly) B2020 ADI initialisation\n");
 
 	stih415_early_device_init();
 	/* for UART11 via J26 use device 5 for console
@@ -168,6 +170,15 @@ static struct stm_mali_config b2020_mali_config = {
 static void __init b2020_init(void)
 {
 #ifdef CONFIG_CACHE_L2X0
+	/* We have to ensure that bit 22 is set. This bit controls if
+	 * shared uncacheable normal memory accesses are looked up in the cache
+	 * or not. By default they are looked up in the cache. This can cause
+	 * problems because the cache line can be speculated in via the kernel
+	 * alias of the same physical page. For coherent dma mappings this means
+	 * that the CPU will potentially see stale values, rather than what the
+	 * device has put into main memory. The stale value should not cause any
+	 * problems as it should never be accessed via the kernel mapping.
+	 */
 	l2x0_init(__io_address(STIH415_PL310_BASE), 0x1<<22, 0xffbfffff);
 #endif
 
@@ -215,24 +226,32 @@ static void __init b2020_init(void)
 
 	stih415_configure_spifsm(&b2020_serial_flash);
 
-	/* 1 SATA + 1 PCIe
-	 * NOTE: PCIE clocks on this board is set to 200MHz which needs to be
-	 * changed to 100Mhz to get PCIE working. Remove register R51 and
-	 * connect 10k register on R56.
-	 */
-	stih415_configure_miphy(&(struct stih415_miphy_config) {
-		.modes = (enum miphy_mode[2]) {	SATA_MODE,
-			IS_ENABLED(CONFIG_PCI) ? PCIE_MODE : UNUSED_MODE }, });
+	/* reset */
+	stm_board_reset = stih415_reset;
 
+	platform_add_devices(b2020_devices,
+		ARRAY_SIZE(b2020_devices));
+
+	/* 1 SATA + 1 PCIe */
+	stih415_configure_miphy(&(struct stih415_miphy_config) {
+		/* You need a valid clock to the PCIe block in order to talk to
+		 * the miphy, but the PCIe clock on Rev A,B board is set to
+		 * 200MHz, it needs to be changed to 100MHz in order to get
+		 * PCIe working: remove resistor R51 and connect a 10k resistor
+		 * on R56. Rev C boards have the option resistors set correcty.
+		 *
+		 * The UNUSED is to improve resiliance to unmodified boards: If
+		 * you have an unmodified board, disabling CONFIG_PCI will at
+		 * least get you working SATA
+		 */
+		.modes = (enum miphy_mode[2]) { SATA_MODE,
+		IS_ENABLED(CONFIG_PCI) ?  PCIE_MODE : UNUSED_MODE }, });
 	stih415_configure_sata(0, &(struct stih415_sata_config) { });
 
 	stih415_configure_pcie(&(struct stih415_pcie_config) {
 				.reset_gpio = -1, /* No Reset */
 				});
-	/* reset */
-	stm_board_reset = stih415_reset;
 
-	platform_add_devices(b2020_devices, ARRAY_SIZE(b2020_devices));
 	return;
 }
 
