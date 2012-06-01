@@ -994,17 +994,10 @@ static struct stm_pad_config stx7108_mmc_pad_config = {
 	},
 };
 
-static int mmc_pad_resources(struct sdhci_host *sdhci)
-{
-	if (!devm_stm_pad_claim(sdhci->mmc->parent, &stx7108_mmc_pad_config,
-				dev_name(sdhci->mmc->parent)))
-		return -ENODEV;
-
-	return 0;
-}
-
 static struct stm_mmc_platform_data stx7108_mmc_platform_data = {
-	.init = mmc_pad_resources,
+	.init = &mmc_claim_resource,
+	.exit = &mmc_release_resource,
+	.custom_cfg = &stx7108_mmc_pad_config,
 	.nonremovable = false,
 };
 
