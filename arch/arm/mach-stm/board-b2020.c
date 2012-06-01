@@ -238,6 +238,9 @@ static void __init b2020_init(void)
 
 	stih415_configure_spifsm(&b2020_serial_flash);
 
+	stih415_configure_audio(&(struct stih415_audio_config) {
+			.uni_player_3_spdif_enabled = 1, });
+
 	/* reset */
 	stm_board_reset = stih415_reset;
 
