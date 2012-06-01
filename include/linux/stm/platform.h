@@ -603,35 +603,47 @@ struct stm_plat_ilc3_data {
 	int disable_wakeup:1;
 };
 
-/*** To claim Ethernet PAD resources from the platform ***/
-
-static inline int stmmac_claim_resource(struct platform_device *pdev)
-{
-	int ret = 0;
-	struct plat_stmmacenet_data *plat_dat = pdev->dev.platform_data;
-
-	plat_dat->custom_data = devm_stm_pad_claim(&pdev->dev,
-		(struct stm_pad_config *) plat_dat->custom_cfg,
-		dev_name(&pdev->dev));
-
-	if (!plat_dat->custom_data) {
-		pr_err("%s: failed to request pads!\n", __func__);
-
-		ret = -ENODEV;
-	}
-
-	return ret;
+/*
+ * build_pad_claim and build_pad_release (generated when compiling for
+ * each driver) are two simple macros can be invoked by STM drivers to claim
+ * and release the PAD resources from the platform.
+ *
+ * For example, the stmmac and sdhci use them inside their probe and release
+ * functions.
+ *
+ * To use these simple API the driver needs to have two simple hooks
+ * (e.g. init/exit) and custom_data/cfg fields used to manage the PAD setup
+ * also when PM stuff is invoked.
+ */
+#define build_pad_claim(name, driver_plat_data)				\
+static inline int name(struct platform_device *pdev)			\
+{									\
+	int ret = 0;							\
+	struct driver_plat_data *plat_dat = pdev->dev.platform_data;	\
+									\
+	plat_dat->custom_data = devm_stm_pad_claim(&pdev->dev,		\
+		(struct stm_pad_config *) plat_dat->custom_cfg,		\
+		dev_name(&pdev->dev));					\
+	if (!plat_dat->custom_data)					\
+		ret = -ENODEV;						\
+	return ret; \
 }
 
-static inline void stmmac_release_resource(struct platform_device *pdev)
-{
-	struct plat_stmmacenet_data *plat_dat = pdev->dev.platform_data;
-
-	if (!plat_dat->custom_data)
-		return;
-	devm_stm_pad_release(&pdev->dev, plat_dat->custom_data);
-	plat_dat->custom_data = NULL;
+#define build_pad_release(name, driver_plat_data)			\
+static inline void name(struct platform_device *pdev)			\
+{									\
+	struct driver_plat_data *plat_dat = pdev->dev.platform_data;	\
+	if (!plat_dat->custom_data)					\
+		return;							\
+	devm_stm_pad_release(&pdev->dev, plat_dat->custom_data);	\
+	plat_dat->custom_data = NULL; \
 }
+
+build_pad_claim(stmmac_claim_resource, plat_stmmacenet_data)
+build_pad_release(stmmac_release_resource, plat_stmmacenet_data)
+build_pad_claim(mmc_claim_resource, stm_mmc_platform_data)
+build_pad_release(mmc_release_resource, stm_mmc_platform_data)
+
 /* Mali specific */
 struct stm_mali_resource {
 	resource_size_t start;
