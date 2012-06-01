@@ -34,11 +34,6 @@
 #include <mach/soc-stih415.h>
 #include <mach/hardware.h>
 
-static void __init b2000_map_io(void)
-{
-	stih415_map_io();
-}
-
 static void __init b2000_init_early(void)
 {
 	printk("STMicroelectronics STiH415 (Orly) MBoard initialisation\n");
@@ -497,7 +492,7 @@ late_initcall(b2000_late_devices_setup);
 
 MACHINE_START(STM_B2000, "STMicroelectronics B2000 - STiH415 MBoard")
 	.atag_offset	= 0x100,
-	.map_io		= b2000_map_io,
+	.map_io		= stih415_map_io,
 #ifdef CONFIG_SPARSE_IRQ
 	.nr_irqs	= NR_IRQS_LEGACY,
 #endif
