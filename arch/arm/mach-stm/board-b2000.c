@@ -228,16 +228,16 @@ static struct platform_device *b2000_devices[] __initdata = {
 static struct stm_mali_resource b2000_mali_mem[1] = {
 	{
 		.name   = "OS_MEMORY",
-		.start  =  0,
-		.end    =  CONFIG_MACH_STM_B2000_MALI_OS_MEMORY_SIZE-1,
+		.start  = 0,
+		.end    = CONFIG_MACH_STM_B2000_MALI_OS_MEMORY_SIZE-1,
 	},
 };
 
 static struct stm_mali_resource b2000_mali_ext_mem[] = {
 	{
 		.name   = "EXTERNAL_MEMORY_RANGE",
-		.start  =  0x40000000,
-		.end    =  0xBFFFFFFF,
+		.start  = 0x40000000,
+		.end    = 0xBFFFFFFF,
 	}
 };
 
@@ -460,7 +460,7 @@ static void __init b2000_init(void)
 	platform_add_devices(b2000_devices,
 		ARRAY_SIZE(b2000_devices));
 
-	/* 1 SATA + 1 PCIe*/
+	/* 1 SATA + 1 PCIe */
 	stih415_configure_miphy(&(struct stih415_miphy_config) {
 		/* The UNUSED is to improve resiliance to broken
 		 * PCIe clock chips, you need a valid clock to the PCIe
@@ -477,6 +477,7 @@ static void __init b2000_init(void)
 	stih415_configure_pcie(&(struct stih415_pcie_config) {
 				.reset_gpio = stm_gpio(STIH415_PIO(106), 5),
 				});
+
 	return;
 }
 
