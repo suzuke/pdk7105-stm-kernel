@@ -228,6 +228,10 @@ static void __init b2020_init(void)
 
 	stih415_configure_mali(&b2020_mali_config);
 
+	stih415_configure_pwm(&(struct stih415_pwm_config) {
+			.pwm = stih415_sbc_pwm,
+			.out0_enabled = 1, });
+
 	stih415_configure_mmc(0);
 
 	stih415_configure_nand(&(struct stm_nand_config) {
