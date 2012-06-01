@@ -167,6 +167,20 @@ static struct stm_mali_config b2020_mali_config = {
 	.ext_mem = b2020_mali_ext_mem,
 };
 
+static void b2020_ethphy_gpio_init(int cold_boot)
+{
+	/* Reset */
+	if (cold_boot) {
+		gpio_request(B2020_GMII1_PHY_NOT_RESET,
+			     "B2020_GMII1_PHY_NOT_RESET");
+	}
+
+
+	gpio_direction_output(B2020_GMII1_PHY_NOT_RESET, 0);
+
+	b2020_gmii1_reset(NULL);
+}
+
 static void __init b2020_init(void)
 {
 #ifdef CONFIG_CACHE_L2X0
@@ -182,13 +196,11 @@ static void __init b2020_init(void)
 	l2x0_init(__io_address(STIH415_PL310_BASE), 0x1<<22, 0xffbfffff);
 #endif
 
-	gpio_request(B2020_GMII1_PHY_NOT_RESET, "B2020_GMII1_PHY_NOT_RESET");
-	gpio_direction_output(B2020_GMII1_PHY_NOT_RESET, 0);
+	b2020_ethphy_gpio_init(1);
 
 	/* Default to HDMI HotPlug */
 	if (stm_pad_claim(&stih415_hdmi_hp_pad_config, "HDMI_Hotplug") == NULL)
 		printk(KERN_ERR "Failed to claim HDMI-Hotplug pad!\n");
-
 
 	stih415_configure_ethernet(1, &(struct stih415_ethernet_config) {
 			.mode = stih415_ethernet_mode_rgmii,
@@ -267,3 +279,25 @@ MACHINE_START(STM_B2020, "STMicroelectronics B2020 - STiH415 MBoard")
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= b2020_init,
 MACHINE_END
+
+#ifdef CONFIG_HIBERNATION_ON_MEMORY
+
+#include <linux/stm/hom.h>
+
+static int b2020_hom_restore(void)
+{
+	b2020_ethphy_gpio_init(0);
+	return 0;
+}
+
+static struct stm_hom_board b2020_hom = {
+	.restore = b2020_hom_restore,
+};
+
+static int __init b2020_hom_init(void)
+{
+	return stm_hom_board_register(&b2020_hom);
+}
+
+late_initcall(b2020_hom_init);
+#endif
