@@ -12,11 +12,8 @@ config STMMAC_ETH
 
 if STMMAC_ETH
 
-choice
-        prompt "STMMAC bus support"
-
 config STMMAC_PLATFORM
-	bool "Platform bus support"
+	bool "STMMAC Platform bus support"
 	depends on STMMAC_ETH
 	---help---
 	  This selects the platform specific bus support for
@@ -28,7 +25,7 @@ config STMMAC_PLATFORM
 	  If unsure, say N.
 
 config STMMAC_PCI
-	bool "PCI bus support (EXPERIMENTAL)"
+	bool "STMMAC PCI bus support (EXPERIMENTAL)"
 	depends on STMMAC_ETH && PCI && EXPERIMENTAL
 	---help---
 	  This is to select the Synopsys DWMAC available on PCI devices,
@@ -38,7 +35,6 @@ config STMMAC_PCI
 	  D1215994A VIRTEX FPGA board.
 
 	  If unsure, say N.
-endchoice
 
 config STMMAC_DEBUG_FS
 	bool "Enable monitoring via sysFS "
