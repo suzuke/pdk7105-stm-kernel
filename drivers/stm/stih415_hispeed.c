@@ -322,7 +322,7 @@ static struct stm_pad_config stih415_ethernet_gmii_pad_configs[] = {
 			DATA_IN(2, 1, 1, RET_SE_NICLK_IO(3, 0)),/* RX_ER */
 			CLOCK_IN(2, 2, 1, RET_NICLK(0)),/* RXCLK */
 
-			CLOCK_OUT(2, 3, 4, RET_NICLK(1)), /* GTXCLK */
+			PHY_CLOCK(2, 3, 4, RET_NICLK(1)), /* GTXCLK */
 
 			DATA_OUT(2, 6, 4, RET_SE_NICLK_IO(3, 0)),/* TXD[4] */
 			DATA_OUT(2, 7, 4, RET_SE_NICLK_IO(3, 0)),/* TXD[5] */
