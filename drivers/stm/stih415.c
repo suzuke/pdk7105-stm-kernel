@@ -684,6 +684,14 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 				.pu = 1, \
 				.od = 0, \
 			}, \
+			.retime = &(struct stm_pio_control_retime_config) { \
+				.retime = 0, \
+				.clk1notclk0 = 0, \
+				.clknotdata = 0, \
+				.double_edge = 0, \
+				.invertclk = 0, \
+				.delay_input = 3, \
+			}, \
 		}, \
 	}
 #define STIH415_PIO_MMC_IN(_port, _pin) \
