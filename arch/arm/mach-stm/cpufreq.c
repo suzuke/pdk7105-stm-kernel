@@ -163,8 +163,6 @@ static unsigned int stm_cpufreq_get(unsigned int cpu)
 
 static int stm_cpufreq_init(struct cpufreq_policy *policy)
 {
-	static cpumask_var_t cpumask;
-
 	if (!cpu_online(policy->cpu))
 		return -ENODEV;
 
@@ -193,32 +191,16 @@ static int stm_cpufreq_exit(struct cpufreq_policy *policy)
 }
 
 #ifdef CONFIG_PM
-static int stm_cpufreq_pm_core(struct cpufreq_policy *policy, pm_message_t pmsg)
+static int stm_cpufreq_suspend(struct cpufreq_policy *policy)
 {
-	if (pmsg.event == PM_EVENT_ON)
-		/* resuming */
-		clk_set_rate(cpufreq->cpu_clk, cpufreq->prev_cpu0_clk_rate);
-	else {
-		/* suspending... */
-		cpufreq->prev_cpu0_clk_rate = clk_get_rate(cpufreq->cpu_clk);
-		clk_set_rate(cpufreq->cpu_clk,
-			cpufreq->freq_table[0].frequency * 1000);
-	}
-	return 0;
-}
-
-static int stm_cpufreq_suspend(struct cpufreq_policy *policy, pm_message_t pmsg)
-{
-	if (policy->cpu != 0)
-		return 0;
-	return stm_cpufreq_pm_core(policy, pmsg);
+	cpufreq->prev_cpu0_clk_rate = clk_get_rate(cpufreq->cpu_clk);
+	return clk_set_rate(cpufreq->cpu_clk,
+			    cpufreq->freq_table[0].frequency * 1000);
 }
 
 static int stm_cpufreq_resume(struct cpufreq_policy *policy)
 {
-	if (policy->cpu != 0)
-		return 0;
-	return stm_cpufreq_pm_core(policy, PMSG_ON);
+	return clk_set_rate(cpufreq->cpu_clk, cpufreq->prev_cpu0_clk_rate);
 }
 
 #else
