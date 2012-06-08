@@ -745,7 +745,7 @@ static int clkgenax_get_index(int clkid, unsigned long *srcreg, int *shift)
 
 static int clkgenax_set_parent(clk_t *clk_p, clk_t *src_p)
 {
-	unsigned long clk_src, val, base_id;
+	unsigned long clk_src = -1, val, base_id;
 	int idx, shift;
 	unsigned long srcreg, base_addr;
 
@@ -798,6 +798,7 @@ static int clkgenax_set_parent(clk_t *clk_p, clk_t *src_p)
 
 	base_addr = clkgenax_get_base_addr(clk_p->id);
 	val = CLK_READ(base_addr + srcreg) & ~(0x3 << shift);
+	BUG_ON(clk_src < 0);
 	val |= (clk_src << shift);
 	CLK_WRITE(base_addr + srcreg, val);
 	clk_p->parent = src_p;
@@ -1150,7 +1151,7 @@ static unsigned long clkgenax_get_measure(clk_t *clk_p)
 {
 	unsigned long src;
 	unsigned long data, measure;
-	void *base;
+	unsigned long base;
 	int i;
 
 	if (!clk_p)
@@ -1269,7 +1270,7 @@ static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p)
    Returns:     'clk_err_t' error code
    ======================================================================== */
 
-static int clkgenax_observe2(clk_t *clk_p, unsigned long *div_p)
+static inline int clkgenax_observe2(clk_t *clk_p, unsigned long *div_p)
 {
 	unsigned long sel, base_addr;
 	unsigned long divcfg;
