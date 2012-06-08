@@ -206,7 +206,7 @@ static ssize_t rtpm_status_show(struct device *dev,
 	return sprintf(buf, p);
 }
 
-static DEVICE_ATTR(runtime_status, 0444, rtpm_status_show, rtpm_status_store);
+static DEVICE_ATTR(runtime_status, 0644, rtpm_status_show, rtpm_status_store);
 
 static ssize_t autosuspend_delay_ms_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
