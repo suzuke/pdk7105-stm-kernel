@@ -2508,7 +2508,6 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 static int __devexit stm_nand_bch_remove(struct platform_device *pdev)
 {
 	struct nandi_controller *nandi = platform_get_drvdata(pdev);
-	struct nandi_info *info = &nandi->info;
 
 	nand_release(&nandi->info.mtd);
 	nandi_exit_controller(nandi);
