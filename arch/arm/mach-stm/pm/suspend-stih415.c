@@ -60,6 +60,7 @@ static struct stm_mcm_suspend *main_mcm;
 static struct stm_mcm_suspend *peripheral_mcm;
 struct stm_mcm_suspend *stx_mpe41_suspend_setup(void);
 struct stm_mcm_suspend *stx_sasg1_suspend_setup(void);
+static suspend_state_t target_state;
 
 static int stih415_suspend_begin(suspend_state_t state)
 {
@@ -68,6 +69,7 @@ static int stih415_suspend_begin(suspend_state_t state)
 	pr_info("[STM][PM] Analyzing the wakeup devices\n");
 
 	stm_check_wakeup_devices(&stih415_wkd);
+	target_state = state;
 
 	ret = stm_suspend_mcm_begin(main_mcm, state, &stih415_wkd);
 	if (ret)
@@ -104,10 +106,10 @@ static void stih415_suspend_post_enter(suspend_state_t state)
 	stm_suspend_mcm_post_enter(main_mcm, state);
 }
 
-static void stih415_suspend_end(suspend_state_t state)
+static void stih415_suspend_end(void)
 {
-	stm_suspend_mcm_end(peripheral_mcm, state);
-	stm_suspend_mcm_end(main_mcm, state);
+	stm_suspend_mcm_end(peripheral_mcm, target_state);
+	stm_suspend_mcm_end(main_mcm, target_state);
 }
 
 static int stih415_get_wake_irq(void)
