@@ -364,7 +364,7 @@ static int l2x0_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct platform_driver l2x0_drv = {
+static struct platform_driver l2x0_drv = {
 	.driver = {
 		.name = "cache-l2x0",
 		.pm = &l2x0_pm_ops,
