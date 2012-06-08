@@ -48,7 +48,7 @@ struct stm_hom_eram_data {
 };
 
 void stm_hom_exec_on_eram(struct stm_hom_eram_data *pa_eram_data,
-		void *hom_pgd, unsigned long va_2_pa);
+			  void *hom_pgd, unsigned long va_2_pa);
 
 int stm_hom_on_eram(void);
 extern unsigned long stm_hom_on_eram_sz;

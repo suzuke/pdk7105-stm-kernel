@@ -107,7 +107,7 @@ static int __init hom_stxh415_setup(void)
 
 	pr_info("[STM]: [PM]: [HoM]: Early console [%d] @ 0x%x\n",
 			stm_asc_console_device,
-			stxh415_hom.early_console_base);
+			(unsigned int) stxh415_hom.early_console_base);
 
 	ret = stm_hom_register(&stxh415_hom);
 	if (ret) {

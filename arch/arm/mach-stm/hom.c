@@ -96,7 +96,7 @@ static void prepare_hom_frozen_data(struct hom_frozen_data *frozen_data,
 }
 
 static void stm_hom_prepare_eram(struct stm_mem_hibernation *platform,
-		struct stm_hom_eram_data *eram)
+				 struct stm_hom_eram_data *eram)
 {
 	unsigned long size = 0;
 	void *__pa_eram = platform->eram_iomem;
@@ -113,7 +113,7 @@ static void stm_hom_prepare_eram(struct stm_mem_hibernation *platform,
 	 */
 	eram->pa_table = __pa_eram;
 	size = platform->tbl_size;
-	memcpy_toio(__va_eram, platform->tbl_addr, size);
+	memcpy_toio(__va_eram, (const void *) &platform->tbl_addr, size);
 	__va_eram += size;
 	__pa_eram += size;
 
@@ -124,7 +124,7 @@ static void stm_hom_prepare_eram(struct stm_mem_hibernation *platform,
 	memcpy_toio(__va_eram, stm_hom_on_eram, stm_hom_on_eram_sz);
 	__va_eram += stm_hom_on_eram_sz;
 	__pa_eram += stm_hom_on_eram_sz;
-	pr_info("0x%x 0x%x 0x%x\n", eram->pa_table, eram->pa_stm_eram_code,
+	pr_info("0x%p 0x%p 0x%p\n", eram->pa_table, eram->pa_stm_eram_code,
 		eram->pa_pokeloop);
 }
 
@@ -158,7 +158,8 @@ static int __cpuinitdata stm_hom_enter(void)
 	unsigned long flag;
 	struct mm_struct *mm = get_current()->mm;
 	struct stm_hom_eram_data eram_data;
-	unsigned long va_2_pa = _text - __pa(_text);
+	unsigned long va_2_pa = (unsigned long) _text -
+				(unsigned long) __pa(_text);
 
 #ifdef CONFIG_SMP
 	/*
@@ -193,8 +194,8 @@ static int __cpuinitdata stm_hom_enter(void)
 
 	pr_info("[STM][HoM]: CPU Frozen\n");
 
-	stm_hom_exec_on_eram(__pa(&eram_data),
-		(void *)__pa(idmap_pgd), va_2_pa);
+	stm_hom_exec_on_eram((struct stm_hom_eram_data *) __pa(&eram_data),
+			     (void *)__pa(idmap_pgd), va_2_pa);
 
 	BUG_ON(in_irq());
 
@@ -267,7 +268,7 @@ int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 
 	platform = data;
 
-	virtual_eram_iomem = ioremap(data->eram_iomem,
+	virtual_eram_iomem = ioremap((unsigned long) data->eram_iomem,
 		stm_pokeloop_sz + data->tbl_size + stm_hom_on_eram_sz);
 
 	platform->ops.enter = stm_hom_enter;
