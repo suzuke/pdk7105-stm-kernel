@@ -83,6 +83,12 @@ config SATA_AHCI_PLATFORM
 
 	  If unsure, say N.
 
+config SATA_AHCI_STM
+	tristate
+	depends on STM_DRIVERS
+	default y if SATA_AHCI_PLATFORM=y
+	default m if SATA_AHCI_PLATFORM=m
+
 config SATA_FSL
 	tristate "Freescale 3.0Gbps SATA support"
 	depends on FSL_SOC
