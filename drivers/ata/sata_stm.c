@@ -222,6 +222,10 @@
 #define SATA_INT_PMABORT	(1<<2)
 #define SATA_INT_ERR		(1<<3)
 #define SATA_INT_NEWBIST	(1<<4)
+#define SATA_INT_PRIMERR	(1<<5) /* Bits 5 to 7 new for v1.82a */
+#define SATA_INT_CMD_ABORT	(1<<6)
+#define SATA_INT_CMD_GOOD	(1<<7)
+#define SATA_INT_IPF		(1<<31) /* From 1.6 on */
 
 #define SERROR_ERR_T	(1<<8)
 #define SERROR_ERR_C	(1<<9)
@@ -254,6 +258,7 @@ struct stm_host_priv
 	int softsg;			/* If using softsg */
 	int shared_dma_host_irq;	/* If we the interrupt from the DMA
 					 * and HOSTC are or'ed together */
+	unsigned int ipf_visible:1;	/* Have IPF flag in INTPR register */
 	struct stm_device_state *device_state;
 	void (*host_restart)(int port); /* Full reset of host and phy */
 	int port_num;			/* Parameter to host_restart */
@@ -457,11 +462,15 @@ DPRINTK("ENTER\n");
 
 static u8 stm_bmdma_status(struct ata_port *ap)
 {
-	/* We should be checking here whether the current interrupt
-	 * was raised by this SATA host. Unfortuntaly we have no
-	 * visibility of the controller's Interrupt Pending Flag (IPF).
-	 */
-	return ATA_DMA_INTR;
+	struct stm_host_priv *hpriv = ap->host->private_data;
+	void __iomem *mmio = ap->ioaddr.cmd_addr;
+	u8 status;
+
+	/* If we cannot see the IPF flag then assume it is raised */
+	status = (readl(mmio + SATA_INTPR) & SATA_INT_IPF) |
+			!hpriv->ipf_visible;
+
+	return status ? ATA_DMA_INTR : 0;
 }
 
 static void stm_fill_sg(struct ata_queued_cmd *qc)
@@ -877,10 +886,12 @@ static unsigned stm_sata_host_irq(struct ata_port *ap)
 	unsigned int handled = 0;
 	void __iomem *mmio = ap->ioaddr.cmd_addr;
 	struct ata_eh_info *ehi = &ap->link.eh_info;
+	struct stm_host_priv *hpriv = ap->host->private_data;
 	u32 sstatus, serror;
+	u32 intpr = readl(mmio + SATA_INTPR);
 
-	if (readl(mmio + SATA_INTPR) & (SATA_INT_ERR)) {
-
+	/* Have we got an error ? */
+	if (intpr & SATA_INT_ERR) {
 		stm_sata_scr_read(&ap->link, SCR_STATUS, &sstatus);
 		stm_sata_scr_read(&ap->link, SCR_ERROR, &serror);
 		stm_sata_scr_write(&ap->link, SCR_ERROR, serror);
@@ -903,9 +914,12 @@ static unsigned stm_sata_host_irq(struct ata_port *ap)
 		}
 
 		ata_port_freeze(ap);
-		handled = 1;
-	} else
-		if (ap) {
+
+		return 1;
+	}
+
+	/* ATA interrupt, if we don't have the bit we just assume it is one */
+	if (!hpriv->ipf_visible || (intpr & SATA_INT_IPF)) {
 			struct ata_queued_cmd *qc;
 			struct stm_port_priv *pp = ap->private_data;
 
@@ -918,9 +932,22 @@ static unsigned stm_sata_host_irq(struct ata_port *ap)
 			 */
 			if (qc && (!(qc->tf.ctl & ATA_NIEN)))
 				handled += ata_sff_port_intr(ap, qc);
-		}
 
-	return handled;
+			return handled;
+	}
+
+	if (!hpriv->shared_dma_host_irq) {
+		/* Hmmm, we have got here and it is not a error or an ATA
+		 * interrupt.  What the heck is it? I have seen cases where bit
+		 * 7 (CMD_GOOD) is set, but this is never enabled in the mask
+		 * register. Strange.
+		 */
+		ata_port_printk(ap, KERN_NOTICE,
+				"Spurious irq, INTPR 0x%x INTMR 0x%x\n",
+				    intpr, readl(mmio + SATA_INTMR));
+	}
+
+	return 0;
 }
 
 static irqreturn_t stm_sata_dma_interrupt(int irq, void *dev_instance)
@@ -1239,6 +1266,8 @@ static int __devinit stm_sata_probe(struct platform_device *pdev)
 	       (int)(dmac_rev >> 24) & 0xff,
 	       (int)(dmac_rev >> 16) & 0xff,
 	       (int)(dmac_rev >>  8) & 0xff);
+
+	hpriv->ipf_visible = (sata_rev >= ('1' << 24  | '6' << 16));
 
 	hpriv->miphy_dev = stm_miphy_claim(sata_private_info->miphy_num,
 			SATA_MODE, dev);
