@@ -1602,7 +1602,7 @@ static int snd_stm_uniperif_player_ctl_iec958_put(struct snd_kcontrol *kcontrol,
 	}
 
 	/* If settings changed and uniperipheral in operation, update */
-	if (changed & get__AUD_UNIPERIF_CTRL__OPERATION(player))
+	if (changed)
 		snd_stm_uniperif_player_set_channel_status(player, NULL);
 
 	spin_unlock(&player->default_settings_lock);
@@ -1728,7 +1728,7 @@ static int snd_stm_uniperif_player_ctl_encoded_put(
 	}
 
 	/* If settings changed and uniperipheral in operation, update */
-	if (changed && get__AUD_UNIPERIF_CTRL__OPERATION(player)) {
+	if (changed) {
 		set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_LEFT(player,
 				ucontrol->value.integer.value[0]);
 		set__AUD_UNIPERIF_USER_VALIDITY__VALIDITY_RIGHT(player,
