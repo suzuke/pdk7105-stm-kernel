@@ -186,8 +186,8 @@ static int coproc_open(struct coproc *cop)
 	 * to specify the video/audio device number
 	 */
 	result = scnprintf(firm_loaded, sizeof(firm_loaded),
-			"%s_%s%d.elf", COPROC_FIRMWARE_NAME,
-			cop->name, cop->id);
+			"%s_%s_%s%d.elf", COPROC_FIRMWARE_NAME,
+			stm_soc(), cop->name, cop->id);
 
 	coproc_dbg(cop, "Requesting the file %s\n", firm_loaded);
 	result = request_firmware(&fw, firm_loaded, cop->dev);
