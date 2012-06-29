@@ -11,6 +11,14 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+29/may/12 Francesco Virlinzi
+	  CLKM_A9_EXT2F_DIV2 bug fix.
+10/apr/12 Francesco Virlinzi
+	  Some udpates.
+28/mar/12 Fabrice Charpentier
+	  FS660C32 algos & API update. clkgenax_Xable() udpated to return
+	  good code when always ON clock. Added capability to enable/disable
+	  Ax PLL3200 ODFx outputs.
 18/nov/11 Fabrice Charpentier
 	  clkgene_fsyn_set_rate() bug fix for SDIV setup.
 	  FS660 new API with nsdiv.
@@ -72,7 +80,6 @@
 
 
 static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p);
-static int clkgenax_observe2(clk_t *clk_p, unsigned long *div_p);
 static int clkgenf_observe(clk_t *clk_p, unsigned long *div_p);
 static int clkgenax_set_parent(clk_t *clk_p, clk_t *src_p);
 static int clkgenf_set_parent(clk_t *clk_p, clk_t *src_p);
@@ -123,7 +130,7 @@ static void *cgb_base;
 static void *cgd_base;
 static void *mali_base;
 
-_CLK_OPS2(clkgena0,
+_CLK_OPS(clkgena0,
 	"A10",
 	clkgenax_init,
 	clkgenax_set_parent,
@@ -133,11 +140,9 @@ _CLK_OPS2(clkgena0,
 	clkgenax_disable,
 	clkgenax_observe,
 	clkgenax_get_measure,
-	"PIO101[2]",      /* Observation point 1 */
-	"PIO101[3]",      /* Observation point 2 */
-	clkgenax_observe2
+	"PIO101[2]"       /* Observation point */
 );
-_CLK_OPS2(clkgena1,
+_CLK_OPS(clkgena1,
 	"A11",
 	clkgenax_init,
 	clkgenax_set_parent,
@@ -147,11 +152,9 @@ _CLK_OPS2(clkgena1,
 	clkgenax_disable,
 	clkgenax_observe,
 	clkgenax_get_measure,
-	"PIO101[0]",      /* Observation point 1 */
-	"PIO101[1]",      /* Observation point 2 */
-	clkgenax_observe2
+	"PIO101[0]"       /* Observation point */
 );
-_CLK_OPS2(clkgena2,
+_CLK_OPS(clkgena2,
 	"A12",
 	clkgenax_init,
 	clkgenax_set_parent,
@@ -161,12 +164,10 @@ _CLK_OPS2(clkgena2,
 	clkgenax_disable,
 	clkgenax_observe,
 	clkgenax_get_measure,
-	"PIO101[4]",      /* Observation point 1 */
-	"PIO101[5]",      /* Observation point 2 */
-	clkgenax_observe2
+	"PIO101[4]"       /* Observation point */
 );
 _CLK_OPS(clkgene,
-	"E/MDTP",
+	"E",
 	clkgene_init,
 	NULL,
 	clkgene_set_rate,
@@ -178,7 +179,7 @@ _CLK_OPS(clkgene,
 	NULL		/* No observation point */
 );
 _CLK_OPS(clkgenf,
-	"F/TVPipe",
+	"F",
 	clkgenf_init,
 	clkgenf_set_parent,
 	clkgenf_set_rate,
@@ -257,7 +258,8 @@ _CLK(CLKM_PP_DMU_0,	&clkgena0,    200000000,    0),
 _CLK(CLKM_PP_DMU_1,	&clkgena0,    200000000,    0),
 _CLK(CLKM_ICN_DISP,	&clkgena0,    0, 0),
 _CLK(CLKM_A9_EXT2F,	&clkgena0,    200000000,    0),
-_CLK_P(CLKM_A9_EXT2F,	&clkgena0,    30000000, 0, &clk_clocks[CLKM_A9_EXT2F]),
+_CLK_P(CLKM_A9_EXT2F_DIV2,	&clkgena0,    30000000,
+	0, &clk_clocks[CLKM_A9_EXT2F]),
 _CLK(CLKM_ST40RT,	&clkgena0,    500000000,    0),
 _CLK(CLKM_ST231_DMU_0,	&clkgena0,    500000000,    0),
 _CLK(CLKM_ST231_DMU_1,	&clkgena0,    500000000,    0),
@@ -832,6 +834,7 @@ static int clkgenax_identify_parent(clk_t *clk_p)
 	case CLKM_A0_REF ... CLKM_A0_PLL1_PHI3:
 	case CLKM_A1_REF ... CLKM_A1_PLL1_PHI3:
 	case CLKM_A2_REF ... CLKM_A2_PLL1_PHI3:
+	case CLKM_A9_EXT2F_DIV2:
 		return 0;
 	}
 
@@ -865,7 +868,7 @@ static int clkgenax_identify_parent(clk_t *clk_p)
 
 /* ========================================================================
    Name:        clkgenax_xable_pll
-   Description: Enable/disable PLL
+   Description: Enable/disable PLL3200
    Returns:     'clk_err_t' error code
    ======================================================================== */
 
@@ -874,23 +877,62 @@ static int clkgenax_xable_pll(clk_t *clk_p, int enable)
 	unsigned long val, base_addr;
 	int bit, err = 0;
 
-	if (clk_p->id != CLKM_A0_PLL0 && clk_p->id != CLKM_A0_PLL1 &&
-	    clk_p->id != CLKM_A1_PLL0 && clk_p->id != CLKM_A1_PLL1 &&
-	    clk_p->id != CLKM_A2_PLL0 && clk_p->id != CLKM_A2_PLL1)
-		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLKM_A0_PLL0 || clk_p->id > CLKM_A0_PLL1_PHI3)
+		return CLK_ERR_BAD_PARAMETER;
 
-	if (clk_p->id == CLKM_A0_PLL1 || clk_p->id == CLKM_A1_PLL1 ||
-	    clk_p->id == CLKM_A2_PLL1)
-		bit = 1;
-	else
-		bit = 0;
-	base_addr = clkgenax_get_base_addr(clk_p->id);
-	val = CLK_READ(base_addr + CKGA_POWER_CFG);
-	if (enable)
-		val &= ~(1 << bit);
-	else
-		val |= (1 << bit);
-	CLK_WRITE(base_addr + CKGA_POWER_CFG, val);
+	switch (clk_p->id) {
+	case CLKM_A0_PLL0:
+	case CLKM_A0_PLL1:
+	case CLKM_A1_PLL0:
+	case CLKM_A1_PLL1:
+	case CLKM_A2_PLL0:
+	case CLKM_A2_PLL1:
+		if (clk_p->id == CLKM_A0_PLL1 || clk_p->id == CLKM_A1_PLL1 ||
+		    clk_p->id == CLKM_A2_PLL1)
+			bit = 1;
+		else
+			bit = 0;
+		base_addr = clkgenax_get_base_addr(clk_p->id);
+		val = CLK_READ(base_addr + CKGA_POWER_CFG);
+		if (enable)
+			val &= ~(1 << bit);
+		else
+			val |= (1 << bit);
+		CLK_WRITE(base_addr + CKGA_POWER_CFG, val);
+		break;
+	case CLKM_A0_PLL0_PHI0 ... CLKM_A0_PLL0_PHI3:
+	case CLKM_A1_PLL0_PHI0 ... CLKM_A1_PLL0_PHI3:
+	case CLKM_A2_PLL0_PHI0 ... CLKM_A2_PLL0_PHI3:
+		bit = (clk_p->id > CLKM_A2_REF ? clk_p->id - CLKM_A2_PLL0_PHI0 :
+		      (clk_p->id > CLKM_A1_REF ? clk_p->id - CLKM_A1_PLL0_PHI0 :
+		      clk_p->id - CLKM_A0_PLL0_PHI0));
+		base_addr = clkgenax_get_base_addr(clk_p->id);
+		val = CLK_READ(base_addr + CKGA_PLL0_REG3_CFG);
+		if (enable)
+			val &= ~(1 << bit);
+		else
+			val |= (1 << bit);
+		CLK_WRITE(base_addr + CKGA_PLL0_REG3_CFG, val);
+		break;
+	case CLKM_A0_PLL1_PHI0 ... CLKM_A0_PLL1_PHI3:
+	case CLKM_A1_PLL1_PHI0 ... CLKM_A1_PLL1_PHI3:
+	case CLKM_A2_PLL1_PHI0 ... CLKM_A2_PLL1_PHI3:
+		bit = (clk_p->id > CLKM_A2_REF ? clk_p->id - CLKM_A2_PLL1_PHI0 :
+		      (clk_p->id > CLKM_A1_REF ? clk_p->id - CLKM_A1_PLL1_PHI0 :
+		      clk_p->id - CLKM_A0_PLL1_PHI0));
+		base_addr = clkgenax_get_base_addr(clk_p->id);
+		val = CLK_READ(base_addr + CKGA_PLL1_REG3_CFG);
+		if (enable)
+			val &= ~(1 << bit);
+		else
+			val |= (1 << bit);
+		CLK_WRITE(base_addr + CKGA_PLL1_REG3_CFG, val);
+		break;
+	default:
+		return CLK_ERR_BAD_PARAMETER;
+	}
 
 	if (enable)
 		err = clkgenax_recalc(clk_p);
@@ -1185,7 +1227,7 @@ static unsigned long clkgenax_get_measure(clk_t *clk_p)
 	CLK_WRITE(base + CKGA_CLKOBS_CMD, 0);
 
 	for (i = 0; i < 10; i++) {
-		CLK_DELAYMS(10);
+		__mdelay(10);
 		data = CLK_READ(base + CKGA_CLKOBS_STATUS);
 		if (data & 1)
 			break;	/* IT */
@@ -1264,75 +1306,6 @@ static int clkgenax_observe(clk_t *clk_p, unsigned long *div_p)
 	return 0;
 }
 
-/* ========================================================================
-   Name:        clkgenax_observe2
-   Description: Clockgen Ax clocks observation function
-   Returns:     'clk_err_t' error code
-   ======================================================================== */
-
-static inline int clkgenax_observe2(clk_t *clk_p, unsigned long *div_p)
-{
-	unsigned long sel, base_addr;
-	unsigned long divcfg;
-	unsigned long srcreg;
-	int shift;
-
-	if (!clk_p || !div_p)
-		return CLK_ERR_BAD_PARAMETER;
-
-	switch (clk_p->id) {
-	case CLKM_APB_PM ... CLKM_A9_TRACE:
-	case CLKM_FDMA_12 ... CLKM_FVDP_PROC_ALT:
-	case CLKM_VTAC_MAIN_PHY ...CLKM_DCEPHY_IMPCTRL:
-		sel = clkgenax_get_index(clk_p->id, &srcreg, &shift);
-		break;
-	default:
-		return CLK_ERR_BAD_PARAMETER;
-	}
-
-	switch (*div_p) {
-	case 2:
-		divcfg = 0;
-		break;
-	case 4:
-		divcfg = 1;
-		break;
-	default:
-		divcfg = 2;
-		*div_p = 1;
-		break;
-	}
-	base_addr = clkgenax_get_base_addr(clk_p->id);
-	CLK_WRITE((base_addr + CKGA_CLKOBS_MUX1_CFG),
-		(divcfg << 6) | (sel & 0x3f));
-
-	/* 2nd observation points:
-	   A0 => PIO101[3] alt 3
-	   A1 => PIO101[1] alt 3
-	   A2 => PIO101[5] alt 3
-	 */
-
-	/* Configuring appropriate PIO */
-	if (base_addr == (unsigned long)cga0_base) {
-		/* Selecting alternate 3 */
-		SYSCONF_WRITE(0, 401, 12, 14, 3);
-		/* Enabling IO */
-		SYSCONF_WRITE(0, 403, 11, 11, 1);
-	} else if (base_addr == (unsigned long)cga1_base) {
-		/* Selecting alternate 3 */
-		SYSCONF_WRITE(0, 401, 4, 5, 3);
-		/* Enabling IO */
-		SYSCONF_WRITE(0, 403, 9, 9, 1);
-	} else {
-		/* Selecting alternate 3 */
-		SYSCONF_WRITE(0, 401, 20, 22, 3);
-		/* Enabling IO */
-		SYSCONF_WRITE(0, 403, 13, 13, 1);
-	}
-
-	return 0;
-}
-
 /******************************************************************************
 CLOCKGEN A0 clocks group
 ******************************************************************************/
@@ -1342,6 +1315,7 @@ CLOCKGEN A0 clocks group
    Description: Set clock frequency
    Returns:     'clk_err_t' error code
    ======================================================================== */
+
 #if !defined(CLKLLA_NO_PLL)
 static void clkgenax_pll_phi_set_div(void *reg, unsigned clk_id,
 	unsigned clk_base_id, unsigned long div)
@@ -1695,7 +1669,7 @@ static int clkgene_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	/* Computing FSyn params. Should be common function with FSyn type */
 	chan = clk_p->id - CLKM_PIX_MDTP_0;
 	nsdiv = (chan == 3 ? 0 : 1);
-	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, nsdiv,
+	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, &nsdiv,
 				     &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -2113,7 +2087,7 @@ static int clkgenf_vcc_set_div(clk_t *clk_p, unsigned long *div_p)
 static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long data, chan;
-	unsigned long md, pe, sdiv, ndiv;
+	unsigned long md, pe, sdiv, ndiv, nsdiv;
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
@@ -2127,7 +2101,8 @@ static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	}
 
 	/* Computing FSyn params. Should be common function with FSyn type */
-	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, 1,
+	nsdiv = 1;
+	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, &nsdiv,
 				     &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -2389,7 +2364,6 @@ static int clkgenddr_set_rate(clk_t *clk_p, unsigned long freq)
 	if ((clk_p->id < CLKM_DDR_IC_LMI0) || (clk_p->id > CLKM_DDR_IC_LMI1))
 		return CLK_ERR_BAD_PARAMETER;
 
-	return 0;
 	/* We need a parent for these clocks */
 	if (!clk_p->parent)
 		return CLK_ERR_INTERNAL;

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * File name   : clock-stxSASG1.c
+ * File name   : clock-stxsasg1.c
  * Description : Low Level API - HW specific implementation
  *
  * COPYRIGHT (C) 2009 STMicroelectronics - All Rights Reserved
@@ -11,6 +11,18 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+29/jun/12 fabrice.charpentier@st.com
+	  clkgenc_fsyn_xable(): enable now also release FS reset.
+	  Added '__init' & '__mdelay' for better Linux compatibility.
+	  Clockgen C & D FS216 Linux bug fixes.
+10/apr/12 Francesco Virlinzi
+	  Some udpates.
+28/mar/12 fabrice.charpentier@st.com
+	  Fixed clockgen Ax wrong return code when enabling always on clocks.
+27/mar/12 fabrice.charpentier@st.com
+	  Clockgen C enable/disable update. Can now control VCC clocks.
+21/mar/12 fabrice.charpentier@st.com
+	  Clockgen C nominal freqs changes.
 07/nov/11 fabrice.charpentier@st.com
 	  Clocks rename to match datasheet:
 	  FDMAx=>FDMA_x, IC_REG=>ICN_REG_0, IC_IF_0=>ICN_IF_0, etc etc
@@ -47,16 +59,16 @@
 #include <linux/delay.h>
 
 struct fsynth_sysconf {
-        struct sysconf_field *pe;
         struct sysconf_field *md;
+	struct sysconf_field *pe;
         struct sysconf_field *sdiv;
         struct sysconf_field *prog_en;
 };
 
-/* Sysconf from 135 to 150 */
-static struct fsynth_sysconf fsynth_vid_channel[4];
-/* Sysconf from 313 to 328 */
-static struct fsynth_sysconf fsynth_gp_channel[4];
+/* Sysconf from 135 to 150; clockgen D FS216 */
+static struct fsynth_sysconf fsynth_d_channel[4];
+/* Sysconf from 313 to 328; clockgen C FS216 */
+static struct fsynth_sysconf fsynth_c_channel[4];
 
 #endif
 
@@ -141,7 +153,7 @@ _CLK_OPS(clkgena1,
 	"PIO12[1]"       /* Observation point */
 );
 _CLK_OPS(clkgenb,
-	"B/Audio",
+	"B",
 	clkgenb_init,
 	clkgenb_set_parent,
 	clkgenb_set_rate,
@@ -153,7 +165,7 @@ _CLK_OPS(clkgenb,
 	"PIO10[2]"	  /* Observation point */
 );
 _CLK_OPS(clkgenc,
-	"C/Video",
+	"C",
 	clkgenc_init,
 	clkgenc_set_parent,
 	clkgenc_set_rate,
@@ -165,7 +177,7 @@ _CLK_OPS(clkgenc,
 	"PIO10[3]"	  /* Observation point */
 );
 _CLK_OPS(clkgend,
-	"D/Transport",
+	"D",
 	clkgend_init,
 	NULL,
 	clkgend_fsyn_set_rate,
@@ -243,18 +255,18 @@ _CLK_P(CLKS_C_PIX_HD_VCC, &clkgenc, 148500000,
 _CLK_P(CLKS_C_PIX_SD_VCC, &clkgenc, 108000000,
 		CLK_RATE_PROPAGATES, &clk_clocks[CLKS_C_REF]),
 
-_CLK(CLKS_C_PIX_HDMI, &clkgenc, 148500000, 0),
-_CLK(CLKS_C_PIX_DVO, &clkgenc, 148500000, 0),
-_CLK(CLKS_C_OUT_DVO, &clkgenc, 148500000, 0),
-_CLK(CLKS_C_PIX_HDDAC, &clkgenc, 148500000, 0),
-_CLK(CLKS_C_OUT_HDDAC, &clkgenc, 148500000, 0),
-_CLK(CLKS_C_DENC, &clkgenc, 27000000, 0),
+_CLK(CLKS_C_PIX_HDMI, &clkgenc, 0, 0),
+_CLK(CLKS_C_PIX_DVO, &clkgenc, 0, 0),
+_CLK(CLKS_C_OUT_DVO, &clkgenc, 0, 0),
+_CLK(CLKS_C_PIX_HDDAC, &clkgenc, 0, 0),
+_CLK(CLKS_C_OUT_HDDAC, &clkgenc, 0, 0),
+_CLK(CLKS_C_DENC, &clkgenc, 0, 0),
 _CLK(CLKS_C_OUT_SDDAC, &clkgenc, 108000000, 0),
-_CLK(CLKS_C_PIX_MAIN, &clkgenc, 148500000, CLK_RATE_PROPAGATES),		/* To MPE */
-_CLK(CLKS_C_PIX_AUX, &clkgenc, 148500000, CLK_RATE_PROPAGATES),		/* To MPE */
+_CLK(CLKS_C_PIX_MAIN, &clkgenc, 0, CLK_RATE_PROPAGATES),	/* To MPE */
+_CLK(CLKS_C_PIX_AUX, &clkgenc, 0, CLK_RATE_PROPAGATES),		/* To MPE */
 _CLK(CLKS_C_PACE0, &clkgenc, 27000000, 0),
-_CLK(CLKS_C_REF_MCRU, &clkgenc, 27000000, 0),
-_CLK(CLKS_C_SLAVE_MCRU, &clkgenc, 27000000, 0),
+_CLK(CLKS_C_REF_MCRU, &clkgenc, 0, 0),
+_CLK(CLKS_C_SLAVE_MCRU, &clkgenc, 0, 0),
 
 /* Clockgen D: Generic quad FS (CCSC, MCHI, TSOUT, MMCRU ref clock) */
 _CLK(CLKS_D_REF, &clkgend, 30000000,
@@ -321,46 +333,46 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 
 #ifndef ST_OS21
 	/* FS_0: ch_1 */
-	fsynth_gp_channel[0].pe = platform_sys_claim(135, 0, 4);
-	fsynth_gp_channel[0].md = platform_sys_claim(136, 0, 15);
-	fsynth_gp_channel[0].sdiv = platform_sys_claim(137, 0, 2);
-	fsynth_gp_channel[0].prog_en = platform_sys_claim(138, 0, 0);
+	fsynth_d_channel[0].md = platform_sys_claim(135, 0, 4);
+	fsynth_d_channel[0].pe = platform_sys_claim(136, 0, 15);
+	fsynth_d_channel[0].sdiv = platform_sys_claim(137, 0, 2);
+	fsynth_d_channel[0].prog_en = platform_sys_claim(138, 0, 0);
 	/* FS_0: ch_2 */
-	fsynth_gp_channel[1].pe = platform_sys_claim(139, 0, 4);
-	fsynth_gp_channel[1].md = platform_sys_claim(140, 0, 15);
-	fsynth_gp_channel[1].sdiv = platform_sys_claim(141, 0, 2);
-	fsynth_gp_channel[1].prog_en = platform_sys_claim(142, 0, 0);
+	fsynth_d_channel[1].md = platform_sys_claim(139, 0, 4);
+	fsynth_d_channel[1].pe = platform_sys_claim(140, 0, 15);
+	fsynth_d_channel[1].sdiv = platform_sys_claim(141, 0, 2);
+	fsynth_d_channel[1].prog_en = platform_sys_claim(142, 0, 0);
 	/* FS_0: ch_3 */
-	fsynth_gp_channel[2].pe = platform_sys_claim(143, 0, 4);
-	fsynth_gp_channel[2].md = platform_sys_claim(144, 0, 15);
-	fsynth_gp_channel[2].sdiv = platform_sys_claim(145, 0, 2);
-	fsynth_gp_channel[2].prog_en = platform_sys_claim(146, 0, 0);
+	fsynth_d_channel[2].md = platform_sys_claim(143, 0, 4);
+	fsynth_d_channel[2].pe = platform_sys_claim(144, 0, 15);
+	fsynth_d_channel[2].sdiv = platform_sys_claim(145, 0, 2);
+	fsynth_d_channel[2].prog_en = platform_sys_claim(146, 0, 0);
 	/*  FS_0: ch_4 */
-	fsynth_gp_channel[3].pe = platform_sys_claim(147, 0, 4);
-	fsynth_gp_channel[3].md = platform_sys_claim(148, 0, 15);
-	fsynth_gp_channel[3].sdiv = platform_sys_claim(149, 0, 2);
-	fsynth_gp_channel[3].prog_en = platform_sys_claim(150, 0, 0);
+	fsynth_d_channel[3].md = platform_sys_claim(147, 0, 4);
+	fsynth_d_channel[3].pe = platform_sys_claim(148, 0, 15);
+	fsynth_d_channel[3].sdiv = platform_sys_claim(149, 0, 2);
+	fsynth_d_channel[3].prog_en = platform_sys_claim(150, 0, 0);
 
 	/* FS_1: ch_1 */
-	fsynth_vid_channel[0].pe = platform_sys_claim(313, 0, 4);
-	fsynth_vid_channel[0].md = platform_sys_claim(314, 0, 15);
-	fsynth_vid_channel[0].sdiv = platform_sys_claim(315, 0, 2);
-	fsynth_vid_channel[0].prog_en = platform_sys_claim(316, 0, 0);
+	fsynth_c_channel[0].md = platform_sys_claim(313, 0, 4);
+	fsynth_c_channel[0].pe = platform_sys_claim(314, 0, 15);
+	fsynth_c_channel[0].sdiv = platform_sys_claim(315, 0, 2);
+	fsynth_c_channel[0].prog_en = platform_sys_claim(316, 0, 0);
 	/* FS_1: ch_2 */
-	fsynth_vid_channel[1].pe = platform_sys_claim(317, 0, 4);
-	fsynth_vid_channel[1].md = platform_sys_claim(318, 0, 15);
-	fsynth_vid_channel[1].sdiv = platform_sys_claim(319, 0, 2);
-	fsynth_vid_channel[1].prog_en = platform_sys_claim(320, 0, 0);
+	fsynth_c_channel[1].md = platform_sys_claim(317, 0, 4);
+	fsynth_c_channel[1].pe = platform_sys_claim(318, 0, 15);
+	fsynth_c_channel[1].sdiv = platform_sys_claim(319, 0, 2);
+	fsynth_c_channel[1].prog_en = platform_sys_claim(320, 0, 0);
 	/* FS_1: ch_3 */
-	fsynth_vid_channel[2].pe = platform_sys_claim(321, 0, 4);
-	fsynth_vid_channel[2].md = platform_sys_claim(322, 0, 15);
-	fsynth_vid_channel[2].sdiv = platform_sys_claim(323, 0, 2);
-	fsynth_vid_channel[2].prog_en = platform_sys_claim(324, 0, 0);
+	fsynth_c_channel[2].md = platform_sys_claim(321, 0, 4);
+	fsynth_c_channel[2].pe = platform_sys_claim(322, 0, 15);
+	fsynth_c_channel[2].sdiv = platform_sys_claim(323, 0, 2);
+	fsynth_c_channel[2].prog_en = platform_sys_claim(324, 0, 0);
 	/*  FS_1: ch_4 */
-	fsynth_vid_channel[3].pe = platform_sys_claim(325, 0, 4);
-	fsynth_vid_channel[3].md = platform_sys_claim(326, 0, 15);
-	fsynth_vid_channel[3].sdiv = platform_sys_claim(327, 0, 2);
-	fsynth_vid_channel[3].prog_en = platform_sys_claim(328, 0, 0);
+	fsynth_c_channel[3].md = platform_sys_claim(325, 0, 4);
+	fsynth_c_channel[3].pe = platform_sys_claim(326, 0, 15);
+	fsynth_c_channel[3].sdiv = platform_sys_claim(327, 0, 2);
+	fsynth_c_channel[3].prog_en = platform_sys_claim(328, 0, 0);
 #endif
 
 	call_platform_sys_claim(379, 0, 15);
@@ -616,9 +628,11 @@ static int clkgenax_enable(clk_t *clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
 	/* PLL power up */
-	if ((clk_p->id >= CLKS_A0_PLL0HS && clk_p->id <= CLKS_A0_PLL1) ||
-	    (clk_p->id >= CLKS_A1_PLL0HS && clk_p->id <= CLKS_A1_PLL1))
+	if (clk_p->id == CLKS_A0_PLL0HS || clk_p->id == CLKS_A0_PLL1 ||
+	    clk_p->id == CLKS_A1_PLL0HS || clk_p->id == CLKS_A1_PLL1)
 		return clkgenax_xable_pll(clk_p, 1);
+	else if (clk_p->id == CLKS_A0_PLL0LS || clk_p->id == CLKS_A1_PLL0LS)
+		return 0; /* Can't be disabled, so always on */
 
 	err = clkgenax_set_parent(clk_p, clk_p->parent);
 	/* clkgenax_set_parent() is performing also a recalc() */
@@ -642,14 +656,12 @@ static int clkgenax_disable(clk_t *clk_p)
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
-	/* Can this clock be disabled ? */
-	if (clk_p->flags & CLK_ALWAYS_ENABLED)
-		return 0;
-
 	/* PLL power down */
-	if ((clk_p->id >= CLKS_A0_PLL0HS && clk_p->id <= CLKS_A0_PLL1) ||
-	    (clk_p->id >= CLKS_A1_PLL0HS && clk_p->id <= CLKS_A1_PLL1))
+	if (clk_p->id == CLKS_A0_PLL0HS || clk_p->id == CLKS_A0_PLL1 ||
+	    clk_p->id == CLKS_A1_PLL0HS || clk_p->id == CLKS_A1_PLL1)
 		return clkgenax_xable_pll(clk_p, 0);
+	else if (clk_p->id == CLKS_A0_PLL0LS || clk_p->id == CLKS_A1_PLL0LS)
+		return 0; /* Can't be disabled */
 
 	idx = clkgenax_get_index(clk_p->id, &srcreg, &shift);
 	if (idx == -1)
@@ -1413,9 +1425,9 @@ static int clkgenc_fsyn_recalc(clk_t *clk_p)
 	md = SYSCONF_READ(0, 313 + (4 * channel), 0, 4);
 	sdiv = SYSCONF_READ(0, 315 + (4 * channel), 0, 2);
 #else
-	pe = sysconf_read(fsynth_vid_channel[channel].pe);
-	md = sysconf_read(fsynth_vid_channel[channel].md);
-	sdiv = sysconf_read(fsynth_vid_channel[channel].sdiv);
+	pe = sysconf_read(fsynth_c_channel[channel].pe);
+	md = sysconf_read(fsynth_c_channel[channel].md);
+	sdiv = sysconf_read(fsynth_c_channel[channel].sdiv);
 #endif
 	err = clk_fs216c65_get_rate(clk_p->parent->rate, pe, md,
 				sdiv, &clk_p->rate);
@@ -1551,17 +1563,17 @@ static int clkgenc_set_rate(clk_t *clk_p, unsigned long freq)
 		SYSCONF_WRITE(0, 312, 0, 31, val);
 
 #ifdef ST_OS21
-		SYSCONF_WRITE(0, 314 + (4 * channel), 0, 15, pe);
 		SYSCONF_WRITE(0, 313 + (4 * channel), 0, 4, md);
+		SYSCONF_WRITE(0, 314 + (4 * channel), 0, 15, pe);
 		SYSCONF_WRITE(0, 315 + (4 * channel), 0, 2, sdiv);
 		SYSCONF_WRITE(0, 316 + (4 * channel), 0, 0, 0x01);
 		SYSCONF_WRITE(0, 316 + (4 * channel), 0, 0, 0x00);
 #else
-		sysconf_write(fsynth_vid_channel[channel].pe, pe);
-		sysconf_write(fsynth_vid_channel[channel].md, md);
-		sysconf_write(fsynth_vid_channel[channel].sdiv, sdiv);
-		sysconf_write(fsynth_vid_channel[channel].prog_en, 1);
-		sysconf_write(fsynth_vid_channel[channel].prog_en, 0);
+		sysconf_write(fsynth_c_channel[channel].md, md);
+		sysconf_write(fsynth_c_channel[channel].pe, pe);
+		sysconf_write(fsynth_c_channel[channel].sdiv, sdiv);
+		sysconf_write(fsynth_c_channel[channel].prog_en, 1);
+		sysconf_write(fsynth_c_channel[channel].prog_en, 0);
 #endif
 	} else { /* Video Clock Controller clocks */
 		unsigned long div;
@@ -1690,8 +1702,8 @@ static int clkgenc_fsyn_xable(clk_t *clk_p, unsigned long enable)
 	if (enable) {
 		/* Powering up digital part */
 		val |= (1 << (10 + chan));
-		/* Powering up analog part */
-		val |= (1 << 14);
+		/* Powering up analog part & releasing reset */
+		val |= (1 << 14) | (1 << 0);
 	} else {
 		/* Powering down digital part */
 		val &= ~(1 << (10 + chan));
@@ -1710,6 +1722,33 @@ static int clkgenc_fsyn_xable(clk_t *clk_p, unsigned long enable)
 }
 
 /* ========================================================================
+   Name:        clkgenc_vcc_xable
+   Description: Video Clocks Controller enable/disable function
+   Returns:     'clk_err_t' error code
+   ======================================================================== */
+
+static int clkgenc_vcc_xable(clk_t *clk_p, unsigned long enable)
+{
+	int chan;
+	unsigned long val;
+
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	if (clk_p->id < CLKS_C_PIX_HDMI || clk_p->id > CLKS_C_SLAVE_MCRU)
+		return CLK_ERR_BAD_PARAMETER;
+
+	chan = clk_p->id - CLKS_C_PIX_HDMI;
+	val = SYSCONF_READ(0, 379, 0, 15);
+	if (enable)
+		val &= ~(1 << chan);
+	else
+		val |= (1 << chan);
+	SYSCONF_WRITE(0, 379, 0, 15, val);
+
+	return clkgenc_recalc(clk_p);
+}
+
+/* ========================================================================
    Name:	clkgenc_enable
    Description: Enable clock
    Returns:     'clk_err_t' error code.
@@ -1717,7 +1756,14 @@ static int clkgenc_fsyn_xable(clk_t *clk_p, unsigned long enable)
 
 static int clkgenc_enable(clk_t *clk_p)
 {
-	return clkgenc_fsyn_xable(clk_p, 1);
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	else if (clk_p->id >= CLKS_C_PIX_HD_VCC && clk_p->id <= CLKS_C_FS0_CH4)
+		return clkgenc_fsyn_xable(clk_p, 1);
+	else if (clk_p->id >= CLKS_C_PIX_HDMI && clk_p->id <= CLKS_C_SLAVE_MCRU)
+		return clkgenc_vcc_xable(clk_p, 1);
+	else
+		return CLK_ERR_BAD_PARAMETER;
 }
 
 /* ========================================================================
@@ -1728,7 +1774,14 @@ static int clkgenc_enable(clk_t *clk_p)
 
 static int clkgenc_disable(clk_t *clk_p)
 {
-	return clkgenc_fsyn_xable(clk_p, 0);
+	if (!clk_p)
+		return CLK_ERR_BAD_PARAMETER;
+	else if (clk_p->id >= CLKS_C_PIX_HD_VCC && clk_p->id <= CLKS_C_FS0_CH4)
+		return clkgenc_fsyn_xable(clk_p, 0);
+	else if (clk_p->id >= CLKS_C_PIX_HDMI && clk_p->id <= CLKS_C_SLAVE_MCRU)
+		return clkgenc_vcc_xable(clk_p, 0);
+	else
+		return CLK_ERR_BAD_PARAMETER;
 }
 
 /* ========================================================================
@@ -1802,13 +1855,13 @@ static int clkgend_fsyn_recalc(clk_t *clk_p)
 	   Computing frequency */
 	channel = clk_p->id - CLKS_D_CCSC;
 #ifdef ST_OS21
-	pe = SYSCONF_READ(0, 136 + (4 * channel), 0, 15);
 	md = SYSCONF_READ(0, 135 + (4 * channel), 0, 4);
+	pe = SYSCONF_READ(0, 136 + (4 * channel), 0, 15);
 	sdiv = SYSCONF_READ(0, 137 + (4 * channel), 0, 2);
 #else
-	pe = sysconf_read(fsynth_gp_channel[channel].pe);
-	md = sysconf_read(fsynth_gp_channel[channel].md);
-	sdiv = sysconf_read(fsynth_gp_channel[channel].sdiv);
+	md = sysconf_read(fsynth_d_channel[channel].md);
+	pe = sysconf_read(fsynth_d_channel[channel].pe);
+	sdiv = sysconf_read(fsynth_d_channel[channel].sdiv);
 #endif
 	err = clk_fs216c65_get_rate(clk_p->parent->rate, pe, md, sdiv,
 		&clk_p->rate);
@@ -1882,17 +1935,17 @@ static int clkgend_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	SYSCONF_WRITE(0, 134, 0, 31, val);
 
 #ifdef ST_OS21
-	SYSCONF_WRITE(0, 136 + (4 * channel), 0, 15, pe);
 	SYSCONF_WRITE(0, 135 + (4 * channel), 0, 4, md);
+	SYSCONF_WRITE(0, 136 + (4 * channel), 0, 15, pe);
 	SYSCONF_WRITE(0, 137 + (4 * channel), 0, 2, sdiv);
 	SYSCONF_WRITE(0, 138 + (4 * channel), 0, 0, 1);
 	SYSCONF_WRITE(0, 138 + (4 * channel), 0, 0, 0);
 #else
-	sysconf_write(fsynth_gp_channel[channel].pe, pe);
-	sysconf_write(fsynth_gp_channel[channel].md, md);
-	sysconf_write(fsynth_gp_channel[channel].sdiv, sdiv);
-	sysconf_write(fsynth_gp_channel[channel].prog_en, 1);
-	sysconf_write(fsynth_gp_channel[channel].prog_en, 0);
+	sysconf_write(fsynth_d_channel[channel].md, md);
+	sysconf_write(fsynth_d_channel[channel].pe, pe);
+	sysconf_write(fsynth_d_channel[channel].sdiv, sdiv);
+	sysconf_write(fsynth_d_channel[channel].prog_en, 1);
+	sysconf_write(fsynth_d_channel[channel].prog_en, 0);
 #endif
 
 	return clkgend_recalc(clk_p);

@@ -55,6 +55,7 @@ enum {
 	CLKM_A0_SPARE_29,
 	CLKM_ICN_ERAM,
 	CLKM_A9_TRACE,
+
 	CLKM_A9_EXT2F_DIV2,	/* CLKM_A9_EXT2F divided by 2 */
 
 	/* Clockgen A11 */
