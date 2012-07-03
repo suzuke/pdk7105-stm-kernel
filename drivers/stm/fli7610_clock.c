@@ -24,18 +24,18 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
 
 	/* fdmas MPE41 clocks */
-	clk_add_alias("fdma_slim_clk", "stm-fdma.0", "CLKM_FDMA10", NULL);
-	clk_add_alias("fdma_slim_clk", "stm-fdma.1", "CLKM_FDMA11", NULL);
-	clk_add_alias("fdma_slim_clk", "stm-fdma.2", "CLKM_FDMA12", NULL);
-	clk_add_alias("fdma_hi_clk", "stm-fdma.0", "CLKM_IC_TS", NULL);
-	clk_add_alias("fdma_hi_clk", "stm-fdma.1", "CLKM_IC_TS", NULL);
-	clk_add_alias("fdma_hi_clk", "stm-fdma.2", "CLKM_IC_TS", NULL);
-	clk_add_alias("fdma_low_clk", "stm-fdma.0", "CLKM_IC_REG_LP", NULL);
-	clk_add_alias("fdma_low_clk", "stm-fdma.1", "CLKM_IC_REG_LP", NULL);
-	clk_add_alias("fdma_low_clk", "stm-fdma.2", "CLKM_IC_REG_LP", NULL);
-	clk_add_alias("fdma_ic_clk", "stm-fdma.0", "CLKM_IC_REG", NULL);
-	clk_add_alias("fdma_ic_clk", "stm-fdma.1", "CLKM_IC_REG", NULL);
-	clk_add_alias("fdma_ic_clk", "stm-fdma.2", "CLKM_IC_REG", NULL);
+	clk_add_alias("fdma_slim_clk", "stm-fdma.0", "CLKM_FDMA_10", NULL);
+	clk_add_alias("fdma_slim_clk", "stm-fdma.1", "CLKM_FDMA_11", NULL);
+	clk_add_alias("fdma_slim_clk", "stm-fdma.2", "CLKM_FDMA_12", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.0", "CLKM_ICN_TS", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.1", "CLKM_ICN_TS", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.2", "CLKM_ICN_TS", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.0", "CLKM_ICN_REG_LP_10", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.1", "CLKM_ICN_REG_LP_10", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.2", "CLKM_ICN_REG_LP_10", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.0", "CLKM_ICN_TS", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.1", "CLKM_ICN_TS", NULL);
+	clk_add_alias("fdma_ic_clk", "stm-fdma.2", "CLKM_ICN_TS", NULL);
 
 	/* fdmas TAE clocks */
 	clk_add_alias("fdma_slim_clk", "stm-fdma.3", "CLKA_FDMA", NULL);
