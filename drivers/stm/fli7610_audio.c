@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/soc.h>
 #include <linux/stm/fli7610.h>
 #include <linux/stm/fli7610-periphs.h>
 #include <sound/stm.h>
@@ -419,7 +420,7 @@ static struct platform_device *fli7610_audio_devices[] __initdata = {
 
 static int __init fli7610_audio_devices_setup(void)
 {
-	if (stm_soc_type() != CPU_FLI7610) {
+	if (!stm_soc_is_fli7610()) {
 		BUG();
 		return -ENODEV;
 	}

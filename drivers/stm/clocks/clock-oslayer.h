@@ -16,7 +16,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/gpio.h>
 #include <linux/stm/pio.h>
-#include <linux/stm/platform.h>
+#include <linux/stm/soc.h>
 #include <asm-generic/errno-base.h>
 
 #define clk_t	struct clk

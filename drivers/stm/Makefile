@@ -2,6 +2,7 @@
 # Makefile for the STMicroelectronics device drivers.
 #
 
+obj-y					+= soc.o
 obj-y					+= emi.o
 obj-y					+= gpio.o
 obj-y					+= pad.o

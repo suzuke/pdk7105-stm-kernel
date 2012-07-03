@@ -15,6 +15,7 @@
 #include <linux/firmware.h>
 
 #include <linux/stm/platform.h>
+#include <linux/stm/soc.h>
 
 #include "stm_fdma.h"
 

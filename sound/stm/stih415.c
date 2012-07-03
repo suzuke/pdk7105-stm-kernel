@@ -26,6 +26,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stih415.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/soc.h>
 #include <sound/core.h>
 
 #include "common.h"
@@ -63,7 +64,7 @@ static int __init snd_stm_stih415_init(void)
 
 	snd_stm_printd(0, "%s()\n", __func__);
 
-	if (stm_soc_type() != CPU_STIH415) {
+	if (!stm_soc_is_stih415()) {
 		snd_stm_printe("Unsupported (not STiH415) SOC detected!\n");
 		result = -EINVAL;
 		goto error_soc_type;

@@ -27,6 +27,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/fli7610.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/soc.h>
 #include <sound/core.h>
 
 #include "common.h"
@@ -195,7 +196,7 @@ static int __init snd_stm_fli7610_init(void)
 
 	snd_stm_printd(0, "%s()\n", __func__);
 
-	if (stm_soc_type() != CPU_FLI7610) {
+	if (!stm_soc_is_fli7610()) {
 		snd_stm_printe("Detected unsupported SoC (not FLi7610!)\n");
 		result = -EINVAL;
 		goto error_soc_type;

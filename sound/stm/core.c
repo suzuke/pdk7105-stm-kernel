@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/bpa2.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/soc.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/info.h>

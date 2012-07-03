@@ -14,6 +14,7 @@
 #include <linux/bpa2.h>
 #include <linux/module.h>
 #include <linux/err.h>
+#include <linux/stm/soc.h>
 #include <linux/stm/platform.h>
 
 #include "coprocessor.h"

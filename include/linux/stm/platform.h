@@ -658,62 +658,6 @@ struct stm_mali_config {
 	struct stm_mali_resource *ext_mem;
 };
 
-#ifdef CONFIG_SUPERH
-#include <asm/processor.h>
-static inline const char* stm_soc(void)
-{
-	return get_cpu_subtype(&current_cpu_data);
-}
-
-static inline unsigned long stm_soc_type(void)
-{
-	return cpu_data->type;
-}
-
-static inline unsigned long stm_soc_version_major(void)
-{
-	return cpu_data->cut_major;
-}
-
-static inline unsigned long stm_soc_version_minor(void)
-{
-	return cpu_data->cut_minor;
-}
-#else
-#define CPU_STIH415 0x57100415
-#define CPU_FLI7610 0x57107610
-
-static inline const char* stm_soc(void)
-{
-#ifdef CONFIG_CPU_SUBTYPE_STIH415
-	return "STiH415";
-#endif
-#ifdef CONFIG_CPU_SUBTYPE_FLI7610
-	return "FLI7610";
-#endif
-}
-
-static inline unsigned long stm_soc_type(void)
-{
-#ifdef CONFIG_CPU_SUBTYPE_STIH415
-	return CPU_STIH415;
-#endif
-#ifdef CONFIG_CPU_SUBTYPE_FLI7610
-	return CPU_FLI7610;
-#endif
-}
-
-static inline unsigned long stm_soc_version_major(void)
-{
-	return 1;
-}
-
-static inline unsigned long stm_soc_version_minor(void)
-{
-	return 0;
-}
-#endif
-
 static inline int clk_add_alias_platform_device(const char *alias,
 	struct platform_device *pdev, char *id, struct device *dev)
 {

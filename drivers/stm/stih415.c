@@ -21,6 +21,7 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/device.h>
 #include <linux/stm/sysconf.h>
+#include <linux/stm/soc.h>
 #include <linux/stm/stih415.h>
 #include <linux/stm/stih415-periphs.h>
 
@@ -1136,6 +1137,8 @@ void stih415_reset(char mode, const char *cmd)
 /* Initialise devices which are required early in the boot process. */
 void __init stih415_early_device_init(void)
 {
+	struct sysconf_field *sc;
+
 	/* Initialise PIO and sysconf drivers */
 	sysconf_early_init(stih415_sysconf_devices,
 			   ARRAY_SIZE(stih415_sysconf_devices));
@@ -1151,7 +1154,8 @@ void __init stih415_early_device_init(void)
 	stm_pad_init(ARRAY_SIZE(stih415_pio_devices) * STM_GPIO_PINS_PER_PORT,
 		     0, 0, stih415_pio_config);
 
-	/* Version information in SYSTEM_STATUS427 */
+	sc = sysconf_claim(SYSCONF(427), 0, 31, "devid");
+	stm_soc_set(sysconf_read(sc), -1, -1);
 }
 
 

@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/soc.h>
 #include <linux/stm/stih415.h>
 #include <linux/stm/stih415-periphs.h>
 #include <sound/stm.h>
@@ -214,7 +215,7 @@ static struct platform_device *stih415_audio_devices[] __initdata = {
 
 static int __init stih415_audio_devices_setup(void)
 {
-	if (stm_soc_type() != CPU_STIH415) {
+	if (!stm_soc_is_stih415()) {
 		BUG();
 		return -ENODEV;
 	}
