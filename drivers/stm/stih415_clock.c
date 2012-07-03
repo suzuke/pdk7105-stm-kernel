@@ -43,8 +43,8 @@ int __init plat_clk_alias_init(void)
 	/* fdmas SASG1 clocks */
 	clk_add_alias("fdma_slim_clk", "stm-fdma.3", "CLKS_FDMA_0", NULL);
 	clk_add_alias("fdma_slim_clk", "stm-fdma.4", "CLKS_FDMA_1", NULL);
-	clk_add_alias("fdma_hi_clk", "stm-fdma.3", "CLKS_ICN_REG",  NULL);
-	clk_add_alias("fdma_hi_clk", "stm-fdma.4", "CLKS_ICN_REG",  NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.3", "CLKS_ICN_IF_0",  NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.4", "CLKS_ICN_IF_0",  NULL);
 	clk_add_alias("fdma_low_clk", "stm-fdma.3", "CLKS_ICN_REG_LP_0", NULL);
 	clk_add_alias("fdma_low_clk", "stm-fdma.4", "CLKS_ICN_REG_LP_0", NULL);
 	clk_add_alias("fdma_ic_clk", "stm-fdma.3", "CLKS_ICN_REG_0", NULL);
