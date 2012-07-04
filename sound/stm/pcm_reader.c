@@ -29,8 +29,9 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <asm/cacheflush.h>
+#include <linux/stm/clk.h>
 #include <linux/stm/pad.h>
-#include <linux/stm/stm-dma.h>
+#include <linux/stm/dma.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/control.h>
@@ -72,7 +73,6 @@ struct snd_stm_pcm_reader {
 	void *base;
 	unsigned long fifo_phys_address;
 	unsigned int irq;
-	int fdma_channel;
 
 	/* Environment settings */
 	struct snd_pcm_hw_constraint_list channels_constraint;
@@ -83,11 +83,17 @@ struct snd_stm_pcm_reader {
 	struct snd_stm_buffer *buffer;
 	struct snd_info_entry *proc_entry;
 	struct snd_pcm_substream *substream;
-	int fdma_max_transfer_size;
-	struct stm_dma_params *fdma_params_list;
-	struct stm_dma_req *fdma_request;
 	int running;
 	struct stm_pad_state *pads;
+
+	int dma_max_transfer_size;
+	struct stm_dma_paced_config dma_config;
+	struct dma_chan *dma_channel;
+	struct dma_async_tx_descriptor *dma_descriptor;
+	dma_cookie_t dma_cookie;
+
+	int buffer_bytes;
+	int period_bytes;
 
 	snd_stm_magic_field;
 };
@@ -132,13 +138,11 @@ static irqreturn_t snd_stm_pcm_reader_irq_handler(int irq, void *dev_id)
 	return result;
 }
 
-static void snd_stm_pcm_reader_callback_node_done(unsigned long param)
+static void snd_stm_pcm_reader_dma_callback(void *param)
 {
-	struct snd_stm_pcm_reader *pcm_reader =
-			(struct snd_stm_pcm_reader *)param;
+	struct snd_stm_pcm_reader *pcm_reader = param;
 
-	snd_stm_printd(2, "snd_stm_pcm_reader_callback_node_done(param=0x%lx"
-			")\n", param);
+	snd_stm_printd(2, "%s(param=%p)\n", __func__, param);
 
 	BUG_ON(!pcm_reader);
 	BUG_ON(!snd_stm_magic_valid(pcm_reader));
@@ -150,26 +154,6 @@ static void snd_stm_pcm_reader_callback_node_done(unsigned long param)
 			dev_name(pcm_reader->device));
 
 	snd_pcm_period_elapsed(pcm_reader->substream);
-}
-
-static void snd_stm_pcm_reader_callback_node_error(unsigned long param)
-{
-	struct snd_stm_pcm_reader *pcm_reader =
-			(struct snd_stm_pcm_reader *)param;
-
-	snd_stm_printd(2, "snd_stm_pcm_reader_callback_node_error(param=0x%lx"
-			")\n", param);
-
-	BUG_ON(!pcm_reader);
-	BUG_ON(!snd_stm_magic_valid(pcm_reader));
-
-	if (!pcm_reader->running)
-		return;
-
-	snd_stm_printe("Error during FDMA transfer in reader '%s'!\n",
-		       dev_name(pcm_reader->device));
-
-	snd_pcm_stop(pcm_reader->substream, SNDRV_PCM_STATE_XRUN);
 }
 
 static struct snd_pcm_hardware snd_stm_pcm_reader_hw = {
@@ -201,12 +185,42 @@ static struct snd_pcm_hardware snd_stm_pcm_reader_hw = {
 	.buffer_bytes_max = 81920 * 3, /* 3 worst-case-periods */
 };
 
+static bool snd_stm_pcm_reader_dma_filter_fn(struct dma_chan *chan,
+		void *fn_param)
+{
+	struct snd_stm_pcm_reader *pcm_reader = fn_param;
+	struct stm_dma_paced_config *config = &pcm_reader->dma_config;
+
+	BUG_ON(!pcm_reader);
+
+	/* If FDMA name has been specified, attempt to match channel to it */
+	if (pcm_reader->info->fdma_name)
+		if (!stm_dma_is_fdma_name(chan, pcm_reader->info->fdma_name))
+			return false;
+
+	/* Setup this channel for paced operation */
+	config->type = STM_DMA_TYPE_PACED;
+	config->dma_addr = pcm_reader->fifo_phys_address;
+	config->dreq_config.request_line = pcm_reader->info->fdma_request_line;
+	config->dreq_config.initiator = pcm_reader->info->fdma_initiator;
+	config->dreq_config.increment = 0;
+	config->dreq_config.hold_off = 0;
+	config->dreq_config.maxburst = 1;
+	config->dreq_config.buswidth = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	config->dreq_config.direction = DMA_DEV_TO_MEM;
+
+	chan->private = config;
+
+	return true;
+}
+
 static int snd_stm_pcm_reader_open(struct snd_pcm_substream *substream)
 {
 	int result;
 	struct snd_stm_pcm_reader *pcm_reader =
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
+	dma_cap_mask_t mask;
 
 	snd_stm_printd(1, "snd_stm_pcm_reader_open(substream=0x%p)\n",
 			substream);
@@ -216,6 +230,20 @@ static int snd_stm_pcm_reader_open(struct snd_pcm_substream *substream)
 	BUG_ON(!runtime);
 
 	snd_pcm_set_sync(substream);  /* TODO: ??? */
+
+	/* Set the DMA channel capabilities we want */
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SLAVE, mask);
+	dma_cap_set(DMA_CYCLIC, mask);
+
+	/* Request a matching DMA channel */
+	pcm_reader->dma_channel = dma_request_channel(mask,
+			snd_stm_pcm_reader_dma_filter_fn, pcm_reader);
+
+	if (!pcm_reader->dma_channel) {
+		snd_stm_printe("Failed to request DMA channel\n");
+		return -ENODEV;
+	}
 
 	/* Get attached converters handle */
 
@@ -245,17 +273,17 @@ static int snd_stm_pcm_reader_open(struct snd_pcm_substream *substream)
 			SNDRV_PCM_HW_PARAM_PERIODS);
 	if (result < 0) {
 		snd_stm_printe("Can't set periods constraint!\n");
-		return result;
+		goto error;
 	}
 
 	/* Make the period (so buffer as well) length (in bytes) a multiply
 	 * of a FDMA transfer bytes (which varies depending on channels
 	 * number and sample bytes) */
 	result = snd_stm_pcm_hw_constraint_transfer_bytes(runtime,
-			pcm_reader->fdma_max_transfer_size * 4);
+			pcm_reader->dma_max_transfer_size * 4);
 	if (result < 0) {
 		snd_stm_printe("Can't set buffer bytes constraint!\n");
-		return result;
+		goto error;
 	}
 
 	runtime->hw = snd_stm_pcm_reader_hw;
@@ -264,6 +292,20 @@ static int snd_stm_pcm_reader_open(struct snd_pcm_substream *substream)
 	pcm_reader->substream = substream;
 
 	return 0;
+
+error:
+	/* Release the DMA channel */
+	if (pcm_reader->dma_channel) {
+		dma_release_channel(pcm_reader->dma_channel);
+		pcm_reader->dma_channel = NULL;
+	}
+
+	/* Release any converter */
+	if (pcm_reader->conv_group) {
+		snd_stm_conv_release_group(pcm_reader->conv_group);
+		pcm_reader->conv_group = NULL;
+	}
+	return result;
 }
 
 static int snd_stm_pcm_reader_close(struct snd_pcm_substream *substream)
@@ -276,6 +318,12 @@ static int snd_stm_pcm_reader_close(struct snd_pcm_substream *substream)
 
 	BUG_ON(!pcm_reader);
 	BUG_ON(!snd_stm_magic_valid(pcm_reader));
+
+	/* Release the DMA channel */
+	if (pcm_reader->dma_channel) {
+		dma_release_channel(pcm_reader->dma_channel);
+		pcm_reader->dma_channel = NULL;
+	}
 
 	if (pcm_reader->conv_group) {
 		snd_stm_conv_release_group(pcm_reader->conv_group);
@@ -303,17 +351,11 @@ static int snd_stm_pcm_reader_hw_free(struct snd_pcm_substream *substream)
 	/* This callback may be called more than once... */
 
 	if (snd_stm_buffer_is_allocated(pcm_reader->buffer)) {
-		/* Let the FDMA stop */
-		dma_wait_for_completion(pcm_reader->fdma_channel);
+		/* Terminate all DMA transfers */
+		dmaengine_terminate_all(pcm_reader->dma_channel);
 
 		/* Free buffer */
 		snd_stm_buffer_free(pcm_reader->buffer);
-
-		/* Free FDMA parameters (whole list) */
-		dma_params_free(pcm_reader->fdma_params_list);
-		dma_req_free(pcm_reader->fdma_channel,
-				pcm_reader->fdma_request);
-		kfree(pcm_reader->fdma_params_list);
 	}
 
 	return 0;
@@ -328,14 +370,7 @@ static int snd_stm_pcm_reader_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int buffer_bytes, period_bytes, periods, frame_bytes, transfer_bytes;
 	unsigned int transfer_size;
-	struct stm_dma_req_config fdma_req_config = {
-		.rw        = REQ_CONFIG_READ,
-		.opcode    = REQ_CONFIG_OPCODE_4,
-		.increment = 0,
-		.hold_off  = 0,
-		.initiator = pcm_reader->info->fdma_initiator,
-	};
-	int i;
+	struct dma_slave_config slave_config;
 
 	snd_stm_printd(1, "snd_stm_pcm_reader_hw_params(substream=0x%p,"
 			" hw_params=0x%p)\n", substream, hw_params);
@@ -372,13 +407,13 @@ static int snd_stm_pcm_reader_hw_params(struct snd_pcm_substream *substream,
 	frame_bytes = snd_pcm_format_physical_width(params_format(hw_params)) *
 			params_channels(hw_params) / 8;
 	transfer_bytes = snd_stm_pcm_transfer_bytes(frame_bytes,
-			pcm_reader->fdma_max_transfer_size * 4);
+			pcm_reader->dma_max_transfer_size * 4);
 	transfer_size = transfer_bytes / 4;
 
 	snd_stm_printd(1, "FDMA request trigger limit set to %d.\n",
 			transfer_size);
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
-	BUG_ON(transfer_size > pcm_reader->fdma_max_transfer_size);
+	BUG_ON(transfer_size > pcm_reader->dma_max_transfer_size);
 	if (pcm_reader->ver > 3) {
 		BUG_ON(transfer_size != 1 && transfer_size % 2 == 0);
 		BUG_ON(transfer_size >
@@ -390,92 +425,30 @@ static int snd_stm_pcm_reader_hw_params(struct snd_pcm_substream *substream,
 		 * of multi-channel PCM Readers with FIFO underrunning (!!!),
 		 * caused by spurious request line generation... */
 		if (pcm_reader->ver < 6 && transfer_size > 2)
-			fdma_req_config.count = transfer_size / 2;
-		else
-			fdma_req_config.count = transfer_size;
-	} else {
-		fdma_req_config.count = transfer_size;
-	}
-	snd_stm_printd(1, "FDMA transfer size set to %d.\n",
-			fdma_req_config.count);
-
-	/* Configure FDMA transfer */
-
-	pcm_reader->fdma_request = dma_req_config(pcm_reader->fdma_channel,
-			pcm_reader->info->fdma_request_line, &fdma_req_config);
-	if (!pcm_reader->fdma_request) {
-		snd_stm_printe("Can't configure FDMA pacing channel for player"
-			       " '%s'!\n", dev_name(pcm_reader->device));
-		result = -EINVAL;
-		goto error_req_config;
+			transfer_size /= 2;
 	}
 
-	pcm_reader->fdma_params_list =
-			kmalloc(sizeof(*pcm_reader->fdma_params_list) *
-			periods, GFP_KERNEL);
-	if (!pcm_reader->fdma_params_list) {
-		snd_stm_printe("Can't allocate %d bytes for FDMA parameters "
-				"list!\n", sizeof(*pcm_reader->fdma_params_list)
-				* periods);
-		result = -ENOMEM;
-		goto error_params_alloc;
-	}
+	snd_stm_printd(1, "FDMA transfer size set to %d.\n", transfer_size);
 
-	snd_stm_printd(1, "Configuring FDMA transfer nodes:\n");
+	/* Save the buffer bytes and period bytes for when start DMA */
+	pcm_reader->buffer_bytes = buffer_bytes;
+	pcm_reader->period_bytes = period_bytes;
 
-	for (i = 0; i < periods; i++) {
-		dma_params_init(&pcm_reader->fdma_params_list[i], MODE_PACED,
-				STM_DMA_LIST_CIRC);
+	/* Setup the DMA configuration */
+	slave_config.direction = DMA_DEV_TO_MEM;
+	slave_config.src_addr = pcm_reader->fifo_phys_address;
+	slave_config.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	slave_config.src_maxburst = transfer_size;
 
-		if (i > 0)
-			dma_params_link(&pcm_reader->fdma_params_list[i - 1],
-					(&pcm_reader->fdma_params_list[i]));
-
-		dma_params_comp_cb(&pcm_reader->fdma_params_list[i],
-				snd_stm_pcm_reader_callback_node_done,
-				(unsigned long)pcm_reader,
-				STM_DMA_CB_CONTEXT_ISR);
-
-		dma_params_err_cb(&pcm_reader->fdma_params_list[i],
-				snd_stm_pcm_reader_callback_node_error,
-				(unsigned long)pcm_reader,
-				STM_DMA_CB_CONTEXT_ISR);
-
-		/* Get callback every time a node is completed */
-		dma_params_interrupts(&pcm_reader->fdma_params_list[i],
-				STM_DMA_NODE_COMP_INT);
-
-		dma_params_DIM_0_x_1(&pcm_reader->fdma_params_list[i]);
-
-		dma_params_req(&pcm_reader->fdma_params_list[i],
-				pcm_reader->fdma_request);
-
-		snd_stm_printd(1, "- %d: %d bytes from 0x%08x\n", i,
-				period_bytes,
-				runtime->dma_addr + i * period_bytes);
-
-		dma_params_addrs(&pcm_reader->fdma_params_list[i],
-				pcm_reader->fifo_phys_address,
-				runtime->dma_addr + i * period_bytes,
-				period_bytes);
-	}
-
-	result = dma_compile_list(pcm_reader->fdma_channel,
-				pcm_reader->fdma_params_list, GFP_KERNEL);
-	if (result < 0) {
-		snd_stm_printe("Can't compile FDMA parameters for"
-			" reader '%s'!\n", dev_name(pcm_reader->device));
-		goto error_compile_list;
+	result = dmaengine_slave_config(pcm_reader->dma_channel, &slave_config);
+	if (result) {
+		snd_stm_printe("Failed to configure DMA channel\n");
+		goto error_dma_config;
 	}
 
 	return 0;
 
-error_compile_list:
-	kfree(pcm_reader->fdma_params_list);
-error_params_alloc:
-	dma_req_free(pcm_reader->fdma_channel,
-			pcm_reader->fdma_request);
-error_req_config:
+error_dma_config:
 	snd_stm_buffer_free(pcm_reader->buffer);
 error_buf_alloc:
 	return result;
@@ -583,7 +556,6 @@ static int snd_stm_pcm_reader_prepare(struct snd_pcm_substream *substream)
 
 static int snd_stm_pcm_reader_start(struct snd_pcm_substream *substream)
 {
-	int result;
 	struct snd_stm_pcm_reader *pcm_reader =
 			snd_pcm_substream_chip(substream);
 
@@ -597,18 +569,27 @@ static int snd_stm_pcm_reader_start(struct snd_pcm_substream *substream)
 
 	set__AUD_PCMIN_RST__RSTP__RUNNING(pcm_reader);
 
+	/* Prepare the DMA descriptor */
+
+	BUG_ON(!pcm_reader->dma_channel->device->device_prep_dma_cyclic);
+	pcm_reader->dma_descriptor =
+		pcm_reader->dma_channel->device->device_prep_dma_cyclic(
+			pcm_reader->dma_channel, substream->runtime->dma_addr,
+			pcm_reader->buffer_bytes, pcm_reader->period_bytes,
+			DMA_DEV_TO_MEM);
+	if (!pcm_reader->dma_descriptor) {
+		snd_stm_printe("Failed to prepare DMA descriptor\n");
+		return -ENOMEM;
+	}
+
+	/* Set the DMA callback */
+
+	pcm_reader->dma_descriptor->callback = snd_stm_pcm_reader_dma_callback;
+	pcm_reader->dma_descriptor->callback_param = pcm_reader;
+
 	/* Launch FDMA transfer */
 
-	result = dma_xfer_list(pcm_reader->fdma_channel,
-			pcm_reader->fdma_params_list);
-	if (result != 0) {
-		snd_stm_printe("Can't launch FDMA transfer for reader '%s'!\n",
-			       dev_name(pcm_reader->device));
-		return -EINVAL;
-	}
-	while (dma_get_status(pcm_reader->fdma_channel) !=
-			DMA_CHANNEL_STATUS_RUNNING)
-		udelay(5);
+	pcm_reader->dma_cookie = dmaengine_submit(pcm_reader->dma_descriptor);
 
 	/* Enable required reader interrupt (and clear possible stalled) */
 
@@ -664,7 +645,7 @@ static int snd_stm_pcm_reader_stop(struct snd_pcm_substream *substream)
 
 	/* Stop FDMA transfer */
 
-	dma_stop_channel(pcm_reader->fdma_channel);
+	dmaengine_terminate_all(pcm_reader->dma_channel);
 
 	/* Reset PCM reader */
 
@@ -697,6 +678,8 @@ static snd_pcm_uframes_t snd_stm_pcm_reader_pointer(struct snd_pcm_substream
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int residue, hwptr;
 	snd_pcm_uframes_t pointer;
+	struct dma_tx_state state;
+	enum dma_status status;
 
 	snd_stm_printd(2, "snd_stm_pcm_reader_pointer(substream=0x%p)\n",
 			substream);
@@ -705,7 +688,11 @@ static snd_pcm_uframes_t snd_stm_pcm_reader_pointer(struct snd_pcm_substream
 	BUG_ON(!snd_stm_magic_valid(pcm_reader));
 	BUG_ON(!runtime);
 
-	residue = get_dma_residue(pcm_reader->fdma_channel);
+	status = pcm_reader->dma_channel->device->device_tx_status(
+			pcm_reader->dma_channel,
+			pcm_reader->dma_cookie, &state);
+
+	residue = state.residue;
 	hwptr = (runtime->dma_bytes - residue) % runtime->dma_bytes;
 	pointer = bytes_to_frames(runtime, hwptr);
 
@@ -863,21 +850,15 @@ static int snd_stm_pcm_reader_probe(struct platform_device *pdev)
 		goto error_irq_request;
 	}
 
-	result = snd_stm_fdma_request(pdev, &pcm_reader->fdma_channel);
-	if (result < 0) {
-		snd_stm_printe("FDMA request failed!\n");
-		goto error_fdma_request;
-	}
-
 	/* FDMA transfer size depends (among others ;-) on FIFO length,
 	 * which is:
 	 * - 2 cells (8 bytes) in STx7100/9 and STx7200 cut 1.0
 	 * - 70 cells (280 bytes) in STx7111 and STx7200 cut 2.0. */
 
 	if (pcm_reader->ver < 4)
-		pcm_reader->fdma_max_transfer_size = 2;
+		pcm_reader->dma_max_transfer_size = 2;
 	else
-		pcm_reader->fdma_max_transfer_size = 30;
+		pcm_reader->dma_max_transfer_size = 30;
 
 	/* Get component capabilities */
 
@@ -981,8 +962,6 @@ error_buffer_create:
 error_pcm:
 	snd_device_free(card, pcm_reader);
 error_device:
-	snd_stm_fdma_release(pcm_reader->fdma_channel);
-error_fdma_request:
 	snd_stm_irq_release(pcm_reader->irq, pcm_reader);
 error_irq_request:
 	snd_stm_memory_release(pcm_reader->mem_region, pcm_reader->base);
@@ -1006,7 +985,6 @@ static int snd_stm_pcm_reader_remove(struct platform_device *pdev)
 		stm_pad_release(pcm_reader->pads);
 	snd_stm_conv_unregister_source(pcm_reader->conv_source);
 	snd_stm_buffer_dispose(pcm_reader->buffer);
-	snd_stm_fdma_release(pcm_reader->fdma_channel);
 	snd_stm_irq_release(pcm_reader->irq, pcm_reader);
 	snd_stm_memory_release(pcm_reader->mem_region, pcm_reader->base);
 

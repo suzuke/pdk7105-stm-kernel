@@ -22,7 +22,6 @@
  */
 
 #include <asm/cacheflush.h>
-#include <asm/clock.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -30,8 +29,9 @@
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
+#include <linux/stm/clk.h>
 #include <linux/stm/pad.h>
-#include <linux/stm/stm-dma.h>
+#include <linux/stm/dma.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -96,7 +96,6 @@ struct snd_stm_spdif_player {
 	void *base;
 	unsigned long fifo_phys_address;
 	unsigned int irq;
-	int fdma_channel;
 
 	/* Environment settings */
 	struct clk *clock;
@@ -111,13 +110,19 @@ struct snd_stm_spdif_player {
 	struct snd_stm_buffer *buffer;
 	struct snd_info_entry *proc_entry;
 	struct snd_pcm_substream *substream;
-	int fdma_max_transfer_size;
-	struct stm_dma_params fdma_params;
-	struct stm_dma_req *fdma_request;
 	struct snd_stm_spdif_player_settings stream_settings;
 	int stream_iec958_status_cnt;
 	int stream_iec958_subcode_cnt;
 	struct stm_pad_state *pads;
+
+	int dma_max_transfer_size;
+	struct stm_dma_paced_config dma_config;
+	struct dma_chan *dma_channel;
+	struct dma_async_tx_descriptor *dma_descriptor;
+	dma_cookie_t dma_cookie;
+
+	int buffer_bytes;
+	int period_bytes;
 
 	snd_stm_magic_field;
 };
@@ -251,12 +256,43 @@ static struct snd_pcm_hardware snd_stm_spdif_player_hw_raw = {
 	.buffer_bytes_max = 81920 * 3, /* 3 worst-case-periods */
 };
 
+static bool snd_stm_spdif_player_dma_filter_fn(struct dma_chan *chan,
+		void *fn_param)
+{
+	struct snd_stm_spdif_player *spdif_player = fn_param;
+	struct stm_dma_paced_config *config = &spdif_player->dma_config;
+
+	BUG_ON(!spdif_player);
+
+	/* If FDMA name has been specified, attempt to match channel to it */
+	if (spdif_player->info->fdma_name)
+		if (!stm_dma_is_fdma_name(chan, spdif_player->info->fdma_name))
+			return false;
+
+	/* Setup this channel for paced operation */
+	config->type = STM_DMA_TYPE_PACED;
+	config->dma_addr = spdif_player->fifo_phys_address;
+	config->dreq_config.request_line =
+				spdif_player->info->fdma_request_line;
+	config->dreq_config.initiator = spdif_player->info->fdma_initiator;
+	config->dreq_config.increment = 0;
+	config->dreq_config.hold_off = 0;
+	config->dreq_config.maxburst = 1;
+	config->dreq_config.buswidth = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	config->dreq_config.direction = DMA_MEM_TO_DEV;
+
+	chan->private = config;
+
+	return true;
+}
+
 static int snd_stm_spdif_player_open(struct snd_pcm_substream *substream)
 {
 	int result;
 	struct snd_stm_spdif_player *spdif_player =
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
+	dma_cap_mask_t mask;
 
 	snd_stm_printd(1, "snd_stm_spdif_player_open(substream=0x%p)\n",
 			substream);
@@ -266,6 +302,20 @@ static int snd_stm_spdif_player_open(struct snd_pcm_substream *substream)
 	BUG_ON(!runtime);
 
 	snd_pcm_set_sync(substream);  /* TODO: ??? */
+
+	/* Set the DMA channel capabilities we want */
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SLAVE, mask);
+	dma_cap_set(DMA_CYCLIC, mask);
+
+	/* Request a matching DMA channel */
+	spdif_player->dma_channel = dma_request_channel(mask,
+			snd_stm_spdif_player_dma_filter_fn, spdif_player);
+
+	if (!spdif_player->dma_channel) {
+		snd_stm_printe("Failed to request DMA channel\n");
+		return -ENODEV;
+	}
 
 	/* Get attached converters handle */
 
@@ -294,17 +344,17 @@ static int snd_stm_spdif_player_open(struct snd_pcm_substream *substream)
 			SNDRV_PCM_HW_PARAM_PERIODS);
 	if (result < 0) {
 		snd_stm_printe("Can't set periods constraint!\n");
-		return result;
+		goto error;
 	}
 
 	/* Make the period (so buffer as well) length (in bytes) a multiply
 	 * of a FDMA transfer bytes (which varies depending on channels
 	 * number and sample bytes) */
 	result = snd_stm_pcm_hw_constraint_transfer_bytes(runtime,
-			spdif_player->fdma_max_transfer_size * 4);
+			spdif_player->dma_max_transfer_size * 4);
 	if (result < 0) {
 		snd_stm_printe("Can't set buffer bytes constraint!\n");
-		return result;
+		goto error;
 	}
 
 	if (spdif_player->stream_settings.input_mode ==
@@ -317,6 +367,20 @@ static int snd_stm_spdif_player_open(struct snd_pcm_substream *substream)
 	spdif_player->substream = substream;
 
 	return 0;
+
+error:
+	/* Release the DMA channel */
+	if (spdif_player->dma_channel) {
+		dma_release_channel(spdif_player->dma_channel);
+		spdif_player->dma_channel = NULL;
+	}
+
+	/* Release any converter */
+	if (spdif_player->conv_group) {
+		snd_stm_conv_release_group(spdif_player->conv_group);
+		spdif_player->conv_group = NULL;
+	}
+	return result;
 }
 
 static int snd_stm_spdif_player_close(struct snd_pcm_substream *substream)
@@ -329,6 +393,12 @@ static int snd_stm_spdif_player_close(struct snd_pcm_substream *substream)
 
 	BUG_ON(!spdif_player);
 	BUG_ON(!snd_stm_magic_valid(spdif_player));
+
+	/* Release the DMA channel */
+	if (spdif_player->dma_channel) {
+		dma_release_channel(spdif_player->dma_channel);
+		spdif_player->dma_channel = NULL;
+	}
 
 	if (spdif_player->conv_group) {
 		snd_stm_conv_release_group(spdif_player->conv_group);
@@ -356,17 +426,11 @@ static int snd_stm_spdif_player_hw_free(struct snd_pcm_substream *substream)
 	/* This callback may be called more than once... */
 
 	if (snd_stm_buffer_is_allocated(spdif_player->buffer)) {
-		/* Let the FDMA stop */
-		dma_wait_for_completion(spdif_player->fdma_channel);
+		/* Terminate all DMA transfers */
+		dmaengine_terminate_all(spdif_player->dma_channel);
 
 		/* Free buffer */
 		snd_stm_buffer_free(spdif_player->buffer);
-
-		/* Free FDMA parameters */
-
-		dma_params_free(&spdif_player->fdma_params);
-		dma_req_free(spdif_player->fdma_channel,
-				spdif_player->fdma_request);
 	}
 
 	return 0;
@@ -379,15 +443,9 @@ static int snd_stm_spdif_player_hw_params(struct snd_pcm_substream *substream,
 	struct snd_stm_spdif_player *spdif_player =
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	int buffer_bytes, frame_bytes, transfer_bytes;
+	int buffer_bytes, frame_bytes, transfer_bytes, period_bytes, periods;
 	unsigned int transfer_size;
-	struct stm_dma_req_config fdma_req_config = {
-		.rw        = REQ_CONFIG_WRITE,
-		.opcode    = REQ_CONFIG_OPCODE_4,
-		.increment = 0,
-		.hold_off  = 0,
-		.initiator = spdif_player->info->fdma_initiator,
-	};
+	struct dma_slave_config slave_config;
 
 	snd_stm_printd(1, "snd_stm_spdif_player_hw_params(substream=0x%p,"
 			" hw_params=0x%p)\n", substream, hw_params);
@@ -403,6 +461,10 @@ static int snd_stm_spdif_player_hw_params(struct snd_pcm_substream *substream,
 	/* Allocate buffer */
 
 	buffer_bytes = params_buffer_bytes(hw_params);
+	periods = params_periods(hw_params);
+	period_bytes = buffer_bytes / periods;
+	BUG_ON(periods * period_bytes != buffer_bytes);
+
 	result = snd_stm_buffer_alloc(spdif_player->buffer, substream,
 			buffer_bytes);
 	if (!spdif_player->buffer) {
@@ -418,14 +480,13 @@ static int snd_stm_spdif_player_hw_params(struct snd_pcm_substream *substream,
 	frame_bytes = snd_pcm_format_physical_width(params_format(hw_params)) *
 			params_channels(hw_params) / 8;
 	transfer_bytes = snd_stm_pcm_transfer_bytes(frame_bytes,
-			spdif_player->fdma_max_transfer_size * 4);
+			spdif_player->dma_max_transfer_size * 4);
 	transfer_size = transfer_bytes / 4;
 	snd_stm_printd(1, "FDMA request trigger limit and transfer size set "
 			"to %d.\n", transfer_size);
 
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
-	BUG_ON(transfer_size > spdif_player->fdma_max_transfer_size);
-	fdma_req_config.count = transfer_size;
+	BUG_ON(transfer_size > spdif_player->dma_max_transfer_size);
 
 	if (spdif_player->ver >= 4) {
 		/* FDMA request trigger control was introduced in
@@ -437,42 +498,26 @@ static int snd_stm_spdif_player_hw_params(struct snd_pcm_substream *substream,
 				transfer_size);
 	}
 
-	/* Configure FDMA transfer */
+	/* Save the buffer bytes and period bytes for when start DMA */
+	spdif_player->buffer_bytes = buffer_bytes;
+	spdif_player->period_bytes = period_bytes;
 
-	spdif_player->fdma_request = dma_req_config(spdif_player->fdma_channel,
-			spdif_player->info->fdma_request_line,
-			&fdma_req_config);
-	if (!spdif_player->fdma_request) {
-		snd_stm_printe("Can't configure FDMA pacing channel for player"
-			       " '%s'!\n", dev_name(spdif_player->device));
-		result = -EINVAL;
-		goto error_req_config;
-	}
+	/* Setup the DMA configuration */
+	slave_config.direction = DMA_MEM_TO_DEV;
+	slave_config.dst_addr = spdif_player->fifo_phys_address;
+	slave_config.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	slave_config.dst_maxburst = transfer_size;
 
-	dma_params_init(&spdif_player->fdma_params, MODE_PACED,
-			STM_DMA_LIST_CIRC);
-
-	dma_params_DIM_1_x_0(&spdif_player->fdma_params);
-
-	dma_params_req(&spdif_player->fdma_params, spdif_player->fdma_request);
-
-	dma_params_addrs(&spdif_player->fdma_params, runtime->dma_addr,
-			spdif_player->fifo_phys_address, buffer_bytes);
-
-	result = dma_compile_list(spdif_player->fdma_channel,
-				&spdif_player->fdma_params, GFP_KERNEL);
-	if (result < 0) {
-		snd_stm_printe("Can't compile FDMA parameters for player"
-			       " '%s'!\n", dev_name(spdif_player->device));
-		goto error_compile_list;
+	result = dmaengine_slave_config(spdif_player->dma_channel,
+			&slave_config);
+	if (result) {
+		snd_stm_printe("Failed to configure DMA channel\n");
+		goto error_dma_config;
 	}
 
 	return 0;
 
-error_compile_list:
-	dma_req_free(spdif_player->fdma_channel,
-			spdif_player->fdma_request);
-error_req_config:
+error_dma_config:
 	snd_stm_buffer_free(spdif_player->buffer);
 error_buf_alloc:
 	return result;
@@ -629,7 +674,6 @@ static int snd_stm_spdif_player_prepare(struct snd_pcm_substream *substream)
 
 static int snd_stm_spdif_player_start(struct snd_pcm_substream *substream)
 {
-	int result;
 	struct snd_stm_spdif_player *spdif_player =
 			snd_pcm_substream_chip(substream);
 
@@ -643,18 +687,23 @@ static int snd_stm_spdif_player_start(struct snd_pcm_substream *substream)
 
 	set__AUD_SPDIF_RST__SRSTP__RUNNING(spdif_player);
 
+	/* Prepare the DMA descriptor */
+
+	BUG_ON(!spdif_player->dma_channel->device->device_prep_dma_cyclic);
+	spdif_player->dma_descriptor =
+		spdif_player->dma_channel->device->device_prep_dma_cyclic(
+			spdif_player->dma_channel, substream->runtime->dma_addr,
+			spdif_player->buffer_bytes, spdif_player->period_bytes,
+			DMA_MEM_TO_DEV);
+	if (!spdif_player->dma_descriptor) {
+		snd_stm_printe("Failed to prepare DMA descriptor\n");
+		return -ENOMEM;
+	}
+
 	/* Launch FDMA transfer */
 
-	result = dma_xfer_list(spdif_player->fdma_channel,
-			&spdif_player->fdma_params);
-	if (result != 0) {
-		snd_stm_printe("Can't launch FDMA transfer for player '%s'!\n",
-			       dev_name(spdif_player->device));
-		return -EINVAL;
-	}
-	while (dma_get_status(spdif_player->fdma_channel) !=
-			DMA_CHANNEL_STATUS_RUNNING)
-		udelay(5);
+	spdif_player->dma_cookie =
+			dmaengine_submit(spdif_player->dma_descriptor);
 
 	/* Enable player interrupts (and clear possible stalled ones) */
 
@@ -713,7 +762,7 @@ static int snd_stm_spdif_player_stop(struct snd_pcm_substream *substream)
 
 	/* Stop FDMA transfer */
 
-	dma_stop_channel(spdif_player->fdma_channel);
+	dmaengine_terminate_all(spdif_player->dma_channel);
 
 	/* Stop the clock and reset SPDIF player */
 
@@ -797,6 +846,8 @@ static snd_pcm_uframes_t snd_stm_spdif_player_pointer(struct snd_pcm_substream
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int residue, hwptr;
 	snd_pcm_uframes_t pointer;
+	struct dma_tx_state state;
+	enum dma_status status;
 
 	snd_stm_printd(2, "snd_stm_spdif_player_pointer(substream=0x%p)\n",
 			substream);
@@ -805,7 +856,11 @@ static snd_pcm_uframes_t snd_stm_spdif_player_pointer(struct snd_pcm_substream
 	BUG_ON(!snd_stm_magic_valid(spdif_player));
 	BUG_ON(!runtime);
 
-	residue = get_dma_residue(spdif_player->fdma_channel);
+	status = spdif_player->dma_channel->device->device_tx_status(
+			spdif_player->dma_channel,
+			spdif_player->dma_cookie, &state);
+
+	residue = state.residue;
 	hwptr = (runtime->dma_bytes - residue) % runtime->dma_bytes;
 	pointer = bytes_to_frames(runtime, hwptr);
 
@@ -1547,23 +1602,17 @@ static int snd_stm_spdif_player_probe(struct platform_device *pdev)
 		goto error_irq_request;
 	}
 
-	result = snd_stm_fdma_request(pdev, &spdif_player->fdma_channel);
-	if (result < 0) {
-		snd_stm_printe("FDMA request failed!\n");
-		goto error_fdma_request;
-	}
-
 	/* FDMA transfer size depends (among others ;-) on FIFO length,
 	 * which is:
 	 * - 6 cells (24 bytes) in STx7100/9 and STx7200 cut 1.0
 	 * - 30 cells (120 bytes) in STx7111 and STx7200 cut 2.0. */
 
 	if (spdif_player->ver < 3)
-		spdif_player->fdma_max_transfer_size = 2;
+		spdif_player->dma_max_transfer_size = 2;
 	else if (spdif_player->ver == 3)
-		spdif_player->fdma_max_transfer_size = 4;
+		spdif_player->dma_max_transfer_size = 4;
 	else
-		spdif_player->fdma_max_transfer_size = 20;
+		spdif_player->dma_max_transfer_size = 20;
 
 	/* Get component caps */
 
@@ -1646,8 +1695,6 @@ error_buffer_create:
 error_pcm:
 	snd_device_free(card, spdif_player);
 error_device:
-	snd_stm_fdma_release(spdif_player->fdma_channel);
-error_fdma_request:
 	snd_stm_irq_release(spdif_player->irq, spdif_player);
 error_irq_request:
 	snd_stm_memory_release(spdif_player->mem_region, spdif_player->base);
@@ -1671,7 +1718,6 @@ static int snd_stm_spdif_player_remove(struct platform_device *pdev)
 		stm_pad_release(spdif_player->pads);
 	snd_stm_conv_unregister_source(spdif_player->conv_source);
 	snd_stm_buffer_dispose(spdif_player->buffer);
-	snd_stm_fdma_release(spdif_player->fdma_channel);
 	snd_stm_irq_release(spdif_player->irq, spdif_player);
 	snd_stm_memory_release(spdif_player->mem_region, spdif_player->base);
 
