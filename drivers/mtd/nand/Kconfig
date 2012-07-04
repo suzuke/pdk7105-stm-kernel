@@ -575,7 +575,7 @@ config STM_NAND_EMI_LONGSL
 
 config STM_NAND_EMI_FDMA
 	bool "FDMA Transfers"
-	depends on STM_DMA
+	depends on STM_FDMA
 	help
 	  Use FDMA trasfers for page transfers.  Reduces CPU load during page
 	  read/writes.  Setup overheads may outweigh gains for small-page

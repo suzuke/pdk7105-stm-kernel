@@ -33,7 +33,8 @@
 #include <linux/dma-mapping.h>
 #include <linux/clk.h>
 #include <linux/gpio.h>
-#include <linux/stm/stm-dma.h>
+#include <linux/semaphore.h>
+#include <linux/stm/dma.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
@@ -69,8 +70,9 @@ struct stm_nand_emi {
 #ifdef CONFIG_STM_NAND_EMI_FDMA
 	unsigned long		nand_phys_addr;
 	unsigned long		init_fdma_jiffies;	/* Rate limit init    */
-	int			dma_chan;		/* FDMA channel	      */
-	struct stm_dma_params	dma_params[2];		/* FDMA params        */
+	struct dma_chan		*dma_chan;		/* FDMA channel       */
+	struct completion	dma_rd_comp;		/* FDMA read done     */
+	struct completion	dma_wr_comp;		/* FDMA write done    */
 #endif
 };
 
@@ -90,41 +92,45 @@ static const char *part_probes[] = { "cmdlinepart", NULL };
  * Routines for FDMA transfers.
  */
 #if defined(CONFIG_STM_NAND_EMI_FDMA)
-static void fdma_err(unsigned long dummy)
+static bool fdma_filter_fn(struct dma_chan *chan, void *fn_param)
 {
-	printk(KERN_ERR NAME ": DMA error!\n");
+	/* Grant the first channel we come to */
+	return true;
 }
 
 static int init_fdma_nand(struct stm_nand_emi *data)
 {
-	const char *dmac_id[] = {STM_DMAC_ID, NULL};
-	const char *cap_channel_lb[] = {STM_DMA_CAP_LOW_BW, NULL};
-	const char *cap_channel_hb[] = {STM_DMA_CAP_HIGH_BW, NULL};
-	int i;
+	struct dma_slave_config config;
+	dma_cap_mask_t mask;
 
-	/* Request DMA channel for NAND transactions */
-	data->dma_chan = request_dma_bycap(dmac_id, cap_channel_lb, NAME);
-	if (data->dma_chan < 0) {
-		data->dma_chan = request_dma_bycap(dmac_id, cap_channel_hb,
-						   NAME);
-		if (data->dma_chan < 0) {
-			printk(KERN_ERR NAME ": request_dma_bycap failed!\n");
-			return -EBUSY;
-		}
+	/* Set the DMA channel capabilities we want */
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SLAVE, mask);
+
+	/* Request a matching DMA channel for NAND transactions */
+	data->dma_chan = dma_request_channel(mask, fdma_filter_fn, NULL);
+	if (!data->dma_chan) {
+		printk(KERN_ERR NAME ": dma_request_channel failed!\n");
+		return -EBUSY;
 	}
 
-	/* Initialise DMA paramters */
-	for (i = 0; i < 2; i++) {
-		dma_params_init(&data->dma_params[i], MODE_FREERUNNING,
-				STM_DMA_LIST_OPEN);
-		dma_params_DIM_1_x_1(&data->dma_params[i]);
-		dma_params_err_cb(&data->dma_params[i], fdma_err, 0,
-				  STM_DMA_CB_CONTEXT_TASKLET);
+	/* Set configuration (free-running only needs direction & FIFO addr) */
+	config.direction = DMA_DEV_TO_MEM;
+	config.src_addr = data->nand_phys_addr;
+
+	if (dmaengine_slave_config(data->dma_chan, &config)) {
+		printk(KERN_ERR NAME ": dmaengine_slave_config failed!\n");
+		dma_release_channel(data->dma_chan);
+		return -EBUSY;
 	}
+
+	/* Initiallise semaphores for read/write to wait on */
+	init_completion(&data->dma_rd_comp);
+	init_completion(&data->dma_wr_comp);
 
 	printk(KERN_INFO NAME ": %s assigned %s(%d)\n",
-	       data->mtd.name, get_dma_info(data->dma_chan)->name,
-	       data->dma_chan);
+	       data->mtd.name, dev_name(data->dma_chan->device->dev),
+	       data->dma_chan->chan_id);
 
 	return 0;
 }
@@ -139,18 +145,14 @@ static int init_fdma_nand_ratelimit(struct stm_nand_emi *data)
 
 static void exit_fdma_nand(struct stm_nand_emi *data)
 {
-	int i;
-	if (data->dma_chan < 0)
-		return;
-
 	/* Release DMA channel */
-	free_dma(data->dma_chan);
+	if (data->dma_chan)
+		dma_release_channel(data->dma_chan);
+}
 
-	/* Free DMA paramters (if they have actually been allocated) */
-	for (i = 0; i < 2; i++) {
-		if (data->dma_params[i].params_ops)
-			dma_params_free(&data->dma_params[i]);
-	}
+static void nand_callback_dma(void *param)
+{
+	complete(param);
 }
 
 /*
@@ -162,56 +164,36 @@ static int nand_read_dma(struct mtd_info *mtd, uint8_t *buf, int buf_len,
 {
 	struct nand_chip *chip = mtd->priv;
 	struct stm_nand_emi *data = chip->priv;
-	unsigned long	nand_dma;
-	dma_addr_t	buf_dma;
-	dma_addr_t	oob_dma;
-	unsigned long res = 0;
+	struct scatterlist sg[2];
+	struct dma_async_tx_descriptor *dma_desc;
 
-	/* Check channel is ready for use */
-	if (dma_get_status(data->dma_chan) != DMA_CHANNEL_STATUS_IDLE) {
-		printk(KERN_ERR NAME ": requested channel not idle\n");
-		return 1;
-	}
+	/* Map DMA addresses */
+	sg_init_table(sg, 2);
+	sg_dma_address(&sg[0]) = dma_map_single(NULL, buf, buf_len,
+						DMA_FROM_DEVICE);
+	sg_dma_len(&sg[0]) = buf_len;
 
-	/* Set up and map DMA addresses */
-	nand_dma = data->nand_phys_addr;
-	buf_dma = dma_map_single(NULL, buf, buf_len, DMA_FROM_DEVICE);
-	dma_params_addrs(&data->dma_params[0], nand_dma, buf_dma, buf_len);
-
-	/* Are we doing data+oob linked transfer? */
+	/* Are we doing data+oob transfer? */
 	if (oob) {
-		oob_dma = dma_map_single(NULL, oob, oob_len, DMA_FROM_DEVICE);
-		dma_params_link(&data->dma_params[0], &data->dma_params[1]);
-		dma_params_addrs(&data->dma_params[1], nand_dma,
-				 oob_dma, oob_len);
-	} else {
-		data->dma_params[0].next = NULL;
+		sg_dma_address(&sg[1]) = dma_map_single(NULL, oob, oob_len,
+						DMA_FROM_DEVICE);
+		sg_dma_len(&sg[1]) = oob_len;
 	}
 
-	/* Compile transfer list */
-	res = dma_compile_list(data->dma_chan, &data->dma_params[0],
-			       GFP_ATOMIC);
-	if (res != 0) {
-		printk(KERN_ERR NAME
-		       ": DMA compile list failed (err_code = %ld)\n", res);
-		return 1;
-	}
+	/* Prepare the DMA transfer (on completion buffers will be unmapped) */
+	dma_desc = data->dma_chan->device->device_prep_slave_sg(
+			data->dma_chan, sg, oob ? 2 : 1, DMA_DEV_TO_MEM,
+			DMA_CTRL_ACK | DMA_COMPL_SKIP_SRC_UNMAP |
+			DMA_COMPL_DEST_UNMAP_SINGLE);
 
-	/* Initiate transfer */
-	res = dma_xfer_list(data->dma_chan, &data->dma_params[0]);
-	if (res != 0) {
-		printk(KERN_ERR NAME
-		       ": transfer failed (err_code = %ld)\n", res);
-		return 1;
-	}
+	dma_desc->callback = nand_callback_dma;
+	dma_desc->callback_param = &data->dma_rd_comp;
+
+	/* Submit the DMA transfer */
+	(void) dma_desc->tx_submit(dma_desc);
 
 	/* Wait for completion... */
-	dma_wait_for_completion(data->dma_chan);
-
-	/* Unmap DMA memory */
-	dma_unmap_single(NULL, buf_dma, buf_len, DMA_FROM_DEVICE);
-	if (oob)
-		dma_unmap_single(NULL, oob_dma, oob_len, DMA_FROM_DEVICE);
+	wait_for_completion(&data->dma_rd_comp);
 
 	return 0;
 }
@@ -225,56 +207,36 @@ static int nand_write_dma(struct mtd_info *mtd, const uint8_t *buf, int buf_len,
 {
 	struct nand_chip *chip = mtd->priv;
 	struct stm_nand_emi *data = chip->priv;
-	unsigned long	nand_dma;
-	dma_addr_t	buf_dma;
-	dma_addr_t	oob_dma;
-	unsigned long res = 0;
+	struct scatterlist sg[2];
+	struct dma_async_tx_descriptor *dma_desc;
 
-	/* Check channel is ready for use */
-	if (dma_get_status(data->dma_chan) != DMA_CHANNEL_STATUS_IDLE) {
-		printk(KERN_ERR NAME ": requested channel not idle\n");
-		return 1;
-	}
-
-	/* Set up and map DMA addresses */
-	nand_dma = data->nand_phys_addr;
-	buf_dma = dma_map_single(NULL, buf, buf_len, DMA_TO_DEVICE);
-	dma_params_addrs(&data->dma_params[0], buf_dma, nand_dma, buf_len);
+	/* Map DMA addresses */
+	sg_init_table(sg, 2);
+	sg_dma_address(&sg[0]) = dma_map_single(NULL, (void *) buf, buf_len,
+						DMA_TO_DEVICE);
+	sg_dma_len(&sg[0]) = buf_len;
 
 	/* Are we doing data+oob linked transfer? */
 	if (oob) {
-		oob_dma = dma_map_single(NULL, oob, oob_len, DMA_TO_DEVICE);
-		dma_params_link(&data->dma_params[0], &data->dma_params[1]);
-		dma_params_addrs(&data->dma_params[1], oob_dma,
-				 nand_dma, oob_len);
-	} else {
-		data->dma_params[0].next = NULL;
+		sg_dma_address(&sg[1]) = dma_map_single(NULL, oob, oob_len,
+						DMA_TO_DEVICE);
+		sg_dma_len(&sg[1]) = oob_len;
 	}
 
-	/* Compile transfer list */
-	res = dma_compile_list(data->dma_chan, &data->dma_params[0],
-			       GFP_ATOMIC);
-	if (res != 0) {
-		printk(KERN_ERR NAME
-		       ": DMA compile list failed (err_code = %ld)\n", res);
-		return 1;
-	}
+	/* Prepare the DMA transfer (on completion buffers will be unmapped) */
+	dma_desc = data->dma_chan->device->device_prep_slave_sg(
+			data->dma_chan, sg, oob ? 2 : 1, DMA_MEM_TO_DEV,
+			DMA_CTRL_ACK | DMA_COMPL_SRC_UNMAP_SINGLE |
+			DMA_COMPL_SKIP_DEST_UNMAP);
 
-	/* Initiate transfer */
-	res = dma_xfer_list(data->dma_chan, &data->dma_params[0]);
-	if (res != 0) {
-		printk(KERN_ERR NAME
-		       ": transfer failed (err_code = %ld)\n", res);
-		return 1;
-	}
+	dma_desc->callback = nand_callback_dma;
+	dma_desc->callback_param = &data->dma_wr_comp;
+
+	/* Submit the DMA transfer */
+	(void) dma_desc->tx_submit(dma_desc);
 
 	/* Wait for completion... */
-	dma_wait_for_completion(data->dma_chan);
-
-	/* Unmap DMA memory */
-	dma_unmap_single(NULL, buf_dma, buf_len, DMA_TO_DEVICE);
-	if (oob)
-		dma_unmap_single(NULL, oob_dma, oob_len, DMA_TO_DEVICE);
+	wait_for_completion(&data->dma_wr_comp);
 
 	return 0;
 }
@@ -293,7 +255,7 @@ static void nand_write_buf_dma(struct mtd_info *mtd,
 
 	if (len >= 512 &&
 	    virt_addr_valid(buf) &&
-	    (data->dma_chan >= 0 || init_fdma_nand_ratelimit(data) == 0)) {
+	    (data->dma_chan || init_fdma_nand_ratelimit(data) == 0)) {
 
 		/* Read up to cache line boundary */
 		while ((unsigned long)buf & dma_align) {
@@ -336,7 +298,7 @@ static void nand_read_buf_dma(struct mtd_info *mtd, uint8_t *buf, int len)
 
 	if (len >= 512 &&
 	    virt_addr_valid(buf) &&
-	    (data->dma_chan >= 0 || init_fdma_nand_ratelimit(data) == 0)) {
+	    (data->dma_chan || init_fdma_nand_ratelimit(data) == 0)) {
 
 		/* Read up to cache-line boundary */
 		while ((unsigned long)buf & dma_align) {
@@ -658,7 +620,7 @@ static struct stm_nand_emi * __init nand_probe_bank(
 #if defined(CONFIG_STM_NAND_EMI_FDMA)
 	data->chip.read_buf = nand_read_buf_dma;
 	data->chip.write_buf = nand_write_buf_dma;
-	data->dma_chan = -1;
+	data->dma_chan = NULL;
 	data->init_fdma_jiffies = 0;
 	init_fdma_nand_ratelimit(data);
 	data->nand_phys_addr = data->emi_base;
