@@ -363,6 +363,14 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 		}
 		break;
 
+	case STM_DMA_TYPE_MCHI:
+		result = stm_fdma_mchi_alloc_chan_resources(fchan);
+		if (result) {
+			dev_err(fdev->dev, "Failed to alloc mchi resources\n");
+			goto error;
+		}
+		break;
+
 	case STM_DMA_TYPE_TELSS:
 		result = stm_fdma_telss_alloc_chan_resources(fchan);
 		if (result) {
@@ -451,6 +459,10 @@ static void stm_fdma_free_chan_resources(struct dma_chan *chan)
 
 	case STM_DMA_TYPE_AUDIO:
 		stm_fdma_audio_free_chan_resources(fchan);
+		break;
+
+	case STM_DMA_TYPE_MCHI:
+		stm_fdma_mchi_free_chan_resources(fchan);
 		break;
 
 	case STM_DMA_TYPE_TELSS:

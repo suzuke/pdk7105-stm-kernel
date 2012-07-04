@@ -267,6 +267,14 @@ config STM_FDMA_AUDIO
 	  Enable audio extensions support for STMicroelectronics FDMA dmaengine
 	  implementation.
 
+config STM_FDMA_MCHI
+	bool "STMicroelectronics FDMA dmaengine MCHI extensions"
+	depends on STM_FDMA
+	default y
+	help
+	  Enable MCHI extensions support for STMicroelectronics FDMA dmaengine
+	  implementation.
+
 config STM_FDMA_TELSS
 	bool "STMicroelectronics FDMA dmaengine TELSS extensions"
 	depends on STM_FDMA

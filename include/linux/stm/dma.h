@@ -26,6 +26,7 @@ enum stm_dma_type {
 	STM_DMA_TYPE_PACED,
 	STM_DMA_TYPE_AUDIO,		/* S/W enhanced paced Tx channel */
 	STM_DMA_TYPE_TELSS,
+	STM_DMA_TYPE_MCHI,		/* For Rx only - for Tx use paced */
 };
 
 
@@ -64,6 +65,14 @@ struct stm_dma_audio_config {
 	dma_addr_t dma_addr;
 	struct stm_dma_dreq_config dreq_config;
 	struct stm_dma_park_config park_config;
+};
+
+struct stm_dma_mchi_config {
+	enum stm_dma_type type;
+	dma_addr_t dma_addr;
+	struct stm_dma_dreq_config dreq_config;
+	struct stm_dma_dreq_config pkt_start_rx_dreq_config;
+	u32 rx_fifo_threshold_addr;
 };
 
 struct stm_dma_telss_config {
@@ -111,6 +120,13 @@ int dma_audio_parking_enable(struct dma_chan *chan);
 int dma_audio_is_parking_active(struct dma_chan *chan);
 struct dma_async_tx_descriptor *dma_audio_prep_tx_cyclic(struct dma_chan *chan,
 		dma_addr_t buf_addr, size_t buf_len, size_t period_len);
+
+/*
+ * MCHI channel extensions API
+ */
+
+struct dma_async_tx_descriptor *dma_mchi_prep_rx_cyclic(struct dma_chan *chan,
+		struct scatterlist *sgl, unsigned int sg_len);
 
 
 /*

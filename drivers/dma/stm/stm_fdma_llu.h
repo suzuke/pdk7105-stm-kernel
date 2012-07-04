@@ -38,6 +38,18 @@ struct stm_fdma_llu_telss {
 
 
 /*
+ * MCHI specific linked list structure for Rx only.
+ * MCHI Tx uses the paced linked list structure.
+ */
+
+struct stm_fdma_llu_mchi {
+	u32 length;
+	u32 rx_fifo_threshold_add;
+	u32 dstride;
+};
+
+
+/*
  * FDMA linked list structure
  */
 
@@ -50,6 +62,7 @@ struct stm_fdma_llu {
 	union {
 		struct stm_fdma_llu_generic generic;
 		struct stm_fdma_llu_telss telss;
+		struct stm_fdma_llu_mchi mchi;
 	};
 };
 

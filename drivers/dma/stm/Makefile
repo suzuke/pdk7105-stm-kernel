@@ -1,6 +1,7 @@
 obj-$(CONFIG_STM_FDMA) += stm-fdma.o
 
 stm-fdma-$(CONFIG_STM_FDMA_AUDIO) += stm_fdma_audio.o
+stm-fdma-$(CONFIG_STM_FDMA_MCHI) += stm_fdma_mchi.o
 stm-fdma-$(CONFIG_STM_FDMA_TELSS) += stm_fdma_telss.o
 stm-fdma-$(CONFIG_DEBUG_FS) += stm_fdma_debugfs.o
 

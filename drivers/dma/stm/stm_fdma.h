@@ -269,6 +269,14 @@ void stm_fdma_audio_free_chan_resources(struct stm_fdma_chan *fchan);
 #define stm_fdma_audio_free_chan_resources(f)	do { } while (0)
 #endif
 
+#ifdef CONFIG_STM_FDMA_MCHI
+int stm_fdma_mchi_alloc_chan_resources(struct stm_fdma_chan *fchan);
+void stm_fdma_mchi_free_chan_resources(struct stm_fdma_chan *fchan);
+#else
+#define stm_fdma_mchi_alloc_chan_resources(f)	0
+#define stm_fdma_mchi_free_chan_resources(f)	do { } while (0)
+#endif
+
 #ifdef CONFIG_STM_FDMA_TELSS
 int stm_fdma_telss_alloc_chan_resources(struct stm_fdma_chan *fchan);
 void stm_fdma_telss_free_chan_resources(struct stm_fdma_chan *fchan);
