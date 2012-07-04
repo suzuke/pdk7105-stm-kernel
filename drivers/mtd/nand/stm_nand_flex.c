@@ -54,7 +54,6 @@
 #include <linux/dma-mapping.h>
 #include <asm/dma.h>
 #include <linux/clk.h>
-#include <linux/stm/stm-dma.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
 #include <linux/completion.h>

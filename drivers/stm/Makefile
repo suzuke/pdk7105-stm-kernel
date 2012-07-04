@@ -10,8 +10,6 @@ obj-y					+= device.o
 obj-y					+= clk.o
 obj-y					+= clocks/
 
-obj-$(CONFIG_STM_SH_DMA_API)		+= sh-dma-api.o sh-dma-sysfs.o
-obj-$(CONFIG_STM_DMA)			+= fdma.o fdma-xbar.o
 obj-$(CONFIG_STM_MIPHY)			+= miphy.o
 obj-$(CONFIG_STM_MIPHY_TAP)		+= miphy_tap.o tap.o
 obj-$(CONFIG_STM_MIPHY_PCIE_MP)		+= miphy_pcie_mp.o

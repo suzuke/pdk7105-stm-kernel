@@ -58,31 +58,6 @@ config STPIO
 	  code within the kernel uses this API, it is retained only for
 	  drivers outside the kernel which might still need it.
 
-config STM_DMA
-	bool "STMicroelectronics DMA API"
-	select SH_DMA_API
-	select LIBELF_32
-	default y
-	---help---
-	  Selecting this option will provide support for STMicroelectronics'
-	  custom DMA API. This API provides support for data transfers of
-	  various dimensions and complex linked list operations. In addition
-	  to these free-running operations it also allows management of the
-	  paced-transfer peripherals on recent STM parts.
-
-	  If you have a device from STMicroelectronics, then say Y here.
-	  Otherwise say N.
-
-config STM_DMA_DEBUG
-	bool "STMicroelectronics DMA Debug"
-	depends on STM_DMA
-	default n
-
-config STM_SH_DMA_API
-	bool
-	default y if STM_DMA && (!SUPERH)
-	default n
-
 config STM_COPROCESSOR_CLASS
 	tristate "STMicroelectronics coprocessor support"
 	select FW_LOADER
