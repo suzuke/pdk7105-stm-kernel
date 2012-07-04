@@ -252,6 +252,13 @@ config EP93XX_DMA
 	help
 	  Enable support for the Cirrus Logic EP93xx M2P/M2M DMA controller.
 
+config STM_FDMA
+	bool "STMicroelectronics FDMA dmaengine support"
+	select DMA_ENGINE
+	select LIBELF_32
+	help
+	  Enable dmaengine support for the STMicroelectronics FDMA controller.
+
 config DMA_ENGINE
 	bool
 
