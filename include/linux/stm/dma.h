@@ -25,6 +25,7 @@ enum stm_dma_type {
 	STM_DMA_TYPE_FREE_RUNNING,
 	STM_DMA_TYPE_PACED,
 	STM_DMA_TYPE_AUDIO,		/* S/W enhanced paced Tx channel */
+	STM_DMA_TYPE_TELSS,
 };
 
 
@@ -65,6 +66,26 @@ struct stm_dma_audio_config {
 	struct stm_dma_park_config park_config;
 };
 
+struct stm_dma_telss_config {
+	enum stm_dma_type type;
+	dma_addr_t dma_addr;
+	struct stm_dma_dreq_config dreq_config;
+
+	u32 frame_count;
+	u32 frame_size;
+	u32 handset_count;
+};
+
+struct stm_dma_telss_handset_config {
+	u16 buffer_offset;
+	u16 first_slot_id;
+	u16 second_slot_id;
+	bool second_slot_id_valid;
+	bool duplicate_enable;
+	bool data_length;
+	bool call_valid;
+};
+
 
 /*
  * Helper functions
@@ -90,6 +111,17 @@ int dma_audio_parking_enable(struct dma_chan *chan);
 int dma_audio_is_parking_active(struct dma_chan *chan);
 struct dma_async_tx_descriptor *dma_audio_prep_tx_cyclic(struct dma_chan *chan,
 		dma_addr_t buf_addr, size_t buf_len, size_t period_len);
+
+
+/*
+ * TELSS channel extensions API
+ */
+int dma_telss_handset_config(struct dma_chan *chan, int handset,
+		struct stm_dma_telss_handset_config *config);
+int dma_telss_handset_control(struct dma_chan *chan, int handset, int valid);
+struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
+		struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
+		size_t period_len, enum dma_transfer_direction direction);
 
 
 #endif /* __LINUX_STM_DMA_H__ */

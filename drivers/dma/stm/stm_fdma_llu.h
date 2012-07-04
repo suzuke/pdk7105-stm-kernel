@@ -26,6 +26,18 @@ struct stm_fdma_llu_generic {
 
 
 /*
+ * TELSS specific linked list structure
+ */
+
+#define STM_FDMA_LLU_TELSS_HANDSETS	10
+
+struct stm_fdma_llu_telss {
+	u32 node_param;
+	u32 handset_param[STM_FDMA_LLU_TELSS_HANDSETS];
+};
+
+
+/*
  * FDMA linked list structure
  */
 
@@ -37,6 +49,7 @@ struct stm_fdma_llu {
 	u32 daddr;	/* Not used by PES */
 	union {
 		struct stm_fdma_llu_generic generic;
+		struct stm_fdma_llu_telss telss;
 	};
 };
 

@@ -363,6 +363,14 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 		}
 		break;
 
+	case STM_DMA_TYPE_TELSS:
+		result = stm_fdma_telss_alloc_chan_resources(fchan);
+		if (result) {
+			dev_err(fdev->dev, "Failed to alloc telss resources\n");
+			goto error;
+		}
+		break;
+
 	default:
 		dev_err(fchan->fdev->dev, "Invalid channel type (%d)\n",
 				fchan->type);
@@ -443,6 +451,10 @@ static void stm_fdma_free_chan_resources(struct dma_chan *chan)
 
 	case STM_DMA_TYPE_AUDIO:
 		stm_fdma_audio_free_chan_resources(fchan);
+		break;
+
+	case STM_DMA_TYPE_TELSS:
+		stm_fdma_telss_free_chan_resources(fchan);
 		break;
 
 	default:
