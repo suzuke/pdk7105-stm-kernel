@@ -180,13 +180,36 @@ static irqreturn_t stm_fdma_irq_handler(int irq, void *dev_id)
 	status = readl(fdev->io_base + fdev->regs.int_sta);
 	writel(status, fdev->io_base + fdev->regs.int_clr);
 
-	/* Process the channel interrupts */
+	/* Process each channel raising an interrupt */
 	for (c = STM_FDMA_MIN_CHANNEL; status != 0; status >>= 2, ++c) {
-		/* On error both interrupts raised, so check for error first */
+		/*
+		 * On error both interrupts raised, so check for error first.
+		 *
+		 * When switching to the parking buffer we set each node of the
+		 * currently active descriptor to interrupt on complete. This
+		 * results in missed interrupt error. We suppress this error
+		 * here and handle the interrupt as a normal completion.
+		 */
 		if (unlikely(status & 2)) {
-			stm_fdma_irq_error(&fdev->ch_list[c]);
-			result = IRQ_HANDLED;
-		} else if (status & 1) {
+			int ignore = 0;
+
+			/* If parked, suppress any missed interrupt error */
+			if (test_bit(STM_FDMA_IS_PARKED,
+					&fdev->ch_list[c].flags))
+				if (stm_fdma_hw_channel_error(
+						&fdev->ch_list[c]) ==
+						CMD_STAT_ERROR_INTR)
+					ignore = 1;
+
+			/* Only handle error if not suppressing it */
+			if (!ignore) {
+				stm_fdma_irq_error(&fdev->ch_list[c]);
+				result = IRQ_HANDLED;
+				continue;
+			}
+		}
+
+		if (status & 1) {
 			stm_fdma_irq_complete(&fdev->ch_list[c]);
 			result = IRQ_HANDLED;
 		}
@@ -287,7 +310,6 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 	struct stm_fdma_chan *fchan = to_stm_fdma_chan(chan);
 	struct stm_fdma_device *fdev = fchan->fdev;
 	struct stm_dma_paced_config *paced;
-	struct stm_dma_audio_config *audio;
 	unsigned long irqflags = 0;
 	int result;
 
@@ -309,26 +331,43 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 
 	/* Perform and channel specific configuration */
 	switch (fchan->type) {
+	case STM_DMA_TYPE_FREE_RUNNING:
+		fchan->dma_addr = 0;
+		result = 0;
+		break;
+
 	case STM_DMA_TYPE_PACED:
 		paced = chan->private;
 		fchan->dma_addr = paced->dma_addr;
+		/* Allocate the dreq */
 		fchan->dreq = stm_fdma_dreq_alloc(fchan, &paced->dreq_config);
 		if (!fchan->dreq) {
-			spin_unlock_irqrestore(&fchan->lock, irqflags);
 			dev_err(fdev->dev, "Failed to configure paced dreq\n");
-			return -EINVAL;
+			result = -EINVAL;
+			goto error;
 		}
-		/* Configure the hardware */
+		/* Configure the dreq */
 		result = stm_fdma_dreq_config(fchan, fchan->dreq);
 		if (result) {
-			spin_unlock_irqrestore(&fchan->lock, irqflags);
 			dev_err(fdev->dev, "Failed to set paced dreq\n");
-			return -EINVAL;
+			stm_fdma_dreq_free(fchan, fchan->dreq);
+			goto error;
+		}
+		break;
+
+	case STM_DMA_TYPE_AUDIO:
+		result = stm_fdma_audio_alloc_chan_resources(fchan);
+		if (result) {
+			dev_err(fdev->dev, "Failed to alloc audio resources\n");
+			goto error;
 		}
 		break;
 
 	default:
-		fchan->dma_addr = 0;
+		dev_err(fchan->fdev->dev, "Invalid channel type (%d)\n",
+				fchan->type);
+		result = -EINVAL;
+		goto error;
 	}
 
 	/* Allocate descriptors */
@@ -355,6 +394,10 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 
 
 	return fchan->desc_count;
+
+error:
+	spin_unlock_irqrestore(&fchan->lock, irqflags);
+	return result;
 }
 
 static void stm_fdma_free_chan_resources(struct dma_chan *chan)
@@ -391,12 +434,20 @@ static void stm_fdma_free_chan_resources(struct dma_chan *chan)
 
 	/* Perform any channel configuration clean up */
 	switch (fchan->type) {
+	case STM_DMA_TYPE_FREE_RUNNING:
+		break;
+
 	case STM_DMA_TYPE_PACED:
 		stm_fdma_dreq_free(fchan, fchan->dreq);
 		break;
 
-	default:
+	case STM_DMA_TYPE_AUDIO:
+		stm_fdma_audio_free_chan_resources(fchan);
 		break;
+
+	default:
+		dev_err(fchan->fdev->dev, "Invalid channel type (%d)\n",
+				fchan->type);
 	}
 }
 
@@ -456,10 +507,6 @@ static struct dma_async_tx_descriptor *stm_fdma_prep_dma_memcpy(
 	return &fdesc->dma_desc;
 }
 
-/*
- * This is used to scatter-gather to/from a device.
- * Each scatter-gather is a separate llu.
- */
 static struct dma_async_tx_descriptor *stm_fdma_prep_slave_sg(
 		struct dma_chan *chan, struct scatterlist *sgl,
 		unsigned int sg_len, enum dma_transfer_direction direction,
@@ -508,6 +555,7 @@ static struct dma_async_tx_descriptor *stm_fdma_prep_slave_sg(
 			break;
 
 		case STM_DMA_TYPE_PACED:
+		case STM_DMA_TYPE_AUDIO:
 			fdesc->llu->control = fchan->dreq->request_line;
 			break;
 
@@ -608,6 +656,7 @@ static struct dma_async_tx_descriptor *stm_fdma_prep_dma_cyclic(
 			break;
 
 		case STM_DMA_TYPE_PACED:
+		case STM_DMA_TYPE_AUDIO:
 			fdesc->llu->control = fchan->dreq->request_line;
 			break;
 
@@ -765,8 +814,9 @@ static int stm_fdma_terminate_all(struct stm_fdma_chan *fchan)
 	list_splice_init(&fchan->desc_queue, &list);
 	list_splice_init(&fchan->desc_active, &list);
 
-	/* Cyclic channel is no longer cyclic when descriptor is terminated */
+	/* Channel is no longer cyclic/parked after a terminate all! */
 	clear_bit(STM_FDMA_IS_CYCLIC, &fchan->flags);
+	clear_bit(STM_FDMA_IS_PARKED, &fchan->flags);
 
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
@@ -885,6 +935,13 @@ static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 	dev_dbg(fchan->fdev->dev, "%s(fchan=%p)\n", __func__, fchan);
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
+
+	/* If channel is parked, return a notional residue */
+	if (test_bit(STM_FDMA_IS_PARKED, &fchan->flags)) {
+		BUG_ON(!fchan->desc_park);
+		count = fchan->desc_park->llu->nbytes;
+		goto unlock;
+	}
 
 	/* Only attempt to get residue on a non-idle channel */
 	if (fchan->state != STM_FDMA_STATE_IDLE) {

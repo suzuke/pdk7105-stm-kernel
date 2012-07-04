@@ -24,6 +24,7 @@
 enum stm_dma_type {
 	STM_DMA_TYPE_FREE_RUNNING,
 	STM_DMA_TYPE_PACED,
+	STM_DMA_TYPE_AUDIO,		/* S/W enhanced paced Tx channel */
 };
 
 
@@ -52,6 +53,19 @@ struct stm_dma_paced_config {
 	struct stm_dma_dreq_config dreq_config;
 };
 
+struct stm_dma_park_config {
+	int sub_periods;
+	int buffer_size;
+};
+
+struct stm_dma_audio_config {
+	enum stm_dma_type type;
+	dma_addr_t dma_addr;
+	struct stm_dma_dreq_config dreq_config;
+	struct stm_dma_park_config park_config;
+};
+
+
 /*
  * Helper functions
  */
@@ -65,6 +79,17 @@ static inline int stm_dma_is_fdma_channel(struct dma_chan *chan, int id)
 {
 	return (chan->chan_id == id);
 }
+
+
+/*
+ * Audio channel extensions API
+ */
+int dma_audio_parking_config(struct dma_chan *chan,
+		struct stm_dma_park_config *config);
+int dma_audio_parking_enable(struct dma_chan *chan);
+int dma_audio_is_parking_active(struct dma_chan *chan);
+struct dma_async_tx_descriptor *dma_audio_prep_tx_cyclic(struct dma_chan *chan,
+		dma_addr_t buf_addr, size_t buf_len, size_t period_len);
 
 
 #endif /* __LINUX_STM_DMA_H__ */

@@ -259,6 +259,14 @@ config STM_FDMA
 	help
 	  Enable dmaengine support for the STMicroelectronics FDMA controller.
 
+config STM_FDMA_AUDIO
+	bool "STMicroelectronics FDMA dmaengine audio extensions"
+	depends on STM_FDMA
+	default y
+	help
+	  Enable audio extensions support for STMicroelectronics FDMA dmaengine
+	  implementation.
+
 config DMA_ENGINE
 	bool
 

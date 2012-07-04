@@ -171,9 +171,17 @@ void stm_fdma_desc_start(struct stm_fdma_chan *fchan)
 	list_del_init(&fdesc->node);
 	list_add_tail(&fdesc->node, &fchan->desc_active);
 
-	/* Start the channel for the descriptor */
-	stm_fdma_hw_channel_start(fchan, fdesc);
-	fchan->state = STM_FDMA_STATE_RUNNING;
+
+	if (test_bit(STM_FDMA_IS_PARKED, &fchan->flags)) {
+		/* Switch from parking to next descriptor (no interrupt) */
+		BUG_ON(!fchan->desc_park);
+		stm_fdma_hw_channel_switch(fchan, fchan->desc_park, fdesc, 0);
+		clear_bit(STM_FDMA_IS_PARKED, &fchan->flags);
+	} else {
+		/* Start the channel for the descriptor */
+		stm_fdma_hw_channel_start(fchan, fdesc);
+		fchan->state = STM_FDMA_STATE_RUNNING;
+	}
 
 unlock:
 	spin_unlock_irqrestore(&fchan->lock, irqflags);

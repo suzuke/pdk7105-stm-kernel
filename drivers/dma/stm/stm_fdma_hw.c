@@ -232,9 +232,6 @@ int stm_fdma_hw_channel_set_dreq(struct stm_fdma_chan *fchan,
 	return 0;
 }
 
-/*
- * This will be called with the channel locked but not the fdma
- */
 void stm_fdma_hw_channel_start(struct stm_fdma_chan *fchan,
 		struct stm_fdma_desc *fdesc)
 {
@@ -243,10 +240,8 @@ void stm_fdma_hw_channel_start(struct stm_fdma_chan *fchan,
 
 	spin_lock_irqsave(&fdev->lock, irqflags);
 
-	/* See comment in fdma_get_residue() for why we do this. */
+	/* Set this to ensure a valid residue when channel not yet started */
 	writel(fdesc->llu->nbytes, NODE_COUNT_REG(fchan));
-
-	/* Determine type of channel and perform any special start-up here */
 
 	/* Write physical node address and start command to FDMA */
 	writel(fdesc->dma_desc.phys | CMD_STAT_CMD_START, CMD_STAT_REG(fchan));
@@ -286,7 +281,41 @@ void stm_fdma_hw_channel_resume(struct stm_fdma_chan *fchan)
 	spin_unlock_irqrestore(&fdev->lock, irqflags);
 }
 
+void stm_fdma_hw_channel_switch(struct stm_fdma_chan *fchan,
+		struct stm_fdma_desc *fdesc, struct stm_fdma_desc *tdesc,
+		int ioc)
+{
+	struct stm_fdma_device *fdev = fchan->fdev;
+	struct stm_fdma_desc *child;
+	unsigned long irqflags = 0;
+	unsigned long status;
+
+	spin_lock_irqsave(&fdev->lock, irqflags);
+
+	/* Set next pointer and ioc bit */
+	fdesc->llu->next = tdesc->dma_desc.phys;
+	fdesc->llu->control |= (ioc ? NODE_CONTROL_COMP_IRQ : 0);
+
+	/* Walk current descriptor nodes setting next pointer and ioc bit */
+	list_for_each_entry(child, &fdesc->llu_list, node) {
+		child->llu->next = tdesc->dma_desc.phys;
+		child->llu->control |= (ioc ? NODE_CONTROL_COMP_IRQ : 0);
+	}
+
+	/* Loop until processing the node to switch to */
+	do {
+		status = readl(CMD_STAT_REG(fchan)) & CMD_STAT_DATA_MASK;
+	} while (status != tdesc->dma_desc.phys);
+
+	spin_unlock_irqrestore(&fdev->lock, irqflags);
+}
+
 int stm_fdma_hw_channel_status(struct stm_fdma_chan *fchan)
 {
 	return readl(CMD_STAT_REG(fchan)) & CMD_STAT_STATUS_MASK;
+}
+
+int stm_fdma_hw_channel_error(struct stm_fdma_chan *fchan)
+{
+	return readl(CMD_STAT_REG(fchan)) & CMD_STAT_ERROR_MASK;
 }

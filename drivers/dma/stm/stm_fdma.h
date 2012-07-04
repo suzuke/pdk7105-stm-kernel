@@ -64,6 +64,7 @@ struct stm_fdma_dreq_router {
 #define STM_FDMA_NUM_CHANNELS	16
 
 #define STM_FDMA_IS_CYCLIC	1
+#define STM_FDMA_IS_PARKED	2
 
 enum stm_fdma_state {
 	STM_FDMA_STATE_IDLE,
@@ -73,6 +74,7 @@ enum stm_fdma_state {
 	STM_FDMA_STATE_PAUSED
 };
 
+struct stm_fdma_desc;
 struct stm_fdma_device;
 
 struct stm_fdma_chan {
@@ -91,11 +93,14 @@ struct stm_fdma_chan {
 	struct list_head desc_free;
 	struct list_head desc_queue;
 	struct list_head desc_active;
+	struct stm_fdma_desc *desc_park;
 
 	struct tasklet_struct tasklet_error;
 	struct tasklet_struct tasklet_complete;
 
 	dma_cookie_t last_completed;
+
+	void *extension;
 };
 
 
@@ -245,7 +250,24 @@ void stm_fdma_hw_channel_start(struct stm_fdma_chan *fchan,
 		struct stm_fdma_desc *fdesc);
 void stm_fdma_hw_channel_pause(struct stm_fdma_chan *fchan, int flush);
 void stm_fdma_hw_channel_resume(struct stm_fdma_chan *fchan);
+void stm_fdma_hw_channel_switch(struct stm_fdma_chan *fchan,
+		struct stm_fdma_desc *fdesc, struct stm_fdma_desc *tdesc,
+		int ioc);
 int stm_fdma_hw_channel_status(struct stm_fdma_chan *fchan);
+int stm_fdma_hw_channel_error(struct stm_fdma_chan *fchan);
+
+
+/*
+ * Extension API function prototypes
+ */
+
+#ifdef CONFIG_STM_FDMA_AUDIO
+int stm_fdma_audio_alloc_chan_resources(struct stm_fdma_chan *fchan);
+void stm_fdma_audio_free_chan_resources(struct stm_fdma_chan *fchan);
+#else
+#define stm_fdma_audio_alloc_chan_resources(f)	0
+#define stm_fdma_audio_free_chan_resources(f)	do { } while (0)
+#endif
 
 
 #endif /* __STM_FDMA_H__ */
