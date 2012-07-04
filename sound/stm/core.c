@@ -28,7 +28,6 @@
 #include <linux/mm.h>
 #include <linux/platform_device.h>
 #include <linux/bpa2.h>
-#include <linux/stm/stm-dma.h>
 #include <linux/stm/platform.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -188,52 +187,6 @@ int snd_stm_irq_request(struct platform_device *pdev,
 	 * lethal in concurrent audio environment, we want to have
 	 * it disabled for most of the time... */
 	disable_irq(*irq);
-
-	return 0;
-}
-
-int snd_stm_fdma_request(struct platform_device *pdev, int *channel)
-{
-	static const char *fdmac_id[] = { STM_DMAC_ID, NULL };
-	static const char *fdma_cap_lb[] = { STM_DMA_CAP_LOW_BW, NULL };
-	static const char *fdma_cap_hb[] = { STM_DMA_CAP_HIGH_BW, NULL };
-
-	*channel = request_dma_bycap(fdmac_id, fdma_cap_lb, pdev->name);
-	if (*channel < 0) {
-		*channel = request_dma_bycap(fdmac_id, fdma_cap_hb, pdev->name);
-		if (*channel < 0) {
-			snd_stm_printe("Failed to request_dma_bycap()==%d!\n",
-					*channel);
-			return -ENODEV;
-		}
-	}
-	snd_stm_printd(0, "FDMA channel: %d\n", *channel);
-
-	return 0;
-}
-
-
-int snd_stm_fdma_request_by_name(struct platform_device *pdev, int *channel,
-		const char *fdma_name)
-{
-	static const char *fdmac_id[] = { NULL, NULL };
-	static const char *fdma_cap_lb[] = { STM_DMA_CAP_LOW_BW, NULL };
-	static const char *fdma_cap_hb[] = { STM_DMA_CAP_HIGH_BW, NULL };
-
-	BUG_ON(!fdma_name);
-
-	fdmac_id[0] = fdma_name;
-
-	*channel = request_dma_bycap(fdmac_id, fdma_cap_lb, pdev->name);
-	if (*channel < 0) {
-		*channel = request_dma_bycap(fdmac_id, fdma_cap_hb, pdev->name);
-		if (*channel < 0) {
-			snd_stm_printe("Failed to request_dma_bycap()==%d!\n",
-					*channel);
-			return -ENODEV;
-		}
-	}
-	snd_stm_printd(0, "FDMA channel: %d\n", *channel);
 
 	return 0;
 }

@@ -30,7 +30,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/stm/pad.h>
-#include <linux/stm/stm-dma.h>
+#include <linux/stm/dma.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/control.h>
@@ -70,7 +70,6 @@ struct snd_stm_uniperif_reader {
 	void *base;
 	unsigned long fifo_phys_address;
 	unsigned int irq;
-	int fdma_channel;
 
 	/* Environment settings */
 	struct snd_pcm_hw_constraint_list channels_constraint;
@@ -81,12 +80,16 @@ struct snd_stm_uniperif_reader {
 	struct snd_stm_buffer *buffer;
 	struct snd_info_entry *proc_entry;
 	struct snd_pcm_substream *substream;
-	int fdma_max_transfer_size;
-	struct stm_dma_params *fdma_params;
-	struct stm_dma_req *fdma_request;
-
 	struct stm_pad_state *pads;
 
+	int dma_max_transfer_size;
+	struct stm_dma_paced_config dma_config;
+	struct dma_chan *dma_channel;
+	struct dma_async_tx_descriptor *dma_descriptor;
+	dma_cookie_t dma_cookie;
+
+	int buffer_bytes;
+	int period_bytes;
 
 	snd_stm_magic_field;
 };
@@ -161,42 +164,35 @@ static irqreturn_t snd_stm_uniperif_reader_irq_handler(int irq, void *dev_id)
 	return result;
 }
 
-static void snd_stm_uniperif_reader_callback_node_done(unsigned long param)
+static bool snd_stm_uniperif_reader_dma_filter_fn(struct dma_chan *chan,
+		void *fn_param)
 {
-	struct snd_stm_uniperif_reader *reader =
-			(struct snd_stm_uniperif_reader *)param;
-
-	snd_stm_printd(2, "%s(param=0x%lx)\n", __func__, param);
+	struct snd_stm_uniperif_reader *reader = fn_param;
+	struct stm_dma_paced_config *config = &reader->dma_config;
 
 	BUG_ON(!reader);
-	BUG_ON(!snd_stm_magic_valid(reader));
 
-	if (!get__AUD_UNIPERIF_CTRL__OPERATION(reader))
-		return;
+	if (reader->info->fdma_name)
+		if (!stm_dma_is_fdma_name(chan, reader->info->fdma_name))
+			return false;
 
-	snd_stm_printd(2, "Period elapsed ('%s')\n",
-			dev_name(reader->device));
+	/* Setup this channel for paced operation */
+	config->type = STM_DMA_TYPE_PACED;
+	config->dma_addr = reader->fifo_phys_address;
+	config->dreq_config.request_line = reader->info->fdma_request_line;
+	config->dreq_config.initiator = reader->info->fdma_initiator;
+	config->dreq_config.increment = 0;
+	config->dreq_config.hold_off = 0;
+	config->dreq_config.maxburst = 1;
+	config->dreq_config.buswidth = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	config->dreq_config.direction = DMA_DEV_TO_MEM;
 
-	snd_pcm_period_elapsed(reader->substream);
-}
+	chan->private = config;
 
-static void snd_stm_uniperif_reader_callback_node_error(unsigned long param)
-{
-	struct snd_stm_uniperif_reader *reader =
-			(struct snd_stm_uniperif_reader *)param;
-
-	snd_stm_printd(2, "%s(param=0x%lx)\n", __func__, param);
-
-	BUG_ON(!reader);
-	BUG_ON(!snd_stm_magic_valid(reader));
-
-	if (!get__AUD_UNIPERIF_CTRL__OPERATION(reader))
-		return;
-
-	snd_stm_printe("Error during FDMA transfer in reader '%s'!\n",
-		       dev_name(reader->device));
-
-	snd_pcm_stop(reader->substream, SNDRV_PCM_STATE_XRUN);
+	snd_stm_printd(0, "Uniperipheral reader '%s' using fdma '%s' channel "
+			"%d\n", reader->info->name, dev_name(chan->device->dev),
+			chan->chan_id);
+	return true;
 }
 
 static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
@@ -205,6 +201,7 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_reader *reader =
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
+	dma_cap_mask_t mask;
 
 	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
 
@@ -213,6 +210,20 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 	BUG_ON(!runtime);
 
 	snd_pcm_set_sync(substream);  /* TODO: ??? */
+
+	/* Set the dma channel capabilities we want */
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SLAVE, mask);
+	dma_cap_set(DMA_CYCLIC, mask);
+
+	/* Request a matching dma channel */
+	reader->dma_channel = dma_request_channel(mask,
+			snd_stm_uniperif_reader_dma_filter_fn, reader);
+
+	if (!reader->dma_channel) {
+		snd_stm_printe("Failed to request dma channel\n");
+		return -ENODEV;
+	}
 
 	/* Get attached converters handle */
 
@@ -253,7 +264,7 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 			&reader->channels_constraint);
 		if (result < 0) {
 			snd_stm_printe("Can't set channels constraint!\n");
-			return result;
+			goto error;
 		}
 	}
 
@@ -263,17 +274,17 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 			SNDRV_PCM_HW_PARAM_PERIODS);
 	if (result < 0) {
 		snd_stm_printe("Can't set periods constraint!\n");
-		return result;
+		goto error;
 	}
 
 	/* Make the period (so buffer as well) length (in bytes) a multiply
 	 * of a FDMA transfer bytes (which varies depending on channels
 	 * number and sample bytes) */
 	result = snd_stm_pcm_hw_constraint_transfer_bytes(runtime,
-			reader->fdma_max_transfer_size * 4);
+			reader->dma_max_transfer_size * 4);
 	if (result < 0) {
 		snd_stm_printe("Can't set buffer bytes constraint!\n");
-		return result;
+		goto error;
 	}
 
 	runtime->hw = snd_stm_uniperif_reader_hw;
@@ -282,6 +293,20 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 	reader->substream = substream;
 
 	return 0;
+
+error:
+	/* Release the dma channel */
+	if (reader->dma_channel) {
+		dma_release_channel(reader->dma_channel);
+		reader->dma_channel = NULL;
+	}
+
+	/* Release any converter */
+	if (reader->conv_group) {
+		snd_stm_conv_release_group(reader->conv_group);
+		reader->conv_group = NULL;
+	}
+	return result;
 }
 
 static int snd_stm_uniperif_reader_close(struct snd_pcm_substream *substream)
@@ -294,6 +319,13 @@ static int snd_stm_uniperif_reader_close(struct snd_pcm_substream *substream)
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
 
+	/* Release the dma channel */
+	if (reader->dma_channel) {
+		dma_release_channel(reader->dma_channel);
+		reader->dma_channel = NULL;
+	}
+
+	/* Release any converter */
 	if (reader->conv_group) {
 		snd_stm_conv_release_group(reader->conv_group);
 		reader->conv_group = NULL;
@@ -320,19 +352,34 @@ static int snd_stm_uniperif_reader_hw_free(struct snd_pcm_substream *substream)
 	/* This callback may be called more than once... */
 
 	if (snd_stm_buffer_is_allocated(reader->buffer)) {
-		/* Let the FDMA stop */
-		dma_wait_for_completion(reader->fdma_channel);
+		/* Terminate all DMA transfers */
+		dmaengine_terminate_all(reader->dma_channel);
 
 		/* Free buffer */
 		snd_stm_buffer_free(reader->buffer);
 
-		/* Free FDMA parameters & configuration */
-		dma_params_free(reader->fdma_params);
-		dma_req_free(reader->fdma_channel, reader->fdma_request);
-		kfree(reader->fdma_params);
+		/* Free dma ... */
 	}
 
 	return 0;
+}
+
+static void snd_stm_uniperif_reader_dma_callback(void *param)
+{
+	struct snd_stm_uniperif_reader *reader = param;
+
+	snd_stm_printd(2, "%s(param=%p)\n", __func__, param);
+
+	BUG_ON(!reader);
+	BUG_ON(!snd_stm_magic_valid(reader));
+
+	if (!get__AUD_UNIPERIF_CTRL__OPERATION(reader))
+		return;
+
+	snd_stm_printd(2, "Period elapsed ('%s')\n",
+			dev_name(reader->device));
+
+	snd_pcm_period_elapsed(reader->substream);
 }
 
 static int snd_stm_uniperif_reader_hw_params(
@@ -345,14 +392,7 @@ static int snd_stm_uniperif_reader_hw_params(
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int buffer_bytes, period_bytes, periods, frame_bytes, transfer_bytes;
 	unsigned int transfer_size;
-	struct stm_dma_req_config fdma_req_config = {
-		.rw        = REQ_CONFIG_READ,
-		.opcode    = REQ_CONFIG_OPCODE_4,
-		.increment = 0,
-		.hold_off  = 0,
-		.initiator = reader->info->fdma_initiator,
-	};
-	int i;
+	struct dma_slave_config slave_config;
 
 	snd_stm_printd(1, "%s(substream=0x%p, hw_params=0x%p)\n",
 		       __func__, substream, hw_params);
@@ -389,98 +429,41 @@ static int snd_stm_uniperif_reader_hw_params(
 	frame_bytes = snd_pcm_format_physical_width(params_format(hw_params)) *
 			params_channels(hw_params) / 8;
 	transfer_bytes = snd_stm_pcm_transfer_bytes(frame_bytes,
-			reader->fdma_max_transfer_size * 4);
+			reader->dma_max_transfer_size * 4);
 	transfer_size = transfer_bytes / 4;
 
 	snd_stm_printd(1, "FDMA request trigger limit set to %d.\n",
 			transfer_size);
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
-	BUG_ON(transfer_size > reader->fdma_max_transfer_size);
+	BUG_ON(transfer_size > reader->dma_max_transfer_size);
 	BUG_ON(transfer_size != 1 && transfer_size % 2 != 0);
 	BUG_ON(transfer_size > mask__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(
 			reader));
 	set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(
 		reader, transfer_size);
-		fdma_req_config.count = transfer_size;
+
 	snd_stm_printd(1, "FDMA transfer size set to %d.\n",
-			fdma_req_config.count);
+			transfer_size);
 
-	/* Configure FDMA transfer */
+	/* Save the buffer bytes and period bytes for when start dma */
+	reader->buffer_bytes = buffer_bytes;
+	reader->period_bytes = period_bytes;
 
-	reader->fdma_request = dma_req_config(reader->fdma_channel,
-			reader->info->fdma_request_line, &fdma_req_config);
-	if (!reader->fdma_request) {
-		snd_stm_printe("Can't configure FDMA pacing channel for reader"
-			       " '%s'!\n", dev_name(reader->device));
-		result = -EINVAL;
-		goto error_req_config;
-	}
+	/* Setup the dma configuration */
+	slave_config.direction = DMA_DEV_TO_MEM;
+	slave_config.src_addr = reader->fifo_phys_address;
+	slave_config.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	slave_config.src_maxburst = transfer_size;
 
-	reader->fdma_params =
-			kmalloc(sizeof(*reader->fdma_params) *
-			periods, GFP_KERNEL);
-	if (!reader->fdma_params) {
-		snd_stm_printe("Can't allocate %d bytes for FDMA parameters "
-				"list!\n", sizeof(*reader->fdma_params)
-				* periods);
-		result = -ENOMEM;
-		goto error_params_alloc;
-	}
-
-	snd_stm_printd(1, "Configuring FDMA transfer nodes:\n");
-
-	for (i = 0; i < periods; i++) {
-		dma_params_init(&reader->fdma_params[i], MODE_PACED,
-				STM_DMA_LIST_CIRC);
-
-		if (i > 0)
-			dma_params_link(&reader->fdma_params[i - 1],
-					(&reader->fdma_params[i]));
-
-		dma_params_comp_cb(&reader->fdma_params[i],
-				snd_stm_uniperif_reader_callback_node_done,
-				(unsigned long)reader,
-				STM_DMA_CB_CONTEXT_ISR);
-
-		dma_params_err_cb(&reader->fdma_params[i],
-				snd_stm_uniperif_reader_callback_node_error,
-				(unsigned long)reader,
-				STM_DMA_CB_CONTEXT_ISR);
-
-		/* Get callback every time a node is completed */
-		dma_params_interrupts(&reader->fdma_params[i],
-				STM_DMA_NODE_COMP_INT);
-
-		dma_params_DIM_0_x_1(&reader->fdma_params[i]);
-
-		dma_params_req(&reader->fdma_params[i],
-				reader->fdma_request);
-
-		snd_stm_printd(1, "- %d: %d bytes from 0x%08x\n", i,
-				period_bytes,
-				runtime->dma_addr + i * period_bytes);
-
-		dma_params_addrs(&reader->fdma_params[i],
-				reader->fifo_phys_address,
-				runtime->dma_addr + i * period_bytes,
-				period_bytes);
-	}
-
-	result = dma_compile_list(reader->fdma_channel,
-				reader->fdma_params, GFP_KERNEL);
-	if (result < 0) {
-		snd_stm_printe("Can't compile FDMA parameters for"
-			" reader '%s'!\n", dev_name(reader->device));
-		goto error_compile_list;
+	result = dmaengine_slave_config(reader->dma_channel, &slave_config);
+	if (result) {
+		snd_stm_printe("Failed to configure dma channel\n");
+		goto error_dma_config;
 	}
 
 	return 0;
 
-error_compile_list:
-	kfree(reader->fdma_params);
-error_params_alloc:
-	dma_req_free(reader->fdma_channel, reader->fdma_request);
-error_req_config:
+error_dma_config:
 	snd_stm_buffer_free(reader->buffer);
 error_buf_alloc:
 	return result;
@@ -507,9 +490,7 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 	else
 		format = DEFAULT_FORMAT;
 
-	/* Number of bits per subframe (which is one channel sample)
-	 * on input. */
-
+	/* Number of bits per subframe (i.e one channel sample) on input. */
 	switch (format & SND_STM_FORMAT__SUBFRAME_MASK) {
 	case SND_STM_FORMAT__SUBFRAME_32_BITS:
 		snd_stm_printd(1, "- 32 bits per subframe\n");
@@ -593,7 +574,6 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 
 static int snd_stm_uniperif_reader_start(struct snd_pcm_substream *substream)
 {
-	int result;
 	struct snd_stm_uniperif_reader *reader =
 			snd_pcm_substream_chip(substream);
 
@@ -603,36 +583,39 @@ static int snd_stm_uniperif_reader_start(struct snd_pcm_substream *substream)
 	BUG_ON(!snd_stm_magic_valid(reader));
 
 
-	/* reset pcm reader */
-
+	/* Reset pcm reader */
 	set__AUD_UNIPERIF_SOFT_RST__SOFT_RST(reader);
 	while (get__AUD_UNIPERIF_SOFT_RST__SOFT_RST(reader))
 		udelay(5);
 
-	/* Launch FDMA transfer */
-
-	result = dma_xfer_list(reader->fdma_channel, reader->fdma_params);
-	if (result != 0) {
-		snd_stm_printe("Can't launch FDMA transfer for reader '%s'!\n",
-				dev_name(reader->device));
-		return -EINVAL;
+	/* Prepare the dma descriptor */
+	BUG_ON(!reader->dma_channel->device->device_prep_dma_cyclic);
+	reader->dma_descriptor =
+		reader->dma_channel->device->device_prep_dma_cyclic(
+			reader->dma_channel, substream->runtime->dma_addr,
+			reader->buffer_bytes, reader->period_bytes,
+			DMA_DEV_TO_MEM);
+	if (!reader->dma_descriptor) {
+		snd_stm_printe("Failed to prepare dma descriptor\n");
+		return -ENOMEM;
 	}
-	while (dma_get_status(reader->fdma_channel) !=
-			DMA_CHANNEL_STATUS_RUNNING)
-		udelay(5);
+
+	/* Set the dma callback */
+	reader->dma_descriptor->callback = snd_stm_uniperif_reader_dma_callback;
+	reader->dma_descriptor->callback_param = reader;
+
+	/* Launch FDMA transfer */
+	reader->dma_cookie = dmaengine_submit(reader->dma_descriptor);
 
 	/* Enable reader interrupts (and clear possible stalled ones) */
-
 	enable_irq(reader->irq);
 	set__AUD_UNIPERIF_ITS_BCLR__FIFO_ERROR(reader);
 	set__AUD_UNIPERIF_ITM_BSET__FIFO_ERROR(reader);
 
 	/* Launch the reader */
-
 	set__AUD_UNIPERIF_CTRL__OPERATION_PCM_DATA(reader);
 
 	/* Wake up & unmute converter */
-
 	if (reader->conv_group) {
 		snd_stm_conv_enable(reader->conv_group,
 				0, substream->runtime->channels - 1);
@@ -653,23 +636,19 @@ static int snd_stm_uniperif_reader_stop(struct snd_pcm_substream *substream)
 	BUG_ON(!snd_stm_magic_valid(reader));
 
 	/* Mute & shutdown converter */
-
 	if (reader->conv_group) {
 		snd_stm_conv_mute(reader->conv_group);
 		snd_stm_conv_disable(reader->conv_group);
 	}
 
 	/* Disable interrupts */
-
 	set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(reader);
 	disable_irq_nosync(reader->irq);
 
 	/* Stop FDMA transfer */
-
-	dma_stop_channel(reader->fdma_channel);
+	dmaengine_terminate_all(reader->dma_channel);
 
 	/* Stop pcm reader */
-
 	set__AUD_UNIPERIF_CTRL__OPERATION_OFF(reader);
 
 	return 0;
@@ -699,6 +678,8 @@ static snd_pcm_uframes_t snd_stm_uniperif_reader_pointer(
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int residue, hwptr;
 	snd_pcm_uframes_t pointer;
+	struct dma_tx_state state;
+	enum dma_status status;
 
 	snd_stm_printd(2, "%s(substream=0x%p)\n", __func__, substream);
 
@@ -706,10 +687,14 @@ static snd_pcm_uframes_t snd_stm_uniperif_reader_pointer(
 	BUG_ON(!snd_stm_magic_valid(reader));
 	BUG_ON(!runtime);
 
-	residue = get_dma_residue(reader->fdma_channel);
+	status = reader->dma_channel->device->device_tx_status(
+			reader->dma_channel,
+			reader->dma_cookie, &state);
+
+	residue = state.residue;
+
 	hwptr = (runtime->dma_bytes - residue) % runtime->dma_bytes;
 	pointer = bytes_to_frames(runtime, hwptr);
-
 
 	snd_stm_printd(2, "FDMA residue value is %i and buffer size is %u"
 			" bytes...\n", residue, runtime->dma_bytes);
@@ -882,14 +867,7 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 		goto error_irq_request;
 	}
 
-	result = snd_stm_fdma_request_by_name(pdev, &reader->fdma_channel,
-			reader->info->fdma_name);
-	if (result < 0) {
-		snd_stm_printe("FDMA request failed!\n");
-		goto error_fdma_request;
-	}
-
-	reader->fdma_max_transfer_size = 40;
+	reader->dma_max_transfer_size = 40;
 
 	/* Get reader capabilities */
 
@@ -968,8 +946,6 @@ error_buffer_init:
 error_pcm:
 	snd_device_free(card, reader);
 error_device:
-	snd_stm_fdma_release(reader->fdma_channel);
-error_fdma_request:
 	snd_stm_irq_release(reader->irq, reader);
 error_irq_request:
 	snd_stm_memory_release(reader->mem_region, reader->base);
@@ -994,7 +970,6 @@ static int snd_stm_uniperif_reader_remove(struct platform_device *pdev)
 
 	snd_stm_conv_unregister_source(reader->conv_source);
 	snd_stm_buffer_dispose(reader->buffer);
-	snd_stm_fdma_release(reader->fdma_channel);
 	snd_stm_irq_release(reader->irq, reader);
 	snd_stm_memory_release(reader->mem_region, reader->base);
 

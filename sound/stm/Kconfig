@@ -2,8 +2,9 @@ menuconfig SND_STM
 	tristate "STMicroelectronics SoCs support"
 	depends on SND
 	depends on STM_DRIVERS
-	select STM_DMA
 	select SND_PCM
+	select DMADEVICES
+	select STM_FDMA
 	help
 		Say Y here for ALSA support on the STMicroelectronics SoCs.
 
@@ -36,6 +37,7 @@ config SND_STM_SPDIF_PLAYER
 config SND_STM_UNIPERIF_PLAYER
 	tristate
 	depends on SND_STM
+	select STM_FDMA_AUDIO
 	default n
 
 config SND_STM_UNIPERIF_READER
