@@ -157,4 +157,11 @@ config STM_AMBA_BRIDGE
         depends on STM_DRIVERS
 	default y
 
+config STM_IRQ_MUX
+	depends on STM_DRIVERS
+	bool "STM IRQ-Mux support"
+	default n
+	---help---
+	  Enable this option to support IRQ-MUX mapping in the kernel.
+
 endmenu

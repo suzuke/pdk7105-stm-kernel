@@ -28,6 +28,8 @@ obj-$(CONFIG_PM)			+= pm_notify.o
 obj-$(CONFIG_STM_PCI_EMISS)		+= pci-emiss.o
 obj-$(CONFIG_STM_PCIE)			+= pcie.o
 
+obj-$(CONFIG_STM_IRQ_MUX)		+= irqmux.o
+
 obj-$(CONFIG_CPU_SUBTYPE_FLI7610)	+= fli7610.o fli7610_clock.o fli7610_audio.o pio-control.o \
 					   fli7610_usb.o fli7610_comms.o mpe41_devices.o
 obj-$(CONFIG_CPU_SUBTYPE_STX7108)	+= stx7108.o stx7108_clock.o stx7108_audio.o stx7108_comms.o stx7108_hispeed.o stx7108_pci.o pio-control.o

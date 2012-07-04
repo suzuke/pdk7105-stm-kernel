@@ -602,6 +602,17 @@ struct stm_plat_ilc3_data {
 	int disable_wakeup:1;
 };
 
+/*** IRQ-MUX data ***/
+
+struct stm_plat_irq_mux_data {
+	char *name;
+	unsigned short num_input;
+	unsigned char num_output;
+	int (*custom_mapping)(struct stm_plat_irq_mux_data const *pdata,
+			      long input, long *enable,
+			      long *output, long *inv);
+};
+
 /*
  * build_pad_claim and build_pad_release (generated when compiling for
  * each driver) are two simple macros can be invoked by STM drivers to claim
