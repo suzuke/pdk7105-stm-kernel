@@ -79,4 +79,3 @@ obj-$(CONFIG_SERIAL_XILINX_PS_UART) += xilinx_uartps.o
 obj-$(CONFIG_SERIAL_SIRFSOC) += sirfsoc_uart.o
 obj-$(CONFIG_SERIAL_AR933X)   += ar933x_uart.o
 obj-$(CONFIG_SERIAL_STM_ASC) += stm-asc.o
-obj-$(CONFIG_SERIAL_STM_ASC_FDMA) += stm-asc-fdma.o

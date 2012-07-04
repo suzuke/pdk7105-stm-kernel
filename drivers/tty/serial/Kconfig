@@ -1361,11 +1361,4 @@ config SERIAL_STM_ASC_CONSOLE
 	depends on SERIAL_STM_ASC=y
 	default y
 	select SERIAL_CORE_CONSOLE
-
-config SERIAL_STM_ASC_FDMA
-	bool "Support FDMA on ST ASC"
-	depends on SERIAL_STM_ASC && STM_DMA
-	help
-	  This enables on-chip FDMA to be used with the Asychronous Serial
-	  Controller on some STMicroelectronics system-on-chip devices.
 endmenu
