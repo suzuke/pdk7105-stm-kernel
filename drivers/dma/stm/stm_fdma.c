@@ -1365,7 +1365,7 @@ static int stm_fdma_pm_suspend(struct device *dev)
 	int result;
 
 	/* We can only suspend after firmware has been loaded */
-	if (!fdev->fw_loaded) {
+	if (fdev->fw_state != STM_FDMA_FW_STATE_LOADED) {
 		dev_err(fdev->dev, "Cannot freeze as firmware never loaded\n");
 		return 0;
 	}
@@ -1394,7 +1394,7 @@ static int stm_fdma_pm_resume(struct device *dev)
 	int result;
 
 	/* We can only resume after firmware has been loaded */
-	if (!fdev->fw_loaded) {
+	if (fdev->fw_state != STM_FDMA_FW_STATE_LOADED) {
 		dev_err(fdev->dev, "Cannot resume as firmware never loaded\n");
 		return 0;
 	}
@@ -1419,7 +1419,7 @@ static int stm_fdma_pm_freeze(struct device *dev)
 	int result;
 
 	/* We can only freeze after firmware has been loaded */
-	if (!fdev->fw_loaded) {
+	if (fdev->fw_state != STM_FDMA_FW_STATE_LOADED) {
 		dev_err(fdev->dev, "Cannot freeze as firmware never loaded\n");
 		return 0;
 	}
@@ -1448,7 +1448,7 @@ static int stm_fdma_pm_restore(struct device *dev)
 	int result;
 
 	/* We can only restore after firmware has been loaded */
-	if (!fdev->fw_loaded) {
+	if (fdev->fw_state != STM_FDMA_FW_STATE_LOADED) {
 		dev_err(fdev->dev, "Cannot restore as firmware never loaded\n");
 		return 0;
 	}

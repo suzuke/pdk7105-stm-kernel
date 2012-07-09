@@ -168,7 +168,7 @@ static int stm_fdma_fw_request(struct stm_fdma_device *fdev)
 			hw_major, hw_minor, fw_major, fw_minor);
 
 	/* Indicate firmware loaded and save pointer to ELF for future reload */
-	fdev->fw_loaded = 1;
+	fdev->fw_state = STM_FDMA_FW_STATE_LOADED;
 	fdev->fw_elfinfo = elfinfo;
 
 	/* Wake up the wait queue */
@@ -184,7 +184,7 @@ error_elf_load:
 error_elf_init:
 	release_firmware(fw);
 error_no_fw:
-	fdev->fw_loaded = 0;
+	fdev->fw_state = STM_FDMA_FW_STATE_ERROR;
 	return result;
 }
 
@@ -194,23 +194,35 @@ int stm_fdma_fw_check(struct stm_fdma_device *fdev)
 
 	spin_lock_irqsave(&fdev->lock, irqflags);
 
-	switch (fdev->fw_loaded) {
-	case 0:
-		/* Firmware is loading */
-		fdev->fw_loaded = -1;
+	switch (fdev->fw_state) {
+	case STM_FDMA_FW_STATE_INIT:
+		/* Firmware is not loaded, so start the process */
+		fdev->fw_state = STM_FDMA_FW_STATE_LOADING;
 		spin_unlock_irqrestore(&fdev->lock, irqflags);
 		return stm_fdma_fw_request(fdev);
 
-	case 1:
+	case STM_FDMA_FW_STATE_LOADING:
+		/* Firmware is loading, so wait until state changes */
+		spin_unlock_irqrestore(&fdev->lock, irqflags);
+		wait_event_interruptible(fdev->fw_load_q,
+				fdev->fw_state != STM_FDMA_FW_STATE_LOADING);
+		return fdev->fw_state == STM_FDMA_FW_STATE_LOADED ? 0 : -ENODEV;
+
+	case STM_FDMA_FW_STATE_LOADED:
 		/* Firmware has loaded */
 		spin_unlock_irqrestore(&fdev->lock, irqflags);
 		return 0;
 
-	default:
-		/* Firmware is assumed to be loading, so wait */
+	case STM_FDMA_FW_STATE_ERROR:
+		/* Firmware error */
 		spin_unlock_irqrestore(&fdev->lock, irqflags);
-		wait_event_interruptible(fdev->fw_load_q, fdev->fw_loaded == 1);
-		return fdev->fw_loaded ? 0 : -ENODEV;
+		return -ENODEV;
+
+	default:
+		spin_unlock_irqrestore(&fdev->lock, irqflags);
+		dev_err(fdev->dev, "Invalid firmware state: %d\n",
+			fdev->fw_state);
+		return -ENODEV;
 	}
 
 	return 0;

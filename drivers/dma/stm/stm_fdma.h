@@ -34,10 +34,11 @@
 #define STM_FDMA_FW_NAME_LEN	23
 #define STM_FDMA_FW_SEGMENTS	2
 
-struct stm_fdma_fw_segment {
-	void *data;
-	unsigned long size;
-	unsigned long offset;
+enum stm_fdma_fw_state {
+	STM_FDMA_FW_STATE_INIT,
+	STM_FDMA_FW_STATE_LOADING,
+	STM_FDMA_FW_STATE_LOADED,
+	STM_FDMA_FW_STATE_ERROR
 };
 
 
@@ -122,7 +123,7 @@ struct stm_fdma_device {
 
 	char fw_name[STM_FDMA_FW_NAME_LEN];
 	struct ELF32_info *fw_elfinfo;
-	int fw_loaded;
+	enum stm_fdma_fw_state fw_state;
 	wait_queue_head_t fw_load_q;
 
 	struct stm_fdma_chan ch_list[STM_FDMA_NUM_CHANNELS];
