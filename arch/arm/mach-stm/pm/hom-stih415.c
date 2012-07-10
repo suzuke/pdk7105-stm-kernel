@@ -33,6 +33,11 @@
 
 #define SBC_MBX
 
+#define SBC_GPIO_PORT(_nr)	(0xfe610000 + (_nr) * 0x1000)
+#define LMI_RET_GPIO_PORT		4
+#define LMI_RET_GPIO_PIN		4
+#define LMI_RETENTION_PIN	stm_gpio(LMI_RET_GPIO_PORT, LMI_RET_GPIO_PIN)
+
 static unsigned long stxh415_hom_table[] __cacheline_aligned = {
 /*
  * Now execute the real operations
@@ -40,6 +45,12 @@ static unsigned long stxh415_hom_table[] __cacheline_aligned = {
 synopsys_ddr32_in_hom(STIH415_MPE_DDR0_PCTL_BASE),
 synopsys_ddr32_in_hom(STIH415_MPE_DDR1_PCTL_BASE),
 
+/*
+ * Enable retention mode gpio
+ *
+ */
+POKE32(SBC_GPIO_PORT(LMI_RET_GPIO_PORT) + STM_GPIO_REG_CLR_POUT,
+	1 << LMI_RET_GPIO_PIN),
 /*
  * TO BE DONE:
  * Notify 'Ready for Power-off' via MBX
@@ -79,6 +90,17 @@ static struct stm_mem_hibernation stxh415_hom = {
 
 static int __init hom_stxh415_setup(void)
 {
+	int ret;
+
+	ret = gpio_request(LMI_RETENTION_PIN, "LMI retention mode");
+	if (ret) {
+		pr_err("[STM]: [PM]: [HoM]: GPIO for retention mode"
+			"not acquired\n");
+		return ret;
+	};
+
+	gpio_direction_output(LMI_RETENTION_PIN, 1);
+
 	stxh415_hom.early_console_base = (void *)ioremap(
 		stm_asc_configured_devices[stm_asc_console_device]
 			->resource[0].start, 0x1000);
@@ -87,7 +109,12 @@ static int __init hom_stxh415_setup(void)
 			stm_asc_console_device,
 			stxh415_hom.early_console_base);
 
-	return stm_hom_register(&stxh415_hom);
+	ret = stm_hom_register(&stxh415_hom);
+	if (ret) {
+		gpio_free(LMI_RETENTION_PIN);
+		pr_err("[STM][HoM]: Error: on stm_hom_register\n");
+	}
+	return ret;
 }
 
 module_init(hom_stxh415_setup);
