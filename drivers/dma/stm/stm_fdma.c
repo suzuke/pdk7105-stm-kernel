@@ -591,6 +591,13 @@ static struct dma_async_tx_descriptor *stm_fdma_prep_slave_sg(
 		fdesc->llu->nbytes = sg_dma_len(sg);
 
 		switch (direction) {
+		case DMA_MEM_TO_MEM:
+			fdesc->llu->control |= NODE_CONTROL_SRC_INCR;
+			fdesc->llu->control |= NODE_CONTROL_DST_INCR;
+			fdesc->llu->saddr = sg_dma_address(sg);
+			fdesc->llu->daddr = fchan->dma_addr;
+			break;
+
 		case DMA_DEV_TO_MEM:
 			fdesc->llu->control |= NODE_CONTROL_SRC_STATIC;
 			fdesc->llu->control |= NODE_CONTROL_DST_INCR;
@@ -868,6 +875,10 @@ static int stm_fdma_slave_config(struct stm_fdma_chan *fchan,
 
 	/* Save the supplied dma address */
 	switch (config->direction) {
+	case DMA_MEM_TO_MEM:
+		dma_addr = config->dst_addr;
+		break;
+
 	case DMA_DEV_TO_MEM:
 		dma_addr = config->src_addr;
 		break;
