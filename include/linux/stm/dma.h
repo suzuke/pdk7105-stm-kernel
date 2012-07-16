@@ -40,6 +40,7 @@ struct stm_dma_config {
 
 struct stm_dma_dreq_config {
 	u32 request_line;
+	u32 direct_conn;
 	u32 initiator;
 	u32 increment;
 	u32 data_swap;

@@ -59,15 +59,17 @@ struct stm_dma_dreq_config *stm_fdma_dreq_alloc(struct stm_fdma_chan *fchan,
 		struct stm_dma_dreq_config *config)
 {
 	struct stm_fdma_device *fdev = fchan->fdev;
-	struct stm_fdma_dreq_router *router;
+	struct stm_fdma_dreq_router *router = NULL;
 	struct stm_dma_dreq_config *dreq = NULL;
 	int request_line;
 	int result;
 
 	spin_lock(&fdev->dreq_lock);
 
-	/* Get the dreq xbar router */
-	router = stm_fdma_dreq_get_router(fdev);
+	/* If not explicit directly connected, get any dreq xbar router */
+	if (!config->direct_conn)
+		router = stm_fdma_dreq_get_router(fdev);
+
 	if (router) {
 		dev_dbg(fdev->dev, "Request line routed through xbar\n");
 
