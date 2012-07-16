@@ -106,6 +106,11 @@ static inline int stm_dma_is_fdma_name(struct dma_chan *chan, const char *name)
 	return !strcmp(dev_name(chan->device->dev), name);
 }
 
+static inline int stm_dma_is_fdma(struct dma_chan *chan, int id)
+{
+	return (chan->dev->dev_id == id);
+}
+
 static inline int stm_dma_is_fdma_channel(struct dma_chan *chan, int id)
 {
 	return (chan->chan_id == id);
