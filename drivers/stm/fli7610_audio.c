@@ -32,7 +32,7 @@ static struct platform_device fli7610_snd_conv_gpio_1 = {
 	.dev.platform_data = &(struct snd_stm_conv_gpio_info) {
 		.group = "headphones",
 
-		.source_bus_id = "snd_uniperif_player.2", /* HP */
+		.source_bus_id = "snd_uni_player.2", /* HP */
 		.channel_from = 0,
 		.channel_to = 1,
 		.format = SND_STM_FORMAT__I2S |
@@ -53,7 +53,7 @@ static struct platform_device fli7610_snd_conv_dummy_0 = {
 	.dev.platform_data = &(struct snd_stm_conv_dummy_info) {
 		.group = "dummy",
 
-		.source_bus_id = "snd_uniperif_player.1", /* AUX */
+		.source_bus_id = "snd_uni_player.1", /* AUX */
 		.channel_from = 0,
 		.channel_to = 1,
 		.format = SND_STM_FORMAT__I2S |
@@ -68,7 +68,7 @@ static struct platform_device fli7610_snd_conv_dummy_1 = {
 	.dev.platform_data = &(struct snd_stm_conv_dummy_info) {
 		.group = "dummy",
 
-		.source_bus_id = "snd_uniperif_player.3", /* AV Out */
+		.source_bus_id = "snd_uni_player.3", /* AV Out */
 		.channel_from = 0,
 		.channel_to = 1,
 		.format = SND_STM_FORMAT__I2S |
@@ -83,7 +83,7 @@ static struct platform_device stih415_conv_biphase = {
 	.name = "snd_conv_biphase",
 	.id = -1,
 	.dev.platform_data = &(struct snd_stm_conv_biphase_info) {
-		.source_bus_id = "snd_uniperif_player.4", /* SPDIF */
+		.source_bus_id = "snd_uni_player.4", /* SPDIF */
 		.channel_from = 0,
 		.channel_to = 1,
 		.enable = { TAE_SYSCONF(161), 31, 31},
@@ -101,10 +101,9 @@ static struct platform_device fli7610_conv_spdif_rx = {
 		FLI7610_RESOURCE_IRQ(175),
 	},
 	.dev.platform_data = &(struct snd_stm_conv_spdif_rx_info) {
-		.source_bus_id = "snd_uniperif_reader.5", /* SPDIF RX */
+		.source_bus_id = "snd_uni_reader.5", /* SPDIF RX */
 		.channel_from = 0,
 		.channel_to = 1,
-		.clock_name = "CLK_SPDIF_RX",
 		.clock_rate = 48000,
 	},
 };
@@ -116,7 +115,6 @@ static struct snd_stm_uniperif_player_info fli7610_uni_player_0_info = {
 	.ver = 1,
 	.card_device = 0,
 	.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
-	.clock_name = "CLK_256FS_FREE_RUN",
 	.channels = 8,
 	.fdma_name = "stm-fdma.3",
 	.fdma_initiator = 0,
@@ -138,7 +136,7 @@ static struct stm_pad_config fli7610_uni_player_0_pad_config = {
 };
 
 static struct platform_device fli7610_uni_player_0 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 0,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -153,7 +151,6 @@ static struct snd_stm_uniperif_player_info fli7610_uni_player_1_info = {
 	.ver = 1,
 	.card_device = 1,
 	.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
-	.clock_name = "CLK_256FS_FREE_RUN",
 	.channels = 2,
 	.fdma_name = "stm-fdma.3",
 	.fdma_initiator = 0,
@@ -172,7 +169,7 @@ static struct stm_pad_config fli7610_uni_player_1_pad_config = {
 };
 
 static struct platform_device fli7610_uni_player_1 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 1,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -183,7 +180,7 @@ static struct platform_device fli7610_uni_player_1 = {
 };
 
 static struct platform_device fli7610_uni_player_2 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 2,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -195,7 +192,6 @@ static struct platform_device fli7610_uni_player_2 = {
 		.ver = 1,
 		.card_device = 2,
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
-		.clock_name = "CLK_256FS_FREE_RUN",
 		.channels = 2,
 		.fdma_name = "stm-fdma.3",
 		.fdma_initiator = 0,
@@ -204,7 +200,7 @@ static struct platform_device fli7610_uni_player_2 = {
 };
 
 static struct platform_device fli7610_uni_player_3 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 3,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -216,7 +212,6 @@ static struct platform_device fli7610_uni_player_3 = {
 		.ver = 1,
 		.card_device = 3,
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
-		.clock_name = "CLK_256FS_FREE_RUN",
 		.channels = 2,
 		.fdma_name = "stm-fdma.3",
 		.fdma_initiator = 0,
@@ -228,7 +223,6 @@ static struct snd_stm_uniperif_player_info fli7610_uni_player_4_info = {
 	.name = "Uni Player #4 (SPDIF)",
 	.ver = 1,
 	.card_device = 4,
-	.clock_name = "CLK_256FS_FREE_RUN",
 	.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF,
 	.channels = 2,
 	.fdma_name = "stm-fdma.3",
@@ -245,7 +239,7 @@ static struct stm_pad_config fli7610_uni_player_4_pad_config = {
 };
 
 static struct platform_device fli7610_uni_player_4 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 4,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -276,7 +270,7 @@ static struct stm_pad_config fli7610_uni_reader_0_pad_config = {
 };
 
 static struct platform_device fli7610_uni_reader_0 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 5,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -287,7 +281,7 @@ static struct platform_device fli7610_uni_reader_0 = {
 };
 
 static struct platform_device fli7610_uni_reader_1 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 6,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -306,7 +300,7 @@ static struct platform_device fli7610_uni_reader_1 = {
 };
 
 static struct platform_device fli7610_uni_reader_2 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 7,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -325,7 +319,7 @@ static struct platform_device fli7610_uni_reader_2 = {
 };
 
 static struct platform_device fli7610_uni_reader_3 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 8,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -344,7 +338,7 @@ static struct platform_device fli7610_uni_reader_3 = {
 };
 
 static struct platform_device fli7610_uni_reader_4 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 9,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -363,7 +357,7 @@ static struct platform_device fli7610_uni_reader_4 = {
 };
 
 static struct platform_device fli7610_uni_reader_5 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 10,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -382,7 +376,7 @@ static struct platform_device fli7610_uni_reader_5 = {
 };
 
 static struct platform_device fli7610_uni_reader_6 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 11,
 	.num_resources = 2,
 	.resource = (struct resource []) {

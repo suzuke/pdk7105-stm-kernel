@@ -453,12 +453,8 @@ static int snd_stm_conv_spdif_rx_probe(struct platform_device *pdev)
 		}
 	}
 
-	BUG_ON(!info->clock_name);
-	snd_stm_printd(0, "Converter connected to clock '%s'.\n",
-			info->clock_name);
-
-	conv->clock = clk_get(conv->device, info->clock_name);
-	if (!conv->clock) {
+	conv->clock = clk_get(conv->device, "spdif_rx_clk");
+	if (!conv->clock || IS_ERR(conv->clock)) {
 		snd_stm_printe("Failed to get clock\n");
 		return -EINVAL;
 	}

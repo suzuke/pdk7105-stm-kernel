@@ -980,7 +980,7 @@ static int snd_stm_uniperif_reader_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver snd_stm_uniperif_reader_driver = {
-	.driver.name = "snd_uniperif_reader",
+	.driver.name = "snd_uni_reader",
 	.probe = snd_stm_uniperif_reader_probe,
 	.remove = snd_stm_uniperif_reader_remove,
 };

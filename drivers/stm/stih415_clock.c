@@ -67,5 +67,15 @@ int __init plat_clk_alias_init(void)
 
 	/* ETH-1 */
 	clk_add_alias("stmmac_clk", NULL, "CLKS_ICN_REG_0", NULL);
+
+	/* Uniperipheral player clocks */
+	clk_add_alias("uni_player_clk", "snd_uni_player.0", "CLKS_B_PCM_FSYN0",
+		NULL);
+	clk_add_alias("uni_player_clk", "snd_uni_player.1", "CLKS_B_PCM_FSYN1",
+		NULL);
+	clk_add_alias("uni_player_clk", "snd_uni_player.2", "CLKS_B_PCM_FSYN2",
+		NULL);
+	clk_add_alias("uni_player_clk", "snd_uni_player.3", "CLKS_B_PCM_FSYN3",
+		NULL);
 	return 0;
 }

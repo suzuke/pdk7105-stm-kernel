@@ -249,7 +249,6 @@ struct snd_stm_conv_spdif_rx_info {
 	const char *source_bus_id;
 	int channel_from, channel_to;
 
-	const char *clock_name;
 	unsigned long clock_rate;
 
 	struct stm_pad_config *pad_config;
@@ -335,8 +334,6 @@ struct snd_stm_uniperif_player_info {
 
 	int card_device;
 	enum snd_stm_uniperif_player_type player_type;
-
-	const char *clock_name;
 
 	unsigned int channels;
 

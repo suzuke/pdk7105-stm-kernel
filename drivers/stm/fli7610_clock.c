@@ -54,6 +54,12 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("usb_phy_clk", NULL, "USB2_TRIPLE_PHY", NULL);
 	clk_add_alias("usb_ic_clk", NULL, "CLKA_IC_200", NULL);
 
+	/* Uniperipheral players all use the same clock */
+	clk_add_alias("uni_player_clk", NULL, "CLK_256FS_FREE_RUN", NULL);
+
+	/* SPDIF RX clock */
+	clk_add_alias("spdif_rx_clk", NULL, "CLK_SPDIF_RX", NULL);
+
 	return 0;
 }
 

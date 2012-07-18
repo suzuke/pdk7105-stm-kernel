@@ -2028,13 +2028,8 @@ static int snd_stm_uniperif_player_register(struct snd_device *snd_device)
 
 	/* Get frequency synthesizer channel */
 
-	BUG_ON(!player->info->clock_name);
-	snd_stm_printd(0, "Player connected to clock '%s'.\n",
-			player->info->clock_name);
-	player->clock = snd_stm_clk_get(player->device,
-			player->info->clock_name, snd_device->card,
-			player->info->card_device);
-
+	player->clock = snd_stm_clk_get(player->device, "uni_player_clk",
+			snd_device->card, player->info->card_device);
 	if (!player->clock || IS_ERR(player->clock)) {
 		snd_stm_printe("Failed to get a clock for '%s'!\n",
 			dev_name(player->device));
@@ -2325,7 +2320,7 @@ static int snd_stm_uniperif_player_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver snd_stm_uniperif_player_driver = {
-	.driver.name = "snd_uniperif_player",
+	.driver.name = "snd_uni_player",
 	.probe = snd_stm_uniperif_player_probe,
 	.remove = snd_stm_uniperif_player_remove,
 };

@@ -28,7 +28,7 @@ static struct platform_device stih415_conv_dac = {
 	.name = "snd_conv_dac_sc",
 	.id = -1,
 	.dev.platform_data = &(struct snd_stm_conv_dac_sc_info) {
-		.source_bus_id = "snd_uniperif_player.2", /* DAC */
+		.source_bus_id = "snd_uni_player.2", /* DAC */
 		.channel_from = 0,
 		.channel_to = 1,
 		.nrst = { SYSCONF(329), 0, 0 },
@@ -46,7 +46,7 @@ static struct platform_device stih415_conv_biphase = {
 	.name = "snd_conv_biphase",
 	.id = -1,
 	.dev.platform_data = &(struct snd_stm_conv_biphase_info) {
-		.source_bus_id = "snd_uniperif_player.3",
+		.source_bus_id = "snd_uni_player.3",
 		.channel_from = 0,
 		.channel_to = 1,
 		.enable = { SYSCONF(331), 6, 6 },
@@ -56,7 +56,7 @@ static struct platform_device stih415_conv_biphase = {
 /* Uniperipheral players */
 
 static struct platform_device stih415_uni_player_0 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 0,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -68,7 +68,6 @@ static struct platform_device stih415_uni_player_0 = {
 		.ver = 1,
 		.card_device = 0,
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_HDMI,
-		.clock_name = "CLKS_B_PCM_FSYN0",
 		.channels = 8,
 		.parking_enabled = 1,
 		.fdma_name = "stm-fdma.3",
@@ -82,7 +81,6 @@ static struct snd_stm_uniperif_player_info stih415_uni_player_1_info = {
 	.ver = 1,
 	.card_device = 1,
 	.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
-	.clock_name = "CLKS_B_PCM_FSYN1",
 	.channels = 8,
 	.fdma_name = "stm-fdma.3",
 	.fdma_initiator = 0,
@@ -107,7 +105,7 @@ static struct stm_pad_config stih415_uni_player_1_pad_config = {
 };
 
 static struct platform_device stih415_uni_player_1 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 1,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -118,7 +116,7 @@ static struct platform_device stih415_uni_player_1 = {
 };
 
 static struct platform_device stih415_uni_player_2 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 2,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -130,7 +128,6 @@ static struct platform_device stih415_uni_player_2 = {
 		.ver = 1,
 		.card_device = 2,
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
-		.clock_name = "CLKS_B_PCM_FSYN2",
 		.channels = 2,
 		.fdma_name = "stm-fdma.3",
 		.fdma_initiator = 0,
@@ -142,7 +139,6 @@ static struct snd_stm_uniperif_player_info stih415_uni_player_3_info = {
 	.name = "Uni Player #3 (SPDIF)",
 	.ver = 1,
 	.card_device = 3,
-	.clock_name = "CLKS_B_PCM_FSYN3",
 	.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF,
 	.channels = 2,
 	.fdma_name = "stm-fdma.3",
@@ -159,7 +155,7 @@ static struct stm_pad_config stih415_uni_player_3_pad_config = {
 };
 
 static struct platform_device stih415_uni_player_3 = {
-	.name = "snd_uniperif_player",
+	.name = "snd_uni_player",
 	.id = 3,
 	.num_resources = 2,
 	.resource = (struct resource []) {
@@ -193,7 +189,7 @@ static struct stm_pad_config stih415_uni_reader_0_pad_config = {
 };
 
 static struct platform_device stih415_uni_reader_0 = {
-	.name = "snd_uniperif_reader",
+	.name = "snd_uni_reader",
 	.id = 4,
 	.num_resources = 2,
 	.resource = (struct resource []) {
