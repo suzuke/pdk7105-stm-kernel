@@ -179,11 +179,15 @@ static int sdhci_stm_suspend(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	int ret = sdhci_suspend_host(host);
+
+	if (ret)
+		goto out;
 
 	if (pltfm_host->clk)
 		clk_disable(pltfm_host->clk);
-
-	return sdhci_suspend_host(host);
+out:
+	return ret;
 }
 
 static int sdhci_stm_resume(struct device *dev)
