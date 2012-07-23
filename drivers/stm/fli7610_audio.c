@@ -453,7 +453,7 @@ void __init fli7610_configure_audio(struct fli7610_audio_config *config)
 
 	if (config->uni_player_1_pcm_mode >
 			fli7610_uni_player_1_pcm_disabled) {
-		fli7610_uni_player_0_info.pad_config =
+		fli7610_uni_player_1_info.pad_config =
 				&fli7610_uni_player_1_pad_config;
 	}
 
