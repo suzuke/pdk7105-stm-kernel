@@ -441,9 +441,6 @@ static void __init b2000_init(void)
 	stih415_configure_audio(&(struct stih415_audio_config) {
 			.uni_player_3_spdif_enabled = 1, });
 
-	/* reset */
-	stm_board_reset = stih415_reset;
-
 	stih415_configure_keyscan(&(struct stm_keyscan_config) {
 			.num_out_pads = 4,
 			.num_in_pads = 4,
@@ -502,6 +499,7 @@ MACHINE_START(STM_B2000, "STMicroelectronics B2000 - STiH415 MBoard")
 	.timer		= &stih415_timer,
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= b2000_init,
+	.restart	= stih415_reset,
 MACHINE_END
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY

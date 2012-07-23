@@ -164,7 +164,7 @@ struct stih415_sata_config {
 };
 void stih415_configure_sata(int port, struct stih415_sata_config *config);
 
-void stih415_reset(char mode);
+void stih415_reset(char mode, const char *cmd);
 
 struct stih415_pcie_config {
 	unsigned reset_gpio; /* Which (if any) gpio for PCIe reset */

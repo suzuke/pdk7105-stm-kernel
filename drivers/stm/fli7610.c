@@ -969,7 +969,7 @@ static struct platform_device fli7610_sysconf_devices[] = {
 	},
 };
 
-void fli7610_reset(char mode)
+void fli7610_reset(char mode, const char *cmd)
 {
 	struct sysconf_field *sc = sysconf_claim(TAE_SYSCONF(67),
 						0, 0, "LPM_SW_RST_N");

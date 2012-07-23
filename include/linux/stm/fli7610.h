@@ -112,7 +112,7 @@ struct fli7610_pwm_config {
 };
 void fli7610_configure_pwm(struct fli7610_pwm_config *config);
 
-void fli7610_reset(char mode);
+void fli7610_reset(char mode, const char *cmd);
 
 struct fli7610_audio_config {
 	enum {

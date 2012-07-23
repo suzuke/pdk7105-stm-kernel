@@ -248,9 +248,6 @@ static void __init b2020_init(void)
 	stih415_configure_audio(&(struct stih415_audio_config) {
 			.uni_player_3_spdif_enabled = 1, });
 
-	/* reset */
-	stm_board_reset = stih415_reset;
-
 	platform_add_devices(b2020_devices,
 		ARRAY_SIZE(b2020_devices));
 
@@ -288,6 +285,7 @@ MACHINE_START(STM_B2020, "STMicroelectronics B2020 - STiH415 MBoard")
 	.timer		= &stih415_timer,
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= b2020_init,
+	.restart	= stih415_reset,
 MACHINE_END
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY

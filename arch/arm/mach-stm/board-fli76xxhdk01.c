@@ -201,9 +201,6 @@ static void __init fli76xxhdk01_init(void)
 			.uni_reader_0_spdif_enabled = 1, });
 #endif
 
-	/* reset */
-	stm_board_reset = fli7610_reset;
-
 	fli7610_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_bch,
 			.nr_banks = 1,
@@ -225,4 +222,5 @@ MACHINE_START(STM_NMHDK_FLI7610, "STMicroelectronics Newman FLI76XXHDK01")
 	.init_machine	= fli76xxhdk01_init,
 	.init_early     = fli76xxhdk01_init_early,
 	.handle_irq	= gic_handle_irq,
+	.restart	= fli7610_reset,
 MACHINE_END
