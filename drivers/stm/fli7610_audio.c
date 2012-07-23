@@ -24,25 +24,6 @@
 
 /* Audio mute converters (mute/unmute output) */
 
-static struct platform_device fli7610_snd_conv_gpio_0 = {
-	.name = "snd_conv_gpio",
-	.id = 0,
-	.dev.platform_data = &(struct snd_stm_conv_gpio_info) {
-		.group = "speakers",
-
-		.source_bus_id = "snd_uniperif_player.0", /* LS */
-		.channel_from = 0,
-		.channel_to = 1,
-		.format = SND_STM_FORMAT__I2S |
-				SND_STM_FORMAT__SUBFRAME_32_BITS,
-		.oversampling = 256,
-
-		.mute_supported = 1,
-		.mute_gpio = stm_gpio(12, 1), /* Audio mute */
-		.mute_value = 0,
-	},
-};
-
 /* Audio HP mute control */
 
 static struct platform_device fli7610_snd_conv_gpio_1 = {
@@ -422,7 +403,6 @@ static struct platform_device fli7610_uni_reader_6 = {
 /* Devices */
 
 static struct platform_device *fli7610_audio_devices[] __initdata = {
-	&fli7610_snd_conv_gpio_0,
 	&fli7610_snd_conv_gpio_1,
 	&fli7610_snd_conv_dummy_0,
 	&fli7610_snd_conv_dummy_1,
