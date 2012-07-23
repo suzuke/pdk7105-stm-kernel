@@ -33,6 +33,7 @@
 #include <linux/stm/clk.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/dma.h>
+#include <linux/pm_runtime.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/control.h>
@@ -149,7 +150,8 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_pcm_hw = {
 				SNDRV_PCM_INFO_MMAP_VALID |
 				SNDRV_PCM_INFO_INTERLEAVED |
 				SNDRV_PCM_INFO_BLOCK_TRANSFER |
-				SNDRV_PCM_INFO_PAUSE),
+				SNDRV_PCM_INFO_PAUSE |
+				SNDRV_PCM_INFO_RESUME),
 	.formats	= (SNDRV_PCM_FMTBIT_S32_LE |
 				SNDRV_PCM_FMTBIT_S16_LE),
 
@@ -182,7 +184,8 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_raw_hw = {
 				SNDRV_PCM_INFO_MMAP_VALID |
 				SNDRV_PCM_INFO_INTERLEAVED |
 				SNDRV_PCM_INFO_BLOCK_TRANSFER |
-				SNDRV_PCM_INFO_PAUSE),
+				SNDRV_PCM_INFO_PAUSE |
+				SNDRV_PCM_INFO_RESUME),
 	.formats	= (SNDRV_PCM_FMTBIT_S32_LE),
 
 	.rates		= SNDRV_PCM_RATE_CONTINUOUS,
@@ -1443,8 +1446,12 @@ static int snd_stm_uniperif_player_trigger(struct snd_pcm_substream *substream,
 	switch (command) {
 	case SNDRV_PCM_TRIGGER_START:
 		return snd_stm_uniperif_player_start(substream);
+	case SNDRV_PCM_TRIGGER_RESUME:
+		return snd_stm_uniperif_player_start(substream);
 	case SNDRV_PCM_TRIGGER_STOP:
 		return snd_stm_uniperif_player_stop(substream);
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+		return snd_stm_uniperif_player_halt(substream);
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		return snd_stm_uniperif_player_pause(substream);
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
@@ -2268,6 +2275,8 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, player);
 
+	pm_runtime_enable(&pdev->dev);
+
 	return 0;
 error_pad_claim:
 	snd_stm_conv_unregister_source(player->conv_source);
@@ -2299,6 +2308,8 @@ static int snd_stm_uniperif_player_remove(struct platform_device *pdev)
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
+	pm_runtime_disable(&pdev->dev);
+
 	if (player->dma_channel) {
 		dmaengine_terminate_all(player->dma_channel);
 		dma_release_channel(player->dma_channel);
@@ -2319,17 +2330,89 @@ static int snd_stm_uniperif_player_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver snd_stm_uniperif_player_driver = {
-	.driver.name = "snd_uni_player",
-	.probe = snd_stm_uniperif_player_probe,
-	.remove = snd_stm_uniperif_player_remove,
-};
 
+/*
+ * Power management
+ */
+
+#ifdef CONFIG_PM
+static int snd_stm_uniperif_player_suspend(struct device *dev)
+{
+	struct snd_stm_uniperif_player *player = dev_get_drvdata(dev);
+	struct snd_card *card = snd_stm_card_get();
+
+	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+
+	/* Check if this device is already suspended */
+	if (dev->power.runtime_status == RPM_SUSPENDED)
+		return 0;
+
+	/* Halt the player if parking currently active */
+	if (dma_audio_is_parking_active(player->dma_channel)) {
+		/* Halt the player */
+		snd_stm_uniperif_player_halt(player->substream);
+
+		/* Release the dma channel */
+		dma_release_channel(player->dma_channel);
+		player->dma_channel = NULL;
+
+		/* Release any converter */
+		if (player->conv_group) {
+			snd_stm_conv_release_group(player->conv_group);
+			player->conv_group = NULL;
+		}
+	}
+
+	/* Abort if the player is still running */
+	if (get__AUD_UNIPERIF_CTRL__OPERATION(player)) {
+		snd_stm_printe("Cannot runtime suspend as '%s' running!\n",
+				dev_name(dev));
+		return -EBUSY;
+	}
+
+	/* Indicate power off (with power) and suspend all streams */
+	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
+	snd_pcm_suspend_all(player->pcm);
+
+	return 0;
+}
+
+static int snd_stm_uniperif_player_resume(struct device *dev)
+{
+	struct snd_card *card = snd_stm_card_get();
+
+	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+
+	/* Check if this device is already active */
+	if (dev->power.runtime_status == RPM_ACTIVE)
+		return 0;
+
+	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
+
+	return 0;
+}
+
+static const struct dev_pm_ops snd_stm_uniperif_player_pm_ops = {
+	.suspend = snd_stm_uniperif_player_suspend,
+	.freeze	 = snd_stm_uniperif_player_suspend,
+	.resume	 = snd_stm_uniperif_player_resume,
+	.thaw	 = snd_stm_uniperif_player_resume,
+};
+#endif
 
 
 /*
- * Initialization
+ * Module initialization
  */
+
+static struct platform_driver snd_stm_uniperif_player_driver = {
+	.driver.name	= "snd_uni_player",
+#ifdef CONFIG_PM
+	.driver.pm	= &snd_stm_uniperif_player_pm_ops,
+#endif
+	.probe		= snd_stm_uniperif_player_probe,
+	.remove		= snd_stm_uniperif_player_remove,
+};
 
 static int __init snd_stm_uniperif_player_init(void)
 {

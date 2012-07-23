@@ -31,6 +31,7 @@
 #include <linux/delay.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/dma.h>
+#include <linux/pm_runtime.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/control.h>
@@ -98,7 +99,8 @@ static struct snd_pcm_hardware snd_stm_uniperif_reader_hw = {
 	.info		= (SNDRV_PCM_INFO_MMAP |
 				SNDRV_PCM_INFO_MMAP_VALID |
 				SNDRV_PCM_INFO_INTERLEAVED |
-				SNDRV_PCM_INFO_BLOCK_TRANSFER),
+				SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				SNDRV_PCM_INFO_RESUME),
 	.formats	= (SNDRV_PCM_FMTBIT_S32_LE),
 
 	.rates		= SNDRV_PCM_RATE_CONTINUOUS,
@@ -663,7 +665,11 @@ static int snd_stm_uniperif_reader_trigger(struct snd_pcm_substream *substream,
 	switch (command) {
 	case SNDRV_PCM_TRIGGER_START:
 		return snd_stm_uniperif_reader_start(substream);
+	case SNDRV_PCM_TRIGGER_RESUME:
+		return snd_stm_uniperif_reader_start(substream);
 	case SNDRV_PCM_TRIGGER_STOP:
+		return snd_stm_uniperif_reader_stop(substream);
+	case SNDRV_PCM_TRIGGER_SUSPEND:
 		return snd_stm_uniperif_reader_stop(substream);
 	default:
 		return -EINVAL;
@@ -935,6 +941,8 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, reader);
 
+	pm_runtime_enable(&pdev->dev);
+
 	return 0;
 error_pad_claim:
 	snd_stm_conv_unregister_source(reader->conv_source);
@@ -965,6 +973,8 @@ static int snd_stm_uniperif_reader_remove(struct platform_device *pdev)
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
 
+	pm_runtime_disable(&pdev->dev);
+
 	if (reader->pads)
 		stm_pad_release(reader->pads);
 
@@ -979,16 +989,73 @@ static int snd_stm_uniperif_reader_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver snd_stm_uniperif_reader_driver = {
-	.driver.name = "snd_uni_reader",
-	.probe = snd_stm_uniperif_reader_probe,
-	.remove = snd_stm_uniperif_reader_remove,
+
+/*
+ * Power management
+ */
+
+#ifdef CONFIG_PM
+static int snd_stm_uniperif_reader_suspend(struct device *dev)
+{
+	struct snd_stm_uniperif_reader *reader = dev_get_drvdata(dev);
+	struct snd_card *card = snd_stm_card_get();
+
+	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+
+	/* Check if this device is already suspended */
+	if (dev->power.runtime_status == RPM_SUSPENDED)
+		return 0;
+
+	/* Abort if the player is still running */
+	if (get__AUD_UNIPERIF_CTRL__OPERATION(reader)) {
+		snd_stm_printe("Cannot runtime suspend as '%s' running!\n",
+				dev_name(dev));
+		return -EBUSY;
+	}
+
+	/* Indicate power off (with power) and suspend all streams */
+	snd_power_change_state(card, SNDRV_CTL_POWER_D3hot);
+	snd_pcm_suspend_all(reader->pcm);
+
+	return 0;
+}
+
+static int snd_stm_uniperif_reader_resume(struct device *dev)
+{
+	struct snd_card *card = snd_stm_card_get();
+
+	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+
+	/* Check if this device is already active */
+	if (dev->power.runtime_status == RPM_ACTIVE)
+		return 0;
+
+	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
+
+	return 0;
+}
+
+static const struct dev_pm_ops snd_stm_uniperif_reader_pm_ops = {
+	.suspend = snd_stm_uniperif_reader_suspend,
+	.freeze	 = snd_stm_uniperif_reader_suspend,
+	.resume	 = snd_stm_uniperif_reader_resume,
+	.thaw	 = snd_stm_uniperif_reader_resume,
 };
+#endif
 
 
 /*
- * Initialization
+ * Module initialization
  */
+
+static struct platform_driver snd_stm_uniperif_reader_driver = {
+	.driver.name = "snd_uni_reader",
+#ifdef CONFIG_PM
+	.driver.pm	= &snd_stm_uniperif_reader_pm_ops,
+#endif
+	.probe = snd_stm_uniperif_reader_probe,
+	.remove = snd_stm_uniperif_reader_remove,
+};
 
 static int __init snd_stm_uniperif_reader_init(void)
 {
