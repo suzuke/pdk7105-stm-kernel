@@ -27,6 +27,7 @@
 
 #include "../suspend.h"
 #include <mach/hardware.h>
+#include <mach/mpe41.h>
 #include <mach/soc-stih415.h>
 #include <asm/hardware/gic.h>	/* gic offset and struct gic_chip_data */
 
@@ -116,7 +117,7 @@ static int stih415_get_wake_irq(void)
 {
 	int irq = 0;
 	struct irq_data *d;
-	void *gic_cpu = __io_address(STIH415_GIC_CPU_BASE);
+	void *gic_cpu = __io_address(MPE41_GIC_CPU_BASE);
 
 	irq = readl(gic_cpu + GIC_CPU_INTACK);
 	d = irq_get_irq_data(irq);

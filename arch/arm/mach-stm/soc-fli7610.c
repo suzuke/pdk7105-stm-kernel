@@ -15,6 +15,7 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/stm/clk.h>
+#include <linux/stm/fli7610-periphs.h>
 
 #include <asm/irq.h>
 #include <asm/mach-types.h>
@@ -26,6 +27,7 @@
 #include <asm/mach/time.h>
 
 #include <mach/soc-fli7610.h>
+#include <mach/mpe41.h>
 #include <mach/hardware.h>
 #include <mach/irqs.h>
 
@@ -33,18 +35,18 @@
 
 static struct map_desc fli7610_io_desc[] __initdata = {
 	{
-		.virtual	= IO_ADDRESS(FLI7610_SCU_BASE),
-		.pfn		= __phys_to_pfn(FLI7610_SCU_BASE),
+		.virtual	= IO_ADDRESS(MPE41_SCU_BASE),
+		.pfn		= __phys_to_pfn(MPE41_SCU_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual	= IO_ADDRESS(FLI7610_GIC_DIST_BASE),
-		.pfn		= __phys_to_pfn(FLI7610_GIC_DIST_BASE),
+		.virtual	= IO_ADDRESS(MPE41_GIC_DIST_BASE),
+		.pfn		= __phys_to_pfn(MPE41_GIC_DIST_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual        = IO_ADDRESS(FLI7610_PL310_BASE),
-		.pfn            = __phys_to_pfn(FLI7610_PL310_BASE),
+		.virtual        = IO_ADDRESS(MPE41_PL310_BASE),
+		.pfn            = __phys_to_pfn(MPE41_PL310_BASE),
 		.length         = SZ_16K,
 		.type           = MT_DEVICE,
 	}, {
@@ -144,37 +146,3 @@ void __init fli7610_map_io(void)
 	iotable_init(fli7610_io_desc, ARRAY_SIZE(fli7610_io_desc));
 }
 
-void __init fli7610_gic_init_irq(void)
-{
-	gic_init(0, 27, __io_address(FLI7610_GIC_DIST_BASE),
-			__io_address(FLI7610_GIC_CPU_BASE));
-}
-
-static void __init fli7610_timer_init(void)
-{
-
-	struct clk *a9_clk;
-	plat_clk_init();
-	plat_clk_alias_init();
-
-	a9_clk = clk_get(NULL, "CLKM_A9");
-	if (IS_ERR(a9_clk))
-		panic("Unable to determine Cortex A9 clock frequency\n");
-
-#ifdef CONFIG_HAVE_ARM_GT
-	global_timer_init(__io_address(FLI7610_GLOBAL_TIMER_BASE),
-			IRQ_GLOBALTIMER, clk_get_rate(a9_clk)/2);
-#endif
-
-#ifdef CONFIG_HAVE_ARM_TWD
-	twd_base = __io_address(FLI7610_TWD_BASE);
-#endif
-}
-
-struct sys_timer fli7610_timer = {
-	.init		= fli7610_timer_init,
-};
-
-#ifdef CONFIG_SMP
-void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(FLI7610_SCU_BASE));
-#endif

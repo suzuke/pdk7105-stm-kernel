@@ -22,6 +22,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/gpio.h>
+#include <linux/stm/stih415-periphs.h>
 
 #include <asm/hardware/gic.h>
 

@@ -23,10 +23,12 @@
 
 #ifdef CONFIG_MACH_STM_STIH415
 #include <mach/soc-stih415.h>
+#include <linux/stm/stih415-periphs.h>
 #elif defined(CONFIG_MACH_STM_STX7108)
 #include <mach/soc-stx7108.h>
 #elif defined(CONFIG_MACH_STM_FLI7610)
 #include <mach/soc-fli7610.h>
+#include <linux/stm/fli7610-periphs.h>
 #endif
 
 #define ASC_TX_BUF(base)	(*(volatile unsigned int*)((base) + 0x04))

@@ -31,6 +31,7 @@
 #include <asm/delay.h>
 
 #include <mach/soc-stih415.h>
+#include <mach/mpe41.h>
 #include <mach/hardware.h>
 
 static void __init b2000_init_early(void)
@@ -482,8 +483,8 @@ MACHINE_START(STM_B2000, "STMicroelectronics B2000 - STiH415 MBoard")
 	.nr_irqs	= NR_IRQS_LEGACY,
 #endif
 	.init_early	= b2000_init_early,
-	.init_irq	= stih415_gic_init_irq,
-	.timer		= &stih415_timer,
+	.init_irq	= mpe41_gic_init_irq,
+	.timer		= &mpe41_timer,
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= b2000_init,
 	.restart	= stih415_reset,
