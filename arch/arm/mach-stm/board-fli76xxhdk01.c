@@ -23,7 +23,6 @@
 #include <linux/mtd/partitions.h>
 #include <sound/stm.h>
 
-#include <asm/hardware/cache-l2x0.h>
 #include <asm/mach-types.h>
 #include <asm/memory.h>
 
@@ -160,10 +159,6 @@ static struct stm_plat_spifsm_data fli76xxhdk01_serial_flash =  {
 
 static void __init fli76xxhdk01_init(void)
 {
-#ifdef CONFIG_CACHE_L2X0
-
-	l2x0_init(__io_address(FLI7610_PL310_BASE), 0x1<<22, 0xffbfffff);
-#endif
 	fli7610_configure_usb(0);
 	fli7610_configure_usb(1);
 	fli7610_configure_usb(2);
