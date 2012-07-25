@@ -824,16 +824,27 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 	netif_wake_queue(priv->dev);
 }
 
+static inline void stmmac_rx_schedule(struct stmmac_priv *priv)
+{
+	if (likely(napi_schedule_prep(&priv->napi))) {
+		stmmac_disable_irq(priv);
+		__napi_schedule(&priv->napi);
+	}
+}
 
 static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 {
 	int status;
 
 	status = priv->hw->dma->dma_interrupt(priv->ioaddr, &priv->xstats);
-	if (likely(status == handle_tx_rx))
-		_stmmac_schedule(priv);
-
-	else if (unlikely(status == tx_hard_error_bump_tc)) {
+	if (likely(status & handle_rx)) {
+		priv->xstats.rx_normal_irq_n++;
+		stmmac_rx_schedule(priv);
+	}
+	if (likely(status & handle_tx)) {
+		priv->xstats.tx_normal_irq_n++;
+		stmmac_tx(priv);
+	} else if (unlikely(status & tx_hard_error_bump_tc)) {
 		/* Try to bump up the dma threshold on this failure */
 		if (unlikely(tc != SF_DMA_MODE) && (tc <= 256)) {
 			tc += 64;
@@ -1439,8 +1450,7 @@ static int stmmac_poll(struct napi_struct *napi, int budget)
 	struct stmmac_priv *priv = container_of(napi, struct stmmac_priv, napi);
 	int work_done = 0;
 
-	priv->xstats.poll_n++;
-	stmmac_tx(priv);
+	priv->xstats.rx_napi_poll++;
 	work_done = stmmac_rx(priv, budget);
 
 	if (work_done < budget) {

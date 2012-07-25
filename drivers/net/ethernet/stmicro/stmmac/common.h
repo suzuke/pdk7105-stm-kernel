@@ -95,7 +95,9 @@ struct stmmac_extra_stats {
 	unsigned long threshold;
 	unsigned long tx_pkt_n;
 	unsigned long rx_pkt_n;
-	unsigned long poll_n;
+	unsigned long rx_napi_poll;
+	unsigned long rx_normal_irq_n;
+	unsigned long tx_normal_irq_n;
 	unsigned long sched_timer_n;
 	unsigned long normal_irq_n;
 	unsigned long mmc_tx_irq_n;
@@ -169,10 +171,11 @@ enum rx_frame_status { /* IPC status */
 	llc_snap = 4,
 };
 
-enum tx_dma_irq_status {
-	tx_hard_error = 1,
-	tx_hard_error_bump_tc = 2,
-	handle_tx_rx = 3,
+enum dma_irq_status {
+	tx_hard_error = 0x1,
+	tx_hard_error_bump_tc = 0x2,
+	handle_rx = 0x4,
+	handle_tx = 0x8,
 };
 
 enum core_specific_irq_mask {
