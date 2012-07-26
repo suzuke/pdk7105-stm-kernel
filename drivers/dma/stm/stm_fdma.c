@@ -38,6 +38,14 @@ static void stm_fdma_tasklet_error(unsigned long data)
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
+	/*
+	 * FDMA spec states, in case of error transfer "may be aborted". Let's
+	 * make the behaviour explicit and stop the transfer here.
+	 */
+
+	stm_fdma_hw_channel_pause(fchan, 0);
+	fchan->state = STM_FDMA_STATE_STOPPING;
+
 	BUG_ON(list_empty(&fchan->desc_active));
 
 	/* Remove the first descriptor from the active list */
@@ -57,28 +65,8 @@ static void stm_fdma_tasklet_error(unsigned long data)
 	/* Start the next descriptor */
 	stm_fdma_desc_start(fchan);
 
-	/* DUMP THE DESCRIPTOR */
-
 	/* Complete the descriptor */
 	stm_fdma_desc_complete(fchan, fdesc);
-}
-
-static inline void stm_fdma_irq_error(struct stm_fdma_chan *fchan)
-{
-	/*
-	 * FDMA spec states, in case of error transfer "may be aborted". Let's
-	 * make the behaviour explicit and stop the transfer here.
-	 */
-
-	spin_lock(&fchan->lock);
-
-	stm_fdma_hw_channel_pause(fchan, 0);
-	fchan->state = STM_FDMA_STATE_STOPPING;
-
-	spin_unlock(&fchan->lock);
-
-	/* Schedule channel tasklet to handle completion */
-	tasklet_schedule(&fchan->tasklet_error);
 }
 
 static void stm_fdma_tasklet_complete(unsigned long data)
@@ -89,39 +77,7 @@ static void stm_fdma_tasklet_complete(unsigned long data)
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
-	/* Terminate all may result in a completion when active list empty */
-	if (list_empty(&fchan->desc_active)) {
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-		return;
-	}
-
-	/* Get the head of the active list */
-	fdesc = list_first_entry(&fchan->desc_active, struct stm_fdma_desc,
-			node);
-
-	if (test_bit(STM_FDMA_IS_CYCLIC, &fchan->flags)) {
-		/* Assume end of period and issue callback */
-		struct dma_async_tx_descriptor *desc = &fdesc->dma_desc;
-
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-
-		if (desc->callback)
-			desc->callback(desc->callback_param);
-	} else {
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-
-		/* Complete the descriptor */
-		stm_fdma_desc_complete(fchan, fdesc);
-
-		/* Start the next descriptor */
-		stm_fdma_desc_start(fchan);
-	}
-}
-
-static inline void stm_fdma_irq_complete(struct stm_fdma_chan *fchan)
-{
-	spin_lock(&fchan->lock);
-
+	/* Update the channel state */
 	switch (stm_fdma_hw_channel_status(fchan)) {
 	case CMD_STAT_STATUS_PAUSED:
 		switch (fchan->state) {
@@ -163,10 +119,38 @@ static inline void stm_fdma_irq_complete(struct stm_fdma_chan *fchan)
 		BUG();
 	}
 
-	spin_unlock(&fchan->lock);
+	/*
+	 * A terminate all or error may result in a completion with the active
+	 * descriptor list is empty. If no active descriptor, we are done.
+	 */
 
-	/* Run channel tasklet to handle completion */
-	tasklet_schedule(&fchan->tasklet_complete);
+	if (list_empty(&fchan->desc_active)) {
+		spin_unlock_irqrestore(&fchan->lock, irqflags);
+		return;
+	}
+
+	/* Get the head of the active list */
+	fdesc = list_first_entry(&fchan->desc_active, struct stm_fdma_desc,
+			node);
+
+
+	if (test_bit(STM_FDMA_IS_CYCLIC, &fchan->flags)) {
+		/* Assume end of period and issue callback */
+		struct dma_async_tx_descriptor *desc = &fdesc->dma_desc;
+
+		spin_unlock_irqrestore(&fchan->lock, irqflags);
+
+		if (desc->callback)
+			desc->callback(desc->callback_param);
+	} else {
+		spin_unlock_irqrestore(&fchan->lock, irqflags);
+
+		/* Complete the descriptor */
+		stm_fdma_desc_complete(fchan, fdesc);
+
+		/* Start the next descriptor */
+		stm_fdma_desc_start(fchan);
+	}
 }
 
 static irqreturn_t stm_fdma_irq_handler(int irq, void *dev_id)
@@ -187,8 +171,8 @@ static irqreturn_t stm_fdma_irq_handler(int irq, void *dev_id)
 		 *
 		 * When switching to the parking buffer we set each node of the
 		 * currently active descriptor to interrupt on complete. This
-		 * results in missed interrupt error. We suppress this error
-		 * here and handle the interrupt as a normal completion.
+		 * can result in a missed interrupt error. We suppress this
+		 * error here and handle the interrupt as a normal completion.
 		 */
 		if (unlikely(status & 2)) {
 			int ignore = 0;
@@ -203,14 +187,15 @@ static irqreturn_t stm_fdma_irq_handler(int irq, void *dev_id)
 
 			/* Only handle error if not suppressing it */
 			if (!ignore) {
-				stm_fdma_irq_error(&fdev->ch_list[c]);
+				tasklet_schedule(
+					&fdev->ch_list[c].tasklet_error);
 				result = IRQ_HANDLED;
 				continue;
 			}
 		}
 
 		if (status & 1) {
-			stm_fdma_irq_complete(&fdev->ch_list[c]);
+			tasklet_schedule(&fdev->ch_list[c].tasklet_complete);
 			result = IRQ_HANDLED;
 		}
 	}
