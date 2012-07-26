@@ -95,6 +95,18 @@ void fli7610_configure_usb(int port);
 #define FLI7610_SBC_SSC(num)		(num + 3)
 #define FLI7610_SSC(num)		(num)
 
+/*
+ * The Newman documentation is slightly confusing, because it refers to
+ * I2C and SPI busses separately, rather than SSC numbers, and also it
+ * is based from 1 not 0, so explicitly enumerate them here.
+ */
+#define FLI7610_I2C1		FLI7610_SSC(0)
+#define FLI7610_I2C2		FLI7610_SSC(1)
+#define FLI7610_I2C3		FLI7610_SSC(2)
+#define FLI7610_I2C1_LPM	FLI7610_SBC_SSC(0)
+#define FLI7610_SPI3		FLI7610_SSC(2)
+#define FLI7610_SPI1_LPM	FLI7610_SBC_SSC(1)
+
 struct fli7610_ssc_config {
 	void (*spi_chipselect)(struct spi_device *spi, int is_on);
 	unsigned int i2c_fastmode:1;

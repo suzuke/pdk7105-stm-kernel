@@ -27,8 +27,9 @@
 /* SSC resources ---------------------------------------------------------- */
 
 /* Pad configuration for I2C mode */
-static struct stm_pad_config fli7610_ssc_i2c_pad_configs[] = {
+static struct stm_pad_config fli7610_ssc_i2c_pad_configs[5] = {
 	[0] = {
+		/* SSC0: I2C1 */
 		.gpios_num = 2,
 		.gpios = (struct stm_pad_gpio []) {
 			STM_PAD_PIO_BIDIR_NAMED(14, 3, 1, "SCL"),
@@ -36,6 +37,7 @@ static struct stm_pad_config fli7610_ssc_i2c_pad_configs[] = {
 		},
 	},
 	[1] = {
+		/* SSC1: I2C2 */
 		.gpios_num = 2,
 		.gpios = (struct stm_pad_gpio []) {
 			STM_PAD_PIO_BIDIR_NAMED(14, 5, 1, "SCL"),
@@ -43,26 +45,36 @@ static struct stm_pad_config fli7610_ssc_i2c_pad_configs[] = {
 		},
 	},
 	[2] = {
+		/* SSC2: I2C3 */
 		.gpios_num = 2,
 		.gpios = (struct stm_pad_gpio []) {
-			STM_PAD_PIO_BIDIR_NAMED(15, 0, 1, "SCL"),
-			STM_PAD_PIO_BIDIR_NAMED(14, 7, 1, "SDA"),
+			STM_PAD_PIO_BIDIR_NAMED(14, 7, 1, "SCL"),
+			STM_PAD_PIO_BIDIR_NAMED(15, 0, 1, "SDA"),
 		},
 	},
-	/* I2C-LPM */
 	[3] = {
+		/* SSC0_LPM: I2C1_LPM */
 		.gpios_num = 2,
 		.gpios = (struct stm_pad_gpio []) {
 			STM_PAD_PIO_BIDIR_NAMED(6, 1, 1, "SCL"),
 			STM_PAD_PIO_BIDIR_NAMED(6, 2, 1, "SDA"),
 		},
 	},
-
+	[4] = {
+		/* SSC1_LPM: SPI only */
+	}
 };
 
 /* Pad configuration for SPI mode */
-static struct stm_pad_config fli7610_ssc_spi_pad_configs[] = {
-	[0] = { /* TAE SSC2 */
+static struct stm_pad_config fli7610_ssc_spi_pad_configs[5] = {
+	[0] = {
+		/* SSC0: I2C only */
+	},
+	[1] = {
+		/* SSC1: I2C only */
+	},
+	[2] = {
+		/* SSC2: SPI3 */
 		.gpios_num = 3,
 		.gpios = (struct stm_pad_gpio []) {
 			STM_PAD_PIO_OUT(14, 7, 2),	/* SCK */
@@ -70,8 +82,11 @@ static struct stm_pad_config fli7610_ssc_spi_pad_configs[] = {
 			STM_PAD_PIO_IN(12, 5, 1),	/* MISO */
 		},
 	},
-	/* LPM SSC0 */
-	[1] = {
+	[3] = {
+		/* SSC0_LPM: I2C only */
+	},
+	[4] = {
+		/* SSC1_LPM: SPI1_LPM */
 		.gpios_num = 3,
 		.gpios = (struct stm_pad_gpio []) {
 			STM_PAD_PIO_OUT(6, 3, 2),	/* SCK */
@@ -79,7 +94,6 @@ static struct stm_pad_config fli7610_ssc_spi_pad_configs[] = {
 			STM_PAD_PIO_IN(6, 6, 2),	/* MISO */
 		},
 	},
-
 };
 
 static struct platform_device fli7610_ssc_devices[] = {
@@ -119,7 +133,7 @@ static struct platform_device fli7610_ssc_devices[] = {
 			/* .pad_config_* set in fli7610_configure_ssc_*() */
 		},
 	},
-	/* SBC SSC0 I2C and SPI mode */
+	/* SBC SSC0 Only SPI mode */
 	[3] = {
 		/* .name & .id set in fli7610_configure_ssc_*() */
 		.num_resources = 2,
@@ -131,7 +145,7 @@ static struct platform_device fli7610_ssc_devices[] = {
 			/* .pad_config_* set in fli7610_configure_ssc_*() */
 		},
 	},
-	/* SBC SSC1 Only SPI mode */
+	/* SBC SSC1 I2C and SPI mode */
 	[4] = {
 		/* .name & .id set in fli7610_configure_ssc_*() */
 		.num_resources = 2,
@@ -153,11 +167,11 @@ int __init fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config)
 	struct stm_plat_ssc_data *plat_data;
 	struct stm_pad_config *pad_config;
 
-	BUG_ON(ssc < 0 || ssc >= ARRAY_SIZE(fli7610_ssc_i2c_pad_configs));
+	BUG_ON(ssc < 0 || ssc >= ARRAY_SIZE(fli7610_ssc_devices));
+	BUG_ON(fli7610_ssc_i2c_pad_configs[ssc].gpios_num == 0);
 
 	BUG_ON(fli7610_ssc_configured[ssc]);
 	fli7610_ssc_configured[ssc] = 1;
-
 
 	fli7610_ssc_devices[ssc].name = "i2c-stm";
 	fli7610_ssc_devices[ssc].id = i2c_busnum;
@@ -189,10 +203,9 @@ int __init fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config)
 	struct fli7610_ssc_config default_config = {};
 	struct stm_plat_ssc_data *plat_data;
 	struct stm_pad_config *pad_config;
+
 	BUG_ON(ssc < 0 || ssc >= ARRAY_SIZE(fli7610_ssc_devices));
-	/* FLI7610 has only two instances of SPI,
-	 * One in LPM at 0 and other in NON_LPM at 2 */
-	BUG_ON(ssc > 3 || ssc < 2);
+	BUG_ON(fli7610_ssc_spi_pad_configs[ssc].gpios_num == 0);
 
 	BUG_ON(fli7610_ssc_configured[ssc]);
 	fli7610_ssc_configured[ssc] = 1;
@@ -205,7 +218,7 @@ int __init fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config)
 
 	plat_data = fli7610_ssc_devices[ssc].dev.platform_data;
 
-	pad_config = &fli7610_ssc_spi_pad_configs[ssc - 2];
+	pad_config = &fli7610_ssc_spi_pad_configs[ssc];
 
 	plat_data->spi_chipselect = config->spi_chipselect;
 	plat_data->pad_config = pad_config;
