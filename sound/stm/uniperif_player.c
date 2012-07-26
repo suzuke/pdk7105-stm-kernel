@@ -142,6 +142,8 @@ struct snd_stm_uniperif_player {
 	unsigned int current_channels;
 	unsigned char current_fmda_cnt;
 
+	int xrun;
+
 	snd_stm_magic_field;
 };
 
@@ -243,6 +245,7 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 		set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(player);
 
 		/* Indicate xrun and stop the player */
+		player->xrun = 1;
 		snd_pcm_stop(player->substream, SNDRV_PCM_STATE_XRUN);
 
 		result = IRQ_HANDLED;
@@ -266,6 +269,7 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 		set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(player);
 
 		/* Indicate xrun and stop the player */
+		player->xrun = 1;
 		snd_pcm_stop(player->substream, SNDRV_PCM_STATE_XRUN);
 
 		result = IRQ_HANDLED;
@@ -1199,6 +1203,8 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
+	player->xrun = 0;
+
 	/* Prepare the dma descriptor */
 	player->dma_descriptor = dma_audio_prep_tx_cyclic(player->dma_channel,
 			substream->runtime->dma_addr, player->buffer_bytes,
@@ -1332,7 +1338,7 @@ static int snd_stm_uniperif_player_stop(struct snd_pcm_substream *substream)
 	BUG_ON(!snd_stm_magic_valid(player));
 
 	/* If player is parking enabled, then activate parking and return */
-	if (player->info->parking_enabled == 1)
+	if ((player->info->parking_enabled == 1) && (player->xrun == 0))
 		return dma_audio_parking_enable(player->dma_channel);
 
 	/* Actually stop the uniperipheral player */
