@@ -225,7 +225,7 @@ int stm_fdma_hw_channel_set_dreq(struct stm_fdma_chan *fchan,
 
 	spin_lock_irqsave(&fdev->lock, irqflags);
 
-	writel(value, REQ_CONTROL_REG(fchan));
+	writel(value, REQ_CONTROLn_REG(fchan->fdev, config->request_line));
 
 	spin_unlock_irqrestore(&fdev->lock, irqflags);
 
