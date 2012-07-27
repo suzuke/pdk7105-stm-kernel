@@ -39,28 +39,28 @@
 #define LMI_RET_GPIO_PIN		4
 #define LMI_RETENTION_PIN	stm_gpio(LMI_RET_GPIO_PORT, LMI_RET_GPIO_PIN)
 
-static unsigned long stxh415_hom_table[] __cacheline_aligned = {
-/*
- * Now execute the real operations
- */
+static const unsigned long __stxh415_hom_ddr_0[] = {
 synopsys_ddr32_in_hom(STIH415_MPE_DDR0_PCTL_BASE),
-synopsys_ddr32_in_hom(STIH415_MPE_DDR1_PCTL_BASE),
+};
 
+static const unsigned long __stxh415_hom_ddr_1[] = {
+synopsys_ddr32_in_hom(STIH415_MPE_DDR1_PCTL_BASE),
 /*
  * Enable retention mode gpio
  *
  */
 POKE32(SBC_GPIO_PORT(LMI_RET_GPIO_PORT) + STM_GPIO_REG_CLR_POUT,
 	1 << LMI_RET_GPIO_PIN),
-/*
- * TO BE DONE:
- * Notify 'Ready for Power-off' via MBX
- */
-#warning "Ready for Power-off __not__ implemented"
+};
 
-/* END. */
-END_MARKER,
+#define HOM_TBL(name) {					\
+		.addr = name,				\
+		.size = ARRAY_SIZE(name) * sizeof(long),\
+	}
 
+static struct hom_table stxh415_hom_table[] = {
+	HOM_TBL(__stxh415_hom_ddr_0),
+	HOM_TBL(__stxh415_hom_ddr_1),
 };
 
 static int stxh415_hom_prepare(void)
@@ -82,9 +82,6 @@ static struct stm_mem_hibernation stxh415_hom = {
 
 	.early_console_rate = 100000000,
 
-	.tbl_addr = (unsigned long)stxh415_hom_table,
-	.tbl_size = ARRAY_SIZE(stxh415_hom_table) * sizeof(long),
-
 	.ops.prepare = stxh415_hom_prepare,
 	.ops.complete = stxh415_hom_complete,
 };
@@ -92,6 +89,7 @@ static struct stm_mem_hibernation stxh415_hom = {
 static int __init hom_stxh415_setup(void)
 {
 	int ret;
+	int i;
 
 	ret = gpio_request(LMI_RETENTION_PIN, "LMI retention mode");
 	if (ret) {
@@ -102,15 +100,20 @@ static int __init hom_stxh415_setup(void)
 
 	gpio_direction_output(LMI_RETENTION_PIN, 1);
 
+	INIT_LIST_HEAD(&stxh415_hom.table);
+
 	stxh415_hom.early_console_base = (void *)ioremap(
 		stm_asc_configured_devices[stm_asc_console_device]
 			->resource[0].start, 0x1000);
 
-	pr_info("[STM]: [PM]: [HoM]: Early console [%d] @ 0x%x\n",
+	pr_info("stm pm hom: Early console [%d] @ 0x%x\n",
 			stm_asc_console_device,
 			(unsigned int) stxh415_hom.early_console_base);
 
-	ret = stm_hom_register(&stxh415_hom);
+	for (i = 0; i < ARRAY_SIZE(stxh415_hom_table); ++i)
+		list_add_tail(&stxh415_hom_table[i].node, &stxh415_hom.table);
+
+	ret =  stm_hom_register(&stxh415_hom);
 	if (ret) {
 		gpio_free(LMI_RETENTION_PIN);
 		pr_err("[STM][HoM]: Error: on stm_hom_register\n");

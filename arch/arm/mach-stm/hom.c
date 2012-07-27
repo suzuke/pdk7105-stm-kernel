@@ -21,6 +21,7 @@
 #include <linux/preempt.h>
 #include <linux/suspend.h>
 
+#include <linux/stm/poke_table.h>
 #include <asm/idmap.h>
 #include <asm/thread_info.h>
 #include <asm/cacheflush.h>
@@ -56,6 +57,7 @@ extern volatile int pen_release;
 static void __iomem *virtual_eram_iomem;
 
 static struct stm_mem_hibernation *platform;
+static const unsigned long hom_end_table[] = { END_MARKER };
 
 static void hom_init_early_console(void __iomem *asc_base,
 	unsigned long asc_clk)
@@ -88,7 +90,7 @@ static void prepare_hom_frozen_data(struct hom_frozen_data *frozen_data,
 
 #ifdef CONFIG_HOM_DEBUG
 	{
-	unsigned int i, *p = frozen_data;
+	unsigned int i, *p = (unsigned int *)frozen_data;
 	for (i = 0; i < (HFD_END >> 2); ++i)
 		pr_info("[STM][HoM]: frozen_data[%i] = 0x%x\n", i, p[i]);
 	}
@@ -98,9 +100,9 @@ static void prepare_hom_frozen_data(struct hom_frozen_data *frozen_data,
 static void stm_hom_prepare_eram(struct stm_mem_hibernation *platform,
 				 struct stm_hom_eram_data *eram)
 {
-	unsigned long size = 0;
 	void *__pa_eram = platform->eram_iomem;
 	void *__va_eram = virtual_eram_iomem;
+	struct hom_table *table;
 	/*
 	 * 1. copy the __pokeloop code in eram
 	 */
@@ -109,23 +111,26 @@ static void stm_hom_prepare_eram(struct stm_mem_hibernation *platform,
 	__va_eram += stm_pokeloop_sz;
 	__pa_eram += stm_pokeloop_sz;
 	/*
-	 * 2. copy the entry_data_table in eram
+	 * 2. copy all the tables into eram
 	 */
 	eram->pa_table = __pa_eram;
-	size = platform->tbl_size;
-	memcpy_toio(__va_eram, (const void *) &platform->tbl_addr, size);
-	__va_eram += size;
-	__pa_eram += size;
+	list_for_each_entry(table, &platform->table, node) {
+		memcpy_toio(__va_eram, table->addr, table->size);
+		__va_eram += table->size;
+		__pa_eram += table->size;
+	}
+	memcpy_toio(__va_eram, hom_end_table,
+		ARRAY_SIZE(hom_end_table) * sizeof(long));
+	__va_eram += ARRAY_SIZE(hom_end_table) * sizeof(long);
+	__pa_eram += ARRAY_SIZE(hom_end_table) * sizeof(long);
 
 	/*
-	 * 3. copy the tm_eram code in eram
+	 * 3. copy the the_eram code into eram
 	 */
 	eram->pa_stm_eram_code = __pa_eram;
 	memcpy_toio(__va_eram, stm_hom_on_eram, stm_hom_on_eram_sz);
 	__va_eram += stm_hom_on_eram_sz;
 	__pa_eram += stm_hom_on_eram_sz;
-	pr_info("0x%p 0x%p 0x%p\n", eram->pa_table, eram->pa_stm_eram_code,
-		eram->pa_pokeloop);
 }
 
 static void __hom_marker(int enable)
@@ -192,7 +197,7 @@ static int __cpuinitdata stm_hom_enter(void)
 	flush_tlb_all();
 	outer_flush_all();
 
-	pr_info("[STM][HoM]: CPU Frozen\n");
+	pr_info("stm pm hom: CPU Frozen\n");
 
 	stm_hom_exec_on_eram((struct stm_hom_eram_data *) __pa(&eram_data),
 			     (void *)__pa(idmap_pgd), va_2_pa);
@@ -225,7 +230,7 @@ static int __cpuinitdata stm_hom_enter(void)
 			platform->early_console_rate);
 
 	if (smp_processor_id())
-		pr_err("[STM][HoM]: Error: Running on a wrong CPU\n");
+		pr_err("stm hom: Error: Running on the wrong CPU\n");
 
 	flush_cache_all();
 
@@ -263,13 +268,19 @@ static int __cpuinitdata stm_hom_enter(void)
 
 int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 {
+	struct hom_table *table;
+	unsigned long table_size = 0;
+
 	if (!data || platform)
 		return -EINVAL;
 
 	platform = data;
 
+	list_for_each_entry(table, &platform->table, node)
+		table_size += table->size;
+
 	virtual_eram_iomem = ioremap((unsigned long) data->eram_iomem,
-		stm_pokeloop_sz + data->tbl_size + stm_hom_on_eram_sz);
+		stm_pokeloop_sz + table_size + stm_hom_on_eram_sz);
 
 	platform->ops.enter = stm_hom_enter;
 
@@ -277,7 +288,7 @@ int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 		platform = NULL;
 		return -EINVAL;
 	}
-	pr_info("[STM]: [PM]: HoM support registered\n");
+	pr_info("stm pm hom: HoM support registered\n");
 	return 0;
 }
 EXPORT_SYMBOL_GPL(stm_hom_register);

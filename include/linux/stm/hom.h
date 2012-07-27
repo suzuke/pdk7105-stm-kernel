@@ -11,13 +11,19 @@
 #define __STM_MEM_HIBERNATION_H__
 
 #include <linux/hom.h>
+#include <linux/list.h>
 #include <linux/compiler.h>
+
+struct hom_table {
+	long const *addr;
+	unsigned long size;
+	struct list_head node;
+};
 
 struct stm_mem_hibernation {
 	void __iomem *eram_iomem; /* on ARM */
 	long flags;
-	long tbl_addr;
-	long tbl_size;
+	struct list_head table;
 	void __iomem *early_console_base;
 	unsigned long early_console_rate;
 	struct platform_hom_ops ops;

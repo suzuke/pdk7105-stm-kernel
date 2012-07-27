@@ -34,29 +34,39 @@
 #include <linux/stm/poke_table.h>
 #include <linux/stm/synopsys_dwc_ddr32.h>
 
-
-static long stih415_mem_enter[] __cacheline_aligned = {
+static const long stih415_ddr0_enter[] = {
 synopsys_ddr32_in_self_refresh(STIH415_MPE_DDR0_PCTL_BASE),
-synopsys_ddr32_in_self_refresh(STIH415_MPE_DDR1_PCTL_BASE),
-
 synopsys_ddr32_phy_standby_enter(STIH415_MPE_DDR0_PCTL_BASE),
+};
+
+static const long stih415_ddr1_enter[] = {
+synopsys_ddr32_in_self_refresh(STIH415_MPE_DDR1_PCTL_BASE),
 synopsys_ddr32_phy_standby_enter(STIH415_MPE_DDR1_PCTL_BASE),
-
-END_MARKER,
 };
 
-static long stih415_mem_exit[] __cacheline_aligned = {
+static const long stih415_ddr0_exit[] = {
 synopsys_ddr32_phy_standby_exit(STIH415_MPE_DDR0_PCTL_BASE),
-synopsys_ddr32_phy_standby_exit(STIH415_MPE_DDR1_PCTL_BASE),
-
 synopsys_ddr32_out_of_self_refresh(STIH415_MPE_DDR0_PCTL_BASE),
-synopsys_ddr32_out_of_self_refresh(STIH415_MPE_DDR1_PCTL_BASE),
-
-END_MARKER,
 };
 
+static const long stih415_ddr1_exit[] = {
+synopsys_ddr32_phy_standby_exit(STIH415_MPE_DDR1_PCTL_BASE),
+synopsys_ddr32_out_of_self_refresh(STIH415_MPE_DDR1_PCTL_BASE),
+};
 
-static struct stm_wakeup_devices stih415_wkd;
+#define SUSPEND_TBL(_enter, _exit) {			\
+	.enter = _enter,				\
+	.enter_size = ARRAY_SIZE(_enter) * sizeof(long),\
+	.exit = _exit,					\
+	.exit_size = ARRAY_SIZE(_exit) * sizeof(long),	\
+}
+
+static struct stm_suspend_table stih415_suspend_tables[] = {
+	SUSPEND_TBL(stih415_ddr0_enter, stih415_ddr0_exit),
+	SUSPEND_TBL(stih415_ddr1_enter, stih415_ddr1_exit),
+};
+
+struct stm_wakeup_devices stih415_wkd;
 static struct stm_mcm_suspend *main_mcm;
 static struct stm_mcm_suspend *peripheral_mcm;
 struct stm_mcm_suspend *stx_mpe41_suspend_setup(void);
@@ -135,26 +145,26 @@ static struct stm_platform_suspend stih415_suspend = {
 
 	.eram_iomem = (void *)0xc00a0000,
 	.get_wake_irq = stih415_get_wake_irq,
-
-	.memstandby = &(struct stm_suspend_data) {
-		.enter_table = stih415_mem_enter,
-		.enter_table_size =
-			ARRAY_SIZE(stih415_mem_enter) * sizeof(long),
-		.exit_table = stih415_mem_exit,
-		.exit_table_size = ARRAY_SIZE(stih415_mem_exit) * sizeof(long),
-	},
 };
 
 static int __init stih415_suspend_setup(void)
 {
+	int i;
+
+	INIT_LIST_HEAD(&stih415_suspend.mem_tables);
+
 	main_mcm = stx_mpe41_suspend_setup();
 
 	peripheral_mcm = stx_sasg1_suspend_setup();
 
 	if (!main_mcm || !peripheral_mcm) {
-		pr_err("[STM] Error on Die registration\n");
+		pr_err("stm: Error on mcm registration\n");
 		return -ENOSYS;
 	}
+
+	for (i = 0; i < ARRAY_SIZE(stih415_suspend_tables); ++i)
+		list_add_tail(&stih415_suspend_tables[i].node,
+			&stih415_suspend.mem_tables);
 
 	return stm_suspend_register(&stih415_suspend);
 }

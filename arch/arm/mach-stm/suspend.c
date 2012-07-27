@@ -22,6 +22,7 @@
 #include <linux/io.h>
 
 #include <linux/stm/pm_notify.h>
+#include <linux/stm/poke_table.h>
 
 #include <asm/idmap.h>
 #include <asm/io.h>
@@ -35,14 +36,15 @@
 
 static struct stm_platform_suspend *platform_suspend;
 static void __iomem *virtual_eram_iomem;
+static const unsigned long suspend_end_table[] = { END_MARKER };
 
-static unsigned long
-stm_prepare_eram(struct stm_platform_suspend *platform,
+static void stm_prepare_eram(struct stm_platform_suspend *platform,
 		struct stm_suspend_eram_data *eram)
 {
-	unsigned long size = 0;
 	void *__pa_eram = platform->eram_iomem;
 	void *__va_eram = virtual_eram_iomem;
+	struct stm_suspend_table *table;
+
 	/*
 	 * 1. copy the __pokeloop code in eram
 	 */
@@ -52,22 +54,32 @@ stm_prepare_eram(struct stm_platform_suspend *platform,
 	__pa_eram += stm_pokeloop_sz;
 
 	/*
-	 * 2. copy the entry_data_table in eram
+	 * 2. copy the entry_tables in eram
 	 */
 	eram->pa_table_enter = __pa_eram;
-	size = platform->memstandby->enter_table_size;
-	memcpy_toio(__va_eram, platform->memstandby->enter_table, size);
-	__va_eram += size;
-	__pa_eram += size;
+	list_for_each_entry(table, &platform->mem_tables, node) {
+		memcpy_toio(__va_eram, table->enter, table->enter_size);
+		__va_eram += table->enter_size;
+		__pa_eram += table->enter_size;
+	}
+	memcpy_toio(__va_eram, suspend_end_table,
+		ARRAY_SIZE(suspend_end_table) * sizeof(long));
+	__va_eram += ARRAY_SIZE(suspend_end_table) * sizeof(long);
+	__pa_eram += ARRAY_SIZE(suspend_end_table) * sizeof(long);
 
 	/*
 	 * 3. copy the exit_data_table in eram
 	 */
 	eram->pa_table_exit = __pa_eram;
-	size = platform->memstandby->exit_table_size;
-	memcpy_toio(__va_eram, platform->memstandby->exit_table, size);
-	__va_eram += size;
-	__pa_eram += size;
+	list_for_each_entry_reverse(table, &platform->mem_tables, node) {
+		memcpy_toio(__va_eram, table->exit, table->exit_size);
+		__va_eram += table->exit_size;
+		__pa_eram += table->exit_size;
+	}
+	memcpy_toio(__va_eram, suspend_end_table,
+		ARRAY_SIZE(suspend_end_table) * sizeof(long));
+	__va_eram += ARRAY_SIZE(suspend_end_table) * sizeof(long);
+	__pa_eram += ARRAY_SIZE(suspend_end_table) * sizeof(long);
 
 	/*
 	 * 4. copy the stm_eram code in eram
@@ -77,9 +89,6 @@ stm_prepare_eram(struct stm_platform_suspend *platform,
 	__va_eram += stm_suspend_on_eram_sz;
 	__pa_eram += stm_suspend_on_eram_sz;
 
-	return stm_pokeloop_sz + stm_suspend_on_eram_sz +
-		platform->memstandby->enter_table_size +
-		platform->memstandby->exit_table_size;
 }
 
 static int stm_suspend_enter(suspend_state_t state)
@@ -112,10 +121,10 @@ static int stm_suspend_enter(suspend_state_t state)
 
 stm_again_suspend:
 
-	if (state == PM_SUSPEND_MEM && platform_suspend->memstandby) {
-		unsigned long size;
+	if (state == PM_SUSPEND_MEM &&
+	    !list_empty(&platform_suspend->mem_tables)) {
 
-		size = stm_prepare_eram(platform_suspend, &eram_data);
+		stm_prepare_eram(platform_suspend, &eram_data);
 
 		flush_cache_all();
 		flush_tlb_all();
@@ -154,16 +163,19 @@ static int stm_suspend_valid_both(suspend_state_t state)
 int __init stm_suspend_register(struct stm_platform_suspend *_suspend)
 {
 	int ioremap_size;
+	struct stm_suspend_table *table;
 
 	if (!_suspend)
 		return -EINVAL;
 
 	ioremap_size = stm_suspend_on_eram_sz + stm_pokeloop_sz;
 
-	if (_suspend->memstandby) {
-		ioremap_size += _suspend->memstandby->enter_table_size;
-		ioremap_size += _suspend->memstandby->exit_table_size;
+	list_for_each_entry(table, &_suspend->mem_tables, node) {
+		ioremap_size += table->enter_size;
+		ioremap_size += table->exit_size;
 	}
+	ioremap_size += 2 * ARRAY_SIZE(suspend_end_table) * sizeof(long);
+
 	virtual_eram_iomem = ioremap((phys_addr_t)_suspend->eram_iomem,
 			ioremap_size);
 
@@ -176,7 +188,7 @@ int __init stm_suspend_register(struct stm_platform_suspend *_suspend)
 
 	suspend_set_ops(&platform_suspend->ops);
 
-	pr_info("[STM]: [PM]: Suspend support registered\n");
+	pr_info("stm pm: Suspend support registered\n");
 
 	return 0;
 }

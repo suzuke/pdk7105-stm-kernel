@@ -12,19 +12,21 @@
 
 #include <linux/suspend.h>
 #include <linux/stm/wakeup_devices.h>
+#include <linux/list.h>
 
 #include "pokeloop.h"
 
-struct stm_suspend_data {
-	void *enter_table;
-	unsigned long enter_table_size;
-	void *exit_table;
-	unsigned long exit_table_size;
+struct stm_suspend_table {
+	long const *enter;
+	unsigned long enter_size;
+	long const *exit;
+	unsigned long exit_size;
+	struct list_head node;
 };
 
 struct stm_platform_suspend {
 	void __iomem *eram_iomem;
-	struct stm_suspend_data *memstandby;
+	struct list_head mem_tables;
 	int (*pre_enter)(suspend_state_t state);
 	void (*post_enter)(suspend_state_t state);
 	int (*get_wake_irq)(void);
