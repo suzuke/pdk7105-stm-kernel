@@ -30,7 +30,6 @@
 #include <linux/interrupt.h>
 #include <linux/semaphore.h>
 #include <linux/delay.h>
-#include <linux/stm/clk.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/dma.h>
 #include <linux/pm_runtime.h>
@@ -104,7 +103,7 @@ struct snd_stm_uniperif_player {
 	int fdma_channel;
 
 	/* Environment settings */
-	struct clk *clock;
+	struct snd_stm_clk *clock;
 	struct snd_pcm_hw_constraint_list channels_constraint;
 	struct snd_stm_conv_source *conv_source;
 
@@ -738,18 +737,19 @@ static int snd_stm_uniperif_player_prepare_pcm(
 			snd_stm_uniperif_player_samples_per_period(runtime));
 
 	/* Set up frequency synthesizer */
-	result = clk_enable(player->clock);
+	result = snd_stm_clk_enable(player->clock);
 	if (result != 0) {
 		snd_stm_printe("Can't enable clock for player '%s'!\n",
 				dev_name(player->device));
 		return result;
 	}
 
-	result = clk_set_rate(player->clock, runtime->rate * oversampling);
+	result = snd_stm_clk_set_rate(player->clock,
+		runtime->rate * oversampling);
 	if (result != 0) {
 		snd_stm_printe("Can't configure clock for player '%s'!\n",
 				dev_name(player->device));
-		clk_disable(player->clock);
+		snd_stm_clk_disable(player->clock);
 		return result;
 	}
 
@@ -1117,7 +1117,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 	set__AUD_UNIPERIF_CTRL__SPDIF_FMT_OFF(player);
 
 	/* Enable clock */
-	result = clk_enable(player->clock);
+	result = snd_stm_clk_enable(player->clock);
 	if (result != 0) {
 		snd_stm_printe("Can't enable clock for player '%s'!\n",
 				dev_name(player->device));
@@ -1125,11 +1125,12 @@ static int snd_stm_uniperif_player_prepare_iec958(
 	}
 
 	/* Set clock rate */
-	result = clk_set_rate(player->clock, runtime->rate * oversampling);
+	result = snd_stm_clk_set_rate(player->clock,
+		runtime->rate * oversampling);
 	if (result != 0) {
 		snd_stm_printe("Can't configure clock for player '%s'!\n",
 				dev_name(player->device));
-		clk_disable(player->clock);
+		snd_stm_clk_disable(player->clock);
 		return result;
 	}
 
@@ -1314,7 +1315,7 @@ static int snd_stm_uniperif_player_halt(struct snd_pcm_substream *substream)
 
 	/* Stop uniperipheral player */
 	set__AUD_UNIPERIF_CTRL__OPERATION_OFF(player);
-	clk_disable(player->clock);
+	snd_stm_clk_disable(player->clock);
 
 	/* Stop FDMA transfer */
 	dmaengine_terminate_all(player->dma_channel);

@@ -29,7 +29,6 @@
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
-#include <linux/stm/clk.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/dma.h>
 #include <sound/core.h>
@@ -98,7 +97,7 @@ struct snd_stm_spdif_player {
 	unsigned int irq;
 
 	/* Environment settings */
-	struct clk *clock;
+	struct snd_stm_clk *clock;
 	struct snd_stm_conv_source *conv_source;
 
 	/* Default settings (controlled by controls ;-) */
@@ -575,19 +574,19 @@ static int snd_stm_spdif_player_prepare(struct snd_pcm_substream *substream)
 
 	/* Set up frequency synthesizer */
 
-	result = clk_enable(spdif_player->clock);
+	result = snd_stm_clk_enable(spdif_player->clock);
 	if (result != 0) {
 		snd_stm_printe("Can't enable clock for player '%s'!\n",
 				dev_name(spdif_player->device));
 		return result;
 	}
 
-	result = clk_set_rate(spdif_player->clock,
+	result = snd_stm_clk_set_rate(spdif_player->clock,
 				runtime->rate * oversampling);
 	if (result != 0) {
 		snd_stm_printe("Can't configure clock for player '%s'!\n",
 				dev_name(spdif_player->device));
-		clk_disable(spdif_player->clock);
+		snd_stm_clk_disable(spdif_player->clock);
 		return result;
 	}
 
@@ -766,7 +765,7 @@ static int snd_stm_spdif_player_stop(struct snd_pcm_substream *substream)
 
 	/* Stop the clock and reset SPDIF player */
 
-	clk_disable(spdif_player->clock);
+	snd_stm_clk_disable(spdif_player->clock);
 	set__AUD_SPDIF_RST__SRSTP__RESET(spdif_player);
 
 	return 0;

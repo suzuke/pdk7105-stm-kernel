@@ -62,12 +62,18 @@ void snd_stm_conv_exit(void);
 
 
 /*
- * Clocks control interface
+ * Sound Clocks control interface
+ * snd_stm_clk is a wrapper around the standard clk
+ * this API is required to guarantee balanced
+ * clk_enable/clk_disable as the standard clk framework needs
  */
-
-struct clk *snd_stm_clk_get(struct device *dev, const char *id,
+struct snd_stm_clk;
+struct snd_stm_clk *snd_stm_clk_get(struct device *dev, const char *id,
 		struct snd_card *card, int card_device);
-void snd_stm_clk_put(struct clk *clk);
+void snd_stm_clk_put(struct snd_stm_clk *clk);
+int snd_stm_clk_enable(struct snd_stm_clk *clk);
+int snd_stm_clk_disable(struct snd_stm_clk *clk);
+int snd_stm_clk_set_rate(struct snd_stm_clk *clk, unsigned long rate);
 
 
 

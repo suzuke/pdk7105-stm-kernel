@@ -30,7 +30,6 @@
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
-#include <linux/stm/clk.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/dma.h>
 #include <sound/core.h>
@@ -80,7 +79,7 @@ struct snd_stm_pcm_player {
 	unsigned int irq;
 
 	/* Environment settings */
-	struct clk *clock;
+	struct snd_stm_clk *clock;
 	struct snd_pcm_hw_constraint_list channels_constraint;
 	struct snd_stm_conv_source *conv_source;
 
@@ -494,19 +493,19 @@ static int snd_stm_pcm_player_prepare(struct snd_pcm_substream *substream)
 
 	/* Set up frequency synthesizer */
 
-	result = clk_enable(pcm_player->clock);
+	result = snd_stm_clk_enable(pcm_player->clock);
 	if (result != 0) {
 		snd_stm_printe("Can't enable clock for player '%s'!\n",
 				dev_name(pcm_player->device));
 		return result;
 	}
 
-	result = clk_set_rate(pcm_player->clock,
+	result = snd_stm_clk_set_rate(pcm_player->clock,
 				runtime->rate * oversampling);
 	if (result != 0) {
 		snd_stm_printe("Can't configure clock for player '%s'!\n",
 				dev_name(pcm_player->device));
-		clk_disable(pcm_player->clock);
+		snd_stm_clk_disable(pcm_player->clock);
 		return result;
 	}
 
@@ -745,7 +744,7 @@ static int snd_stm_pcm_player_stop(struct snd_pcm_substream *substream)
 
 	/* Stop the clock & reset PCM player */
 
-	clk_disable(pcm_player->clock);
+	snd_stm_clk_disable(pcm_player->clock);
 	set__AUD_PCMOUT_RST__SRSTP__RESET(pcm_player);
 
 	return 0;
