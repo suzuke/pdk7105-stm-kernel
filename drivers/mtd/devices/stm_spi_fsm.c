@@ -1657,12 +1657,33 @@ static int __devexit stm_spi_fsm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_HIBERNATION
+static int stm_spi_fsm_restore(struct device *dev)
+{
+	struct stm_spi_fsm *fsm = dev_get_drvdata(dev);
+
+	stm_pad_setup(fsm->pad_state);
+
+	fsm_init(fsm);
+
+	return 0;
+}
+
+static const struct dev_pm_ops stm_spi_fsm_pm_ops = {
+	.thaw =  stm_spi_fsm_restore,
+	.restore = stm_spi_fsm_restore,
+};
+#endif
+
 static struct platform_driver stm_spi_fsm_driver = {
 	.probe		= stm_spi_fsm_probe,
 	.remove		= stm_spi_fsm_remove,
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_HIBERNATION
+		.pm	= &stm_spi_fsm_pm_ops,
+#endif
 	},
 };
 
