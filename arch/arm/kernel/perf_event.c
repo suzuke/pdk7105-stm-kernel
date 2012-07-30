@@ -14,6 +14,7 @@
 
 #include <linux/bitmap.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/kernel.h>
 #include <linux/export.h>
 #include <linux/perf_event.h>
@@ -355,11 +356,25 @@ validate_group(struct perf_event *event)
 
 static irqreturn_t armpmu_platform_irq(int irq, void *dev)
 {
-	struct arm_pmu *armpmu = (struct arm_pmu *) dev;
+	struct pmu_hw_events *cpuc  = (struct pmu_hw_events *)dev;
+	struct arm_pmu *armpmu = to_arm_pmu((*(cpuc->events))->pmu);
+
 	struct platform_device *plat_device = armpmu->plat_device;
 	struct arm_pmu_platdata *plat = dev_get_platdata(&plat_device->dev);
 
 	return plat->handle_irq(irq, dev, armpmu->handle_irq);
+}
+
+/* Wrap enable_percpu_irq up as a smp_call_func_t */
+static void armpmu_enable_percpu_irq(void *irq)
+{
+	enable_percpu_irq((int)irq, IRQ_TYPE_NONE);
+}
+
+/* Wrap disable_percpu_irq up as a smp_call_func_t */
+static void armpmu_disable_percpu_irq(void *irq)
+{
+	disable_percpu_irq((int)irq);
 }
 
 static void
@@ -379,7 +394,14 @@ armpmu_release_hardware(struct arm_pmu *armpmu)
 		if (irq >= 0) {
 			if (plat && plat->disable_irq)
 				plat->disable_irq(irq);
-			free_irq(irq, armpmu);
+			else if (irq_is_per_cpu(irq))
+				on_each_cpu(armpmu_disable_percpu_irq,
+						(void *)irq, 1);
+
+			if (irq_is_per_cpu(irq))
+				free_percpu_irq(irq, &cpu_hw_events);
+			else
+				free_irq(irq, &per_cpu(cpu_hw_events, i));
 		}
 	}
 
@@ -421,27 +443,52 @@ armpmu_reserve_hardware(struct arm_pmu *armpmu)
 		if (irq < 0)
 			continue;
 
-		/*
-		 * If we have a single PMU interrupt that we can't shift,
-		 * assume that we're running on a uniprocessor machine and
-		 * continue. Otherwise, continue without this interrupt.
-		 */
-		if (irq_set_affinity(irq, cpumask_of(i)) && irqs > 1) {
-			pr_warning("unable to set irq affinity (irq=%d, cpu=%u)\n",
-				    irq, i);
-			continue;
-		}
+		if (irq_is_per_cpu(irq)) {
+			/*
+			 * We assume that if the PMU IRQ is per-cpu, then
+			 * there is only one.
+			 */
+			WARN_ON(irqs > 1);
 
-		err = request_irq(irq, handle_irq,
-				  IRQF_DISABLED | IRQF_NOBALANCING,
-				  "arm-pmu", armpmu);
-		if (err) {
-			pr_err("unable to request IRQ%d for ARM PMU counters\n",
-				irq);
-			armpmu_release_hardware(armpmu);
-			return err;
-		} else if (plat && plat->enable_irq)
-			plat->enable_irq(irq);
+			err = request_percpu_irq(irq, handle_irq,
+					"arm-pmu", &cpu_hw_events);
+			if (err) {
+				pr_err("unable to request IRQ%d for ARM PMU counters\n",
+					irq);
+				armpmu_release_hardware(armpmu);
+				return err;
+			} else if (plat && plat->enable_irq) {
+				plat->enable_irq(irq);
+			} else {
+				on_each_cpu(armpmu_enable_percpu_irq,
+						(void *)irq, 1);
+			}
+
+		} else {
+			/*
+			 * If we have a single PMU interrupt that we can't
+			 * shift, assume that we're running on a uniprocessor
+			 * machine and continue. Otherwise, continue without
+			 * this interrupt.
+			 */
+			if (irq_set_affinity(irq, cpumask_of(i)) && irqs > 1) {
+				pr_warning("unable to set irq affinity (irq=%d, cpu=%u)\n",
+					    irq, i);
+				continue;
+			}
+
+			err = request_irq(irq, handle_irq,
+					IRQF_DISABLED | IRQF_NOBALANCING,
+					"arm-pmu", &per_cpu(cpu_hw_events, i));
+
+			if (err) {
+				pr_err("unable to request IRQ%d for ARM PMU counters\n",
+					irq);
+				armpmu_release_hardware(armpmu);
+				return err;
+			} else if (plat && plat->enable_irq)
+				plat->enable_irq(irq);
+		}
 
 		cpumask_set_cpu(i, &armpmu->active_irqs);
 	}
