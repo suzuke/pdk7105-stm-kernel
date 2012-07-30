@@ -12,6 +12,7 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/device.h>
 #include <linux/stm/sysconf.h>
+#include <asm/pmu.h>
 
 #ifdef CONFIG_CPU_SUBTYPE_STIH415
 #include <linux/stm/stih415.h>
@@ -182,6 +183,47 @@ static struct platform_device mpe41_st40_coproc_device = {
 		},
 	},
 };
+
+/* Performance Monitoring Unit initialization ------------------------------*/
+
+#ifdef CONFIG_HW_PERF_EVENTS
+
+static struct resource pmu_resource = {
+	.start          = 31,
+	.end            = 31,
+	.flags          = IORESOURCE_IRQ,
+};
+
+static struct platform_device mpe41_pmu_device = {
+	.name                   = "arm-pmu",
+	.id                     = ARM_PMU_DEVICE_CPU,
+	.resource               = &pmu_resource,
+	.num_resources          = 1,
+};
+
+static int __init mpe41_configure_pmu(void)
+{
+	struct sysconf_field *sc_a9_irq_en =
+			sysconf_claim(SYSCONF(642), 0, 5, "pmu");
+	struct sysconf_field *sc_irq0_n_sel =
+			sysconf_claim(SYSCONF(642), 14, 16, "pmu");
+	struct sysconf_field *sc_irq1_n_sel =
+			sysconf_claim(SYSCONF(642), 17, 19, "pmu");
+
+	/* The PMU interrupts are muxed onto PPI 31 with various
+	 * other things, selected via this sysconf */
+	sysconf_write(sc_a9_irq_en, 0xc);
+	sysconf_write(sc_irq0_n_sel, 0x5);
+	sysconf_write(sc_irq1_n_sel, 0x6);
+
+	sysconf_release(sc_a9_irq_en);
+	sysconf_release(sc_irq0_n_sel);
+	sysconf_release(sc_irq1_n_sel);
+
+	return platform_device_register(&mpe41_pmu_device);
+}
+device_initcall(mpe41_configure_pmu);
+#endif
 
 /* Late initialisation ---------------------------------------------------- */
 
