@@ -21,6 +21,8 @@
 
   Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
 *******************************************************************************/
+#ifndef __STMMAC_TIMER_H__
+#define __STMMAC_TIMER_H__
 
 struct stmmac_timer {
 	void (*timer_start) (void *timer, unsigned int new_freq);
@@ -36,3 +38,5 @@ int stmmac_open_ext_timer(struct net_device *dev, struct stmmac_timer *tm);
 int stmmac_close_ext_timer(void *priv);
 /* Function used for scheduling task within the stmmac */
 void stmmac_schedule(struct net_device *dev);
+
+#endif /* __STMMAC_TIMER_H__ */
