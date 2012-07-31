@@ -296,7 +296,9 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 	struct stm_fdma_device *fdev = fchan->fdev;
 	struct stm_dma_paced_config *paced;
 	unsigned long irqflags = 0;
+	LIST_HEAD(list);
 	int result;
+	int i;
 
 	dev_dbg(fdev->dev, "%s(chan=%p)\n", __func__, chan);
 
@@ -305,8 +307,6 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 		dev_err(fchan->fdev->dev, "Firmware not loaded!\n");
 		return -ENODEV;
 	}
-
-	spin_lock_irqsave(&fchan->lock, irqflags);
 
 	/* Set the channel type */
 	if (chan->private)
@@ -318,7 +318,6 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 	switch (fchan->type) {
 	case STM_DMA_TYPE_FREE_RUNNING:
 		fchan->dma_addr = 0;
-		result = 0;
 		break;
 
 	case STM_DMA_TYPE_PACED:
@@ -328,15 +327,14 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 		fchan->dreq = stm_fdma_dreq_alloc(fchan, &paced->dreq_config);
 		if (!fchan->dreq) {
 			dev_err(fdev->dev, "Failed to configure paced dreq\n");
-			result = -EINVAL;
-			goto error;
+			return -EINVAL;
 		}
 		/* Configure the dreq */
 		result = stm_fdma_dreq_config(fchan, fchan->dreq);
 		if (result) {
 			dev_err(fdev->dev, "Failed to set paced dreq\n");
 			stm_fdma_dreq_free(fchan, fchan->dreq);
-			goto error;
+			return result;
 		}
 		break;
 
@@ -344,7 +342,7 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 		result = stm_fdma_audio_alloc_chan_resources(fchan);
 		if (result) {
 			dev_err(fdev->dev, "Failed to alloc audio resources\n");
-			goto error;
+			return result;
 		}
 		break;
 
@@ -352,7 +350,7 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 		result = stm_fdma_mchi_alloc_chan_resources(fchan);
 		if (result) {
 			dev_err(fdev->dev, "Failed to alloc mchi resources\n");
-			goto error;
+			return result;
 		}
 		break;
 
@@ -360,45 +358,36 @@ static int stm_fdma_alloc_chan_resources(struct dma_chan *chan)
 		result = stm_fdma_telss_alloc_chan_resources(fchan);
 		if (result) {
 			dev_err(fdev->dev, "Failed to alloc telss resources\n");
-			goto error;
+			return result;
 		}
 		break;
 
 	default:
 		dev_err(fchan->fdev->dev, "Invalid channel type (%d)\n",
 				fchan->type);
-		result = -EINVAL;
-		goto error;
+		return -EINVAL;
 	}
 
-	/* Allocate descriptors */
-	while (fchan->desc_count < STM_FDMA_DESCRIPTORS) {
+	/* Allocate descriptors to a temporary list */
+	for (i = 0; i < STM_FDMA_DESCRIPTORS; ++i) {
 		struct stm_fdma_desc *fdesc;
 
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-
-		/* Allocate a new descriptor */
 		fdesc = stm_fdma_desc_alloc(fchan);
 		if (!fdesc) {
 			dev_err(fdev->dev, "Failed to allocate desc\n");
 			break;
 		}
 
-		spin_lock_irqsave(&fchan->lock, irqflags);
-
-		/* Add descriptor to the free list and increment count */
-		list_add_tail(&fdesc->node, &fchan->desc_free);
-		fchan->desc_count++;
+		list_add_tail(&fdesc->node, &list);
 	}
 
+	spin_lock_irqsave(&fchan->lock, irqflags);
+	fchan->desc_count = i;
+	list_splice(&list, &fchan->desc_free);
+	fchan->last_completed = chan->cookie = 1;
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
-
 
 	return fchan->desc_count;
-
-error:
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
-	return result;
 }
 
 static void stm_fdma_free_chan_resources(struct dma_chan *chan)
@@ -420,18 +409,14 @@ static void stm_fdma_free_chan_resources(struct dma_chan *chan)
 	BUG_ON(!list_empty(&fchan->desc_active));
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
+	list_splice_init(&fchan->desc_free, &list);
+	fchan->desc_count = 0;
+	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
 	/* Free all allocated transfer descriptors */
-	list_for_each_entry_safe(fdesc, _fdesc, &fchan->desc_free, node) {
-		list_del(&fdesc->node);
+	list_for_each_entry_safe(fdesc, _fdesc, &list, node) {
 		stm_fdma_desc_free(fdesc);
 	}
-
-	/* Re-initialise the descriptor count and the free list */
-	fchan->desc_count = 0;
-	INIT_LIST_HEAD(&fchan->desc_free);
-
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
 	/* Perform any channel configuration clean up */
 	switch (fchan->type) {
