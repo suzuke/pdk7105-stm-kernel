@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -84,17 +84,11 @@ typedef struct
 	u32 phys_base;        /**< Mali physical base of the memory, page aligned */
 	u32 size;             /**< size in bytes of the memory, multiple of page size */
 	s32 cpu_usage_adjust; /**< Offset to add to Mali Physical address to obtain CPU physical address */
-} _mali_mem_validation_range_t;
-
-#define _MALI_MAX_EXT_RANGES 4
-
-typedef struct
-{
-	u32 num_ranges;                                              /**< Number of ranges registered */
-	_mali_mem_validation_range_t range[_MALI_MAX_EXT_RANGES];    /**< The ranges registered - static allocation for now */
 } _mali_mem_validation_t;
 
-static _mali_mem_validation_t mem_validator = {.num_ranges = 0}; /* no ranges registered at the start */
+#define INVALID_MEM 0xffffffff
+
+static _mali_mem_validation_t mem_validator = { INVALID_MEM, INVALID_MEM, -1 };
 
 static struct mali_kernel_subsystem mali_subsystem_core =
 {
@@ -112,14 +106,14 @@ static struct mali_kernel_subsystem mali_subsystem_core =
 
 static struct mali_kernel_subsystem * subsystems[] =
 {
-	/* always initialize the hw subsystems first */
-	/* always included */
-	&mali_subsystem_memory,
 
 #if USING_MALI_PMM
 	/* The PMM must be initialized before any cores - including L2 cache */
 	&mali_subsystem_pmm,
 #endif
+
+	/* always included */
+	&mali_subsystem_memory,
 
 	/* The rendercore subsystem must be initialized before any subsystem based on the
 	 * rendercores is started e.g. mali_subsystem_mali200 and mali_subsystem_gp2 */
@@ -161,7 +155,7 @@ _mali_osk_errcode_t mali_kernel_constructor( void )
 {
     _mali_osk_errcode_t err;
 
-	err = mali_platform_init(NULL);
+	err = mali_platform_init();
 	if (_MALI_OSK_ERR_OK != err) goto error1;
 
     err = _mali_osk_init();
@@ -184,7 +178,7 @@ error3:
     _mali_osk_term();
 error2:
 	MALI_PRINT(("Mali device driver init failed\n"));
-	if (_MALI_OSK_ERR_OK != mali_platform_deinit(NULL))
+	if (_MALI_OSK_ERR_OK != mali_platform_deinit())
 	{
 		MALI_PRINT(("Failed to deinit platform\n"));
 	}
@@ -198,10 +192,13 @@ void mali_kernel_destructor( void )
 {
 	MALI_DEBUG_PRINT(2, ("\n"));
 	MALI_DEBUG_PRINT(2, ("Unloading Mali v%d device driver.\n",_MALI_API_VERSION));
+#if USING_MALI_PMM
+	malipmm_force_powerup();
+#endif
 	terminate_subsystems(); /* subsystems are responsible for their registered resources */
     _mali_osk_term();
 
-	if (_MALI_OSK_ERR_OK != mali_platform_deinit(NULL))
+	if (_MALI_OSK_ERR_OK != mali_platform_deinit())
 	{
 		MALI_PRINT(("Failed to deinit platform\n"));
 	}
@@ -649,44 +646,28 @@ static _mali_osk_errcode_t mali_kernel_subsystem_core_session_begin(struct mali_
 /* MEM_VALIDATION resource handler */
 static _mali_osk_errcode_t mali_kernel_core_resource_mem_validation(_mali_osk_resource_t * resource)
 {
+	/* Check that no other MEM_VALIDATION resources exist */
+	MALI_CHECK( ((u32)-1) == mem_validator.phys_base, _MALI_OSK_ERR_FAULT );
+
 	/* Check restrictions on page alignment */
 	MALI_CHECK( 0 == (resource->base & (~_MALI_OSK_CPU_PAGE_MASK)), _MALI_OSK_ERR_FAULT );
 	MALI_CHECK( 0 == (resource->size & (~_MALI_OSK_CPU_PAGE_MASK)), _MALI_OSK_ERR_FAULT );
 	MALI_CHECK( 0 == (resource->cpu_usage_adjust & (~_MALI_OSK_CPU_PAGE_MASK)), _MALI_OSK_ERR_FAULT );
 
-	/* Add new range to the end of the list */
-	if( _MALI_MAX_EXT_RANGES == mem_validator.num_ranges )
-	{
-		MALI_PRINTF( ("Memory Validator '%s' Unable to register another physical range - increase its size\n",resource->description) );
-		MALI_ERROR( _MALI_OSK_ERR_FAULT );
-	}
-	mem_validator.range[mem_validator.num_ranges].phys_base = resource->base;
-	mem_validator.range[mem_validator.num_ranges].size = resource->size;
-	mem_validator.range[mem_validator.num_ranges].cpu_usage_adjust = resource->cpu_usage_adjust;
-	mem_validator.num_ranges ++;
-
-	MALI_DEBUG_PRINT( 2, ("Memory Validator '%s' configured for Mali phys addr base=0x%08X, size=0x%08X, cpu_adjust=0x%08X\n",
-						  resource->description, resource->base, resource->size, resource->cpu_usage_adjust ));
+	mem_validator.phys_base = resource->base;
+	mem_validator.size = resource->size;
+	mem_validator.cpu_usage_adjust = resource->cpu_usage_adjust;
+	MALI_DEBUG_PRINT( 2, ("Memory Validator '%s' installed for Mali physical address base==0x%08X, size==0x%08X, cpu_adjust==0x%08X\n",
+						  resource->description, mem_validator.phys_base, mem_validator.size, mem_validator.cpu_usage_adjust ));
 	MALI_SUCCESS;
 }
 
 _mali_osk_errcode_t mali_kernel_core_translate_cpu_to_mali_phys_range( u32 *phys_base, u32 size )
 {
-	u32 mali_phys_base = 1;
-	u32 idx;
+	u32 mali_phys_base;
 
-	for( idx=0; idx<mem_validator.num_ranges; ++idx)
-	{
-		if ( *phys_base             >= mem_validator.range[idx].phys_base
-			 && (*phys_base + size) >= mem_validator.range[idx].phys_base
-		     && *phys_base          <= (mem_validator.range[idx].phys_base + mem_validator.range[idx].size)
-		     && (*phys_base + size) <= (mem_validator.range[idx].phys_base + mem_validator.range[idx].size) )
-		{
-			mali_phys_base = *phys_base - mem_validator.range[idx].cpu_usage_adjust;
-		}
-	}
+	mali_phys_base = *phys_base - mem_validator.cpu_usage_adjust;
 
-	MALI_CHECK( 1 == ( mali_phys_base ), _MALI_OSK_ERR_FAULT );
 	MALI_CHECK( 0 == ( mali_phys_base & (~_MALI_OSK_CPU_PAGE_MASK)), _MALI_OSK_ERR_FAULT );
 	MALI_CHECK( 0 == ( size & (~_MALI_OSK_CPU_PAGE_MASK)), _MALI_OSK_ERR_FAULT );
 
@@ -698,20 +679,15 @@ _mali_osk_errcode_t mali_kernel_core_translate_cpu_to_mali_phys_range( u32 *phys
 
 _mali_osk_errcode_t mali_kernel_core_validate_mali_phys_range( u32 phys_base, u32 size )
 {
-	u32 idx;
-
 	MALI_CHECK_GOTO( 0 == ( phys_base & (~_MALI_OSK_CPU_PAGE_MASK)), failure );
 	MALI_CHECK_GOTO( 0 == ( size & (~_MALI_OSK_CPU_PAGE_MASK)), failure );
 
-	for( idx=0; idx< mem_validator.num_ranges; ++idx)
+	if ( phys_base             >= mem_validator.phys_base
+		 && (phys_base + size) >= mem_validator.phys_base
+		 && phys_base          <= (mem_validator.phys_base + mem_validator.size)
+		 && (phys_base + size) <= (mem_validator.phys_base + mem_validator.size) )
 	{
-		if ( phys_base             >= mem_validator.range[idx].phys_base
-			 && (phys_base + size) >= mem_validator.range[idx].phys_base
-		     && phys_base          <= (mem_validator.range[idx].phys_base + mem_validator.range[idx].size)
-		     && (phys_base + size) <= (mem_validator.range[idx].phys_base + mem_validator.range[idx].size) )
-		{
-			MALI_SUCCESS;
-		}
+		MALI_SUCCESS;
 	}
 
  failure:
@@ -724,12 +700,6 @@ _mali_osk_errcode_t mali_kernel_core_validate_mali_phys_range( u32 phys_base, u3
 	MALI_PRINTF( ("address range validation mechanism has not been correctly setup\n") );
 	MALI_PRINTF( ("\n") );
 	MALI_PRINTF( ("The range supplied was: phys_base=0x%08X, size=0x%08X\n", phys_base, size) );
-	MALI_PRINTF( ("\n") );
-	MALI_PRINTF( ("The following regions are currently configured\n") );
-	for( idx=0; idx< mem_validator.num_ranges; ++idx)
-	{
-		MALI_PRINTF( ("         phys_base=0x%08X, size=0x%08X\n", mem_validator.range[idx].phys_base, mem_validator.range[idx].size) );
-	}
 	MALI_PRINTF( ("\n") );
 	MALI_PRINTF( ("Please refer to the ARM Mali Software Integration Guide for more information.\n") );
 	MALI_PRINTF( ("\n") );

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -182,7 +182,7 @@ mali_bool pmm_power_down_okay( _mali_pmm_internal_state_t *pmm );
  * @param pmm internal PMM state
  * @return MALI_TRUE if the pending cores have been powered down, else MALI_FALSE
  */
-mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm );
+mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm,  mali_power_mode power_mode );
 
 /** @brief Check if all the pending cores to power up have done so
  *

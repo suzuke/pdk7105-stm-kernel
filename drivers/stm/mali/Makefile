@@ -119,7 +119,7 @@ MALI_OBJS += $(addprefix ./common/, \
         mali_kernel_utilization.o
 endif
 
-MAIL_OBJS += malidrv_build_info.o
+MALI_OBJS += malidrv_build_info.o
 
 # Mali driver defines
 ccflags-y += 	-DUSING_MMU=$(USING_MMU) \

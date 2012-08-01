@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -199,6 +199,7 @@ mali_pmm_core_mask pmm_cores_to_power_down( _mali_pmm_internal_state_t *pmm, mal
 				}
 				else
 				{
+					MALI_DEBUG_PRINT(1,("PMM: In pmm_cores_to_power_down, the error and cores powered are..%x....%x",err,*ppowered));
 					MALI_DEBUG_ASSERT( err == _MALI_OSK_ERR_BUSY ||
 										(err == _MALI_OSK_ERR_FAULT &&
 										(*ppowered & cores_list[n]) == 0) );
@@ -297,7 +298,7 @@ mali_bool pmm_power_down_okay( _mali_pmm_internal_state_t *pmm )
 	return ( pmm->cores_pend_down == pmm->cores_ack_down ? MALI_TRUE : MALI_FALSE );
 }
 
-mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
+mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm, mali_power_mode power_mode )
 {
 	_mali_osk_errcode_t err;
 	MALI_DEBUG_ASSERT_POINTER(pmm);
@@ -315,8 +316,9 @@ mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
 	}
 	else
 	{
+		pmm->cores_powered &= ~(pmm->cores_pend_down);
 #if !MALI_PMM_NO_PMU
-		err = mali_platform_powerdown( pmm->cores_pend_down );
+		err = malipmm_powerdown( pmm->cores_pend_down, power_mode);
 #else
 		err = _MALI_OSK_ERR_OK;
 #endif
@@ -327,7 +329,6 @@ mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
 			mali_pmm_core_mask old_power = pmm->cores_powered;
 #endif
 			/* Remove powered down cores from idle and powered list */
-			pmm->cores_powered &= ~(pmm->cores_pend_down);
 			pmm->cores_idle &= ~(pmm->cores_pend_down);
 			/* Reset pending/acknowledged status */
 			pmm->cores_pend_down = 0;
@@ -338,6 +339,7 @@ mali_bool pmm_invoke_power_down( _mali_pmm_internal_state_t *pmm )
 		}
 		else
 		{
+			pmm->cores_powered |= pmm->cores_pend_down;
 			MALI_PRINT_ERROR( ("PMM: Failed to get PMU to power down cores - (0x%x) %s", 
 					pmm->cores_pend_down, pmm_trace_get_core_name(pmm->cores_pend_down)) );
 			pmm->fatal_power_err = MALI_TRUE;
@@ -405,6 +407,7 @@ mali_bool pmm_invoke_power_up( _mali_pmm_internal_state_t *pmm )
 
 				if( err != _MALI_OSK_ERR_OK )
 				{
+					MALI_DEBUG_PRINT(1,("In pmm_invoke_power_up:: The error and pending cores to be powered up are...%x...%x",err,*ppendup));
 					MALI_DEBUG_ASSERT( (err == _MALI_OSK_ERR_FAULT &&
 										(*ppendup & cores_list[n]) == 0) );
 					/* We only expect this to fail when we are shutting down 
@@ -429,7 +432,7 @@ mali_bool pmm_invoke_power_up( _mali_pmm_internal_state_t *pmm )
 	{
 #if !MALI_PMM_NO_PMU
 		/* Power up must now be done */
-		err = mali_platform_powerup( pmm->cores_pend_up );
+		err = malipmm_powerup( pmm->cores_pend_up );
 #else
 		err = _MALI_OSK_ERR_OK;
 #endif
@@ -537,7 +540,7 @@ void pmm_fatal_reset( _mali_pmm_internal_state_t *pmm )
 		int n;
 		volatile mali_pmm_core_mask *pregistered = &(pmm->cores_registered);
 #if !MALI_PMM_NO_PMU
-		err = mali_platform_powerup( pmm->cores_registered );
+		err = malipmm_powerup( pmm->cores_registered );
 #endif
 		if( err != _MALI_OSK_ERR_OK )
 		{

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -231,7 +231,7 @@ _mali_osk_errcode_t pmm_policy_process_job_control( _mali_pmm_internal_state_t *
 			if( cores_subset != 0 )
 			{
 				/* There are some cores that need powering down */
-				if( !pmm_invoke_power_down( pmm ) )
+				if( !pmm_invoke_power_down( pmm, MALI_POWER_MODE_DEEP_SLEEP ) )
 				{
 					/* We need to wait until they are idle */
 					
@@ -241,6 +241,11 @@ _mali_osk_errcode_t pmm_policy_process_job_control( _mali_pmm_internal_state_t *
 					/* Exit this case - as we have to wait */
 					break;
 				}
+			}
+			else
+			{
+				 mali_platform_power_mode_change(MALI_POWER_MODE_DEEP_SLEEP);
+
 			}
 			/* Set waiting status */
 			pmm->status = MALI_PMM_STATUS_OS_WAITING;
@@ -280,7 +285,7 @@ _mali_osk_errcode_t pmm_policy_process_job_control( _mali_pmm_internal_state_t *
 					/* Check if we can really power down, if not then we are not
 					 * really in-active
 					 */
-					if( !pmm_invoke_power_down( pmm ) )
+					if( !pmm_invoke_power_down( pmm, MALI_POWER_MODE_LIGHT_SLEEP ) )
 					{
 						pmm_power_down_cancel( pmm );
 					}
@@ -322,11 +327,15 @@ _mali_osk_errcode_t pmm_policy_process_job_control( _mali_pmm_internal_state_t *
 			pmm->status = MALI_PMM_STATUS_OS_WAITING;
 			if ( pmm->cores_powered != 0 )
 			{
-				if ( pmm_invoke_power_down( pmm ) )
+				if ( pmm_invoke_power_down( pmm, MALI_POWER_MODE_DEEP_SLEEP ) )
 				{
 					_mali_osk_pmm_power_down_done( 0 );
 					break;
 				}
+			}
+			else	
+			{
+				 mali_platform_power_mode_change(MALI_POWER_MODE_DEEP_SLEEP);
 			}
 			_mali_osk_pmm_power_down_done( 0 );
 			break;
@@ -384,7 +393,7 @@ _mali_osk_errcode_t pmm_policy_process_job_control( _mali_pmm_internal_state_t *
 			}
 			
 			/* Now check if we can power down */
-			if( pmm_invoke_power_down( pmm ) )
+			if( pmm_invoke_power_down( pmm, MALI_POWER_MODE_DEEP_SLEEP ) )
 			{
 				if( pmm->status == MALI_PMM_STATUS_OS_POWER_DOWN )
 				{

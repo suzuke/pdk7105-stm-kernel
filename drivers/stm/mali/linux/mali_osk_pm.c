@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -25,11 +25,8 @@
 #include "mali_osk.h"
 #include "mali_uk_types.h"
 #include "mali_pmm.h"
-#include "mali_ukk.h"
 #include "mali_kernel_common.h"
 #include "mali_kernel_license.h"
-#include "mali_kernel_pm.h"
-#include "mali_device_pause_resume.h"
 #include "mali_linux_pm.h"
 #include "mali_linux_pm_testsuite.h"
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2012 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -15,6 +15,7 @@
 
 #if USING_MALI_PMM
 #include <linux/sched.h>
+#include <linux/export.h>
 
 #ifdef CONFIG_PM_RUNTIME
 #include <linux/pm_runtime.h>
@@ -23,7 +24,6 @@
 #include <linux/platform_device.h>
 #include <linux/version.h>
 #include <asm/current.h>
-#include <asm/delay.h>
 #include <linux/suspend.h>
 
 #include "mali_platform.h" 
@@ -44,6 +44,7 @@
 #if MALI_POWER_MGMT_TEST_SUITE
 #ifdef CONFIG_PM
 #include "mali_linux_pm_testsuite.h"
+#include "mali_platform_pmu_internal_testing.h"
 unsigned int pwr_mgmt_status_reg = 0;
 #endif /* CONFIG_PM */
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
@@ -53,7 +54,6 @@ static int is_os_pmm_thread_waiting = 0;
 /* kernel should be configured with power management support */
 #ifdef CONFIG_PM
 
-/* License should be GPL */
 #if MALI_LICENSE_IS_GPL
 
 /* Linux kernel major version */
@@ -74,10 +74,6 @@ static const char* const mali_states[_MALI_MAX_DEBUG_OPERATIONS] = {
 };
 
 #endif /* CONFIG_PM_DEBUG */
-
-#if MALI_PMM_RUNTIME_JOB_CONTROL_ON
-extern void set_mali_parent_power_domain(struct platform_device* dev);
-#endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
 
 #ifdef CONFIG_PM_RUNTIME
 #if MALI_PMM_RUNTIME_JOB_CONTROL_ON
@@ -585,7 +581,7 @@ int _mali_dev_platform_register(void)
 {
 	int err;
 #if MALI_PMM_RUNTIME_JOB_CONTROL_ON	
-	set_mali_parent_power_domain(&mali_gpu_device);
+	set_mali_parent_power_domain((void *)&mali_gpu_device);
 #endif
 
 #ifdef CONFIG_PM_RUNTIME
