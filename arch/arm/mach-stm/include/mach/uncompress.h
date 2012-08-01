@@ -46,6 +46,8 @@ static inline unsigned long get_uart_base(void)
 #ifdef CONFIG_MACH_STM_STIH415
 	if (machine_is_stm_b2000())
 		return STIH415_ASC2_BASE;
+        if (machine_is_stm_b2020())
+                return STIH415_SBC_ASC1_BASE;
 #elif defined(CONFIG_MACH_STM_FLI7610)
 	if (machine_is_stm_nmhdk_fli7610())
 		return FLI7610_CONSOLE_BASE;
