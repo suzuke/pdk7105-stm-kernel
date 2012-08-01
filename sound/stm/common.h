@@ -85,7 +85,7 @@ struct snd_stm_buffer;
 
 struct snd_stm_buffer *snd_stm_buffer_create(struct snd_pcm *pcm,
 		struct device *device, int prealloc_size);
-void snd_stm_buffer_dispose(struct snd_stm_buffer *buffer);
+#define snd_stm_buffer_dispose(buffer)
 
 int snd_stm_buffer_is_allocated(struct snd_stm_buffer *buffer);
 
@@ -148,17 +148,11 @@ void snd_stm_info_unregister(struct snd_info_entry *entry);
 
 int snd_stm_memory_request(struct platform_device *pdev,
 		struct resource **mem_region, void **base_address);
-void snd_stm_memory_release(struct resource *mem_region,
-		void *base_address);
+#define snd_stm_memory_release(mem_region, base_address)
 
 int snd_stm_irq_request(struct platform_device *pdev,
 		unsigned int *irq, irq_handler_t handler, void *dev_id);
-#define snd_stm_irq_release(irq, dev_id) free_irq(irq, dev_id)
-
-int snd_stm_fdma_request(struct platform_device *pdev, int *channel);
-int snd_stm_fdma_request_by_name(struct platform_device *pdev, int *channel,
-		const char *name);
-#define snd_stm_fdma_release(channel) free_dma(channel)
+#define snd_stm_irq_release(irq, dev_id)
 
 
 

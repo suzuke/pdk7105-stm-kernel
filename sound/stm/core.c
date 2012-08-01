@@ -122,65 +122,50 @@ int snd_stm_memory_request(struct platform_device *pdev,
 
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!resource) {
-		snd_stm_printe("Failed to"
-				" platform_get_resource(IORESOURCE_MEM)!\n");
+		dev_err(&pdev->dev, "Failed to get memory resource");
 		return -ENODEV;
 	}
 
-	*mem_region = request_mem_region(resource->start,
-			resource->end - resource->start + 1, pdev->name);
+	*mem_region = devm_request_mem_region(&pdev->dev, resource->start,
+			resource_size(resource), pdev->name);
 	if (!*mem_region) {
-		snd_stm_printe("Failed request_mem_region(0x%08x,"
-				" 0x%08x, '%s')!\n", resource->start,
-				resource->end - resource->start + 1,
-				pdev->name);
+		dev_err(&pdev->dev, "Failed to request memory region (%08x-"
+				"%08x)", resource->start, resource->end);
 		return -EBUSY;
 	}
-	snd_stm_printd(0, "Memory region: 0x%08x-0x%08x\n",
+
+	dev_notice(&pdev->dev, "Memory region: %08x-%08x\n",
 			(*mem_region)->start, (*mem_region)->end);
 
-	*base_address = ioremap(resource->start,
-			resource->end - resource->start + 1);
+	*base_address = devm_ioremap_nocache(&pdev->dev, resource->start,
+			resource_size(resource));
 	if (!*base_address) {
-		release_resource(*mem_region);
-		snd_stm_printe("Failed ioremap!\n");
-		return -EINVAL;
+		dev_err(&pdev->dev, "Failed to ioremap memory region");
+		return -ENXIO;
 	}
 
-	snd_stm_printd(0, "Base address is 0x%p.\n", *base_address);
+	dev_notice(&pdev->dev, "Base address:  %p\n", *base_address);
 
 	return 0;
 }
 EXPORT_SYMBOL(snd_stm_memory_request);
 
-void snd_stm_memory_release(struct resource *mem_region,
-		void *base_address)
-{
-	iounmap(base_address);
-	release_resource(mem_region);
-}
-EXPORT_SYMBOL(snd_stm_memory_release);
-
 int snd_stm_irq_request(struct platform_device *pdev,
 		unsigned int *irq, irq_handler_t handler, void *dev_id)
 {
-	struct resource *resource;
 	int result;
 
-	resource = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!resource) {
-		snd_stm_printe("Failed to "
-				"platform_get_resource(IORESOURCE_IRQ)!\n");
-		return -ENODEV;
+	*irq = platform_get_irq(pdev, 0);
+	if (*irq < 0) {
+		dev_err(&pdev->dev, "Failed to get IRQ resource");
+		return -ENXIO;
 	}
-	snd_stm_printd(0, "IRQ: %u\n", resource->start);
 
-	*irq = resource->start;
-
-	result = request_irq(*irq, handler, IRQF_DISABLED, pdev->name, dev_id);
-	if (result != 0) {
-		snd_stm_printe("Failed request_irq!\n");
-		return -EINVAL;
+	result = devm_request_irq(&pdev->dev, *irq, handler, IRQF_DISABLED,
+			dev_name(&pdev->dev), dev_id);
+	if (result < 0) {
+		dev_err(&pdev->dev, "Failed to request IRQ");
+		return -EBUSY;
 	}
 
 	/* request_irq() enables the interrupt immediately; as it is
@@ -286,15 +271,14 @@ struct snd_stm_buffer *snd_stm_buffer_create(struct snd_pcm *pcm,
 {
 	struct snd_stm_buffer *buffer;
 
-	snd_stm_printd(1, "snd_stm_buffer_init(pcm=%p, prealloc_size=%d)\n",
-			pcm, prealloc_size);
+	dev_dbg(device, "%s(pcm=%p, device=%p, prealloc_size=%d)", __func__,
+		pcm, device, prealloc_size);
 
 	BUG_ON(!pcm);
 
-	buffer = kzalloc(sizeof(*buffer), GFP_KERNEL);
+	buffer = devm_kzalloc(device, sizeof(*buffer), GFP_KERNEL);
 	if (!buffer) {
-		snd_stm_printe("Can't allocate memory for a buffer "
-				"description!\n");
+		dev_err(device, "Failed to allocate buffer description");
 		return NULL;
 	}
 	snd_stm_magic_set(buffer);
@@ -303,43 +287,26 @@ struct snd_stm_buffer *snd_stm_buffer_create(struct snd_pcm *pcm,
 #if defined(CONFIG_BPA2)
 	buffer->bpa2_part = bpa2_find_part(bpa2_part);
 	if (buffer->bpa2_part) {
-		snd_stm_printd(0, "Using BPA2 partition '%s'...\n", bpa2_part);
+		dev_notice(device, "Using BPA2 '%s' partition", bpa2_part);
 		return buffer;
 	}
 
 	buffer->bpa2_part = bpa2_find_part("bigphysarea");
 	if (buffer->bpa2_part) {
-		snd_stm_printd(0, "Using legacy 'bigphysarea' BPA2 "
-				"partition...\n");
+		dev_notice(device, "Using BPA2 'bigphysarea' partition");
 		return buffer;
 	}
 #endif
 
-	if (snd_pcm_lib_preallocate_pages_for_all(pcm,
-			SNDRV_DMA_TYPE_DEV, device,
-			prealloc_size, prealloc_size) == 0) {
-		snd_stm_printd(0, "Using pcm_lib's preallocated buffer "
+	if (snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
+			device, prealloc_size, prealloc_size) == 0) {
+		dev_notice(device, "Using pcm_lib's preallocated buffer "
 				"(%d bytes)...\n", prealloc_size);
 		return buffer;
 	}
 
-	snd_stm_printe("Can't provide any memory for buffers!\n");
-	kfree(buffer);
+	dev_err(device, "Cannot allocate memory buffers");
 	return NULL;
-}
-
-void snd_stm_buffer_dispose(struct snd_stm_buffer *buffer)
-{
-	snd_stm_printd(1, "snd_stm_buffer_dispose(buffer=%p)\n", buffer);
-
-	BUG_ON(!buffer);
-	BUG_ON(!snd_stm_magic_valid(buffer));
-	BUG_ON(buffer->allocated);
-
-	/* snd_pcm_lib__preallocate*-ed buffer is freed automagically */
-
-	snd_stm_magic_clear(buffer);
-	kfree(buffer);
 }
 
 int snd_stm_buffer_is_allocated(struct snd_stm_buffer *buffer)

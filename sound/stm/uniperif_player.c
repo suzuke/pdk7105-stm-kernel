@@ -43,10 +43,6 @@
 #include "reg_aud_uniperif.h"
 
 
-static int snd_stm_debug_level;
-module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
-
-
 /*
  * Some hardware-related definitions
  */
@@ -91,7 +87,7 @@ struct snd_stm_uniperif_spdif_settings {
 struct snd_stm_uniperif_player {
 	/* System information */
 	struct snd_stm_uniperif_player_info *info;
-	struct device *device;
+	struct device *dev;
 	struct snd_pcm *pcm;
 	int ver; /* IP version, used by register access macros */
 
@@ -224,8 +220,6 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 	struct snd_stm_uniperif_player *player = dev_id;
 	unsigned int status;
 
-	snd_stm_printd(2, "%s(irq=%d, dev_id=0x%p)\n", __func__, irq, dev_id);
-
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
@@ -237,8 +231,7 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 
 	/* FIFO error? */
 	if (unlikely(status & mask__AUD_UNIPERIF_ITS__FIFO_ERROR(player))) {
-		snd_stm_printe("Player '%s' FIFO error detected!\n",
-				dev_name(player->device));
+		dev_err(player->dev, "FIFO error detected");
 
 		/* Disable interrupt so doesn't continually fire */
 		set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(player);
@@ -251,8 +244,8 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 
 	} else if (unlikely(status &
 			    mask__AUD_UNIPERIF_ITS__PA_PB_SYNC_LOST(player))) {
-		snd_stm_printe("PA PB sync loss detected in player '%s'!\n",
-			       dev_name(player->device));
+		dev_err(player->dev, "PA PB syncy loss detected");
+
 		player->stream_iec958_pa_pb_sync_lost = 1;
 		/* for pa pb sync loss we may handle later on */
 		/*snd_pcm_stop(player->substream, SNDRV_PCM_STATE_XRUN);*/
@@ -261,8 +254,7 @@ static irqreturn_t snd_stm_uniperif_player_irq_handler(int irq, void *dev_id)
 
 	} else if (unlikely(status &
 			    mask__AUD_UNIPERIF_ITS__DMA_ERROR(player))) {
-		snd_stm_printe("Player '%s' DMA error detected!\n",
-				dev_name(player->device));
+		dev_err(player->dev, "DMA error detected");
 
 		/* Disable interrupt so doesn't continually fire */
 		set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(player);
@@ -311,9 +303,8 @@ static bool snd_stm_uniperif_player_dma_filter_fn(struct dma_chan *chan,
 	/* Save the channel config inside the channel structure */
 	chan->private = config;
 
-	snd_stm_printd(0, "Uniperipheral player '%s' using fdma '%s' channel "
-			"%d\n", player->info->name, dev_name(chan->device->dev),
-			chan->chan_id);
+	dev_notice(player->dev, "Using FDMA '%s' channel %d",
+			dev_name(chan->device->dev), chan->chan_id);
 	return true;
 }
 
@@ -324,7 +315,7 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int result;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -345,7 +336,7 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 				snd_stm_uniperif_player_dma_filter_fn, player);
 
 		if (!player->dma_channel) {
-			snd_stm_printe("Failed to request dma channel\n");
+			dev_err(player->dev, "Failed to request DMA channel");
 			return -ENODEV;
 		}
 
@@ -354,13 +345,9 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 				player->conv_source);
 	}
 
-	if (player->conv_group)
-		snd_stm_printd(1, "'%s' is attached to '%s' converter(s)...\n",
-				dev_name(player->device),
-				snd_stm_conv_get_name(player->conv_group));
-	else
-		snd_stm_printd(1, "Warning! No converter attached to '%s'!\n",
-				dev_name(player->device));
+	dev_dbg(player->dev, "Attached to converter '%s'",
+			player->conv_group ?
+			snd_stm_conv_get_name(player->conv_group) : "*NONE*");
 
 	/* Get default data */
 
@@ -374,7 +361,7 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 				SNDRV_PCM_HW_PARAM_CHANNELS,
 				&player->channels_constraint);
 	if (result < 0) {
-		snd_stm_printe("Can't set channels constraint!\n");
+		dev_err(player->dev, "Failed to set channel constraint");
 		goto error;
 	}
 
@@ -383,7 +370,7 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 	result = snd_pcm_hw_constraint_integer(runtime,
 			SNDRV_PCM_HW_PARAM_PERIODS);
 	if (result < 0) {
-		snd_stm_printe("Can't set periods constraint!\n");
+		dev_err(player->dev, "Failed to constrain buffer periods");
 		goto error;
 	}
 
@@ -393,7 +380,7 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 	result = snd_stm_pcm_hw_constraint_transfer_bytes(runtime,
 			player->dma_max_transfer_size * 4);
 	if (result < 0) {
-		snd_stm_printe("Can't set buffer bytes constraint!\n");
+		dev_err(player->dev, "Failed to constrain buffer bytes");
 		goto error;
 	}
 
@@ -428,7 +415,7 @@ static int snd_stm_uniperif_player_close(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -460,7 +447,7 @@ static int snd_stm_uniperif_player_hw_free(struct snd_pcm_substream *substream)
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -502,8 +489,8 @@ static int snd_stm_uniperif_player_hw_params(
 	struct dma_slave_config slave_config;
 	int result;
 
-	snd_stm_printd(1, "%s(substream=0x%p, hw_params=0x%p)\n",
-		       __func__, substream, hw_params);
+	dev_dbg(player->dev, "%s(substream=%p, hw_params=%p)", __func__,
+			substream, hw_params);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -523,8 +510,8 @@ static int snd_stm_uniperif_player_hw_params(
 	result = snd_stm_buffer_alloc(player->buffer, substream,
 			buffer_bytes);
 	if (result != 0) {
-		snd_stm_printe("Can't allocate %d bytes buffer for '%s'!\n",
-				buffer_bytes, dev_name(player->device));
+		dev_err(player->dev, "Failed to allocate %d-byte buffer",
+				buffer_bytes);
 		result = -ENOMEM;
 		goto error_buf_alloc;
 	}
@@ -538,8 +525,7 @@ static int snd_stm_uniperif_player_hw_params(
 			player->dma_max_transfer_size * 4);
 	transfer_size = transfer_bytes / 4;
 
-	snd_stm_printd(1, "FDMA request trigger limit and transfer size set "
-			"to %d.\n", transfer_size);
+	dev_dbg(player->dev, "FDMA trigger limit %d", transfer_size);
 
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
 	BUG_ON(transfer_size > player->dma_max_transfer_size);
@@ -562,7 +548,7 @@ static int snd_stm_uniperif_player_hw_params(
 
 	result = dmaengine_slave_config(player->dma_channel, &slave_config);
 	if (result) {
-		snd_stm_printe("Failed to configure dma channel\n");
+		dev_err(player->dev, "Failed to configure DMA channel");
 		goto error_dma_config;
 	}
 
@@ -612,7 +598,8 @@ static int snd_stm_uniperif_player_prepare_pcm(
 	int lr_pol;
 	int result;
 
-	snd_stm_printd(1, "%s(player=0x%p)\n", __func__, player);
+	dev_dbg(player->dev, "%s(player=%p, runtime=%p)", __func__,
+			player, runtime);
 
 	/* Get format & oversampling value from connected converter */
 	if (player->conv_group) {
@@ -626,9 +613,8 @@ static int snd_stm_uniperif_player_prepare_pcm(
 		oversampling = DEFAULT_OVERSAMPLING;
 	}
 
-	snd_stm_printd(1, "Player %s: sampling frequency %d, oversampling %d\n",
-			dev_name(player->device), runtime->rate,
-			oversampling);
+	dev_dbg(player->dev, "Sample frequency %d (oversampling %d)",
+			runtime->rate, oversampling);
 
 	BUG_ON(oversampling < 0);
 
@@ -639,11 +625,6 @@ static int snd_stm_uniperif_player_prepare_pcm(
 	BUG_ON((format & SND_STM_FORMAT__SUBFRAME_16_BITS) &&
 			(oversampling % 64 != 0));
 
-	/* Set up player hardware */
-
-	snd_stm_printd(1, "Player %s format configuration:\n",
-			dev_name(player->device));
-
 	/* Number of bits per subframe (which is one channel sample)
 	 * on output - it determines serial clock frequency, which is
 	 * 64 times sampling rate for 32 bits subframe (2 channels 32
@@ -652,13 +633,13 @@ static int snd_stm_uniperif_player_prepare_pcm(
 	 * (you know why, don't you? :-) */
 	switch (format & SND_STM_FORMAT__SUBFRAME_MASK) {
 	case SND_STM_FORMAT__SUBFRAME_32_BITS:
-		snd_stm_printd(1, "- 32 bits per subframe\n");
+		dev_dbg(player->dev, "32-bit subframe");
 		set__AUD_UNIPERIF_I2S_FMT__NBIT_32(player);
 		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_32(player);
 		bits_in_output_frame = 64; /* frame = 2 * subframe */
 		break;
 	case SND_STM_FORMAT__SUBFRAME_16_BITS:
-		snd_stm_printd(1, "- 16 bits per subframe\n");
+		dev_dbg(player->dev, "16-bit subframe");
 		set__AUD_UNIPERIF_I2S_FMT__NBIT_16(player);
 		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_16(player);
 		bits_in_output_frame = 32; /* frame = 2 * subframe */
@@ -670,19 +651,19 @@ static int snd_stm_uniperif_player_prepare_pcm(
 
 	switch (format & SND_STM_FORMAT__MASK) {
 	case SND_STM_FORMAT__I2S:
-		snd_stm_printd(1, "- I2S\n");
+		dev_dbg(player->dev, "I2S format");
 		set__AUD_UNIPERIF_I2S_FMT__ALIGN_LEFT(player);
 		set__AUD_UNIPERIF_I2S_FMT__PADDING_I2S_MODE(player);
 		lr_pol = value__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(player);
 		break;
 	case SND_STM_FORMAT__LEFT_JUSTIFIED:
-		snd_stm_printd(1, "- left justified\n");
+		dev_dbg(player->dev, "Left Justified format");
 		set__AUD_UNIPERIF_I2S_FMT__ALIGN_LEFT(player);
 		set__AUD_UNIPERIF_I2S_FMT__PADDING_SONY_MODE(player);
 		lr_pol = value__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(player);
 		break;
 	case SND_STM_FORMAT__RIGHT_JUSTIFIED:
-		snd_stm_printd(1, "- right justified\n");
+		dev_dbg(player->dev, "Right Justified format");
 		set__AUD_UNIPERIF_I2S_FMT__ALIGN_RIGHT(player);
 		set__AUD_UNIPERIF_I2S_FMT__PADDING_SONY_MODE(player);
 		lr_pol = value__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(player);
@@ -739,16 +720,14 @@ static int snd_stm_uniperif_player_prepare_pcm(
 	/* Set up frequency synthesizer */
 	result = snd_stm_clk_enable(player->clock);
 	if (result != 0) {
-		snd_stm_printe("Can't enable clock for player '%s'!\n",
-				dev_name(player->device));
+		dev_err(player->dev, "Failed to enable clock");
 		return result;
 	}
 
 	result = snd_stm_clk_set_rate(player->clock,
 		runtime->rate * oversampling);
 	if (result != 0) {
-		snd_stm_printe("Can't configure clock for player '%s'!\n",
-				dev_name(player->device));
+		dev_err(player->dev, "Failed to set clock rate");
 		snd_stm_clk_disable(player->clock);
 		return result;
 	}
@@ -805,7 +784,8 @@ static void snd_stm_uniperif_player_set_channel_status(
 	int n;
 	unsigned int status;
 
-	snd_stm_printd(1, "%s(player=0x%p)\n", __func__, player);
+	dev_dbg(player->dev, "%s(player=%p, runtime=%p)", __func__,
+			player, runtime);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -861,7 +841,7 @@ static void snd_stm_uniperif_player_set_channel_status(
 		status |= player->stream_settings.iec958.status[1+(n*4)] << 8;
 		status |= player->stream_settings.iec958.status[2+(n*4)] << 16;
 		status |= player->stream_settings.iec958.status[3+(n*4)] << 24;
-		snd_stm_printd(1, "- Channel Status Register %d: %08x\n",
+		dev_dbg(player->dev, "Channel Status Regsiter %d: %08x",
 				n, status);
 		set__AUD_UNIPERIF_CHANNEL_STA_REGn(player, n, status);
 	}
@@ -877,7 +857,8 @@ static int snd_stm_uniperif_player_prepare_iec958(
 	int oversampling;
 	int result;
 
-	snd_stm_printd(1, "%s(player=0x%p)\n", __func__, player);
+	dev_dbg(player->dev, "%s(player=%p, runtime=%p)", __func__,
+			player, runtime);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -902,9 +883,8 @@ static int snd_stm_uniperif_player_prepare_iec958(
 		oversampling = DEFAULT_OVERSAMPLING;
 	}
 
-	snd_stm_printd(1, "Player %s: sampling frequency %d, oversampling %d\n",
-			dev_name(player->device), runtime->rate,
-			oversampling);
+	dev_dbg(player->dev, "Sample frequency %d (oversampling %d)",
+			runtime->rate, oversampling);
 
 	/* Oversampling must be multiple of 128 as spdif frame is 32-bits */
 	BUG_ON(oversampling <= 0);
@@ -912,19 +892,19 @@ static int snd_stm_uniperif_player_prepare_iec958(
 
 	/* No sample rates below 32kHz are supported for iec958 */
 	if (runtime->rate < MIN_IEC958_SAMPLE_RATE) {
-		snd_stm_printe("Player %s: Invalid sample rate (%d)\n",
-			       dev_name(player->device), runtime->rate);
+		dev_err(player->dev, "Invalid sample rate (%d)",
+			       runtime->rate);
 		return -EINVAL;
 	}
 
 	if (player->stream_settings.input_mode ==
 			SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL) {
 
-		snd_stm_printd(1, "- Normal input mode\n");
+		dev_dbg(player->dev, "Normal input mode");
 
 		switch (runtime->format) {
 		case SNDRV_PCM_FORMAT_S16_LE:
-			snd_stm_printd(1, "- 16 bits per subframe\n");
+			dev_dbg(player->dev, "16-bit subframe");
 			/* 16/16 memory format */
 			set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_16(player);
 			/* 16-bits per sub-frame */
@@ -933,7 +913,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 			set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_16(player);
 			break;
 		case SNDRV_PCM_FORMAT_S32_LE:
-			snd_stm_printd(1, "- 32 bits per subframe\n");
+			dev_dbg(player->dev, "32-bit subframe");
 			/* 16/0 memory format */
 			set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(player);
 			/* 32-bits per sub-frame */
@@ -966,7 +946,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 		if (player->stream_settings.encoding_mode ==
 				SNDRV_STM_UNIPERIF_SPDIF_ENCODING_MODE_PCM) {
 
-			snd_stm_printd(1, "- Linear PCM mode\n");
+			dev_dbg(player->dev, "Linear PCM mode");
 
 			/* Set 24-bit max word size (Player2 should do this) */
 			player->stream_settings.iec958.status[4] = 0x0b;
@@ -980,7 +960,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 			struct snd_stm_uniperif_spdif_settings *settings =
 				&player->stream_settings;
 
-			snd_stm_printd(1, "- Encoded mode\n");
+			dev_dbg(player->dev, "Encoded mode");
 
 			/* Configure number of frames for data/pause burst */
 			set__AUD_UNIPERIF_SPDIF_FRAMELEN_BURST__DAT_BURST(
@@ -1026,7 +1006,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 		set__AUD_UNIPERIF_USER_VALIDITY__USER_RIGHT(player, 0);
 	} else {
 
-		snd_stm_printd(1, "- Raw input mode\n");
+		dev_dbg(player->dev, "Raw input mode");
 
 		/* 16/0 memory format */
 		set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(player);
@@ -1119,8 +1099,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 	/* Enable clock */
 	result = snd_stm_clk_enable(player->clock);
 	if (result != 0) {
-		snd_stm_printe("Can't enable clock for player '%s'!\n",
-				dev_name(player->device));
+		dev_err(player->dev, "Failed to enable clock");
 		return result;
 	}
 
@@ -1128,8 +1107,7 @@ static int snd_stm_uniperif_player_prepare_iec958(
 	result = snd_stm_clk_set_rate(player->clock,
 		runtime->rate * oversampling);
 	if (result != 0) {
-		snd_stm_printe("Can't configure clock for player '%s'!\n",
-				dev_name(player->device));
+		dev_err(player->dev, "Failed to set clock rate");
 		snd_stm_clk_disable(player->clock);
 		return result;
 	}
@@ -1145,7 +1123,7 @@ static int snd_stm_uniperif_player_prepare(struct snd_pcm_substream *substream)
 	int changed;
 	int result;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1170,7 +1148,7 @@ static int snd_stm_uniperif_player_prepare(struct snd_pcm_substream *substream)
 	result = dma_audio_parking_config(player->dma_channel,
 			&player->dma_park_config);
 	if (result) {
-		snd_stm_printe("Failed to reconfigure dma parking\n");
+		dev_err(player->dev, "Failed to configure DMA parking mode");
 		return result;
 	}
 
@@ -1199,7 +1177,7 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 			snd_pcm_substream_chip(substream);
 	unsigned int ctrl;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1211,7 +1189,7 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 			substream->runtime->dma_addr, player->buffer_bytes,
 			player->period_bytes);
 	if (!player->dma_descriptor) {
-		snd_stm_printe("Failed to prepare dma descriptor\n");
+		dev_err(player->dev, "Failed to prepare DMA descriptor");
 		return -ENOMEM;
 	}
 
@@ -1296,7 +1274,7 @@ static int snd_stm_uniperif_player_halt(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1333,7 +1311,7 @@ static int snd_stm_uniperif_player_stop(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1352,7 +1330,7 @@ static int snd_stm_uniperif_player_pause(struct snd_pcm_substream *substream)
 			snd_pcm_substream_chip(substream);
 	unsigned int ctrl;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1399,7 +1377,7 @@ static inline int snd_stm_uniperif_player_release(struct snd_pcm_substream
 		snd_pcm_substream_chip(substream);
 	unsigned int ctrl;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1447,9 +1425,6 @@ static inline int snd_stm_uniperif_player_release(struct snd_pcm_substream
 static int snd_stm_uniperif_player_trigger(struct snd_pcm_substream *substream,
 		int command)
 {
-	snd_stm_printd(1, "%s(substream=0x%p, command=%d)\n",
-		       __func__, substream, command);
-
 	switch (command) {
 	case SNDRV_PCM_TRIGGER_START:
 		return snd_stm_uniperif_player_start(substream);
@@ -1477,8 +1452,6 @@ static snd_pcm_uframes_t snd_stm_uniperif_player_pointer(
 	int residue, hwptr;
 	snd_pcm_uframes_t pointer;
 
-	snd_stm_printd(2, "%s(substream=0x%p)\n", __func__, substream);
-
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 	BUG_ON(!runtime);
@@ -1501,11 +1474,6 @@ static snd_pcm_uframes_t snd_stm_uniperif_player_pointer(
 
 	pointer = bytes_to_frames(runtime, hwptr);
 
-	snd_stm_printd(2, "FDMA residue value is %i and buffer size is %u"
-			" bytes...\n", residue, runtime->dma_bytes);
-	snd_stm_printd(2, "... so HW pointer in frames is %lu (0x%lx)!\n",
-			pointer, pointer);
-
 	return pointer;
 }
 
@@ -1516,10 +1484,6 @@ static int snd_stm_uniperif_player_silence(struct snd_pcm_substream *substream,
 	struct snd_stm_uniperif_player *player =
 		snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
-
-	snd_stm_printd(2,
-		       "%s(substream=0x%p, channel=%d, pos=%lu, count=%lu)\n",
-		       __func__, substream, channel, pos, count);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1562,8 +1526,8 @@ static int snd_stm_uniperif_player_ctl_iec958_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1581,8 +1545,8 @@ static int snd_stm_uniperif_player_ctl_iec958_put(struct snd_kcontrol *kcontrol,
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1634,8 +1598,8 @@ static int snd_stm_uniperif_player_ctl_raw_get(struct snd_kcontrol *kcontrol,
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1657,8 +1621,8 @@ static int snd_stm_uniperif_player_ctl_raw_put(struct snd_kcontrol *kcontrol,
 	struct snd_pcm_hardware hardware;
 	enum snd_stm_uniperif_spdif_input_mode input_mode;
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1693,8 +1657,8 @@ static int snd_stm_uniperif_player_ctl_encoded_get(
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1716,8 +1680,8 @@ static int snd_stm_uniperif_player_ctl_encoded_put(
 	int changed = 0;
 	enum snd_stm_uniperif_spdif_encoding_mode encoding_mode;
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1773,8 +1737,8 @@ static int snd_stm_uniperif_player_ctl_preamble_get(
 {
 	struct snd_stm_uniperif_player *player  = snd_kcontrol_chip(kcontrol);
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1795,8 +1759,8 @@ static int snd_stm_uniperif_player_ctl_preamble_put(
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1829,8 +1793,8 @@ static int snd_stm_uniperif_player_ctl_audio_repetition_get(struct snd_kcontrol
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1849,8 +1813,8 @@ static int snd_stm_uniperif_player_ctl_audio_repetition_put(struct snd_kcontrol
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1872,8 +1836,8 @@ static int snd_stm_uniperif_player_ctl_pause_repetition_get(struct snd_kcontrol
 {
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1892,8 +1856,8 @@ static int snd_stm_uniperif_player_ctl_pause_repetition_put(struct snd_kcontrol
 	struct snd_stm_uniperif_player *player = snd_kcontrol_chip(kcontrol);
 	int changed = 0;
 
-	snd_stm_printd(1, "%s(kcontrol=0x%p, ucontrol=0x%p)\n",
-		       __func__, kcontrol, ucontrol);
+	dev_dbg(player->dev, "%s(kcontrol=%p, ucontrol=%p)", __func__,
+			kcontrol, ucontrol);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1985,7 +1949,7 @@ static void snd_stm_uniperif_player_dump_registers(struct snd_info_entry *entry,
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
 
-	snd_iprintf(buffer, "--- %s ---\n", dev_name(player->device));
+	snd_iprintf(buffer, "--- %s ---\n", dev_name(player->dev));
 	snd_iprintf(buffer, "base = 0x%p\n", player->base);
 
 	DUMP_REGISTER(SOFT_RST);
@@ -2027,7 +1991,7 @@ static int snd_stm_uniperif_player_register(struct snd_device *snd_device)
 	int result = 0;
 	struct snd_stm_uniperif_player *player = snd_device->device_data;
 
-	snd_stm_printd(1, "%s(snd_device=0x%p)\n", __func__, snd_device);
+	dev_dbg(player->dev, "%s(snd_device=%p)", __func__, snd_device);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -2042,21 +2006,20 @@ static int snd_stm_uniperif_player_register(struct snd_device *snd_device)
 
 	/* Get frequency synthesizer channel */
 
-	player->clock = snd_stm_clk_get(player->device, "uni_player_clk",
+	player->clock = snd_stm_clk_get(player->dev, "uni_player_clk",
 			snd_device->card, player->info->card_device);
 	if (!player->clock || IS_ERR(player->clock)) {
-		snd_stm_printe("Failed to get a clock for '%s'!\n",
-			dev_name(player->device));
+		dev_err(player->dev, "Failed to get clock");
 		return -EINVAL;
 	}
 
 	/* Registers view in ALSA's procfs */
 
 	result = snd_stm_info_register(&player->proc_entry,
-			dev_name(player->device),
+			dev_name(player->dev),
 			snd_stm_uniperif_player_dump_registers, player);
 	if (result < 0) {
-		snd_stm_printe("Failed to register with procfs\n");
+		dev_err(player->dev, "Failed to register with procfs");
 		return result;
 	}
 
@@ -2065,7 +2028,7 @@ static int snd_stm_uniperif_player_register(struct snd_device *snd_device)
 	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM) {
 		int i;
 
-		snd_stm_printd(1, "Adding ALSA controls\n");
+		dev_dbg(player->dev, "Adding ALSA controls");
 
 		for (i = 0; i < ARRAY_SIZE(snd_stm_uniperif_player_ctls); i++) {
 			snd_stm_uniperif_player_ctls[i].device =
@@ -2074,8 +2037,7 @@ static int snd_stm_uniperif_player_register(struct snd_device *snd_device)
 				snd_ctl_new1(&snd_stm_uniperif_player_ctls[i],
 					     player));
 			if (result < 0) {
-				snd_stm_printe(
-					"Failed to add ALSA control!\n");
+				dev_err(player->dev, "Failed to add control");
 				return result;
 			}
 			snd_stm_uniperif_player_ctls[i].index++;
@@ -2089,7 +2051,7 @@ static int snd_stm_uniperif_player_disconnect(struct snd_device *snd_device)
 {
 	struct snd_stm_uniperif_player *player = snd_device->device_data;
 
-	snd_stm_printd(1, "%s(snd_device=0x%p)\n", __func__, snd_device);
+	dev_dbg(player->dev, "%s(snd_device=%p)", __func__, snd_device);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -2118,57 +2080,54 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 	struct snd_stm_uniperif_player *player;
 	struct snd_card *card = snd_stm_card_get();
 	static unsigned int channels_2_10[] = { 2, 4, 6, 8, 10 };
-	unsigned int i;
+	static unsigned char *strings_2_10[] = {
+			"2", "2/4", "2/4/6", "2/4/6/8", "2/4/6/8/10"};
 
-	snd_stm_printd(0, "%s('%s')\n", __func__, dev_name(&pdev->dev));
+	dev_dbg(&pdev->dev, "%s(pdev=%p)", __func__, pdev);
 
 	BUG_ON(!card);
 
-	player = kzalloc(sizeof(*player), GFP_KERNEL);
+	player = devm_kzalloc(&pdev->dev, sizeof(*player), GFP_KERNEL);
 	if (!player) {
-		snd_stm_printe("Can't allocate memory "
-				"for a device description!\n");
-		result = -ENOMEM;
-		goto error_alloc;
+		dev_err(&pdev->dev, "Failed to allocate device structure");
+		return -ENOMEM;
 	}
 	snd_stm_magic_set(player);
 	player->info = pdev->dev.platform_data;
 	BUG_ON(!player->info);
 	player->ver = player->info->ver;
 	BUG_ON(player->ver <= 0);
-	player->device = &pdev->dev;
+	player->dev = &pdev->dev;
 
 	spin_lock_init(&player->default_settings_lock);
 
-	/* Set player specific options */
+	dev_notice(&pdev->dev, "'%s'", player->info->name);
 
-	snd_stm_printd(0, "Uniperipheral player '%s'\n", player->info->name);
+	/* Set player specific options */
 
 	switch (player->info->player_type) {
 	case SND_STM_UNIPERIF_PLAYER_TYPE_HDMI:
-		snd_stm_printd(0, "Player type is hdmi\n");
 		player->hardware = snd_stm_uniperif_player_pcm_hw;
 		player->stream_settings.input_mode =
 				SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL;
 		break;
 	case SND_STM_UNIPERIF_PLAYER_TYPE_PCM:
-		snd_stm_printd(0, "Player type is pcm\n");
 		player->hardware = snd_stm_uniperif_player_pcm_hw;
 		break;
 	case SND_STM_UNIPERIF_PLAYER_TYPE_SPDIF:
-		snd_stm_printd(0, "Player type is spdif\n");
 		/* Default to normal mode where hardware does everything */
 		player->hardware = snd_stm_uniperif_player_pcm_hw;
 		player->stream_settings.input_mode =
 				SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL;
 		break;
 	default:
-		snd_stm_printe("Unknown player type\n");
-		goto error_player_type;
+		dev_err(&pdev->dev, "Invalid player type (%d)",
+				player->info->player_type);
+		return -EINVAL;
 	}
 
-	snd_stm_printd(0, "Parking is %s\n",
-			player->info->parking_enabled ? "enabled" : "disabled");
+	dev_notice(&pdev->dev, "Parking mode:  %sabled",
+			player->info->parking_enabled ? "En" : "Dis");
 
 	/* Set default iec958 status bits (I expect user to override!) */
 
@@ -2188,19 +2147,17 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 	result = snd_stm_memory_request(pdev, &player->mem_region,
 			&player->base);
 	if (result < 0) {
-		snd_stm_printe("Memory region request failed!\n");
-		goto error_memory_request;
+		dev_err(&pdev->dev, "Failed memory request");
+		return result;
 	}
 	player->fifo_phys_address = player->mem_region->start +
 		offset__AUD_UNIPERIF_FIFO_DATA(player);
-	snd_stm_printd(0, "FIFO physical address: 0x%lx.\n",
-			player->fifo_phys_address);
 
 	result = snd_stm_irq_request(pdev, &player->irq,
 			snd_stm_uniperif_player_irq_handler, player);
 	if (result < 0) {
-		snd_stm_printe("IRQ request failed!\n");
-		goto error_irq_request;
+		dev_err(&pdev->dev, "Failed IRQ request");
+		return result;
 	}
 
 	player->dma_max_transfer_size = 40;
@@ -2215,16 +2172,15 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 	player->channels_constraint.count = player->info->channels / 2;
 	player->channels_constraint.mask = 0;
 
-	for (i = 0; i < player->channels_constraint.count; i++)
-		snd_stm_printd(0, "Player capable of playing %u-channels PCM\n",
-				player->channels_constraint.list[i]);
+	dev_notice(player->dev, "%s-channel PCM",
+			strings_2_10[player->channels_constraint.count-1]);
 
 	/* Create ALSA lowlevel device */
 
 	result = snd_device_new(card, SNDRV_DEV_LOWLEVEL, player,
 			&snd_stm_uniperif_player_snd_device_ops);
 	if (result < 0) {
-		snd_stm_printe("ALSA low level device creation failed!\n");
+		dev_err(&pdev->dev, "Failed to create ALSA sound device");
 		goto error_device;
 	}
 
@@ -2233,7 +2189,7 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 	result = snd_pcm_new(card, NULL, player->info->card_device, 1, 0,
 			&player->pcm);
 	if (result < 0) {
-		snd_stm_printe("ALSA PCM instance creation failed!\n");
+		dev_err(&pdev->dev, "Failed to create ALSA PCM instance");
 		goto error_pcm;
 	}
 	player->pcm->private_data = player;
@@ -2244,11 +2200,10 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 
 	/* Initialize buffer */
 
-	player->buffer = snd_stm_buffer_create(player->pcm,
-			player->device,
+	player->buffer = snd_stm_buffer_create(player->pcm, player->dev,
 			player->hardware.buffer_bytes_max);
 	if (!player->buffer) {
-		snd_stm_printe("Cannot initialize buffer!\n");
+		dev_err(&pdev->dev, "Failed to create buffer");
 		result = -ENOMEM;
 		goto error_buffer_init;
 	}
@@ -2260,7 +2215,7 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 			player->info->channels,
 			card, player->info->card_device);
 	if (!player->conv_source) {
-		snd_stm_printe("Cannot register in converters router!\n");
+		dev_err(&pdev->dev, "Failed to register converter source");
 		result = -ENOMEM;
 		goto error_conv_register_source;
 	}
@@ -2271,8 +2226,7 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 		player->pads = stm_pad_claim(player->info->pad_config,
 				dev_name(&pdev->dev));
 		if (!player->pads) {
-			snd_stm_printe("Failed to claimed pads for '%s'!\n",
-					dev_name(&pdev->dev));
+			dev_err(&pdev->dev, "Failed to claim pads");
 			result = -EBUSY;
 			goto error_pad_claim;
 		}
@@ -2288,21 +2242,12 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 error_pad_claim:
 	snd_stm_conv_unregister_source(player->conv_source);
 error_conv_register_source:
-	snd_stm_buffer_dispose(player->buffer);
 error_buffer_init:
 	/* snd_pcm_free() is not available - PCM device will be released
 	 * during card release */
 error_pcm:
 	snd_device_free(card, player);
 error_device:
-	snd_stm_irq_release(player->irq, player);
-error_irq_request:
-	snd_stm_memory_release(player->mem_region, player->base);
-error_player_type:
-error_memory_request:
-	snd_stm_magic_clear(player);
-	kfree(player);
-error_alloc:
 	return result;
 }
 
@@ -2310,7 +2255,7 @@ static int snd_stm_uniperif_player_remove(struct platform_device *pdev)
 {
 	struct snd_stm_uniperif_player *player = platform_get_drvdata(pdev);
 
-	snd_stm_printd(1, "%s(pdev=%p)\n", __func__, pdev);
+	dev_dbg(&pdev->dev, "%s(pdev=%p)", __func__, pdev);
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -2327,12 +2272,8 @@ static int snd_stm_uniperif_player_remove(struct platform_device *pdev)
 		stm_pad_release(player->pads);
 
 	snd_stm_conv_unregister_source(player->conv_source);
-	snd_stm_buffer_dispose(player->buffer);
-	snd_stm_irq_release(player->irq, player);
-	snd_stm_memory_release(player->mem_region, player->base);
 
 	snd_stm_magic_clear(player);
-	kfree(player);
 
 	return 0;
 }
@@ -2348,7 +2289,7 @@ static int snd_stm_uniperif_player_suspend(struct device *dev)
 	struct snd_stm_uniperif_player *player = dev_get_drvdata(dev);
 	struct snd_card *card = snd_stm_card_get();
 
-	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
 	/* Check if this device is already suspended */
 	if (dev->power.runtime_status == RPM_SUSPENDED)
@@ -2372,8 +2313,7 @@ static int snd_stm_uniperif_player_suspend(struct device *dev)
 
 	/* Abort if the player is still running */
 	if (get__AUD_UNIPERIF_CTRL__OPERATION(player)) {
-		snd_stm_printe("Cannot runtime suspend as '%s' running!\n",
-				dev_name(dev));
+		dev_err(player->dev, "Cannot suspend as running");
 		return -EBUSY;
 	}
 
@@ -2388,7 +2328,7 @@ static int snd_stm_uniperif_player_resume(struct device *dev)
 {
 	struct snd_card *card = snd_stm_card_get();
 
-	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
 	/* Check if this device is already active */
 	if (dev->power.runtime_status == RPM_ACTIVE)

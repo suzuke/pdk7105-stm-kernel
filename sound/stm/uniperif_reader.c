@@ -41,9 +41,6 @@
 #include "common.h"
 #include "reg_aud_uniperif.h"
 
-static int snd_stm_debug_level;
-module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
-
 
 /*
  * Some hardware-related definitions
@@ -62,7 +59,7 @@ module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
 struct snd_stm_uniperif_reader {
 	/* System informations */
 	struct snd_stm_pcm_reader_info *info;
-	struct device *device;
+	struct device *dev;
 	struct snd_pcm *pcm;
 	int ver; /* IP version, used by register access macros */
 
@@ -139,8 +136,6 @@ static irqreturn_t snd_stm_uniperif_reader_irq_handler(int irq, void *dev_id)
 	struct snd_stm_uniperif_reader *reader = dev_id;
 	unsigned int status;
 
-	snd_stm_printd(2, "%s(irq=%d, dev_id=0x%p)\n", __func__, irq, dev_id);
-
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
 
@@ -152,8 +147,7 @@ static irqreturn_t snd_stm_uniperif_reader_irq_handler(int irq, void *dev_id)
 
 	/* Overflow? */
 	if (unlikely(status & mask__AUD_UNIPERIF_ITS__FIFO_ERROR(reader))) {
-		snd_stm_printe("Underflow detected in reader '%s'!\n",
-				dev_name(reader->device));
+		dev_err(reader->dev, "FIFO error detected");
 
 		snd_pcm_stop(reader->substream, SNDRV_PCM_STATE_XRUN);
 
@@ -191,9 +185,8 @@ static bool snd_stm_uniperif_reader_dma_filter_fn(struct dma_chan *chan,
 
 	chan->private = config;
 
-	snd_stm_printd(0, "Uniperipheral reader '%s' using fdma '%s' channel "
-			"%d\n", reader->info->name, dev_name(chan->device->dev),
-			chan->chan_id);
+	dev_notice(reader->dev, "Using FDMA '%s' channel %d",
+			dev_name(chan->device->dev), chan->chan_id);
 	return true;
 }
 
@@ -205,7 +198,7 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	dma_cap_mask_t mask;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(reader->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -223,7 +216,7 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 			snd_stm_uniperif_reader_dma_filter_fn, reader);
 
 	if (!reader->dma_channel) {
-		snd_stm_printe("Failed to request dma channel\n");
+		dev_err(reader->dev, "Failed to request DMA channel");
 		return -ENODEV;
 	}
 
@@ -231,43 +224,19 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 
 	reader->conv_group =
 			snd_stm_conv_request_group(reader->conv_source);
-	if (reader->conv_group)
-		snd_stm_printd(1, "'%s' is attached to '%s' converter(s)...\n",
-				dev_name(reader->device),
-				snd_stm_conv_get_name(reader->conv_group));
-	else
-		snd_stm_printd(1, "Warning! No converter attached to '%s'!\n",
-				dev_name(reader->device));
 
-	/* Get default data */
+	dev_dbg(reader->dev, "Attached to converter '%s'",
+			reader->conv_group ?
+			snd_stm_conv_get_name(reader->conv_group) : "*NONE*");
 
-	/* Set up constraints & pass hardware capabilities info to ALSA */
-	{
-		static unsigned int channels_2_10[] = { 2, 4, 6, 8, 10 };
-		unsigned int i;
+	/* Set up channel constraints and inform ALSA */
 
-		/* need to make hardware constrain for reader */
-		BUG_ON(reader->info->channels <= 0);
-		BUG_ON(reader->info->channels > 10);
-		BUG_ON(reader->info->channels % 2 != 0);
-
-		reader->channels_constraint.list = channels_2_10;
-		reader->channels_constraint.count =
-			reader->info->channels / 2;
-
-		reader->channels_constraint.mask = 0;
-		for (i = 0; i < reader->channels_constraint.count; i++)
-			snd_stm_printd(0,
-				"Reader capable of capturing %u-channels PCM\n",
-				reader->channels_constraint.list[i]);
-
-		result = snd_pcm_hw_constraint_list(runtime, 0,
+	result = snd_pcm_hw_constraint_list(runtime, 0,
 			SNDRV_PCM_HW_PARAM_CHANNELS,
 			&reader->channels_constraint);
-		if (result < 0) {
-			snd_stm_printe("Can't set channels constraint!\n");
-			goto error;
-		}
+	if (result < 0) {
+		dev_err(reader->dev, "Failed to set channel constraint");
+		goto error;
 	}
 
 	/* It is better when buffer size is an integer multiple of period
@@ -275,7 +244,7 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 	result = snd_pcm_hw_constraint_integer(runtime,
 			SNDRV_PCM_HW_PARAM_PERIODS);
 	if (result < 0) {
-		snd_stm_printe("Can't set periods constraint!\n");
+		dev_err(reader->dev, "Failed to constrain buffer periods");
 		goto error;
 	}
 
@@ -285,7 +254,7 @@ static int snd_stm_uniperif_reader_open(struct snd_pcm_substream *substream)
 	result = snd_stm_pcm_hw_constraint_transfer_bytes(runtime,
 			reader->dma_max_transfer_size * 4);
 	if (result < 0) {
-		snd_stm_printe("Can't set buffer bytes constraint!\n");
+		dev_err(reader->dev, "Failed to constrain buffer bytes");
 		goto error;
 	}
 
@@ -316,7 +285,7 @@ static int snd_stm_uniperif_reader_close(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_reader *reader =
 			snd_pcm_substream_chip(substream);
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(reader->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -344,7 +313,7 @@ static int snd_stm_uniperif_reader_hw_free(struct snd_pcm_substream *substream)
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(reader->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -370,16 +339,11 @@ static void snd_stm_uniperif_reader_dma_callback(void *param)
 {
 	struct snd_stm_uniperif_reader *reader = param;
 
-	snd_stm_printd(2, "%s(param=%p)\n", __func__, param);
-
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
 
 	if (!get__AUD_UNIPERIF_CTRL__OPERATION(reader))
 		return;
-
-	snd_stm_printd(2, "Period elapsed ('%s')\n",
-			dev_name(reader->device));
 
 	snd_pcm_period_elapsed(reader->substream);
 }
@@ -396,8 +360,8 @@ static int snd_stm_uniperif_reader_hw_params(
 	unsigned int transfer_size;
 	struct dma_slave_config slave_config;
 
-	snd_stm_printd(1, "%s(substream=0x%p, hw_params=0x%p)\n",
-		       __func__, substream, hw_params);
+	dev_dbg(reader->dev, "%s(substream=%p, hw_params=%p)", __func__,
+		       substream, hw_params);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -419,8 +383,8 @@ static int snd_stm_uniperif_reader_hw_params(
 	result = snd_stm_buffer_alloc(reader->buffer, substream,
 			buffer_bytes);
 	if (result != 0) {
-		snd_stm_printe("Can't allocate %d bytes buffer for '%s'!\n",
-			       buffer_bytes, dev_name(reader->device));
+		dev_err(reader->dev, "Failed to allocate %d-byte buffer",
+			       buffer_bytes);
 		result = -ENOMEM;
 		goto error_buf_alloc;
 	}
@@ -434,18 +398,15 @@ static int snd_stm_uniperif_reader_hw_params(
 			reader->dma_max_transfer_size * 4);
 	transfer_size = transfer_bytes / 4;
 
-	snd_stm_printd(1, "FDMA request trigger limit set to %d.\n",
-			transfer_size);
+	dev_dbg(reader->dev, "FDMA trigger limit %d", transfer_size);
+
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
 	BUG_ON(transfer_size > reader->dma_max_transfer_size);
 	BUG_ON(transfer_size != 1 && transfer_size % 2 != 0);
-	BUG_ON(transfer_size > mask__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(
-			reader));
-	set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(
-		reader, transfer_size);
+	BUG_ON(transfer_size >
+			mask__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(reader));
 
-	snd_stm_printd(1, "FDMA transfer size set to %d.\n",
-			transfer_size);
+	set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(reader, transfer_size);
 
 	/* Save the buffer bytes and period bytes for when start dma */
 	reader->buffer_bytes = buffer_bytes;
@@ -459,7 +420,7 @@ static int snd_stm_uniperif_reader_hw_params(
 
 	result = dmaengine_slave_config(reader->dma_channel, &slave_config);
 	if (result) {
-		snd_stm_printe("Failed to configure dma channel\n");
+		dev_err(reader->dev, "Failed to configure DMA channel");
 		goto error_dma_config;
 	}
 
@@ -478,7 +439,7 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	unsigned int format, lr_pol;
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(reader->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -495,12 +456,12 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 	/* Number of bits per subframe (i.e one channel sample) on input. */
 	switch (format & SND_STM_FORMAT__SUBFRAME_MASK) {
 	case SND_STM_FORMAT__SUBFRAME_32_BITS:
-		snd_stm_printd(1, "- 32 bits per subframe\n");
+		dev_dbg(reader->dev, "32-bit subframe");
 		set__AUD_UNIPERIF_I2S_FMT__NBIT_32(reader);
 		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_24(reader);
 		break;
 	case SND_STM_FORMAT__SUBFRAME_16_BITS:
-		snd_stm_printd(1, "- 16 bits per subframe\n");
+		dev_dbg(reader->dev, "16-bit subframe");
 		set__AUD_UNIPERIF_I2S_FMT__NBIT_16(reader);
 		set__AUD_UNIPERIF_I2S_FMT__DATA_SIZE_16(reader);
 		break;
@@ -511,19 +472,19 @@ static int snd_stm_uniperif_reader_prepare(struct snd_pcm_substream *substream)
 
 	switch (format & SND_STM_FORMAT__MASK) {
 	case SND_STM_FORMAT__I2S:
-		snd_stm_printd(1, "- I2S\n");
+		dev_dbg(reader->dev, "I2S format");
 		set__AUD_UNIPERIF_I2S_FMT__ALIGN_LEFT(reader);
 		set__AUD_UNIPERIF_I2S_FMT__PADDING_I2S_MODE(reader);
 		lr_pol = value__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(reader);
 		break;
 	case SND_STM_FORMAT__LEFT_JUSTIFIED:
-		snd_stm_printd(1, "- left justified\n");
+		dev_dbg(reader->dev, "Left Justifed format");
 		set__AUD_UNIPERIF_I2S_FMT__ALIGN_LEFT(reader);
 		set__AUD_UNIPERIF_I2S_FMT__PADDING_SONY_MODE(reader);
 		lr_pol = value__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(reader);
 		break;
 	case SND_STM_FORMAT__RIGHT_JUSTIFIED:
-		snd_stm_printd(1, "- right justified\n");
+		dev_dbg(reader->dev, "Right Justifed format");
 		set__AUD_UNIPERIF_I2S_FMT__ALIGN_RIGHT(reader);
 		set__AUD_UNIPERIF_I2S_FMT__PADDING_SONY_MODE(reader);
 		lr_pol = value__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(reader);
@@ -579,7 +540,7 @@ static int snd_stm_uniperif_reader_start(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_reader *reader =
 			snd_pcm_substream_chip(substream);
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(reader->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -598,7 +559,7 @@ static int snd_stm_uniperif_reader_start(struct snd_pcm_substream *substream)
 			reader->buffer_bytes, reader->period_bytes,
 			DMA_DEV_TO_MEM);
 	if (!reader->dma_descriptor) {
-		snd_stm_printe("Failed to prepare dma descriptor\n");
+		dev_err(reader->dev, "Failed to prepare DMA descriptor");
 		return -ENOMEM;
 	}
 
@@ -632,7 +593,7 @@ static int snd_stm_uniperif_reader_stop(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_reader *reader =
 			snd_pcm_substream_chip(substream);
 
-	snd_stm_printd(1, "%s(substream=0x%p)\n", __func__, substream);
+	dev_dbg(reader->dev, "%s(substream=%p)", __func__, substream);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -659,9 +620,6 @@ static int snd_stm_uniperif_reader_stop(struct snd_pcm_substream *substream)
 static int snd_stm_uniperif_reader_trigger(struct snd_pcm_substream *substream,
 		int command)
 {
-	snd_stm_printd(1, "%s(substream=0x%p, command=%d)\n",
-		       __func__, substream, command);
-
 	switch (command) {
 	case SNDRV_PCM_TRIGGER_START:
 		return snd_stm_uniperif_reader_start(substream);
@@ -687,8 +645,6 @@ static snd_pcm_uframes_t snd_stm_uniperif_reader_pointer(
 	struct dma_tx_state state;
 	enum dma_status status;
 
-	snd_stm_printd(2, "%s(substream=0x%p)\n", __func__, substream);
-
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
 	BUG_ON(!runtime);
@@ -701,11 +657,6 @@ static snd_pcm_uframes_t snd_stm_uniperif_reader_pointer(
 
 	hwptr = (runtime->dma_bytes - residue) % runtime->dma_bytes;
 	pointer = bytes_to_frames(runtime, hwptr);
-
-	snd_stm_printd(2, "FDMA residue value is %i and buffer size is %u"
-			" bytes...\n", residue, runtime->dma_bytes);
-	snd_stm_printd(2, "... so HW pointer in frames is %lu (0x%lx)!\n",
-			pointer, pointer);
 
 	return pointer;
 }
@@ -741,7 +692,7 @@ static void snd_stm_uniperif_reader_dump_registers(struct snd_info_entry *entry,
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
 
-	snd_iprintf(buffer, "--- %s ---\n", dev_name(reader->device));
+	snd_iprintf(buffer, "--- %s ---\n", dev_name(reader->dev));
 	snd_iprintf(buffer, "base = 0x%p\n", reader->base);
 
 	DUMP_REGISTER(SOFT_RST);
@@ -783,7 +734,7 @@ static int snd_stm_uniperif_reader_register(struct snd_device *snd_device)
 	int result = 0;
 	struct snd_stm_uniperif_reader *reader = snd_device->device_data;
 
-	snd_stm_printd(1, "%s(snd_device=0x%p)\n", __func__, snd_device);
+	dev_dbg(reader->dev, "%s(snd_device=%p)", __func__, snd_device);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -799,7 +750,7 @@ static int snd_stm_uniperif_reader_register(struct snd_device *snd_device)
 	/* Registers view in ALSA's procfs */
 
 	result = snd_stm_info_register(&reader->proc_entry,
-			dev_name(reader->device),
+			dev_name(reader->dev),
 			snd_stm_uniperif_reader_dump_registers, reader);
 
 	return result;
@@ -809,7 +760,7 @@ static int snd_stm_uniperif_reader_disconnect(struct snd_device *snd_device)
 {
 	struct snd_stm_uniperif_reader *reader = snd_device->device_data;
 
-	snd_stm_printd(1, "%s(snd_device=0x%p)\n", __func__, snd_device);
+	dev_dbg(reader->dev, "%s(snd_device=%p)", __func__, snd_device);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -834,57 +785,67 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 	int result = 0;
 	struct snd_stm_uniperif_reader *reader;
 	struct snd_card *card = snd_stm_card_get();
+	static unsigned int channels_2_10[] = { 2, 4, 6, 8, 10 };
+	static unsigned char *strings_2_10[] = {
+			"2", "2/4", "2/4/6", "2/4/6/8", "2/4/6/8/10"};
 
-	snd_stm_printd(0, "%s('%s')\n", __func__, dev_name(&pdev->dev));
+	dev_dbg(&pdev->dev, "%s(pdev=%p)", __func__, pdev);
 
 	BUG_ON(!card);
 
-	reader = kzalloc(sizeof(*reader), GFP_KERNEL);
+	reader = devm_kzalloc(&pdev->dev, sizeof(*reader), GFP_KERNEL);
 	if (!reader) {
-		snd_stm_printe("Can't allocate memory "
-				"for a device description!\n");
-		result = -ENOMEM;
-		goto error_alloc;
+		dev_err(&pdev->dev, "Failed to allocate device structure");
+		return -ENOMEM;
 	}
 	snd_stm_magic_set(reader);
 	reader->info = pdev->dev.platform_data;
 	BUG_ON(!reader->info);
 	reader->ver = reader->info->ver;
 	BUG_ON(reader->ver <= 0);
-	reader->device = &pdev->dev;
+	reader->dev = &pdev->dev;
+
+	dev_notice(&pdev->dev, "'%s'", reader->info->name);
 
 	/* Get resources */
 
 	result = snd_stm_memory_request(pdev, &reader->mem_region,
 			&reader->base);
 	if (result < 0) {
-		snd_stm_printe("Memory region request failed!\n");
-		goto error_memory_request;
+		dev_err(&pdev->dev, "Failed memory request");
+		return result;
 	}
 	reader->fifo_phys_address = reader->mem_region->start +
 		offset__AUD_UNIPERIF_FIFO_DATA(reader);
-	snd_stm_printd(0, "FIFO physical address: 0x%lx.\n",
-			reader->fifo_phys_address);
 
 	result = snd_stm_irq_request(pdev, &reader->irq,
 			snd_stm_uniperif_reader_irq_handler, reader);
 	if (result < 0) {
-		snd_stm_printe("IRQ request failed!\n");
-		goto error_irq_request;
+		dev_err(&pdev->dev, "Failed IRQ request");
+		return result;
 	}
 
 	reader->dma_max_transfer_size = 40;
 
-	/* Get reader capabilities */
+	/* Get player capabilities */
 
-	snd_stm_printd(0, "Reader's name is '%s'\n", reader->info->name);
+	BUG_ON(reader->info->channels <= 0);
+	BUG_ON(reader->info->channels > 10);
+	BUG_ON(reader->info->channels % 2 != 0);
+
+	reader->channels_constraint.list = channels_2_10;
+	reader->channels_constraint.count = reader->info->channels / 2;
+	reader->channels_constraint.mask = 0;
+
+	dev_notice(reader->dev, "%s-channel PCM",
+			strings_2_10[reader->channels_constraint.count-1]);
 
 	/* Create ALSA lowlevel device */
 
 	result = snd_device_new(card, SNDRV_DEV_LOWLEVEL, reader,
 			&snd_stm_uniperif_reader_snd_device_ops);
 	if (result < 0) {
-		snd_stm_printe("ALSA low level device creation failed!\n");
+		dev_err(&pdev->dev, "Failed to create ALSA sound device");
 		goto error_device;
 	}
 
@@ -893,7 +854,7 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 	result = snd_pcm_new(card, NULL, reader->info->card_device, 0, 1,
 			&reader->pcm);
 	if (result < 0) {
-		snd_stm_printe("ALSA PCM instance creation failed!\n");
+		dev_err(&pdev->dev, "Failed to create ALSA PCM instance");
 		goto error_pcm;
 	}
 	reader->pcm->private_data = reader;
@@ -904,11 +865,10 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 
 	/* Initialize buffer */
 
-	reader->buffer = snd_stm_buffer_create(reader->pcm,
-			reader->device,
+	reader->buffer = snd_stm_buffer_create(reader->pcm, reader->dev,
 			snd_stm_uniperif_reader_hw.buffer_bytes_max);
 	if (!reader->buffer) {
-		snd_stm_printe("Cannot initialize buffer!\n");
+		dev_err(&pdev->dev, "Failed to create buffer");
 		result = -ENOMEM;
 		goto error_buffer_init;
 	}
@@ -920,7 +880,7 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 			reader->info->channels,
 			card, reader->info->card_device);
 	if (!reader->conv_source) {
-		snd_stm_printe("Cannot register in converters router!\n");
+		dev_err(&pdev->dev, "Failed to register converter source");
 		result = -ENOMEM;
 		goto error_conv_register_source;
 	}
@@ -930,8 +890,7 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 		reader->pads = stm_pad_claim(reader->info->pad_config,
 				dev_name(&pdev->dev));
 		if (!reader->pads) {
-			snd_stm_printe("Failed to claimed pads for '%s'!\n",
-					dev_name(&pdev->dev));
+			dev_err(&pdev->dev, "Failed to claim pads");
 			result = -EBUSY;
 			goto error_pad_claim;
 		}
@@ -947,20 +906,12 @@ static int snd_stm_uniperif_reader_probe(struct platform_device *pdev)
 error_pad_claim:
 	snd_stm_conv_unregister_source(reader->conv_source);
 error_conv_register_source:
-	snd_stm_buffer_dispose(reader->buffer);
 error_buffer_init:
 	/* snd_pcm_free() is not available - PCM device will be released
 	 * during card release */
 error_pcm:
 	snd_device_free(card, reader);
 error_device:
-	snd_stm_irq_release(reader->irq, reader);
-error_irq_request:
-	snd_stm_memory_release(reader->mem_region, reader->base);
-error_memory_request:
-	snd_stm_magic_clear(reader);
-	kfree(reader);
-error_alloc:
 	return result;
 }
 
@@ -968,7 +919,7 @@ static int snd_stm_uniperif_reader_remove(struct platform_device *pdev)
 {
 	struct snd_stm_uniperif_reader *reader = platform_get_drvdata(pdev);
 
-	snd_stm_printd(1, "%s(pdev=%p)\n", __func__, pdev);
+	dev_dbg(&pdev->dev, "%s(pdev=%p)", __func__, pdev);
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
@@ -979,12 +930,8 @@ static int snd_stm_uniperif_reader_remove(struct platform_device *pdev)
 		stm_pad_release(reader->pads);
 
 	snd_stm_conv_unregister_source(reader->conv_source);
-	snd_stm_buffer_dispose(reader->buffer);
-	snd_stm_irq_release(reader->irq, reader);
-	snd_stm_memory_release(reader->mem_region, reader->base);
 
 	snd_stm_magic_clear(reader);
-	kfree(reader);
 
 	return 0;
 }
@@ -1000,7 +947,7 @@ static int snd_stm_uniperif_reader_suspend(struct device *dev)
 	struct snd_stm_uniperif_reader *reader = dev_get_drvdata(dev);
 	struct snd_card *card = snd_stm_card_get();
 
-	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
 	/* Check if this device is already suspended */
 	if (dev->power.runtime_status == RPM_SUSPENDED)
@@ -1008,8 +955,7 @@ static int snd_stm_uniperif_reader_suspend(struct device *dev)
 
 	/* Abort if the player is still running */
 	if (get__AUD_UNIPERIF_CTRL__OPERATION(reader)) {
-		snd_stm_printe("Cannot runtime suspend as '%s' running!\n",
-				dev_name(dev));
+		dev_err(reader->dev, "Cannot suspend as running");
 		return -EBUSY;
 	}
 
@@ -1024,7 +970,7 @@ static int snd_stm_uniperif_reader_resume(struct device *dev)
 {
 	struct snd_card *card = snd_stm_card_get();
 
-	snd_stm_printd(1, "%s(dev=%p)\n", __func__, dev);
+	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
 	/* Check if this device is already active */
 	if (dev->power.runtime_status == RPM_ACTIVE)
