@@ -1669,7 +1669,7 @@ static int clkgene_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 	/* Computing FSyn params. Should be common function with FSyn type */
 	chan = clk_p->id - CLKM_PIX_MDTP_0;
 	nsdiv = (chan == 3 ? 0 : 1);
-	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, &nsdiv,
+	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, nsdiv,
 				     &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -2102,7 +2102,7 @@ static int clkgenf_fsyn_set_rate(clk_t *clk_p, unsigned long freq)
 
 	/* Computing FSyn params. Should be common function with FSyn type */
 	nsdiv = 1;
-	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, &nsdiv,
+	if (clk_fs660c32_dig_get_params(clk_p->parent->rate, freq, nsdiv,
 				     &md, &pe, &sdiv))
 		return CLK_ERR_BAD_PARAMETER;
 
