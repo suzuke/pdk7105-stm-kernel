@@ -33,40 +33,41 @@
 static void stm_fdma_tasklet_error(unsigned long data)
 {
 	struct stm_fdma_chan *fchan = (struct stm_fdma_chan *) data;
-	struct stm_fdma_desc *fdesc;
+	struct stm_fdma_desc *fdesc = NULL;
 	unsigned long irqflags = 0;
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
+
+	/* A channel can no longer be cyclic after a descriptor error! */
+	clear_bit(STM_FDMA_IS_CYCLIC, &fchan->flags);
 
 	/*
 	 * FDMA spec states, in case of error transfer "may be aborted". Let's
 	 * make the behaviour explicit and stop the transfer here.
 	 */
 
+	fchan->state = STM_FDMA_STATE_ERROR;
 	stm_fdma_hw_channel_pause(fchan, 0);
-	fchan->state = STM_FDMA_STATE_STOPPING;
 
-	BUG_ON(list_empty(&fchan->desc_active));
-
-	/* Remove the first descriptor from the active list */
-	fdesc = list_first_entry(&fchan->desc_active, struct stm_fdma_desc,
-			node);
-	list_del_init(&fdesc->node);
-
-	/* Any cyclic channel is no longer cyclic after a descriptor error! */
-	clear_bit(STM_FDMA_IS_CYCLIC, &fchan->flags);
+	/* Remove the first descriptor from the active list (if there is one) */
+	if (!list_empty(&fchan->desc_active)) {
+		fdesc = list_first_entry(&fchan->desc_active,
+				struct stm_fdma_desc, node);
+		list_del_init(&fdesc->node);
+	}
 
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
-	/* Dump the error */
-	dev_err(fchan->fdev->dev, "Error: channel %d, descriptor %d\n",
-			fchan->id, fdesc->dma_desc.cookie);
+	/* Print an error message */
+	dev_err(fchan->fdev->dev, "Error on channel %d, descriptor %d\n",
+			fchan->id, fdesc ? fdesc->dma_desc.cookie : -1);
 
 	/* Start the next descriptor */
 	stm_fdma_desc_start(fchan);
 
 	/* Complete the descriptor */
-	stm_fdma_desc_complete(fchan, fdesc);
+	if (fdesc)
+		stm_fdma_desc_complete(fchan, fdesc);
 }
 
 static void stm_fdma_tasklet_complete(unsigned long data)
@@ -86,6 +87,7 @@ static void stm_fdma_tasklet_complete(unsigned long data)
 			fchan->state = STM_FDMA_STATE_PAUSED;
 			break;
 
+		case STM_FDMA_STATE_ERROR:
 		case STM_FDMA_STATE_STOPPING:
 			stm_fdma_hw_channel_reset(fchan);
 			fchan->state = STM_FDMA_STATE_IDLE;
@@ -113,6 +115,11 @@ static void stm_fdma_tasklet_complete(unsigned long data)
 		break;
 
 	case CMD_STAT_STATUS_RUNNING:
+		/* Return if currently processing an error */
+		if (fchan->state == STM_FDMA_STATE_ERROR) {
+			spin_unlock_irqrestore(&fchan->lock, irqflags);
+			return;
+		}
 		break;
 
 	default:
@@ -719,14 +726,15 @@ error_desc_get:
 static int stm_fdma_pause(struct stm_fdma_chan *fchan)
 {
 	unsigned long irqflags = 0;
+	int result = 0;
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
 	switch (fchan->state) {
 	case STM_FDMA_STATE_IDLE:
 		/* Hardware isn't set up yet, so treat this as an error */
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-		return -EBUSY;
+		result = -EBUSY;
+		break;
 
 	case STM_FDMA_STATE_PAUSED:
 		/* Hardware is already paused */
@@ -738,15 +746,19 @@ static int stm_fdma_pause(struct stm_fdma_chan *fchan)
 		/* Fall through */
 
 	case STM_FDMA_STATE_PAUSING:
-	case STM_FDMA_STATE_STOPPING:
 		/* Hardware is pausing already, wait for interrupt */
-		fchan->state = STM_FDMA_STATE_PAUSING;
+		break;
+
+	case STM_FDMA_STATE_ERROR:
+	case STM_FDMA_STATE_STOPPING:
+		/* Hardware is stopping, so treat this as an error */
+		result = -EBUSY;
 		break;
 	}
 
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
-	return 0;
+	return result;
 }
 
 static int stm_fdma_resume(struct stm_fdma_chan *fchan)
@@ -780,7 +792,7 @@ static void stm_fdma_stop(struct stm_fdma_chan *fchan)
 	switch (fchan->state) {
 	case STM_FDMA_STATE_IDLE:
 	case STM_FDMA_STATE_PAUSED:
-		/* Channel is idle - just change state */
+		/* Channel is idle - just change state and reset channel */
 		fchan->state = STM_FDMA_STATE_IDLE;
 		stm_fdma_hw_channel_reset(fchan);
 		break;
@@ -794,6 +806,10 @@ static void stm_fdma_stop(struct stm_fdma_chan *fchan)
 	case STM_FDMA_STATE_STOPPING:
 		/* Channel is pausing - just change state */
 		fchan->state = STM_FDMA_STATE_STOPPING;
+		break;
+
+	case STM_FDMA_STATE_ERROR:
+		/* Channel is processing an error - and already stopping */
 		break;
 	}
 
@@ -1057,20 +1073,36 @@ static enum dma_status stm_fdma_tx_status(struct dma_chan *chan,
 	last_used = chan->cookie;
 	last_complete = fchan->last_completed;
 
-	/* Check if channel is paused */
-	if (fchan->state == STM_FDMA_STATE_PAUSED)
+	/* Check channel status */
+	switch (fchan->state) {
+	case STM_FDMA_STATE_PAUSED:
 		status = DMA_PAUSED;
-	else
+		break;
+
+	case STM_FDMA_STATE_ERROR:
+		status = DMA_ERROR;
+		break;
+
+	default:
 		status = dma_async_is_complete(cookie, last_complete,
 				last_used);
+	}
 
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
-	/* Get the residue */
-	if (status == DMA_SUCCESS)
+	/* Get the transfer residue based on transfer status */
+	switch (status) {
+	case DMA_SUCCESS:
 		residue = 0;
-	else
+		break;
+
+	case DMA_ERROR:
+		residue = 0;
+		break;
+
+	default:
 		residue = stm_fdma_get_residue(fchan);
+	}
 
 	/* Set the state */
 	dma_set_tx_state(txstate, last_complete, last_used, residue);
