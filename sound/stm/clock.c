@@ -128,7 +128,7 @@ static DEFINE_SPINLOCK(snd_stm_clk_parents_lock);
 
 int snd_stm_clk_enable(struct clk *clk)
 {
-	int result = -EINVAL;
+	int result = 0;
 	struct snd_stm_clk *snd_stm_clk;
 
 	snd_stm_printd(1, "%s(clk=%p)\n", __func__, clk);
