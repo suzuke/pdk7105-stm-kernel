@@ -137,10 +137,6 @@ static int min_percpu_pagelist_fract = 8;
 static int ngroups_max = NGROUPS_MAX;
 static const int cap_last_cap = CAP_LAST_CAP;
 
-#ifdef CONFIG_FB_CON_DECOR
-extern char fbcon_decor_path[];
-#endif
-
 #ifdef CONFIG_INOTIFY_USER
 #include <linux/inotify.h>
 #endif
@@ -574,16 +570,6 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= UEVENT_HELPER_PATH_LEN,
 		.mode		= 0644,
 		.proc_handler	= proc_dostring,
-	},
-#endif
-#ifdef CONFIG_FB_CON_DECOR
-	{
-		.ctl_name	= KERN_FBCON_DECOR,
-		.procname	= "fbcondecor",
-		.data		= &fbcon_decor_path,
-		.maxlen		= KMOD_PATH_LEN,
-		.mode		= 0644,
-		.proc_handler	= &proc_dostring,
 	},
 #endif
 #ifdef CONFIG_CHR_DEV_SG
