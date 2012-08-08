@@ -339,10 +339,17 @@ static int snd_stm_conv_i2c_remove(struct i2c_client *client)
 	return 0;
 }
 
+static const struct i2c_device_id conv_i2c_id[] = {
+	{ "snd_conv_i2c", 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(i2c, conv_i2c_id);
+
 static struct i2c_driver snd_stm_conv_i2c_driver = {
 	.driver.name = "snd_conv_i2c",
 	.probe = snd_stm_conv_i2c_probe,
 	.remove = snd_stm_conv_i2c_remove,
+	.id_table = conv_i2c_id,
 };
 
 
