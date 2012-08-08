@@ -83,7 +83,6 @@ static int fli76xxhdk01_sta333w_init(struct i2c_client *client, void *priv)
 
 static struct i2c_board_info fli76xxhdk01_snd_conv_i2c_0 = {
 	I2C_BOARD_INFO("snd_conv_i2c", 0x1d),
-	.type = "STA333W",
 	.platform_data = &(struct snd_stm_conv_i2c_info) {
 		.group = "speakers",
 		.source_bus_id = "snd_uni_player.0",
