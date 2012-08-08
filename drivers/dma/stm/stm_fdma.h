@@ -164,7 +164,6 @@ struct stm_fdma_desc {
 	struct list_head llu_list;
 
 	struct dma_async_tx_descriptor dma_desc;
-	enum dma_status dma_status;
 };
 
 

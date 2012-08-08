@@ -106,14 +106,15 @@ struct stm_fdma_desc *stm_fdma_desc_get(struct stm_fdma_chan *fchan)
 		fchan->desc_count++;
 	}
 
+	spin_unlock_irqrestore(&fchan->lock, irqflags);
+
 	/* Re-initialise the descriptor */
+	memset(fdesc->llu, 0, sizeof(struct stm_fdma_llu));
 	INIT_LIST_HEAD(&fdesc->llu_list);
 	fdesc->dma_desc.cookie = 0;
 	fdesc->dma_desc.callback = NULL;
 	fdesc->dma_desc.callback_param = NULL;
 	fdesc->dma_desc.tx_submit = stm_fdma_tx_submit;
-
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
 	return fdesc;
 }
