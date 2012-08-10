@@ -31,6 +31,20 @@
 #define MALI_IRQ_PP2_MMU	STIH415_IRQ(86)
 #define MALI_IRQ_PP3		STIH415_IRQ(84)
 #define MALI_IRQ_PP3_MMU	STIH415_IRQ(87)
+
+#elif defined(CONFIG_CPU_SUBTYPE_FLI7610)
+#include <linux/stm/fli7610.h>
+#define MALI_BASE_ADDR          0xfd680000
+#define MALI_IRQ_GP             FLI7610_IRQ(80)
+#define MALI_IRQ_GP_MMU         FLI7610_IRQ(81)
+#define MALI_IRQ_PP0            FLI7610_IRQ(78)
+#define MALI_IRQ_PP0_MMU        FLI7610_IRQ(79)
+#define MALI_IRQ_PP1            FLI7610_IRQ(82)
+#define MALI_IRQ_PP1_MMU        FLI7610_IRQ(85)
+#define MALI_IRQ_PP2            FLI7610_IRQ(83)
+#define MALI_IRQ_PP2_MMU        FLI7610_IRQ(86)
+#define MALI_IRQ_PP3            FLI7610_IRQ(84)
+#define MALI_IRQ_PP3_MMU        FLI7610_IRQ(87)
 #else
 #error *** Architecture not supported ***
 #endif

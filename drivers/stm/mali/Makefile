@@ -60,6 +60,9 @@ endif
 ifeq ($(CONFIG_CPU_SUBTYPE_STIH415),y)
 SOC := stih415
 endif
+ifeq ($(CONFIG_CPU_SUBTYPE_FLI7610),y)
+SOC := fli7610
+endif
 
 USING_MMU                := 1
 USING_UMP                := 0

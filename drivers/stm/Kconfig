@@ -129,7 +129,8 @@ config STM_RNG
 
 config STM_MALI
 	depends on (CPU_SUBTYPE_STX7108 || \
-                    CPU_SUBTYPE_STIH415)
+                    CPU_SUBTYPE_STIH415 || \
+		    CPU_SUBTYPE_FLI7610 )
 	tristate "STM Mali GPU support"
 	default n
 	---help---
