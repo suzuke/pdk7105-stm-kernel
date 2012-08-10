@@ -135,8 +135,6 @@ void stih415_configure_pwm(struct stih415_pwm_config *config);
 
 void stih415_configure_mmc(int emmc);
 
-void stih415_configure_mali(struct stm_mali_config *config);
-
 void stih415_configure_keyscan(const struct stm_keyscan_config *config);
 
 struct stih415_audio_config {

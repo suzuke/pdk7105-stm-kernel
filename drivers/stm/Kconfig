@@ -132,8 +132,16 @@ config STM_MALI
                     CPU_SUBTYPE_STIH415)
 	tristate "STM Mali GPU support"
 	default n
-	help
+	---help---
 	  Enable this option to support Mali GPU Driver.
+
+config STM_MALI_OS_MEMORY_SIZE
+	depends on STM_MALI
+	hex "Maximum Mali GPU OS memory size"
+	default "0x7800000"
+	---help---
+	  Specify the size of memory which the Mali driver is allowed to
+	  allocate from Linux kernel.
 	  
 config STM_MALI_DEBUG
 	depends on STM_MALI

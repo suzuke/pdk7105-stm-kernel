@@ -139,13 +139,6 @@ config STM_GMAC1_B2032_CARD_RGMII_MODE
 
 endchoice
 
-config STM_B2000_MALI_OS_MEMORY_SIZE
-	hex "Maximum Mali GPU OS memory size"
-	default "0x5000000"
-	help
-	  Specify the size of memory which the Mali driver is allowed to allocate
-	  from Linux kernel.
-
 endmenu
 
 endif

@@ -143,30 +143,6 @@ static struct platform_device *b2020_devices[] __initdata = {
 };
 
 
-static struct stm_mali_resource b2020_mali_mem[1] = {
-	{
-		.name	= "OS_MEMORY",
-		.start	= 0,
-		.end	= CONFIG_MACH_STM_B2020_MALI_OS_MEMORY_SIZE-1,
-	},
-};
-
-static struct stm_mali_resource b2020_mali_ext_mem[] = {
-	{
-		.name	= "EXTERNAL_MEMORY_RANGE",
-		.start	= 0x40000000,
-		.end	= 0xBFFFFFFF,
-	}
-};
-
-
-static struct stm_mali_config b2020_mali_config = {
-	.num_mem_resources = ARRAY_SIZE(b2020_mali_mem),
-	.mem = b2020_mali_mem,
-	.num_ext_resources = ARRAY_SIZE(b2020_mali_ext_mem),
-	.ext_mem = b2020_mali_ext_mem,
-};
-
 static void b2020_ethphy_gpio_init(int cold_boot)
 {
 	/* Reset */
@@ -215,8 +191,6 @@ static void __init b2020_init(void)
 	/* IR_IN */
 	stih415_configure_lirc(&(struct stih415_lirc_config) {
 			.rx_mode = stih415_lirc_rx_mode_ir, });
-
-	stih415_configure_mali(&b2020_mali_config);
 
 	stih415_configure_pwm(&(struct stih415_pwm_config) {
 			.pwm = stih415_sbc_pwm,
