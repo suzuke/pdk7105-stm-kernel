@@ -110,9 +110,7 @@ struct stm_plat_asc_data {
 	char *clk_id;
 };
 
-extern int stm_asc_console_device;
-extern unsigned int stm_asc_configured_devices_num;
-extern struct platform_device *stm_asc_configured_devices[];
+extern struct platform_device *stm_asc_console_device;
 
 /*** LPC platform data ***/
 struct stm_plat_rtc_lpc {

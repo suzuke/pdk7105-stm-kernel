@@ -356,27 +356,19 @@ static struct console asc_console = {
 	.data		= &asc_uart_driver,
 };
 
-static void __init asc_init_ports(void)
-{
-	int i;
-
-	for (i = 0; i < stm_asc_configured_devices_num; i++)
-		asc_init_port(&asc_ports[i], stm_asc_configured_devices[i]);
-}
-
 /*
  * Early console initialization.
  */
 static int __init asc_console_init(void)
 {
-	if (!stm_asc_configured_devices_num)
+	int id;
+	if (!stm_asc_console_device)
 		return 0;
 
-	if (stm_asc_console_device >= 0) {
-		add_preferred_console("ttyAS", stm_asc_console_device, NULL);
-		asc_init_ports();
-		register_console(&asc_console);
-	}
+	id = stm_asc_console_device->id;
+	add_preferred_console("ttyAS", stm_asc_console_device->id, NULL);
+	asc_init_port(&asc_ports[id], stm_asc_console_device);
+	register_console(&asc_console);
 
 	return 0;
 }

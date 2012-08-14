@@ -176,11 +176,8 @@ static struct platform_device fli7610_asc_devices[] = {
 	 */
 };
 
-/* Note these three variables are global, and shared with the stasc driver
- * for console bring up prior to platform initialisation. */
-
 /* the serial console device */
-int __initdata stm_asc_console_device;
+struct platform_device *stm_asc_console_device;
 
 /* Platform devices to register */
 unsigned int __initdata stm_asc_configured_devices_num;
@@ -220,7 +217,7 @@ void __init fli7610_configure_asc(int asc, struct fli7610_asc_config *config)
 	}
 
 	if (config->is_console)
-		stm_asc_console_device = pdev->id;
+		stm_asc_console_device = pdev;
 
 	stm_asc_configured_devices[stm_asc_configured_devices_num++] = pdev;
 }

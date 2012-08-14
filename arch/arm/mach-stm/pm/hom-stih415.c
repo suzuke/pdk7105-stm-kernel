@@ -103,11 +103,10 @@ static int __init hom_stxh415_setup(void)
 	INIT_LIST_HEAD(&stxh415_hom.table);
 
 	stxh415_hom.early_console_base = (void *)ioremap(
-		stm_asc_configured_devices[stm_asc_console_device]
-			->resource[0].start, 0x1000);
+		stm_asc_console_device->resource[0].start, 0x1000);
 
 	pr_info("stm pm hom: Early console [%d] @ 0x%x\n",
-			stm_asc_console_device,
+			stm_asc_console_device->id,
 			(unsigned int) stxh415_hom.early_console_base);
 
 	for (i = 0; i < ARRAY_SIZE(stxh415_hom_table); ++i)

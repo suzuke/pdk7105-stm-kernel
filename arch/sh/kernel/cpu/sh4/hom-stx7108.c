@@ -176,8 +176,7 @@ static int __init hom_stx7108_setup(void)
 	ret = stm_hom_register(&stx7108_hom);
 	if (!ret) {
 		early_console_base = (void *)
-		ioremap(stm_asc_configured_devices[stm_asc_console_device]
-			->resource[0].start, 0x1000);
+		ioremap(stm_asc_console_device->resource[0].start, 0x1000);
 		pr_info("[STM]: [PM]: [HoM]: Early console @ %p\n",
 			early_console_base);
 		stx7108_hom.early_console = stx7108_hom_early_console;
