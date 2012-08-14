@@ -217,9 +217,10 @@ static void asc_release_port(struct uart_port *port)
 {
 	struct asc_port *ascport = container_of(port, struct asc_port, port);
 	struct platform_device *pdev = to_platform_device(port->dev);
-	int size = pdev->resource[0].end - pdev->resource[0].start + 1;
+	struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
-	release_mem_region(port->mapbase, size);
+	if (res)
+		release_mem_region(res->start, resource_size(res));
 
 	if (port->flags & UPF_IOREMAP) {
 		iounmap(port->membase);
@@ -281,6 +282,12 @@ static void __devinit asc_init_port(struct asc_port *ascport,
 {
 	struct uart_port *port = &ascport->port;
 	struct stm_plat_asc_data *plat_data = pdev->dev.platform_data;
+	struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+
+	if (!res) {
+		dev_err(&pdev->dev, "Unable to get platform io_memory resource\n");
+		return;
+	}
 
 	port->iotype	= UPIO_MEM;
 	port->flags	= UPF_BOOT_AUTOCONF;
@@ -289,8 +296,9 @@ static void __devinit asc_init_port(struct asc_port *ascport,
 	port->line	= pdev->id;
 	port->dev	= &pdev->dev;
 
-	port->mapbase	= pdev->resource[0].start;
-	port->irq	= pdev->resource[1].start;
+	port->mapbase	= res->start;
+	port->irq	= platform_get_irq(pdev, 0);
+
 	spin_lock_init(&port->lock);
 
 	if (plat_data->regs)
@@ -375,6 +383,7 @@ static int __devinit asc_serial_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct asc_port *ascport = &asc_ports[pdev->id];
+	int irq = platform_get_irq(pdev, 0);
 
 	asc_init_port(ascport, pdev);
 
@@ -385,8 +394,8 @@ static int __devinit asc_serial_probe(struct platform_device *pdev)
 		device_set_wakeup_capable(&pdev->dev, 1);
 		/* enable the wakeup on console */
 		device_set_wakeup_enable(&pdev->dev, 1);
-		enable_irq_wake(pdev->resource[1].start);
-
+		if (irq > 0)
+			enable_irq_wake(irq);
 		pm_runtime_set_active(&pdev->dev);
 		pm_runtime_enable(&pdev->dev);
 		pm_runtime_get(&pdev->dev); /* notify it's working */
@@ -556,7 +565,13 @@ static int asc_remap_port(struct asc_port *ascport, int req)
 {
 	struct uart_port *port = &ascport->port;
 	struct platform_device *pdev = to_platform_device(port->dev);
-	int size = pdev->resource[0].end - pdev->resource[0].start + 1;
+	struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	int size;
+
+	if (!res)
+		return -ENODEV;
+
+	size = resource_size(res);
 
 	if (!ascport->pad_state) {
 		/* Can't use dev_name() here as we can be called early */
