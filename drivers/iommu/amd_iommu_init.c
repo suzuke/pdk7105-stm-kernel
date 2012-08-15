@@ -1131,9 +1131,8 @@ static int iommu_setup_msi(struct amd_iommu *iommu)
 {
 	int r;
 
-	r = pci_enable_msi(iommu->dev);
-	if (r)
-		return r;
+	if (pci_enable_msi(iommu->dev))
+		return 1;
 
 	r = request_threaded_irq(iommu->dev->irq,
 				 amd_iommu_int_handler,
@@ -1143,36 +1142,27 @@ static int iommu_setup_msi(struct amd_iommu *iommu)
 
 	if (r) {
 		pci_disable_msi(iommu->dev);
-		return r;
+		return 1;
 	}
 
 	iommu->int_enabled = true;
-
-	return 0;
-}
-
-static int iommu_init_msi(struct amd_iommu *iommu)
-{
-	int ret;
-
-	if (iommu->int_enabled)
-		goto enable_faults;
-
-	if (pci_find_capability(iommu->dev, PCI_CAP_ID_MSI))
-		ret = iommu_setup_msi(iommu);
-	else
-		ret = -ENODEV;
-
-	if (ret)
-		return ret;
-
-enable_faults:
 	iommu_feature_enable(iommu, CONTROL_EVT_INT_EN);
 
 	if (iommu->ppr_log != NULL)
 		iommu_feature_enable(iommu, CONTROL_PPFINT_EN);
 
 	return 0;
+}
+
+static int iommu_init_msi(struct amd_iommu *iommu)
+{
+	if (iommu->int_enabled)
+		return 0;
+
+	if (pci_find_capability(iommu->dev, PCI_CAP_ID_MSI))
+		return iommu_setup_msi(iommu);
+
+	return 1;
 }
 
 /****************************************************************************

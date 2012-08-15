@@ -1750,7 +1750,6 @@ static int srpt_handle_cmd(struct srpt_rdma_ch *ch,
 		       srp_cmd->tag);
 		cmd->se_cmd_flags |= SCF_SCSI_CDB_EXCEPTION;
 		cmd->scsi_sense_reason = TCM_INVALID_CDB_FIELD;
-		kref_put(&send_ioctx->kref, srpt_put_send_ioctx_kref);
 		goto send_sense;
 	}
 
@@ -1758,19 +1757,15 @@ static int srpt_handle_cmd(struct srpt_rdma_ch *ch,
 	cmd->data_direction = dir;
 	unpacked_lun = srpt_unpack_lun((uint8_t *)&srp_cmd->lun,
 				       sizeof(srp_cmd->lun));
-	if (transport_lookup_cmd_lun(cmd, unpacked_lun) < 0) {
-		kref_put(&send_ioctx->kref, srpt_put_send_ioctx_kref);
+	if (transport_lookup_cmd_lun(cmd, unpacked_lun) < 0)
 		goto send_sense;
-	}
 	ret = transport_generic_allocate_tasks(cmd, srp_cmd->cdb);
-	if (ret < 0) {
-		kref_put(&send_ioctx->kref, srpt_put_send_ioctx_kref);
-		if (cmd->se_cmd_flags & SCF_SCSI_RESERVATION_CONFLICT) {
-			srpt_queue_status(cmd);
-			return 0;
-		} else
-			goto send_sense;
-	}
+	if (cmd->se_cmd_flags & SCF_SCSI_RESERVATION_CONFLICT)
+		srpt_queue_status(cmd);
+	else if (cmd->se_cmd_flags & SCF_SCSI_CDB_EXCEPTION)
+		goto send_sense;
+	else
+		WARN_ON_ONCE(ret);
 
 	transport_handle_cdb_direct(cmd);
 	return 0;

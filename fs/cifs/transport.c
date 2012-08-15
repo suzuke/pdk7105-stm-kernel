@@ -265,12 +265,12 @@ static int wait_for_free_request(struct TCP_Server_Info *server,
 
 	spin_lock(&GlobalMid_Lock);
 	while (1) {
-		if (atomic_read(&server->inFlight) >= server->maxReq) {
+		if (atomic_read(&server->inFlight) >= cifs_max_pending) {
 			spin_unlock(&GlobalMid_Lock);
 			cifs_num_waiters_inc(server);
 			wait_event(server->request_q,
 				   atomic_read(&server->inFlight)
-				     < server->maxReq);
+				     < cifs_max_pending);
 			cifs_num_waiters_dec(server);
 			spin_lock(&GlobalMid_Lock);
 		} else {

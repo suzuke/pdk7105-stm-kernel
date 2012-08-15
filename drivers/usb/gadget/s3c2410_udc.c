@@ -1148,7 +1148,6 @@ static int s3c2410_udc_ep_disable(struct usb_ep *_ep)
 	dprintk(DEBUG_NORMAL, "ep_disable: %s\n", _ep->name);
 
 	ep->desc = NULL;
-	ep->ep.desc = NULL;
 	ep->halted = 1;
 
 	s3c2410_udc_nuke (ep->dev, ep, -ESHUTDOWN);
@@ -1631,7 +1630,6 @@ static void s3c2410_udc_reinit(struct s3c2410_udc *dev)
 
 		ep->dev = dev;
 		ep->desc = NULL;
-		ep->ep.desc = NULL;
 		ep->halted = 0;
 		INIT_LIST_HEAD (&ep->queue);
 	}
