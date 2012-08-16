@@ -258,8 +258,8 @@ static int __init bpa2_add_part(const char **names, int names_cnt,
 	} else if ((start_pfn >= PAGECOUNT_TO_PFN(min_low_pfn)) &&
 		   (end_pfn <= PAGECOUNT_TO_PFN(max_low_pfn))) {
 		result = bpa2_reserve_low(part, start, size);
-	} else if ((start_pfn > PAGECOUNT_TO_PFN(max_low_pfn)) ||
-		   (end_pfn < PAGECOUNT_TO_PFN(min_low_pfn))) {
+	} else if ((start_pfn >= PAGECOUNT_TO_PFN(max_low_pfn)) ||
+		   (end_pfn <= PAGECOUNT_TO_PFN(min_low_pfn))) {
 		result = bpa2_init_high(part, start, size);
 	} else {
 		printk(KERN_ERR "bpa2: partition spans low memory boundary\n");
