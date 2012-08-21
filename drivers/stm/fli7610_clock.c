@@ -61,6 +61,8 @@ int __init plat_clk_alias_init(void)
 	/* SPDIF RX clock */
 	clk_add_alias("spdif_rx_clk", NULL, "CLK_SPDIF_RX", NULL);
 
+	/* SDHCI clocks */
+	clk_add_alias(NULL, "sdhci-stm.0", "CLK_SD_MS",  NULL);
 	return 0;
 }
 
