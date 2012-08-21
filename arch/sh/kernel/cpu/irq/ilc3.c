@@ -30,7 +30,6 @@
 #include <linux/io.h>
 
 #include <asm/hw_irq.h>
-#include <asm/system.h>
 #include <asm/irq-ilc.h>
 
 #include "ilc3.h"

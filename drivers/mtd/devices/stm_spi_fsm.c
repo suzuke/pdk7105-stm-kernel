@@ -1597,9 +1597,9 @@ static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 	fsm->mtd.size = info->sector_size * info->n_sectors;
 	fsm->mtd.erasesize = info->sector_size;
 
-	fsm->mtd.read = fsm_mtd_read;
-	fsm->mtd.write = fsm_mtd_write;
-	fsm->mtd.erase = fsm_mtd_erase;
+	fsm->mtd._read = fsm_mtd_read;
+	fsm->mtd._write = fsm_mtd_write;
+	fsm->mtd._erase = fsm_mtd_erase;
 
 	dev_info(&pdev->dev, "found device: %s, size = %llx (%lldMiB) "
 		 "erasesize = 0x%08x (%uKiB)\n",

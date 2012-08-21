@@ -9,7 +9,7 @@
  * ------------------------------------------------------------------------- */
 
 #include <linux/linkage.h>
-#include <asm/system.h>
+#include <asm/cp15.h>
 
 @ registers setting on stm_suspend_exec_table call:
 @ r0 = __pa(&eram_data)

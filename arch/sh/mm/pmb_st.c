@@ -28,7 +28,6 @@
 #include <linux/seq_file.h>
 #include <linux/err.h>
 #include <linux/pm.h>
-#include <asm/system.h>
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
 #include <asm/mmu.h>

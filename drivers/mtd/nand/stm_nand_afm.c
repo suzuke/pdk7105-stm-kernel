@@ -2796,20 +2796,20 @@ static int afm_scan_tail(struct mtd_info *mtd)
 	/* Fill in remaining MTD driver data */
 	mtd->type = MTD_NANDFLASH;
 	mtd->flags = MTD_CAP_NANDFLASH;
-	mtd->erase = afm_erase;  /* uses chip->erase_cmd */
-	mtd->point = NULL;
-	mtd->unpoint = NULL;
-	mtd->read = afm_read;
-	mtd->write = afm_write;
-	mtd->read_oob = afm_read_oob;
-	mtd->write_oob = afm_write_oob;
-	mtd->sync = afm_sync;
-	mtd->lock = NULL;
-	mtd->unlock = NULL;
-	mtd->suspend = afm_suspend;
-	mtd->resume = afm_resume;
-	mtd->block_isbad = afm_block_isbad;
-	mtd->block_markbad = afm_block_markbad;
+	mtd->_erase = afm_erase;  /* uses chip->erase_cmd */
+	mtd->_point = NULL;
+	mtd->_unpoint = NULL;
+	mtd->_read = afm_read;
+	mtd->_write = afm_write;
+	mtd->_read_oob = afm_read_oob;
+	mtd->_write_oob = afm_write_oob;
+	mtd->_sync = afm_sync;
+	mtd->_lock = NULL;
+	mtd->_unlock = NULL;
+	mtd->_suspend = afm_suspend;
+	mtd->_resume = afm_resume;
+	mtd->_block_isbad = afm_block_isbad;
+	mtd->_block_markbad = afm_block_markbad;
 	mtd->writebufsize = mtd->writesize;
 
 	/* Propagate ecc.layout to mtd_info */

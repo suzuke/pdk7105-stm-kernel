@@ -114,6 +114,11 @@ struct nand_bbt_descr {
 #define NAND_BBT_USE_FLASH	0x00020000
 /* Do not store flash based bad block table in OOB area; store it in-band */
 #define NAND_BBT_NO_OOB		0x00040000
+/*
+ * Do not write new bad block markers to OOB; useful, e.g., when ECC covers
+ * entire spare area. Must be used with NAND_BBT_USE_FLASH.
+ */
+#define NAND_BBT_NO_OOB_BBM	0x00080000
 
 /* Handle STMicroelectronics H/W ECC schemes (boot-mode, AFM4) */
 #define NAND_BBT_SCANSTMBOOTECC	0x00080000

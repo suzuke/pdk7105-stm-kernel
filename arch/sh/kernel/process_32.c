@@ -24,10 +24,10 @@
 #include <linux/prefetch.h>
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
-#include <asm/system.h>
 #include <asm/fpu.h>
 #include <asm/watchdog.h>
 #include <asm/syscalls.h>
+#include <asm/switch_to.h>
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 unsigned long __stack_chk_guard __read_mostly;

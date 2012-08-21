@@ -163,8 +163,8 @@ static int hibernation_on_memory_enter(void)
 	if (error)
 		goto Resume_devices;
 
-	pr_debug("[STM]:[PM]: Suspend devices (noirq)\n");
-	error = dpm_suspend_noirq(PMSG_FREEZE);
+	pr_debug("[STM]:[PM]: Suspend devices (end)\n");
+	error = dpm_suspend_end(PMSG_FREEZE);
 	if (error)
 		goto Resume_devices_noirq;
 
@@ -210,8 +210,8 @@ static int hibernation_on_memory_enter(void)
 
  Resume_devices_noirq:
 
-	pr_debug("[STM]:[PM]: Resume devices (noirq)\n");
-	dpm_resume_noirq(PMSG_RESTORE);
+	pr_debug("[STM]:[PM]: Resume devices (start)\n");
+	dpm_resume_start(PMSG_RESTORE);
 
  Resume_devices:
 

@@ -25,6 +25,6 @@
 #else
 #define IO_ADDRESS(x)		(x)
 #endif
-#define __io_address(n)		__io(IO_ADDRESS(n))
+#define __io_address(n)		__typesafe_io(IO_ADDRESS(n))
 
 #endif

@@ -17,9 +17,9 @@
 #include <linux/kprobes.h>
 #include <linux/perf_event.h>
 #include <asm/io_trapped.h>
-#include <asm/system.h>
 #include <asm/mmu_context.h>
 #include <asm/tlbflush.h>
+#include <asm/traps.h>
 
 #ifdef CONFIG_MMU
 

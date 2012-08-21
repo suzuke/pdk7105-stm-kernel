@@ -504,7 +504,7 @@ static struct dma_async_tx_descriptor *stm_fdma_prep_dma_memcpy(
 static struct dma_async_tx_descriptor *stm_fdma_prep_slave_sg(
 		struct dma_chan *chan, struct scatterlist *sgl,
 		unsigned int sg_len, enum dma_transfer_direction direction,
-		unsigned long flags)
+		unsigned long flags, void *context)
 {
 	struct stm_fdma_chan *fchan = to_stm_fdma_chan(chan);
 	struct stm_fdma_desc *head = NULL;
@@ -613,7 +613,8 @@ error_desc_get:
 
 static struct dma_async_tx_descriptor *stm_fdma_prep_dma_cyclic(
 		struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
-		size_t period_len, enum dma_transfer_direction direction)
+		size_t period_len, enum dma_transfer_direction direction,
+		void *context)
 {
 	struct stm_fdma_chan *fchan = to_stm_fdma_chan(chan);
 	struct stm_fdma_desc *head = NULL;

@@ -557,7 +557,7 @@ static int snd_stm_uniperif_reader_start(struct snd_pcm_substream *substream)
 		reader->dma_channel->device->device_prep_dma_cyclic(
 			reader->dma_channel, substream->runtime->dma_addr,
 			reader->buffer_bytes, reader->period_bytes,
-			DMA_DEV_TO_MEM);
+			DMA_DEV_TO_MEM, NULL);
 	if (!reader->dma_descriptor) {
 		dev_err(reader->dev, "Failed to prepare DMA descriptor");
 		return -ENOMEM;

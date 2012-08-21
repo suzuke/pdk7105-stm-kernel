@@ -2186,22 +2186,22 @@ static void nandi_set_mtd_defaults(struct nandi_controller *nandi,
 	mtd->oobavail = 0;
 	mtd->subpage_sft = 0;
 
-	mtd->read = bch_mtd_read;
-	mtd->write = bch_mtd_write;
-	mtd->erase = bch_mtd_erase;
-	mtd->read_oob = bch_mtd_read_oob;
-	mtd->write_oob = bch_mtd_write_oob;
-	mtd->block_isbad = bch_mtd_block_isbad;
-	mtd->block_markbad = bch_mtd_block_markbad;
+	mtd->_read = bch_mtd_read;
+	mtd->_write = bch_mtd_write;
+	mtd->_erase = bch_mtd_erase;
+	mtd->_read_oob = bch_mtd_read_oob;
+	mtd->_write_oob = bch_mtd_write_oob;
+	mtd->_block_isbad = bch_mtd_block_isbad;
+	mtd->_block_markbad = bch_mtd_block_markbad;
 
-	mtd->point = NULL;
-	mtd->unpoint = NULL;
-	mtd->lock = NULL;
-	mtd->unlock = NULL;
+	mtd->_point = NULL;
+	mtd->_unpoint = NULL;
+	mtd->_lock = NULL;
+	mtd->_unlock = NULL;
 
-	mtd->sync = nand_sync;
-	mtd->suspend = nand_suspend;
-	mtd->resume = nand_resume;
+	mtd->_sync = nand_sync;
+	mtd->_suspend = nand_suspend;
+	mtd->_resume = nand_resume;
 }
 
 static void nandi_init_hamming(struct nandi_controller *nandi, int emi_bank)

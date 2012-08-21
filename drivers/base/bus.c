@@ -842,11 +842,11 @@ EXPORT_SYMBOL_GPL(device_reprobe);
  *
  * Note that kset_find_obj increments bus' reference count.
  */
-#ifdef CONFIG_PMS
+#if 0
 struct bus_type *find_bus(char *name)
 {
 	struct kobject *k = kset_find_obj(bus_kset, name);
-	return k ? to_bus(k)->bus : NULL;
+	return k ? to_bus(k) : NULL;
 }
 #endif  /*  0  */
 
@@ -1194,12 +1194,14 @@ EXPORT_SYMBOL_GPL(subsys_interface_register);
 
 void subsys_interface_unregister(struct subsys_interface *sif)
 {
-	struct bus_type *subsys = sif->subsys;
+	struct bus_type *subsys;
 	struct subsys_dev_iter iter;
 	struct device *dev;
 
-	if (!sif)
+	if (!sif || !sif->subsys)
 		return;
+
+	subsys = sif->subsys;
 
 	mutex_lock(&subsys->p->mutex);
 	list_del_init(&sif->node);

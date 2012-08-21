@@ -11,6 +11,7 @@
 
 
 #include <linux/kernel.h>
+#include <linux/bug.h>
 
 #include "tap.h"
 

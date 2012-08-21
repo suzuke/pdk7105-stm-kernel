@@ -18,8 +18,6 @@
 
 #include <asm/irq.h>
 #include <asm/smp_twd.h>
-#include <asm/localtimer.h>
-#include <asm/smp_twd.h>
 #include <asm/smp_gt.h>
 #include <asm/hardware/gic.h>
 
@@ -27,7 +25,6 @@
 #include <asm/mach/time.h>
 #include <mach/mpe41.h>
 #include <mach/hardware.h>
-#include <mach/io.h>
 #include <mach/irqs.h>
 
 /* Setup th GIC */
@@ -37,11 +34,27 @@ void __init mpe41_gic_init_irq(void)
 			__io_address(MPE41_GIC_CPU_BASE));
 }
 
+
+#ifdef CONFIG_HAVE_ARM_TWD
+static DEFINE_TWD_LOCAL_TIMER(mpe41_local_timer,
+			      MPE41_TWD_BASE, IRQ_LOCALTIMER);
+
+static void __init mpe41_twd_init(void)
+{
+	int err;
+	err = twd_local_timer_register(&mpe41_local_timer);
+	if (err)
+		pr_err("twd_local_timer_register failed %d\n", err);
+}
+#else
+#define mpe41_twd_init() do { } while 0
+#endif
+
 /* Setup the Global Timer */
 static void __init mpe41_timer_init(void)
 {
-
 	struct clk *a9_clk;
+
 	plat_clk_init();
 	plat_clk_alias_init();
 
@@ -54,23 +67,12 @@ static void __init mpe41_timer_init(void)
 			IRQ_GLOBALTIMER, clk_get_rate(a9_clk)/2);
 #endif
 
+	mpe41_twd_init();
 }
 
 struct sys_timer mpe41_timer = {
 	.init		= mpe41_timer_init,
 };
-
-
-/*
- * Setup the localtimer.
- */
-int __cpuinit local_timer_setup(struct clock_event_device *evt)
-{
-	twd_base = __io_address(MPE41_TWD_BASE);
-	evt->irq = IRQ_LOCALTIMER;
-	twd_timer_setup(evt);
-	return 0;
-}
 
 #ifdef CONFIG_SMP
 void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(MPE41_SCU_BASE));

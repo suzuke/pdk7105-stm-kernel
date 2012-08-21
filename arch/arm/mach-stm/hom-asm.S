@@ -17,7 +17,7 @@
 #include <asm/asm-offsets.h>
 #include <asm/memory.h>
 #include <asm/thread_info.h>
-#include <asm/system.h>
+#include <asm/cp15.h>
 
 #include "hom.h"
 
