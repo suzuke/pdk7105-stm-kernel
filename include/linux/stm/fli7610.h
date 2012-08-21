@@ -147,4 +147,6 @@ void fli7610_configure_nand(struct stm_nand_config *config);
 
 void fli7610_configure_spifsm(struct stm_plat_spifsm_data *data);
 
+void fli7610_configure_mmc(int emmc);
+
 #endif

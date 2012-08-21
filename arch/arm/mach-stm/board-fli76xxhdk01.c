@@ -212,6 +212,7 @@ static void __init fli76xxhdk01_init(void)
 
 	fli7610_configure_spifsm(&fli76xxhdk01_serial_flash);
 
+	fli7610_configure_mmc(0);
 }
 
 MACHINE_START(STM_NMHDK_FLI7610, "STMicroelectronics Newman FLI76XXHDK01")
