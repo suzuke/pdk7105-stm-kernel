@@ -1,3 +1,6 @@
+ccflags-$(CONFIG_DMADEVICES_DEBUG)  := -DDEBUG
+ccflags-$(CONFIG_DMADEVICES_VDEBUG) += -DVERBOSE_DEBUG
+
 obj-$(CONFIG_STM_FDMA) += stm-fdma.o
 
 stm-fdma-$(CONFIG_STM_FDMA_AUDIO) += stm_fdma_audio.o
