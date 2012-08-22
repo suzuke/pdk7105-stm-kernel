@@ -303,7 +303,7 @@ static bool snd_stm_uniperif_player_dma_filter_fn(struct dma_chan *chan,
 	/* Save the channel config inside the channel structure */
 	chan->private = config;
 
-	dev_notice(player->dev, "Using FDMA '%s' channel %d",
+	dev_dbg(player->dev, "Using FDMA '%s' channel %d",
 			dev_name(chan->device->dev), chan->chan_id);
 	return true;
 }

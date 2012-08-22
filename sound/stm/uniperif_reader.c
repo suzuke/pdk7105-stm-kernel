@@ -185,7 +185,7 @@ static bool snd_stm_uniperif_reader_dma_filter_fn(struct dma_chan *chan,
 
 	chan->private = config;
 
-	dev_notice(reader->dev, "Using FDMA '%s' channel %d",
+	dev_dbg(reader->dev, "Using FDMA '%s' channel %d",
 			dev_name(chan->device->dev), chan->chan_id);
 	return true;
 }

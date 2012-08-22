@@ -1,3 +1,6 @@
+ccflags-$(CONFIG_SND_DEBUG)  := -DDEBUG
+ccflags-$(CONFIG_SND_DEBUG_VERBOSE) += -DVERBOSE_DEBUG
+
 # Core
 
 obj-$(CONFIG_SND_STM) += snd-stm-core.o
