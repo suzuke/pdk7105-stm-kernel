@@ -20,19 +20,6 @@
 #include <linux/clk.h>
 #include <linux/stm/pad.h>
 
-#ifdef CONFIG_SERIAL_STM_ASC_FDMA
-#include <linux/stm/stm-dma.h>
-
-struct asc_port_fdma {
-	int ready;
-	int enabled;
-	struct asc_port_fdma_rx_channel *rx;
-	unsigned int rx_req_id;
-	struct asc_port_fdma_tx_channel *tx;
-	unsigned int tx_req_id;
-};
-#endif
-
 struct asc_port {
 	struct uart_port port;
 	struct stm_pad_config *pad_config;
@@ -43,9 +30,6 @@ struct asc_port {
 	int suspended:1;
 	int check_parity:1;
 	unsigned int force_m1:1;
-#ifdef CONFIG_SERIAL_STM_ASC_FDMA
-	struct asc_port_fdma fdma;
-#endif
 #ifdef CONFIG_PM
 	unsigned long pm_ctrl;
 	unsigned long pm_baud;
@@ -204,25 +188,6 @@ ASC_FUNC(RETRIES,   ASC_RETRIES)
 
 #define asc_in(port, reg)		asc_ ## reg ## _in (port)
 #define asc_out(port, reg, value)	asc_ ## reg ## _out ((port), (value))
-
-/*---- FDMA interface ------------------------------------------*/
-
-#ifdef CONFIG_SERIAL_STM_ASC_FDMA
-int asc_fdma_startup(struct uart_port *port);
-void asc_fdma_shutdown(struct uart_port *port);
-int asc_fdma_enable(struct uart_port *port);
-void asc_fdma_disable(struct uart_port *port);
-static inline int asc_fdma_enabled(struct uart_port *port)
-{
-	return asc_ports[port->line].fdma.enabled;
-}
-#else
-int asc_fdma_startup(struct uart_port *port) { return -ENOSYS; }
-void asc_fdma_shutdown(struct uart_port *port) {}
-static inline int asc_fdma_enable(struct uart_port *port) { return -ENOSYS; }
-static inline void asc_fdma_disable(struct uart_port *port) {}
-static inline int asc_fdma_enabled(struct uart_port *port) { return 0; }
-#endif
 
 int asc_fdma_tx_start(struct uart_port *port);
 void asc_fdma_tx_stop(struct uart_port *port);

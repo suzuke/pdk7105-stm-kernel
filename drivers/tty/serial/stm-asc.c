@@ -138,13 +138,10 @@ static unsigned int asc_get_mctrl(struct uart_port *port)
  */
 static void asc_start_tx(struct uart_port *port)
 {
-	if (asc_fdma_enabled(port))
-		asc_fdma_tx_start(port);
-	else {
-		struct circ_buf *xmit = &port->state->xmit;
-		if (!uart_circ_empty(xmit))
-			asc_enable_tx_interrupts(port);
-	}
+	struct circ_buf *xmit = &port->state->xmit;
+
+	if (!uart_circ_empty(xmit))
+		asc_enable_tx_interrupts(port);
 }
 
 /*
@@ -152,10 +149,7 @@ static void asc_start_tx(struct uart_port *port)
  */
 static void asc_stop_tx(struct uart_port *port)
 {
-	if (asc_fdma_enabled(port))
-		asc_fdma_tx_stop(port);
-	else
-		asc_disable_tx_interrupts(port);
+	asc_disable_tx_interrupts(port);
 }
 
 /*
@@ -163,10 +157,7 @@ static void asc_stop_tx(struct uart_port *port)
  */
 static void asc_stop_rx(struct uart_port *port)
 {
-	if (asc_fdma_enabled(port))
-		asc_fdma_rx_stop(port);
-	else
-		asc_disable_rx_interrupts(port);
+	asc_disable_rx_interrupts(port);
 }
 
 /*
@@ -192,7 +183,6 @@ static void asc_break_ctl(struct uart_port *port, int break_state)
 static int asc_startup(struct uart_port *port)
 {
 	asc_request_irq(port);
-	asc_fdma_startup(port);
 	asc_transmit_chars(port);
 	asc_enable_rx_interrupts(port);
 
@@ -203,7 +193,6 @@ static void asc_shutdown(struct uart_port *port)
 {
 	asc_disable_tx_interrupts(port);
 	asc_disable_rx_interrupts(port);
-	asc_fdma_shutdown(port);
 	asc_free_irq(port);
 }
 
@@ -303,11 +292,6 @@ static void __devinit asc_init_port(struct asc_port *ascport,
 	port->mapbase	= pdev->resource[0].start;
 	port->irq	= pdev->resource[1].start;
 	spin_lock_init(&port->lock);
-
-#ifdef CONFIG_SERIAL_STM_ASC_FDMA
-	ascport->fdma.rx_req_id = pdev->resource[2].start;
-	ascport->fdma.tx_req_id = pdev->resource[3].start;
-#endif
 
 	if (plat_data->regs)
 		port->membase = plat_data->regs;
@@ -672,21 +656,6 @@ void asc_set_termios_cflag(struct asc_port *ascport, int cflag, int baud)
 	if (cflag & 0020000)
 		asc_out(port, BAUDRATE, 0x0000ffff);
 
-	/* Undocumented feature: FDMA "acceleration" */
-	if ((cflag & 0040000) && !asc_fdma_enabled(port)) {
-		/* TODO: check parameters if suitable for FDMA transmission */
-		asc_disable_tx_interrupts(port);
-		asc_disable_rx_interrupts(port);
-		if (asc_fdma_enable(port) != 0) {
-			asc_enable_rx_interrupts(port);
-			asc_enable_tx_interrupts(port);
-		}
-	} else if (!(cflag & 0040000) && asc_fdma_enabled(port)) {
-		asc_fdma_disable(port);
-		asc_enable_rx_interrupts(port);
-		asc_enable_tx_interrupts(port);
-	}
-
 	/* Undocumented feature: use local loopback */
 	if (cflag & 0100000)
 		ctrl_val |= ASC_CTL_LOOPBACK;
@@ -849,25 +818,15 @@ static irqreturn_t asc_interrupt(int irq, void *ptr)
 
 	status = asc_in(port, STA);
 
-	if (asc_fdma_enabled(port)) {
-		/* FDMA transmission, only timeout-not-empty
-		 * interrupt shall be enabled */
-		if (likely(status & ASC_STA_TNE))
-			asc_fdma_rx_timeout(port);
-		else
-			printk(KERN_ERR"Unknown ASC interrupt for port %p!"
-			    "(ASC_STA = %08x)\n", port, asc_in(port, STA));
-	} else {
-		if (status & ASC_STA_RBF) {
-			/* Receive FIFO not empty */
-			asc_receive_chars(port);
-		}
+	if (status & ASC_STA_RBF) {
+		/* Receive FIFO not empty */
+		asc_receive_chars(port);
+	}
 
-		if ((status & ASC_STA_THE) &&
-				(asc_in(port, INTEN) & ASC_INTEN_THE)) {
-			/* Transmitter FIFO at least half empty */
-			asc_transmit_chars(port);
-		}
+	if ((status & ASC_STA_THE) &&
+			(asc_in(port, INTEN) & ASC_INTEN_THE)) {
+		/* Transmitter FIFO at least half empty */
+		asc_transmit_chars(port);
 	}
 
 	spin_unlock(&port->lock);
