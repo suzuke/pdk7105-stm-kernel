@@ -47,7 +47,7 @@ static void __init mpe41_twd_init(void)
 		pr_err("twd_local_timer_register failed %d\n", err);
 }
 #else
-#define mpe41_twd_init() do { } while 0
+#define mpe41_twd_init() do { } while (0)
 #endif
 
 /* Setup the Global Timer */
