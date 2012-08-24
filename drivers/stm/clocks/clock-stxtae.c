@@ -228,10 +228,10 @@ static int clkgena_get_index(int clkid, unsigned long *srcreg, int *shift)
 	/* Warning: This function assumes clock IDs are perfectly
 	   following real implementation order. Each "hole" has therefore
 	   to be filled with "CLKx_NOT_USED" */
-	if (clkid < CLKA_STAC_DIGITAL || clkid > CLK_NOT_USED_2)
+	if (clkid < CLKA_VTAC_0_PHY || clkid > CLKA_IC_200)
 		return -1;
 
-	idx = (clkid - CLKA_STAC_DIGITAL) % 16;
+	idx = (clkid - CLKA_VTAC_0_PHY) % 16;
 
 	*srcreg = CKGA_CLKOPSRC_SWITCH_CFG + (0x10 * (idx / 16));
 	*shift = 2 * (idx % 16);
@@ -253,7 +253,7 @@ static int clkgena_set_parent(clk_t *clk_p, clk_t *src_p)
 
 	if (!clk_p || !src_p)
 		return CLK_ERR_BAD_PARAMETER;
-	if (clk_p->id < CLKA_STAC_DIGITAL || clk_p->id > CLK_NOT_USED_2)
+	if (clk_p->id < CLKA_VTAC_0_PHY || clk_p->id > CLKA_IC_200)
 		return CLK_ERR_BAD_PARAMETER;
 
 	switch (src_p->id) {
@@ -461,7 +461,7 @@ static int clkgena_set_rate(clk_t *clk_p, unsigned long freq)
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
-	if (clk_p->id < CLKA_PLL0HS || clk_p->id > CLK_NOT_USED_2)
+	if (clk_p->id < CLKA_PLL0HS || clk_p->id > CLKA_IC_200)
 		return CLK_ERR_BAD_PARAMETER;
 
 	/* PLL set rate: to be completed */
