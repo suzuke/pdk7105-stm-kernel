@@ -743,6 +743,27 @@ static struct stm_pad_gpio *stm_pad_find_gpio(struct stm_pad_config *config,
 	return result;
 }
 
+static struct stm_pad_sysconf *stm_pad_find_sysconf(
+		struct stm_pad_config *config,
+		const char *name)
+{
+	struct stm_pad_sysconf *result = NULL;
+	int i;
+
+	BUG_ON(!name);
+
+	for (i = 0; i < config->sysconfs_num; i++) {
+		struct stm_pad_sysconf *pad_sysconf = &config->sysconfs[i];
+
+		if (pad_sysconf->name && strcmp(name, pad_sysconf->name) == 0) {
+			result = pad_sysconf;
+			break;
+		}
+	}
+
+	return result;
+}
+
 int __init stm_pad_set_gpio(struct stm_pad_config *config, const char *name,
 		unsigned gpio)
 {
@@ -791,6 +812,20 @@ int __init stm_pad_set_direction_function(struct stm_pad_config *config,
 	return result;
 }
 
+int __init stm_pad_set_sysconf(struct stm_pad_config *config,
+			       const char *name, int value)
+{
+	int result = -EINVAL;
+	struct stm_pad_sysconf *pad_sysconf;
+
+	pad_sysconf = stm_pad_find_sysconf(config, name);
+	if (!WARN_ON(!pad_sysconf)) {
+		pad_sysconf->value = value;
+		result = 0;
+	}
+
+	return result;
+}
 
 
 /* Dynamic configuration routines */

@@ -126,6 +126,7 @@ struct stm_pad_sysconf {
 	int lsb;
 	int msb;
 	int value;
+	const char *name;
 };
 
 #define STM_PAD_SYS_CFG(_regnum, _lsb, _msb, _value) \
@@ -148,16 +149,20 @@ struct stm_pad_sysconf {
 
 /* We have to do this indirection to allow the first argument to
  * STM_PAD_SYSCONF to be a macro, as used by 5197 for example. */
-#define ___STM_PAD_SYSCONF(_regtype, _regnum, _lsb, _msb, _value) \
+#define ___STM_PAD_SYSCONF(_regtype, _regnum, _lsb, _msb, _value, _name) \
         { \
                 .regtype = _regtype, \
                 .regnum = _regnum, \
                 .lsb = _lsb, \
                 .msb = _msb, \
                 .value = _value, \
+		.name = _name, \
         }
 #define STM_PAD_SYSCONF(_reg, _lsb, _msb, _value) \
-	___STM_PAD_SYSCONF(_reg, _lsb, _msb, _value)
+	___STM_PAD_SYSCONF(_reg, _lsb, _msb, _value, NULL)
+
+#define STM_PAD_SYSCONF_NAMED(_reg, _lsb, _msb, _value, _name)		\
+	___STM_PAD_SYSCONF(_reg, _lsb, _msb, _value, _name)
 
 
 
@@ -281,6 +286,9 @@ int stm_pad_set_direction_function(struct stm_pad_config *config,
 
 int stm_pad_set_priv(struct stm_pad_config *config, const char *name,
 		void *priv);
+
+int stm_pad_set_sysconf(struct stm_pad_config *config, const char *name,
+		int value);
 
 
 
