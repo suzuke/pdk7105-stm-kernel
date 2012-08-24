@@ -157,6 +157,28 @@ static struct stm_plat_spifsm_data fli76xxhdk01_serial_flash =  {
 };
 
 
+static struct platform_device fli76xxhdk01_leds = {
+	.name = "leds-gpio",
+	.id = -1,
+	.dev.platform_data = &(struct gpio_led_platform_data) {
+		.num_leds = 2,
+		.leds = (struct gpio_led[]) {
+			{
+				.name = "LED_RED",
+				.default_trigger = "heartbeat",
+				.gpio = stm_gpio(8, 4),
+			}, {
+				.name = "LED_GREEN",
+				.gpio = stm_gpio(8, 5),
+			}
+		},
+	},
+};
+
+static struct platform_device *fli76xxhdk01_devices[] __initdata = {
+	&fli76xxhdk01_leds,
+};
+
 static void __init fli76xxhdk01_init(void)
 {
 	fli7610_configure_usb(0);
@@ -213,6 +235,9 @@ static void __init fli76xxhdk01_init(void)
 	fli7610_configure_spifsm(&fli76xxhdk01_serial_flash);
 
 	fli7610_configure_mmc(0);
+
+	platform_add_devices(fli76xxhdk01_devices,
+		ARRAY_SIZE(fli76xxhdk01_devices));
 }
 
 MACHINE_START(STM_NMHDK_FLI7610, "STMicroelectronics Newman FLI76XXHDK01")
