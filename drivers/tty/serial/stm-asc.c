@@ -42,8 +42,7 @@ static int  asc_request_irq(struct uart_port *);
 static void asc_free_irq(struct uart_port *);
 static void asc_transmit_chars(struct uart_port *);
 static int asc_remap_port(struct asc_port *ascport, int req);
-static int asc_set_baud(struct asc_port *ascport, int baud,
-	unsigned long clkrate);
+static int asc_set_baud(struct asc_port *ascport, int baud);
 void asc_set_termios_cflag(struct asc_port *, int, int);
 static inline void asc_receive_chars(struct uart_port *);
 
@@ -459,7 +458,7 @@ static int asc_serial_resume(struct device *dev)
 	asc_out(port, CTL, ascport->pm_ctrl);
 	asc_out(port, TIMEOUT, 20);		/* hardcoded */
 	asc_out(port, INTEN, ascport->pm_irq);
-	asc_set_baud(ascport, ascport->pm_baud, clk_get_rate(ascport->clk));
+	asc_set_baud(ascport, ascport->pm_baud);
 	ascport->suspended = 0;
 	local_irq_restore(flags);
 	return 0;
@@ -492,7 +491,7 @@ static int asc_serial_restore(struct device *dev)
 	asc_out(port, CTL, ascport->pm_ctrl & ~ASC_CTL_RUN);
 	asc_out(port, TIMEOUT, 20);		/* hardcoded */
 	asc_out(port, INTEN, ascport->pm_irq);
-	asc_set_baud(ascport, ascport->pm_baud, clk_get_rate(ascport->clk));
+	asc_set_baud(ascport, ascport->pm_baud);
 	/* reset fifo rx & tx */
 	asc_out(port, TXRESET, 1);
 	asc_out(port, RXRESET, 1);
@@ -599,9 +598,10 @@ static int asc_remap_port(struct asc_port *ascport, int req)
 	return 0;
 }
 
-static int asc_set_baud(struct asc_port *ascport, int baud, unsigned long rate)
+static int asc_set_baud(struct asc_port *ascport, int baud)
 {
 	struct uart_port *port = &ascport->port;
+	unsigned long rate = clk_get_rate(ascport->clk);
 	unsigned int t;
 
 	if ((baud < 19200) && !ascport->force_m1) {
@@ -664,7 +664,7 @@ void asc_set_termios_cflag(struct asc_port *ascport, int cflag, int baud)
 #ifdef CONFIG_PM
 	ascport->pm_baud = baud;	/* save the latest baudrate request */
 #endif
-	ctrl_val |= asc_set_baud(ascport, baud, clk_get_rate(ascport->clk));
+	ctrl_val |= asc_set_baud(ascport, baud);
 	uart_update_timeout(port, cflag, baud);
 
 	/* Undocumented feature: use max possible baud */
