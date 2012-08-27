@@ -42,11 +42,11 @@ static int __check_wakeup_device(struct device *dev, void *data)
 		else if (!strcmp(dev_name(dev), "hdmi"))
 			wkd->hdmi_can_wakeup = 1;
 		else if (!strcmp(dev_name(dev), "stmmaceth"))
-			wkd->eth_phy_can_wakeup = 1;
+			wkd->stm_mac0_can_wakeup = 1;
 		else if (!strcmp(dev_name(dev), "stmmaceth.0"))
-			wkd->eth_phy_can_wakeup = 1;
+			wkd->stm_mac0_can_wakeup = 1;
 		else if (!strcmp(dev_name(dev), "stmmaceth.1"))
-			wkd->eth1_phy_can_wakeup = 1;
+			wkd->stm_mac1_can_wakeup = 1;
 		else if (!strcmp(dev_name(dev), "stm-hdmi-cec"))
 			wkd->hdmi_cec = 1;
 		else if (!strcmp(dev_name(dev), "stm-hdmi-hot"))

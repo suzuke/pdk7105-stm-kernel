@@ -118,7 +118,7 @@ on_suspending:
 	iowrite32(pwr_1, clks_base[1] + SASG_POWER_CFG);
 
 	/* Manage the A0 tree */
-	if (wkd->eth1_phy_can_wakeup) {
+	if (wkd->stm_mac1_can_wakeup) {
 		int pll_id = (a0_pll1 == clk_get_parent(a0_eth_phy_clk) ?
 			2 : 1);
 		cfg_0_0 &= ~(0x3 << (CLKS_IC_REG * 2));
