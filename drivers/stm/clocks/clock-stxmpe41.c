@@ -88,7 +88,11 @@ static int clkgena1_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgena2_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgene_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgenf_set_rate(clk_t *clk_p, unsigned long freq);
+#ifdef ST_OS21
 static int clkgenddr_set_rate(clk_t *clk_p, unsigned long freq);
+#else
+#define clkgenddr_set_rate	NULL
+#endif
 static int clkgena9_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgengpu_set_rate(clk_t *clk_p, unsigned long freq);
 static int clkgenax_set_div(clk_t *clk_p, unsigned long *div_p);
@@ -2353,7 +2357,7 @@ static int clkgenddr_init(clk_t *clk_p)
    Description: Set clock frequency
    Returns:     'clk_err_t' error code
    ======================================================================== */
-
+#ifdef ST_OS21
 static int clkgenddr_set_rate(clk_t *clk_p, unsigned long freq)
 {
 	unsigned long odf, idf, ndiv, cp, vcoby2_rate;
@@ -2397,7 +2401,7 @@ static int clkgenddr_set_rate(clk_t *clk_p, unsigned long freq)
 
 	return clkgenddr_recalc(clk_p);
 }
-
+#endif
 /******************************************************************************
 CA9 PLL
 ******************************************************************************/
