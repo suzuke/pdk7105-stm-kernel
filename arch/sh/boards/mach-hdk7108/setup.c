@@ -221,14 +221,12 @@ static int hdk7108_ic1001_phy_fixup(struct phy_device *phydev)
 
 #ifdef CONFIG_SH_ST_HDK7108_STMMAC0
 static struct stmmac_mdio_bus_data stmmac0_mdio_bus = {
-	.bus_id = 0,
 	.phy_reset = hdk7108_phy_reset,
 	.phy_mask = 0,
 };
 #endif
 
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
-	.bus_id = 1,
 	.phy_reset = hdk7108_phy_reset,
 	.phy_mask = 0,
 };

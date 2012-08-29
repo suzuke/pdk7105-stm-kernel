@@ -118,7 +118,6 @@ static int b2020_gmii1_reset(void *bus)
 }
 
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
-	.bus_id = 1,
 	.phy_reset = &b2020_gmii1_reset,
 	.phy_mask = 0,
 };

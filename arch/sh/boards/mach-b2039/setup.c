@@ -153,7 +153,6 @@ static int b2039_phy_reset(void *bus)
 }
 
 static struct stmmac_mdio_bus_data stmmac_mdio_bus = {
-	.bus_id = 0,
 	.phy_reset = b2039_phy_reset,
 	.phy_mask = 0,
 	.probed_phy_irq = ILC_IRQ(25), /* MDINT */

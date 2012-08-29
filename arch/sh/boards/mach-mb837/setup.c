@@ -99,7 +99,6 @@ static int mb837_mii0_phy_reset(void *bus)
 }
 
 static struct stmmac_mdio_bus_data stmmac0_mdio_bus = {
-	.bus_id = 0,
 	.phy_reset = mb837_mii0_phy_reset,
 	.phy_mask = 0,
 };
@@ -130,7 +129,6 @@ static int mb837_mii1_phy_reset(void *bus)
 }
 
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
-	.bus_id = 1,
 	.phy_reset = mb837_mii1_phy_reset,
 	.phy_mask = 0,
 };

@@ -197,7 +197,6 @@ static void mb903_mi11_txclk_select(int txclk_250_not_25_mhz)
 }
 
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
-	.bus_id = 1,
 	.phy_reset = mb903_mii1_phy_reset,
 	.phy_mask = 0,
 };

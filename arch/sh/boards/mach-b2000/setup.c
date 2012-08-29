@@ -140,7 +140,6 @@ static int b2000_gmii1_reset(void *bus)
 
 static struct stmmac_mdio_bus_data stmmac1_mdio_bus = {
 	/* GMII connector CN23 */
-	.bus_id = 1,
 	.phy_reset = &b2000_gmii1_reset,
 	.phy_mask = 0,
 };
