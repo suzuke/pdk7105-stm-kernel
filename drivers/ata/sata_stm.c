@@ -732,12 +732,11 @@ static int stm_sata_do_comreset(void __iomem *mmio_base,
 	writel(0x0, (mmio_base + SATA_SCR2));
 
 	/* wait a while before checking status*/
-	msleep(150);
 	/* Wait Till COMWAKE Detected */
-	timeout = 100;
+	timeout = 10000;
 	while (timeout-- &&
 		((readl(mmio_base + SATA_SCR1) & 0x40000) != 0x40000))
-		msleep(1);
+		udelay(1);
 
 	/* Deassert MiPHY deserializer reset */
 	stm_miphy_assert_deserializer(miphy_dev, 0);
@@ -746,10 +745,10 @@ static int stm_sata_do_comreset(void __iomem *mmio_base,
 		goto err;
 	}
 
-	timeout = 100;
+	timeout = 10000;
 	/* Waiting for PHYRDY to be detected by Host */
 	while (timeout-- && ((readl(mmio_base + SATA_SCR0) & 0x03) != 0x03))
-		msleep(1);
+		udelay(1);
 
 	if (timeout <= 0)
 		rval = -1;
