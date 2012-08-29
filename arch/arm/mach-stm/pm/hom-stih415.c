@@ -39,12 +39,33 @@
 #define LMI_RET_GPIO_PIN		4
 #define LMI_RETENTION_PIN	stm_gpio(LMI_RET_GPIO_PORT, LMI_RET_GPIO_PIN)
 
+
+#define SYSCONF_SYSTEM(x)	(STIH415_MPE_SYSTEM_SYSCONF_BASE + \
+				 ((x) - 600) * 0x4)
+#define SYSCONF_DDR0_PWR_DWN	SYSCONF_SYSTEM(608)
+#define SYSCONF_DDR0_PWR_ACK	SYSCONF_SYSTEM(670)
+#define SYSCONF_DDR1_PWR_DWN	SYSCONF_SYSTEM(613)
+#define SYSCONF_DDR1_PWR_ACK	SYSCONF_SYSTEM(672)
+
+
 static const unsigned long __stxh415_hom_ddr_0[] = {
-synopsys_ddr32_in_hom(STIH415_MPE_DDR0_PCTL_BASE),
+OR32(STIH415_MPE_DDR0_PCTL_BASE + DDR_DTU_CFG, DDR_DTU_CFG_ENABLE),
+
+/* request and ack are active low */
+UPDATE32(SYSCONF_DDR0_PWR_DWN, ~2, 0),
+WHILE_NE32(SYSCONF_DDR0_PWR_ACK, 2, 0),
+
+synopsys_ddr32_phy_hom_enter(STIH415_MPE_DDR0_PCTL_BASE),
 };
 
 static const unsigned long __stxh415_hom_ddr_1[] = {
-synopsys_ddr32_in_hom(STIH415_MPE_DDR1_PCTL_BASE),
+OR32(STIH415_MPE_DDR1_PCTL_BASE + DDR_DTU_CFG, DDR_DTU_CFG_ENABLE),
+
+/* request and ask active low */
+UPDATE32(SYSCONF_DDR1_PWR_DWN, ~2, 0),
+WHILE_NE32(SYSCONF_DDR1_PWR_ACK, 2, 0),
+
+synopsys_ddr32_phy_hom_enter(STIH415_MPE_DDR1_PCTL_BASE),
 };
 
 static const unsigned long __stxh415_hom_lmi_retention[] = {
