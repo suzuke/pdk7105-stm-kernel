@@ -693,7 +693,7 @@ static int snd_stm_spdif_player_start(struct snd_pcm_substream *substream)
 		spdif_player->dma_channel->device->device_prep_dma_cyclic(
 			spdif_player->dma_channel, substream->runtime->dma_addr,
 			spdif_player->buffer_bytes, spdif_player->period_bytes,
-			DMA_MEM_TO_DEV);
+			DMA_MEM_TO_DEV, NULL);
 	if (!spdif_player->dma_descriptor) {
 		snd_stm_printe("Failed to prepare DMA descriptor\n");
 		return -ENOMEM;

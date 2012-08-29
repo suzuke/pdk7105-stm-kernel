@@ -576,7 +576,7 @@ static int snd_stm_pcm_reader_start(struct snd_pcm_substream *substream)
 		pcm_reader->dma_channel->device->device_prep_dma_cyclic(
 			pcm_reader->dma_channel, substream->runtime->dma_addr,
 			pcm_reader->buffer_bytes, pcm_reader->period_bytes,
-			DMA_DEV_TO_MEM);
+			DMA_DEV_TO_MEM, NULL);
 	if (!pcm_reader->dma_descriptor) {
 		snd_stm_printe("Failed to prepare DMA descriptor\n");
 		return -ENOMEM;
