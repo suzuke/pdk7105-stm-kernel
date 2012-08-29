@@ -45,9 +45,11 @@ synopsys_ddr32_in_hom(STIH415_MPE_DDR0_PCTL_BASE),
 
 static const unsigned long __stxh415_hom_ddr_1[] = {
 synopsys_ddr32_in_hom(STIH415_MPE_DDR1_PCTL_BASE),
+};
+
+static const unsigned long __stxh415_hom_lmi_retention[] = {
 /*
  * Enable retention mode gpio
- *
  */
 POKE32(SBC_GPIO_PORT(LMI_RET_GPIO_PORT) + STM_GPIO_REG_CLR_POUT,
 	1 << LMI_RET_GPIO_PIN),
@@ -61,6 +63,7 @@ POKE32(SBC_GPIO_PORT(LMI_RET_GPIO_PORT) + STM_GPIO_REG_CLR_POUT,
 static struct hom_table stxh415_hom_table[] = {
 	HOM_TBL(__stxh415_hom_ddr_0),
 	HOM_TBL(__stxh415_hom_ddr_1),
+	HOM_TBL(__stxh415_hom_lmi_retention),
 };
 
 static int stxh415_hom_prepare(void)
