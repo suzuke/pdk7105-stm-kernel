@@ -138,15 +138,16 @@ stm_again_suspend:
 		__asm__ __volatile__("wfi\n" : : : "memory");
 	}
 
-	pr_info("CPU woken up by: 0x%x\n", wake_irq);
 	BUG_ON(in_irq());
 
 	if (platform_suspend->get_wake_irq)
 		wake_irq = platform_suspend->get_wake_irq();
 
 	notify_ret = stm_pm_early_check(wake_irq);
-	if (notify_ret == STM_PM_RET_AGAIN)
+	if (notify_ret == STM_PM_RET_AGAIN) {
+		pr_info("CPU woken up by: 0x%x, suspending again\n", wake_irq);
 		goto stm_again_suspend;
+	}
 
 	if (platform_suspend->post_enter)
 		platform_suspend->post_enter(state);
