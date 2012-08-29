@@ -35,6 +35,23 @@
 	isb
 .endm
 
+#ifdef CONFIG_HOM_DEBUG
+.macro hom_debug_data	reg0, reg1
+	hom_data_set	HFD_DEBUG_DATA_OFF, \reg0, \reg1
+.endm
+
+.macro hom_debug_step	value, reg0, reg1
+	ldr		\reg0, =\value
+	hom_data_set	HFD_DEBUG_OFF, \reg0, \reg1
+.endm
+#else
+.macro hom_debug_data	reg0, reg1
+.endm
+
+.macro hom_debug_step	value, reg0, reg1
+.endm
+#endif
+
 	.text
 	.pushsection    .idmap.text, "aw"
 ENTRY(stm_hom_exec_on_eram)
@@ -137,6 +154,8 @@ ENTRY(stm_defrost_kernel)
 
 stm_defrost_main_cpu:
 
+	hom_debug_step	1, r3, r4
+
 	mrc	p15, 0, r9, c0, c0		@ get processor id
 	bl	__lookup_processor_type		@ r5=procinfo r9=cpuid
 						@ __lookup_processor_type
@@ -177,6 +196,7 @@ stm_defrost_main_cpu:
 
 hom_vm_entry:
 	@ Now the CPU is running in the virtual address space
+	hom_debug_step	2, r7, r8
 
 	@ this is a critical moment!
 	@ the CPU is already running in VM space but only
@@ -209,19 +229,29 @@ hom_vm_entry:
 	@ hom_pg_dir are rejected
 	mcr	p15, 0, r0, c8, c7, 0
 
+	hom_debug_step	3, r7, r8
+
 	@ the final sp can be loaded
 	hom_data_get HFD_SP_OFF, sp
+
+	hom_debug_step	4, r7, r8
 
 	@ restore the previus stack pointer and return
 	ldmfd	sp!, {r3-r12, lr}
 
+	hom_debug_step	5, r0, r1
+
 	msr	cpsr, r3	@ restore the control register
 	nop
+
+	hom_debug_step	6, r0, r1
 
 	@ disable alignement fault checking
 	mrc	p15, 0, r0, c1, c0, 0
 	bic	r0, r0, #2
 	mcr	p15, 0, r0, c1, c0, 0
+
+	hom_debug_step	5, r1, r2
 
 	@ return
 	mov	pc, lr

@@ -22,6 +22,11 @@
 #define HFD_MMU_TTBR1_OFF		HFD_ID_OFF(3)
 #define HFD_MMU_TTBCR_OFF		HFD_ID_OFF(4)
 
+#ifdef CONFIG_HOM_DEBUG
+#define HFD_DEBUG_OFF			HFD_ID_OFF(5)
+#define HFD_DEBUG_DATA_OFF		HFD_ID_OFF(6)
+#endif
+
 #define HFD_END				HFD_ID_OFF(8)
 
 #ifndef __ASSEMBLER__
@@ -37,6 +42,10 @@ struct hom_frozen_data {
 	long ttbr0;
 	long ttbr1;
 	long ttbcr;
+#ifdef CONFIG_HOM_DEBUG
+	long debug;
+	long debug_data;
+#endif
 };
 
 extern struct hom_frozen_data hom_frozen_data;
@@ -53,6 +62,20 @@ void stm_hom_exec_on_eram(struct stm_hom_eram_data *pa_eram_data,
 int stm_hom_on_eram(void);
 extern unsigned long stm_hom_on_eram_sz;
 
+#ifdef CONFIG_HOM_DEBUG
+static inline void hom_mark_step(int x)
+{
+	hom_frozen_data.debug = x;
+	__asm__ __volatile__(
+		/* clean & invalidate by MVA */
+		"mcr	p15, 0, %0, c7, c10, 1\n"
+		: : "r" (&hom_frozen_data.debug)
+		: "memory");
+
+}
+#else
+static inline void hom_mark_step(int x) {	}
+#endif
 #endif /* __ASSEMBLER__ */
 
 #endif

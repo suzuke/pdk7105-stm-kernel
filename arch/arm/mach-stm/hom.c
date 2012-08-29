@@ -72,7 +72,7 @@ static void hom_init_early_console(void __iomem *asc_base,
 
 	mdelay(100);
 
-	pr_info("[STM][HoM]: Early console ready\n");
+	pr_info("stm pm hom: Early console ready\n");
 }
 
 static void prepare_hom_frozen_data(struct hom_frozen_data *frozen_data,
@@ -92,7 +92,14 @@ static void prepare_hom_frozen_data(struct hom_frozen_data *frozen_data,
 	{
 	unsigned int i, *p = (unsigned int *)frozen_data;
 	for (i = 0; i < (HFD_END >> 2); ++i)
-		pr_info("[STM][HoM]: frozen_data[%i] = 0x%x\n", i, p[i]);
+		pr_info("stm pm hom: frozen_data[%i] = 0x%x\n", i, p[i]);
+	__asm__ __volatile__("mrs	%0, cpsr\n"
+				: "=r" (i) : : );
+	pr_info("stm pm hom: cpsr = %x\n", i);
+	i = 0;
+	__asm__ __volatile__("add	%0, %0, sp\n"
+				: "+r" (i) : : );
+	pr_info("stm pm hom: sp = %x\n", i);
 	}
 #endif
 }
@@ -204,6 +211,7 @@ static int __cpuinitdata stm_hom_enter(void)
 
 	BUG_ON(in_irq());
 
+	hom_mark_step(0x10);
 	/*
 	 * At this point the system is enough stable
 	 * but the transition to the correct virtual memory
@@ -217,6 +225,7 @@ static int __cpuinitdata stm_hom_enter(void)
 	 */
 	hom_marker_disable();
 
+	hom_mark_step(0x20);
 	flush_cache_all();
 
 	/*
@@ -238,6 +247,7 @@ static int __cpuinitdata stm_hom_enter(void)
 
 	disable_hlt();
 
+	hom_mark_step(0x30);
 	/*
 	 * initialize the irq/abt/und stack frame
 	 */
@@ -256,6 +266,7 @@ static int __cpuinitdata stm_hom_enter(void)
 	 */
 	memset(__va(PFN_PHYS(page_to_pfn(empty_zero_page))), 0, 0x1000);
 
+	hom_mark_step(0x40);
 #ifdef CONFIG_SMP
 	/*
 	 * Enable the SCU if required
@@ -263,6 +274,7 @@ static int __cpuinitdata stm_hom_enter(void)
 	if (scu_get_core_count(scu_base_addr) > 1)
 		scu_enable(scu_base_addr);
 #endif
+	hom_mark_step(0x50);
 	return 0;
 }
 
