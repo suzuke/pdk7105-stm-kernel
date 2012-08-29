@@ -109,15 +109,16 @@ static int stm_pci_setup(int nr, struct pci_sys_data *sys)
 		window = &config->pci_window;
 	}
 
-	info->res[0].flags = IORESOURCE_IO;
-	info->res[0].start = window->io_start;
-	info->res[0].end = window->io_start + window->io_size - 1;
-	info->res[0].name = stm_pci_res_name(pdev, info->type, "io");
+	if (window->io_size != 0) {
+		info->res[0].flags = IORESOURCE_IO;
+		info->res[0].start = window->io_start;
+		info->res[0].end = window->io_start + window->io_size - 1;
+		info->res[0].name = stm_pci_res_name(pdev, info->type, "io");
 
-	/* What should we do if the io_size is zero? Do we HAVE to have one? */
-	res = request_resource(&ioport_resource, info->res);
-	if (res < 0)
-		return res;
+		res = request_resource(&ioport_resource, info->res);
+		if (res < 0)
+			return res;
+	}
 
 	/* We split the available memory window 1/3 between non-prefetchable
 	 * and prefetachable memory. This seems like a reasonable compromise
@@ -150,7 +151,7 @@ static int stm_pci_setup(int nr, struct pci_sys_data *sys)
 	}
 
 	/* Add the PCI resources, we skip the first one if we have no IO */
-	for (i = 0 ; i < 3 ; i++)
+	for (i = (window->io_size == 0) ; i < 3 ; i++)
 		pci_add_resource(&sys->resources, info->res + i);
 
 	/* Anybody who does any IO will blow up */
