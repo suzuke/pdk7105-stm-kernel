@@ -15,6 +15,7 @@
 #include <linux/clk.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/module.h>
 
 #ifdef CONFIG_PM
 
@@ -87,6 +88,7 @@ int pm_clk_add(struct device *dev, const char *con_id)
 	spin_unlock_irq(&psd->lock);
 	return 0;
 }
+EXPORT_SYMBOL(pm_clk_add);
 
 /**
  * __pm_clk_remove - Destroy PM clock entry.
@@ -145,6 +147,7 @@ void pm_clk_remove(struct device *dev, const char *con_id)
 
 	__pm_clk_remove(ce);
 }
+EXPORT_SYMBOL(pm_clk_remove);
 
 /**
  * pm_clk_init - Initialize a device's list of power management clocks.
@@ -159,6 +162,7 @@ void pm_clk_init(struct device *dev)
 	if (psd)
 		INIT_LIST_HEAD(&psd->clock_list);
 }
+EXPORT_SYMBOL(pm_clk_init);
 
 /**
  * pm_clk_create - Create and initialize a device's list of PM clocks.
@@ -172,6 +176,7 @@ int pm_clk_create(struct device *dev)
 	int ret = dev_pm_get_subsys_data(dev);
 	return ret < 0 ? ret : 0;
 }
+EXPORT_SYMBOL(pm_clk_create);
 
 /**
  * pm_clk_destroy - Destroy a device's list of power management clocks.
@@ -206,6 +211,7 @@ void pm_clk_destroy(struct device *dev)
 		__pm_clk_remove(ce);
 	}
 }
+EXPORT_SYMBOL(pm_clk_destroy);
 
 #endif /* CONFIG_PM */
 
@@ -240,6 +246,7 @@ int pm_clk_suspend(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL(pm_clk_suspend);
 
 /**
  * pm_clk_resume - Enable clocks in a device's PM clock list.
@@ -269,6 +276,7 @@ int pm_clk_resume(struct device *dev)
 
 	return 0;
 }
+EXPORT_SYMBOL(pm_clk_resume);
 
 /**
  * pm_clk_notify - Notify routine for device addition and removal.
