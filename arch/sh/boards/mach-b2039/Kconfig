@@ -104,7 +104,7 @@ config STM_B2039_MMC_B2048A_CARD
 choice
 	prompt  "B2048A slot/eMMC selection"
 	depends on STM_B2039_MMC_B2048A_CARD
-	default STM_B2048A_MMC_EMMC
+	default STM_B2039_B2048A_MMC_EMMC
 	help
 	  Select if the board has the eMMC or the MMC/SD slot.
 

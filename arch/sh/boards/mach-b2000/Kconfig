@@ -4,22 +4,22 @@ menu "B2000: STiH415 Mboard options"
 
 choice
 	prompt "B2000: card selection on CN22 connector"
-	default STM_CN22_NONE
+	default STM_B2000_CN22_NONE
 	help
 	  Select the appropriate version of the GMAC0 Ethernet card.
 	  This controls the way Ethernet connection mode with PHY.
 
-config STM_CN22_NONE
+config STM_B2000_CN22_NONE
        bool "None"
        help
          No Ethernet card is plugged into CN22 of the B2000.
 
-config STM_GMAC0_B2032_CARD
+config STM_B2000_CN22_B2032
 	bool "B2032A Card on GMAC0"
 	help
 	  B2032A Ethernet card on CN22 of B2000,
 
-config STM_GMAC0_B2035_CARD
+config STM_B2000_CN22_B2035
 	bool "B2035 for GMAC0 and MMC/SD external slot"
 	help
 	  B2035 connected to CN22 of B2000
@@ -37,17 +37,17 @@ endchoice
 choice
 	prompt  "B2048A slot/eMMC selection"
 	depends on STM_MMC_B2048A_CARD
-	default STM_B2048A_MMC_EMMC
+	default STM_B2000_B2048_EMMC
 	help
 	  Select if the board has the eMMC or the MMC/SD slot.
 
-config	STM_B2048A_MMC_SLOT
+config	STM_B2000_B2048_SLOT
 	bool "Multi Media Card slot on daughter board"
 	depends on STM_MMC_B2048A_CARD
 	help
 	  Select this option if the board has an MMC card slot.
 
-config	STM_B2048A_MMC_EMMC
+config	STM_B2000_B2048_EMMC
 	bool "Embedded Multi Media Card (eMMC) on daughter board"
 	help
 	  Select this option if the board has an eMMC device.
@@ -55,9 +55,9 @@ config	STM_B2048A_MMC_EMMC
 endchoice
 
 
-config	STM_GMAC0_B2032_GIGA_MODE
+config	STM_B2000_CN22_B2032_GIGA_MODE
 	bool "B2032A: enable GMAC0 in GMII/RMII mode"
-	depends on STM_GMAC0_B2032_CARD
+	depends on STM_B2000_CN22_B2032
 	help
 	  Select this options to support the GMII/RGMII
 	  on GMAC0. The B2032A moudule has to be modified
@@ -67,18 +67,18 @@ config	STM_GMAC0_B2032_GIGA_MODE
 	  Do not select it if you want the GMAC in MII mode.
 choice
 	prompt  "Select GiGa mode"
-	default STM_GMAC1_B2032_CARD_GMII_MODE
-	depends on STM_GMAC0_B2032_GIGA_MODE
+	default STM_B2000_CN23_B2032_GMII_MODE
+	depends on STM_B2000_CN22_B2032_GIGA_MODE
 
-config STM_GMAC0_B2032_CARD_GMII_MODE
+config STM_B2000_CN22_B2032_GMII_MODE
 	bool "B2032A module modified for GMII mode"
-	depends on STM_GMAC0_B2032_GIGA_MODE
+	depends on STM_B2000_CN22_B2032_GIGA_MODE
 	help
 	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
 
-config STM_GMAC0_B2032_CARD_RGMII_MODE
+config STM_B2000_CN22_B2032_RGMII_MODE
 	bool "B2032A module modified for RGMII mode"
-	depends on STM_GMAC0_B2032_GIGA_MODE
+	depends on STM_B2000_CN22_B2032_GIGA_MODE
 	help
 	  B2032A modified (add R26) and J1 removed Ethernet card on CN22 of B2000.
 
@@ -86,31 +86,31 @@ endchoice
 
 choice
 	prompt "B2000: card selection on CN23 connector"
-	default STM_GMAC1_B2032_CARD
+	default STM_B2000_CN23_B2032
 	help
 	  Select the appropriate version of the GMAC1 Ethernet card.
 	  This controls the way Ethernet connection mode with PHY.
 
-config STM_CN23_NONE
+config STM_B2000_CN23_NONE
        bool "None"
        help
          No Ethernet card is plugged into CN23 of the B2000.
 
-config STM_GMAC1_B2032_CARD
+config STM_B2000_CN23_B2032
 	bool "B2032A Card on GMAC1"
 	help
 	  B2032A Ethernet card on CN23 of B2000.
 
-config STM_GMAC1_B2035_CARD
+config STM_B2000_CN23_B2035
 	bool "B2035 on GMAC1"
 	help
 	  B2035 connected to CN23 of B2000
 
 endchoice
 
-config	STM_GMAC1_B2032_GIGA_MODE
+config	STM_B2000_CN23_B2032_GIGA_MODE
 	bool "B2032A: enable GMAC1 in GMII/RMII mode"
-	depends on STM_GMAC1_B2032_CARD
+	depends on STM_B2000_CN23_B2032
 	help
 	  Select this options to support the GMII/RGMII
 	  on GMAC1. The B2032A moudule has to be modified
@@ -120,19 +120,19 @@ config	STM_GMAC1_B2032_GIGA_MODE
 	  Do not select it if you want the GMAC in MII mode.
 choice
 	prompt  "Select GiGa mode"
-	default STM_GMAC1_B2032_CARD_GMII_MODE
-	depends on STM_GMAC1_B2032_GIGA_MODE
+	default STM_B2000_CN23_B2032_GMII_MODE
+	depends on STM_B2000_CN23_B2032_GIGA_MODE
 
-config STM_GMAC1_B2032_CARD_GMII_MODE
+config STM_B2000_CN23_B2032_GMII_MODE
 	bool "B2032A module modified for GMII mode"
-	depends on STM_GMAC1_B2032_GIGA_MODE
+	depends on STM_B2000_CN23_B2032_GIGA_MODE
 	help
 	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
 	  Unplug CN26 and CN30 on the B2000.
 
-config STM_GMAC1_B2032_CARD_RGMII_MODE
+config STM_B2000_CN23_B2032_RGMII_MODE
 	bool "B2032A module modified for RGMII mode"
-	depends on STM_GMAC1_B2032_GIGA_MODE
+	depends on STM_B2000_CN23_B2032_GIGA_MODE
 	help
 	  B2032A modified (add R26) and J1 removed Ethernet card on CN22 of B2000.
 	  Unplug CN26 and CN30 on the B2000.
