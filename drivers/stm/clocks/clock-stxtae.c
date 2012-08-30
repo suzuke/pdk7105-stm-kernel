@@ -627,7 +627,7 @@ static int clksouth_fsyn_recalc(clk_t *clk_p)
 	nsdv3 = (val & 0x04000000) ? 1 : 0;
 
 	if (clk_p->id > CLK_NOTUSED_6)
-		err = clk_4fs432_get_rate(clk_p->parent->rate, pe, md, sdiv,
+		err = clk_fs432c65_get_rate(clk_p->parent->rate, md, pe, sdiv,
 				nsdv3, &clk_p->rate);
 	else
 		err = clk_fs216c65_get_rate(clk_p->parent->rate, pe, md, sdiv,
@@ -682,7 +682,7 @@ static int clksouth_set_rate(clk_t *clk_p, unsigned long freq)
 
 	/* Computing FSyn params. Should be common function with FSyn type */
 	if (clk_p->id > CLK_NOTUSED_6) {
-		if (clk_4fs432_get_params(clk_p->parent->rate, freq, &md,
+		if (clk_fs432c65_get_params(clk_p->parent->rate, freq, &md,
 			&pe, &sdiv, &sdiv3))
 			return CLK_ERR_BAD_PARAMETER;
 	} else {

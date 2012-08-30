@@ -1,7 +1,7 @@
 /*****************************************************************************
  *
  * File name   : clock-common.c
- * Description : Low Level API - Common LLA functions (SOC independant)
+ * Description : Low Level API - Common functions (SOC independant)
  *
  * COPYRIGHT (C) 2009 STMicroelectronics - All Rights Reserved
  * May be copied or modified under the terms of the GNU General Public
@@ -10,6 +10,21 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+30/apr/12 fabrice.charpentier@st.com
+	  FS660C32 fine tuning to get better result.
+26/apr/12 fabrice.charpentier@st.com
+	  FS216 & FS432 fine tuning to get better result.
+24/apr/12 fabrice.charpentier@st.com
+	  FS216, FS432 & FS660: changed sdiv search order from highest to lowest
+	  as recommended by Anand K.
+18/apr/12 fabrice.charpentier@st.com
+	  Added FS432C65 algo.
+13/apr/12 fabrice.charpentier@st.com
+	  FS216C65 MD order changed to recommended -16 -> -1 then -17.
+05/apr/12 fabrice.charpentier@st.com
+	  FS216C65 fully revisited to have 1 algo only for Linux & OS21.
+28/mar/12 fabrice.charpentier@st.com
+	  FS660C32 algos merged from Liege required improvements.
 25/nov/11 fabrice.charpentier@st.com
 	  Functions rename to support several algos for a same PLL/FS.
 28/oct/11 fabrice.charpentier@st.com
@@ -32,14 +47,10 @@
 	  Introducing clk_pll800c65_get_rate() & clk_pll1600c65_get_rate() to
 	  replace clk_pll800_freq() & clk_pll1600c65_freq().
 */
-
+#include "clock-oslayer.h"
 #include <linux/clk.h>
-#include <linux/math64.h>
 #include <linux/stm/clk.h>
 #include <linux/clkdev.h>
-
-#include "clock-oslayer.h"
-#include "clock-common.h"
 
 int __init clk_register_table(struct clk *clks, int num, int enable)
 {
@@ -68,7 +79,7 @@ int __init clk_register_table(struct clk *clks, int num, int enable)
 		 * the LLA enables functions claim to support an
 		 * enables function, but then fail if you call it!
 		 */
-		if (enable || clk->flags & CLK_ALWAYS_ENABLED) {
+		if (enable) {
 			ret = clk_enable(clk);
 			if (ret)
 				pr_warning("Failed to enable clk %s, "
@@ -86,7 +97,7 @@ int __init clk_register_table(struct clk *clks, int num, int enable)
 
 
 /*
- * Linux specific function
+ * Linux specific functions
  */
 
 /* Return the number of set bits in x. */
@@ -117,6 +128,9 @@ static unsigned int most_significant_set_bit(unsigned int x)
 	/* now count the number of set bits [clz is population(~x)] */
 	return population(x) - 1;
 }
+
+#include "clock-common.h"
+
 
 /*
  * PLL800
@@ -351,7 +365,7 @@ int clk_pll1600c45_get_params(unsigned long input, unsigned long output,
 			   unsigned long *idf, unsigned long *ndiv,
 			   unsigned long *cp)
 {
-	unsigned long i, n = 0; /* IDF, NDIV values */
+	unsigned long i, n; /* IDF, NDIV values */
 	unsigned long deviation = 0xffffffff;
 	unsigned long new_freq;
 	long new_deviation;
@@ -425,6 +439,9 @@ int clk_pll1600c45_get_phi_params(unsigned long input, unsigned long output,
 	} else
 		o = 1;
 	*odf = o;
+
+	/* Computing FVCO freq*/
+	output = 2 * output * o;
 
 	return clk_pll1600c45_get_params(input, output, idf, ndiv, cp);
 }
@@ -590,7 +607,7 @@ int clk_pll3200c32_get_params(unsigned long input, unsigned long output,
 			   unsigned long *idf, unsigned long *ndiv,
 			   unsigned long *cp)
 {
-	unsigned long i, n = 0;
+	unsigned long i, n;
 	unsigned long deviation = 0xffffffff;
 	unsigned long new_freq;
 	long new_deviation;
@@ -663,69 +680,81 @@ int clk_pll3200c32_get_rate(unsigned long input, unsigned long idf,
 
 /* ========================================================================
    Name:	clk_fs216c65_get_params()
-   Description: Freq to parameters computation for frequency synthesizers
+   Description: Freq to parameters computation for FS216 C65
    Input:       input=input freq (Hz), output=output freq (Hz)
    Output:      updated *md, *pe & *sdiv
    Return:      'clk_err_t' error code
    ======================================================================== */
 
-/* This has to be enhanced to support several Fsyn types.
-   Currently based on C090_4FS216_25. */
+#define P15			(uint64_t)(1 << 15)
+#define FS216_SCALING_FACTOR	4096LL
 
 int clk_fs216c65_get_params(unsigned long input, unsigned long output,
 			    unsigned long *md, unsigned long *pe,
 			    unsigned long *sdiv)
 {
-	unsigned long long p, q;
-	unsigned int predivide;
-	int preshift; /* always +ve but used in subtraction */
-	unsigned int lsdiv;
-	int lmd;
-	unsigned int lpe = 1 << 14;
+	unsigned long nd = 8; /* ndiv value: bin stuck at 0 => value = 8 */
+	unsigned long ns = 1; /* nsdiv3 value: bin stuck at 1 => value = 1 */
+	unsigned long sd; /* sdiv value = 1 << (sdiv_bin_value + 1) */
+	long m; /* md value (-17 to -1) */
+	uint64_t p, p2; /* pe value */
+	int si;
+	unsigned long new_freq, new_deviation;
+	/* initial condition to say: "infinite deviation" */
+	unsigned long deviation = 0xffffffff;
+	unsigned long md_tmp; /* Temp md bin */
+	int stop;
 
-	/* pre-divide the frequencies */
-	p = 1048576ull * input * 8;    /* <<20? */
-	q = output;
+	for (si = 7; (si >= 0) && deviation; si--) {
+		sd = (1 << (si + 1));
+		/* Recommended search order: -16 to -1, then -17 */
+		for (m = -16, stop = 0; !stop && deviation; m++) {
+			if (!m) {
+				m = -17; /* 0 is -17 */
+				stop = 1;
+			}
+			p = P15 * 32 * nd * input * FS216_SCALING_FACTOR;
+			p = div64_u64(p, sd * ns * output *
+				FS216_SCALING_FACTOR);
+			p2 = P15 * (uint64_t)(m + 33);
+			if (p2 < p)
+				continue; /* p must be >= 0 */
+			p = p2 - p;
 
-	predivide = (unsigned int)div64_u64(p, q);
+			if (p > 32768LL)
+				break; /* Already too high. Let's move to
+					* next sdiv
+					*/
 
-	/* determine an appropriate value for the output divider using eqn. #4
-	 * with md = -16 and pe = 32768 (and round down) */
-	lsdiv = predivide / 524288;
-	if (lsdiv > 1) {
-		/* sdiv = fls(sdiv) - 1; // this doesn't work
-		 * for some unknown reason */
-		lsdiv = most_significant_set_bit(lsdiv);
-	} else
-		lsdiv = 1;
+			md_tmp = (unsigned long)(m + 32);
+			/* pe fine tuning: +/- 2 around computed pe value */
+			if (p > 2)
+				p2 = p - 2;
+			else
+				p2 = 0;
+			for (; p2 < 32768ll && (p2 < (p + 2)); p2++) {
+				clk_fs216c65_get_rate(input, (unsigned long)p2,
+					md_tmp, si, &new_freq);
 
-	/* pre-shift a common sub-expression of later calculations */
-	preshift = predivide >> lsdiv;
-
-	/* determine an appropriate value for the coarse selection using eqn. #5
-	 * with pe = 32768 (and round down which for signed values means away
-	 * from zero) */
-	lmd = ((preshift - 1048576) / 32768) - 1;	 /* >>15? */
-
-	/* calculate a value for pe that meets the output target */
-	lpe = -1 * (preshift - 1081344 - (32768 * lmd));  /* <<15? */
-
-	/* finally give sdiv its true hardware form */
-	lsdiv--;
-	/* special case for 58593.75Hz and harmonics...
-	* can't quite seem to get the rounding right */
-	if (lmd == -17 && lpe == 0) {
-		lmd = -16;
-		lpe = 32767;
+				if (new_freq < output)
+					new_deviation = output - new_freq;
+				else
+					new_deviation = new_freq - output;
+				/* Check if this is a better solution */
+				if (new_deviation < deviation) {
+					*md = (unsigned long)(m + 32);
+					*pe = (unsigned long)p2;
+					*sdiv = si;
+					deviation = new_deviation;
+				}
+			}
+		}
 	}
 
-	/* update the outgoing arguments */
-	*sdiv = lsdiv;
-	*md = lmd;
-	*pe = lpe;
+	if (deviation == 0xffffffff) /* No solution found */
+		return CLK_ERR_BAD_PARAMETER;
 
-	/* return 0 if all variables meet their contraints */
-	return (lsdiv <= 7 && -16 <= lmd && lmd <= -1 && lpe <= 32767) ? 0 : -1;
+	return 0;
 }
 
 /* ========================================================================
@@ -736,82 +765,153 @@ int clk_fs216c65_get_params(unsigned long input, unsigned long output,
 int clk_fs216c65_get_rate(unsigned long input, unsigned long pe,
 		unsigned long md, unsigned long sd, unsigned long *rate)
 {
-	int md2 = md;
-	long long p, q, r, s, t;
-	if (md & 0x10)
-		md2 = md | 0xfffffff0;/* adjust the md sign */
+	uint64_t res;
+	unsigned long ns = 1; /* nsdiv3 stuck at 1 => val = 1 */
+	unsigned long nd = 8; /* ndiv stuck at 0 => val = 8 */
+	unsigned long s; /* sdiv value = 1 << (sdiv_bin + 1) */
+	long m; /* md value (-17 to -1) */
 
-	input *= 8;
+	/* BIN to VAL */
+	m = md - 32;
+	s = 1 << (sd + 1);
 
-	p = 1048576ll * input;
-	q = 32768 * md2;
-	r = 1081344 - pe;
-	s = r + q;
-	t = (1 << (sd + 1)) * s;
-	*rate = div64_u64(p, t);
+	res = (uint64_t)(s * ns * P15 * (uint64_t)(m + 33));
+	res = res - (s * ns * pe);
+	*rate = div64_u64(P15 * nd * input * 32, res);
 
 	return 0;
 }
 
 /*
- * 4FS432 Freq Syn support:
- *
- *			[32x2^15 x ndiv x Fin]
- *  FOut =	-----------------------------------------
- *		(sdiv x nsdiv3 x [33x2^15 + mdx2^15 - pe])
+ * FS432 C65
+ * Based on "C65_4FS432_25_um.pdf" spec
  */
 
-int clk_4fs432_get_rate(unsigned long input, unsigned long pe,
-				unsigned long md, unsigned long sd,
-				unsigned long nsd3, unsigned long *rate)
+/* ========================================================================
+   Name:	clk_fs432c65_get_params()
+   Description: Freq to parameters computation for FS432 C65
+   Input:       input=input freq (Hz), output=output freq (Hz)
+   Output:      updated *md, *pe, *sdiv, & *nsdiv3
+   Return:      'clk_err_t' error code
+   ======================================================================== */
+
+#define FS432_SCALING_FACTOR	4096LL
+
+int clk_fs432c65_get_params(unsigned long input, unsigned long output,
+			    unsigned long *md, unsigned long *pe,
+			    unsigned long *sdiv, unsigned long *nsdiv3)
 {
-	int md2 = md;
-	long long p, q, r, s, t, u;
-	if (md & 0x10)
-		md2 = md | 0xfffffff0;/* adjust the md sign */
+	unsigned long nd = 16; /* ndiv value; stuck at 0 (30Mhz input) */
+	unsigned long ns; /* nsdiv3 value */
+	unsigned long sd; /* sdiv value = 1 << (sdiv_bin_value + 1) */
+	long m; /* md value (-17 to -1) */
+	uint64_t p, p2; /* pe value */
+	int si;
+	unsigned long new_freq, new_deviation;
+	/* initial condition to say: "infinite deviation" */
+	unsigned long deviation = 0xffffffff;
+	unsigned long md_bin, ns_bin; /* Intermediate md & nsdiv3 bin */
+	int stop;
 
-	if (input == 30000000)
-		input *= 16;
-	else
-		input *= 8;
+	/*
+	 * *nsdiv3 is a register value ('BIN') which is translated
+	 * to a decimal value according to following rules.
+	 * In case nsdiv is hardwired, it must be set to 0xff before calling.
+	 *
+	 *    *nsdiv      ns.dec
+	 *	ff	  computed by this algo
+	 *       0        3
+	 *       1        1
+	 */
+	if (*nsdiv3 != 0xff) {
+		ns = (*nsdiv3 ? 1 : 3);
+		goto skip_ns_programming;
+	}
 
-	p = 1048576ll * input;
-	q = 32768 * md2;
-	r = 1081344 - pe;
-	s = r + q;
-	u = nsd3 ? 1 : 3;
-	t = (1 << (sd + 1)) * s * u;
+	for (ns = 1; ns < 4; ns += 2)
 
-	*rate =  div64_u64(p, t);
-	return 0;
-}
+skip_ns_programming:
 
-int clk_4fs432_get_params(unsigned long input, unsigned long output,
-				unsigned long *md, unsigned long *pe,
-				unsigned long *sdiv, unsigned long *sdiv3)
-{
-	int md2;
-	unsigned long rate, pe2, sd, nsd3;
-	for (nsd3 = 1; nsd3 >= 0 ; nsd3--) {
-		for (sd = 0; sd < 8 ; sd++) {
-			for (md2 = -16 ; md2 < 0; md2++) {
-				for (pe2 = 0 ; pe2 < 32768; pe2++) {
-					clk_4fs432_get_rate(input, pe2,
-						md2 + 32, sd, nsd3, &rate);
-					if (rate == output) {
-						/* Match */
-						*sdiv = sd;
-						*md = md2 + 32;
-						*pe = pe2;
-						*sdiv3 = nsd3;
-						return 0;
-					}
-				}
+	for (si = 7; (si >= 0) && deviation; si--) {
+		sd = (1 << (si + 1));
+		/* Recommended search order: -16 to -1,
+		 * then -17 (if 24Mhz<input<27Mhz ONLY)
+		 */
+		for (m = -16, stop = 0; !stop && deviation; m++) {
+			if (!m) {
+				if (input >= 30000000)
+					break; /* -17 forbidden with 30Mhz
+						*/
+				m = -17; /* 0 is -17 */
+				stop = 1;
+			}
+			p = P15 * 32 * nd * input * FS432_SCALING_FACTOR;
+			p = div64_u64(p, sd * ns *
+				output * FS432_SCALING_FACTOR);
+			p2 = P15 * (uint64_t)(m + 33);
+			if (p2 < p)
+				continue; /* p must be >= 0 */
+			p = p2 - p;
+
+			if (p > 32768LL)
+				break; /* Already too high. Let's move
+					* to next sdiv
+					*/
+
+			md_bin = (unsigned long)(m + 32);
+			ns_bin = (ns == 1) ? 1 : 0;
+			if (clk_fs432c65_get_rate(input, md_bin,
+				(unsigned long)p, si, ns_bin, &new_freq) != 0)
+				continue;
+
+			if (new_freq < output)
+				new_deviation = output - new_freq;
+			else
+				new_deviation = new_freq - output;
+			/* Check if this is a better solution */
+			if (new_deviation < deviation) {
+				*md = (unsigned long)(m + 32);
+				*pe = (unsigned long)p;
+				*sdiv = si;
+				*nsdiv3 = (ns == 1) ? 1 : 0;
+				deviation = new_deviation;
 			}
 		}
 	}
+
+	if (deviation == 0xffffffff) /* No solution found */
+		return CLK_ERR_BAD_PARAMETER;
+
 	return 0;
 }
+
+/* ========================================================================
+   Name:	clk_fs432c65_get_rate()
+   Description: Parameters to freq computation for frequency synthesizers.
+   ======================================================================== */
+
+int clk_fs432c65_get_rate(unsigned long input, unsigned long md,
+		unsigned long pe, unsigned long sdiv,  unsigned long nsdiv3,
+		unsigned long *rate)
+{
+	uint64_t res;
+	unsigned long nd = 16; /* ndiv value; stuck at 0 (30Mhz input) */
+	long m; /* md value (-17 to -1) */
+	unsigned long sd; /* sdiv value = 1 << (sdiv_bin + 1) */
+	unsigned long ns; /* nsdiv3 value */
+
+	/* BIN to VAL */
+	m = md - 32;
+	sd = 1 << (sdiv + 1);
+	ns = (nsdiv3 ? 1 : 3);
+
+	res = (uint64_t)(sd * ns * P15 * (uint64_t)(m + 33));
+	res = res - (sd * ns * pe);
+	*rate = div64_u64(P15 * nd * input * 32, res);
+
+	return 0;
+}
+
 /*
    FS660
    Based on C32_4FS_660MHZ_LR_EG_5U1X2T8X_um spec.
@@ -862,65 +962,91 @@ int clk_fs660c32_vco_get_params(unsigned long input, unsigned long output,
 
 	return 0;
 }
+
 /* ========================================================================
    Name:	clk_fs660c32_dig_get_params()
    Description: Compute params for digital part of FS660
-   Input:       input=VCO freq, output=requested freq (Hz) & nsdiv
-   Output:      updated *md, *pe & *sdiv registers values.
+   Input:       input=VCO freq, output=requested freq (Hz), *nsdiv
+		(0/1 if silicon frozen, or 0xff if to be computed).
+   Output:      updated *nsdiv, *md, *pe & *sdiv registers values.
    Return:      'clk_err_t' error code
    ======================================================================== */
-#define p20		(1 << 20)
+
+#define P20		(uint64_t)(1 << 20)
 
 /* We use Fixed-point arithmetic in order to avoid "float" functions.*/
 #define SCALING_FACTOR	2048LL
 
 int clk_fs660c32_dig_get_params(unsigned long input, unsigned long output,
-			     unsigned long nsdiv, unsigned long *md,
-			     unsigned long *pe, unsigned long *sdiv)
+				unsigned long *nsdiv, unsigned long *md,
+				unsigned long *pe, unsigned long *sdiv)
 {
 	int si;
 	unsigned long ns; /* nsdiv value (1 or 3) */
 	unsigned long s; /* sdiv value = 1 << sdiv_reg_value */
-	unsigned long p; /* pe value */
 	unsigned long m; /* md value */
 	unsigned long new_freq, new_deviation;
 	/* initial condition to say: "infinite deviation" */
 	unsigned long deviation = 0xffffffff;
+	uint64_t p, p2; /* pe value */
 
 	/*
-	 * nsdiv is a register value ('BIN') which is translated
-	 * to a decimal value following the below table:
+	 * *nsdiv is a register value ('BIN') which is translated
+	 * to a decimal value according to following rules.
+	 * In case nsdiv is hardwired, it must be set to 0xff before calling.
 	 *
-	 *            ns.bin         ns.dec
-	 *              0               3
-	 *              1               1
+	 *    *nsdiv      ns.dec
+	 *	ff	  computed by this algo
+	 *       0        3
+	 *       1        1
 	 */
-	ns = (nsdiv ? 1 : 3);
+	if (*nsdiv != 0xff) {
+		ns = (*nsdiv ? 1 : 3);
+		goto skip_ns_programming;
+	}
 
-	/* Reduce freq to prevent overflows */
-	input /= 10000;
-	output /= 10000;
+	for (ns = 1; ns < 4; ns += 2)
 
-	for (si = 0; (si < 9) && deviation; si++) {
+skip_ns_programming:
+
+	for (si = 8; (si >= 0) && deviation; si--) {
 		s = (1 << si);
 		for (m = 0; (m < 32) && deviation; m++) {
-			p = (input * 2048) ;
-			p = p - 2048 * (s * ns * output) - (s * ns * output) * (m * (2048 / 32));
-			p = p * (p20 / 2048);
-			p = p / (s * ns * output);
-			if (p > 32767)
+			p = (uint64_t)input * SCALING_FACTOR;
+			p = p - SCALING_FACTOR * ((uint64_t)s
+				 *(uint64_t)ns * (uint64_t)output) -
+				 ((uint64_t)s * (uint64_t)ns *
+				 (uint64_t)output) *
+				 ((uint64_t)m * (SCALING_FACTOR / 32LL));
+			p = p * (P20 / SCALING_FACTOR);
+			p = div64_u64(p, (uint64_t)((uint64_t)s *
+				(uint64_t)ns * (uint64_t)output));
+
+			if (p > 32767LL)
 				continue;
-			new_freq = (input * 2048) / (s * ns * (2048 + (m * (2048 / 32)) + ((p * 2048) / p20)));
-			if (new_freq < output)
-				new_deviation = output - new_freq;
+
+			/* pe fine tuning: +/- 2 around computed pe value */
+			if (p > 2)
+				p2 = p - 2;
 			else
-				new_deviation = new_freq - output;
-			/* Check if this is a better solution */
-			if (new_deviation < deviation) {
-				*pe = p;
-				*md = m;
-				*sdiv = si;
-				deviation = new_deviation;
+				p2 = 0;
+			for (; p2 < 32768ll && (p2 <= (p + 2)); p2++) {
+				if (clk_fs660c32_get_rate(input,
+					(ns == 1) ? 1 : 0, m,
+					(unsigned long)p2, si, &new_freq) != 0)
+					continue;
+				if (new_freq < output)
+					new_deviation = output - new_freq;
+				else
+					new_deviation = new_freq - output;
+				/* Check if this is a better solution */
+				if (new_deviation < deviation) {
+					*md = m;
+					*pe = (unsigned long)p2;
+					*sdiv = si;
+					*nsdiv = (ns == 1) ? 1 : 0;
+					deviation = new_deviation;
+				}
 			}
 		}
 	}
@@ -1011,39 +1137,6 @@ skip_ns_programming:
 }
 
 /* ========================================================================
-   Name:	clk_fs660c32_get_rate()
-   Description: Parameters to freq computation for frequency synthesizers.
-   Inputs:	input=VCO frequency, nsdiv, md, pe, & sdivregisters values.
-   Outputs:	*rate updated
-   ======================================================================== */
-
-int clk_fs660c32_get_rate(unsigned long input, unsigned long nsdiv,
-			unsigned long md, unsigned long pe,
-			unsigned long sdiv, unsigned long *rate)
-{
-
-	unsigned long s = (1 << sdiv); /* sdiv value = 1 << sdiv_reg_value */
-	unsigned long ns;  /* nsdiv value (1 or 3) */
-
-	/*
-	 * ns is a binary value which is translated to a decimal value
-	 * following the below table:
-	 *
-	 *	    nsdiv.bin	     ns.dec
-	 *		0		3
-	 *		1		1
-	 */
-
-	ns = (nsdiv == 1) ? 1 : 3;
-
-	*rate = (unsigned long) div64_u64(((uint64_t)input * SCALING_FACTOR),
-		   (uint64_t)((uint64_t)s * (uint64_t)ns *
-		    (SCALING_FACTOR + ((uint64_t)md * SCALING_FACTOR / 32LL) +
-		    ((uint64_t)pe * SCALING_FACTOR / P20))));
-	return 0;
-}
-
-/* ========================================================================
    Name:	clk_fs660c32_vco_get_rate()
    Description: Compute VCO frequency of FS660 embeded PLL (PLL660)
    Input: ndiv & pdiv registers values
@@ -1058,6 +1151,36 @@ int clk_fs660c32_vco_get_rate(unsigned long input, unsigned long ndiv,
 
 	*rate = (input * nd) / pdiv;
 
+	return 0;
+}
+
+/* ========================================================================
+   Name:	clk_fs660c32_get_rate()
+   Description: Parameters to freq computation for frequency synthesizers.
+   Inputs:	input=VCO frequency, nsdiv, md, pe, & sdiv 'BIN' values.
+   Outputs:	*rate updated
+   ======================================================================== */
+
+int clk_fs660c32_get_rate(unsigned long input, unsigned long nsdiv,
+			unsigned long md, unsigned long pe,
+			unsigned long sdiv, unsigned long *rate)
+{
+	unsigned long s = (1 << sdiv); /* sdiv value = 1 << sdiv_reg_value */
+	unsigned long ns;  /* nsdiv value (1 or 3) */
+	uint64_t res;
+
+	/*
+	 * 'nsdiv' is a register value ('BIN') which is translated
+	 * to a decimal value according to following rules.
+	 *
+	 *     nsdiv      ns.dec
+	 *       0        3
+	 *       1        1
+	 */
+	ns = (nsdiv == 1) ? 1 : 3;
+
+	res = (P20 * (32 + md) + 32 * pe) * s * ns;
+	*rate = (unsigned long)div64_u64(input * P20 * 32, res);
 	return 0;
 }
 

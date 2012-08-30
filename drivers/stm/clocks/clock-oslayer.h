@@ -27,6 +27,8 @@
 #define CLK_READ(addr)	  		ioread32((void *)addr)
 #define CLK_WRITE(addr, val)		iowrite32(val, (void *)addr)
 
+#undef SYSCONF
+
 #define SYSCONF(type, num, lsb, msb)			\
 	static struct sysconf_field *sys_##type##_##num##_##lsb##_##msb
 
