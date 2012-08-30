@@ -40,8 +40,8 @@ config STM_MIPHY_TAP
 config STM_MIPHY_PCIE_MP
 	bool
 	depends on STM_MIPHY
-	default y if CPU_SUBTYPE_STIH415
 	default y if CPU_SUBTYPE_STX7108
+	default y if CPU_SUBTYPE_STIH415
 	default n
 
 config STM_MIPHY_DUMMY
@@ -127,10 +127,11 @@ config STM_RNG
          This option can be used in conjunction with the /dev/hw_random
          driver found in the char drivers menu.
 
+config STM_HAS_MALI
+	def_bool n
+
 config STM_MALI
-	depends on (CPU_SUBTYPE_STX7108 || \
-                    CPU_SUBTYPE_STIH415 || \
-		    CPU_SUBTYPE_FLI7610 )
+	depends on STM_HAS_MALI
 	tristate "STM Mali GPU support"
 	default n
 	---help---

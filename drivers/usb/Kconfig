@@ -32,9 +32,9 @@ config USB_ARCH_HAS_OHCI
 	default y if CPU_SUBTYPE_SH7763
 	default y if CPU_SUBTYPE_SH7786
 	default y if CPU_SUBTYPE_FLI7610
+	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STXH205
 	default y if CPU_SUBTYPE_STIH415
-	default y if CPU_SUBTYPE_STX7108
 	# more:
 	default PCI
 
@@ -56,9 +56,9 @@ config USB_ARCH_HAS_EHCI
 	default y if MICROBLAZE
 	default y if SPARC_LEON
 	default y if CPU_SUBTYPE_FLI7610
+	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STXH205
 	default y if CPU_SUBTYPE_STIH415
-	default y if CPU_SUBTYPE_STX7108
 	default y if ARCH_MMP
 	default y if MACH_LOONGSON1
 	default PCI

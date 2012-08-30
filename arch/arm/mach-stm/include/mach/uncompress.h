@@ -21,14 +21,12 @@
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
 
-#ifdef CONFIG_MACH_STM_STIH415
-#include <mach/soc-stih415.h>
-#include <linux/stm/stih415-periphs.h>
-#elif defined(CONFIG_MACH_STM_STX7108)
-#include <mach/soc-stx7108.h>
-#elif defined(CONFIG_MACH_STM_FLI7610)
+#if defined(CONFIG_MACH_STM_FLI7610)
 #include <mach/soc-fli7610.h>
 #include <linux/stm/fli7610-periphs.h>
+#elif defined(CONFIG_MACH_STM_STIH415)
+#include <mach/soc-stih415.h>
+#include <linux/stm/stih415-periphs.h>
 #endif
 
 #define ASC_TX_BUF(base)	(*(volatile unsigned int*)((base) + 0x04))
@@ -43,14 +41,14 @@
  */
 static inline unsigned long get_uart_base(void)
 {
-#ifdef CONFIG_MACH_STM_STIH415
+#if defined(CONFIG_MACH_STM_FLI7610)
+	if (machine_is_stm_nmhdk_fli7610())
+		return FLI7610_CONSOLE_BASE;
+#elif defined(CONFIG_MACH_STM_STIH415)
 	if (machine_is_stm_b2000())
 		return STIH415_ASC2_BASE;
         if (machine_is_stm_b2020())
                 return STIH415_SBC_ASC1_BASE;
-#elif defined(CONFIG_MACH_STM_FLI7610)
-	if (machine_is_stm_nmhdk_fli7610())
-		return FLI7610_CONSOLE_BASE;
 #endif
 	return 0;
 }

@@ -38,10 +38,10 @@ void __init stm_soc_set(unsigned long devid, long major, long minor)
 
 const char *stm_soc(void)
 {
-	if (stm_soc_is_stih415())
-		return "STiH415";
 	if (stm_soc_is_fli7610())
 		return "FLI7610";
+	if (stm_soc_is_stih415())
+		return "STiH415";
 	return NULL;
 }
 EXPORT_SYMBOL(stm_soc);

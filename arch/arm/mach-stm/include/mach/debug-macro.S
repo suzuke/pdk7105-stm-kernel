@@ -11,15 +11,14 @@
  * published by the Free Software Foundation.
  */
 
-#ifdef CONFIG_MACH_STM_STIH415
-#include <mach/soc-stih415.h>
-#define DEBUG_LL_UART_BASE	STIH415_SBC_ASC0_BASE
-#endif
-
-
 #ifdef CONFIG_MACH_STM_FLI7610
 #include <mach/soc-fli7610.h>
 #define DEBUG_LL_UART_BASE	FLI7610_CONSOLE_BASE
+#endif
+
+#ifdef CONFIG_MACH_STM_STIH415
+#include <mach/soc-stih415.h>
+#define DEBUG_LL_UART_BASE	STIH415_SBC_ASC0_BASE
 #endif
 
 #ifndef DEBUG_LL_UART_BASE
