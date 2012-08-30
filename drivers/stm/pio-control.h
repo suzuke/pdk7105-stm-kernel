@@ -87,15 +87,19 @@ enum stm_pio_control_retime_style {
 
 struct stm_pio_control_config {
 	struct {
-		u8 group, num;
+		u8 group;
+		u16 num;
 	} alt;
 	struct {
-		u8 group, num, lsb, msb;
+		u8 group;
+		u16 num;
+		u8 lsb, msb;
 	} oe, pu, od;
 	enum stm_pio_control_retime_style retime_style:4;
 	unsigned int retime_pin_mask:8;
 	struct {
-		u8 group, num;
+		u8 group;
+		u16 num;
 	} retiming[8];
 };
 

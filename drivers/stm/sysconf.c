@@ -21,7 +21,8 @@
 #define DRIVER_NAME "stm-sysconf"
 
 struct sysconf_field {
-	u8 group, num;
+	u8 group;
+	u16 num;
 	u8 lsb, msb;
 	void __iomem *reg;
 	const char *owner;
@@ -109,7 +110,7 @@ struct sysconf_field *sysconf_claim(int group, int num, int lsb, int msb,
 			__func__, group, num, lsb, msb, devname);
 
 	BUG_ON(group < 0 || group >= sysconf_groups_num);
-	BUG_ON(num < 0 || num > ((1 << 8) - 1));
+	BUG_ON(num < 0 || num > (1 << (sizeof(entry->num) * 8 - 1)));
 	BUG_ON(lsb < 0 || lsb > 32);
 	BUG_ON(msb < 0 || msb > 32);
 	BUG_ON(lsb > msb);
