@@ -13,15 +13,22 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/stm/soc.h>
 #include <mach/hardware.h>
 #include <mach/mpe41.h>
 #include <asm/hardware/cache-l2x0.h>
 
-static int __init mpe41_l2x0_init(void)
+static int __init stm_l2x0_init(void)
 {
 #ifdef CONFIG_CACHE_L2X0
-	void __iomem *base = __io_address(MPE41_PL310_BASE);
+	void __iomem *base;
 	u32 val;
+
+	if (stm_soc_is_fli7610() || stm_soc_is_stih415())
+		base = __io_address(MPE41_PL310_BASE);
+	else
+		return -ENOSYS;
+
 	/*
 	* Tag RAM Control register
 	*
@@ -63,4 +70,4 @@ static int __init mpe41_l2x0_init(void)
 	return 0;
 }
 
-arch_initcall(mpe41_l2x0_init);
+arch_initcall(stm_l2x0_init);
