@@ -258,14 +258,14 @@ static int stm_usb_suspend(struct device *dev)
 
 	stm_device_power(dr_data->device_state, stm_device_power_off);
 
-	pm_clk_suspend(dev);
-	return 0;
+	return pm_clk_suspend(dev);
 }
 
 static int stm_usb_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct drv_usb_data *dr_data = dev_get_drvdata(dev);
+	int ret;
 
 #ifdef CONFIG_PM_RUNTIME
 	if (pm_runtime_status_suspended(dev))
@@ -274,7 +274,9 @@ static int stm_usb_resume(struct device *dev)
 
 	dgb_print("\n");
 
-	pm_clk_resume(dev);
+	ret = pm_clk_resume(dev);
+	if (ret)
+		return ret;
 
 	stm_device_setup(dr_data->device_state);
 
