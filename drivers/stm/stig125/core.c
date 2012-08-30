@@ -1,0 +1,965 @@
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited
+ *
+ * Author(s): Stuart Menefy <stuart.menefy@st.com>
+ *	    Nunzio Raciti <nunzio.raciti@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include <linux/init.h>
+#include <linux/gpio.h>
+#include <linux/delay.h>
+#include <linux/platform_device.h>
+#include <linux/stm/pad.h>
+#include <linux/stm/sysconf.h>
+#include <linux/stm/soc.h>
+#include <linux/stm/stig125.h>
+
+#include <asm/mach/map.h>
+
+#include <mach/soc-stig125.h>
+#include <mach/hardware.h>
+
+#include "../pio-control.h"
+
+/* EMI resources ---------------------------------------------------------- */
+
+static void stig125_emi_power(struct stm_device_state *device_state,
+				enum stm_device_power_state power)
+{
+	int i;
+	int value = (power == stm_device_power_on) ? 0 : 1;
+
+	stm_device_sysconf_write(device_state, "EMI_PWR", value);
+	for (i = 5; i; --i) {
+		if (stm_device_sysconf_read(device_state, "EMI_ACK")
+			== value)
+			break;
+		mdelay(10);
+	}
+}
+
+static struct platform_device stig125_emi = {
+	.name = "emi",
+	.id = -1,
+	.num_resources = 2,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 256 * 1024 * 1024),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xFEA30000, 0x874),
+	},
+	.dev.platform_data = &(struct stm_device_config){
+		.sysconfs_num = 2,
+		.sysconfs = (struct stm_device_sysconf []){
+			STM_DEVICE_SYSCONF(SYSCONF(742), 0, 0, "EMI_PWR"),
+			STM_DEVICE_SYSCONF(SYSCONF(766), 0, 0, "EMI_ACK"),
+		},
+		.power = stig125_emi_power,
+	},
+};
+
+/* ASC resources ---------------------------------------------------------- */
+
+static struct stm_pad_config stig125_asc_pad_configs[] = {
+
+	/* Comms block ASCs */
+	[0] = {
+		/* UART0 */
+		/* PIO section: WEST */
+		/* Tx: PIO0[0], Rx: PIO0[1], CTS: PIO0[2], RTS: PIO0[3] */
+		/* OE: PIO0[4] */
+		/* SC0_CLK: PIO0[5], SC0_VCC: PIO0[6], SC0_DET: PIO0[7] */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(0, 0, 2),	/* TX */
+			STM_PAD_PIO_IN(0, 1, 2),	/* RX */
+			STM_PAD_PIO_IN_NAMED(0, 2, 2, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(0, 3, 2, "RTS"),
+		},
+	},
+	[1] = {
+		/* UART1 */
+		/* PIO section: WEST */
+		/* Tx: PIO1[0], Rx: PIO1[1], CTS: PIO1[2], RTS: PIO1[3] */
+		/* OE: PIO1[4] */
+		/* SC1_CLK: PIO1[5], SC1_VCC: PIO1[6], SC1_DET: PIO1[7] */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(1, 0, 2),	/* TX */
+			STM_PAD_PIO_IN(1, 1, 2),	/* RX */
+			STM_PAD_PIO_IN_NAMED(1, 2, 2, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(1, 3, 2, "RTS"),
+		},
+	},
+	[2] = {
+		/* UART2 */
+		/* PIO section: SOUTH */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(17, 6, 2),	/* TX */
+			STM_PAD_PIO_IN(17, 7, 2),	/* RX */
+			STM_PAD_PIO_IN_NAMED(18, 0, 2, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(18, 7, 2, "RTS"),
+		},
+	},
+	[3] = {
+		/* UART3 */
+		/* PIO section: SOUTH */
+		.gpios_num = 2,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(18, 5, 2),	/* TX */
+			STM_PAD_PIO_IN(18, 6, 2),	/* RX */
+		},
+	},
+	[4] = {
+		/* UART4 */
+		/* PIO section: SOUTH */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(13, 0, 3),	/* TX */
+			STM_PAD_PIO_IN(13, 1, 3),	/* RX */
+			STM_PAD_PIO_IN_NAMED(13, 2, 3, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(13, 3, 3, "RTS"),
+		},
+	},
+	[5] = {
+		/* UART5 */
+		/* PIO section: WEST */
+		.gpios_num = 2,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(9, 6, 1),	/* TX */
+			STM_PAD_PIO_IN(9, 7, 1),	/* RX */
+		},
+	},
+	[6] = {
+		/* UART6 */
+		/* PIO section: WEST */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(5, 1, 2),	/* TX */
+			STM_PAD_PIO_IN(5, 2, 2),	/* RX */
+			STM_PAD_PIO_IN_NAMED(5, 3, 2, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(5, 6, 2, "RTS"),
+		},
+	},
+
+	/* SBC comms block ASCs */
+	[7] = {
+		/* SBC_UART0 (aka UART10) */
+		/* PIO section: SBC */
+		/* Tx: STIG125_SBC_PIO1[7], Rx: STIG125_SBC_PIO2[0],
+		   RTS: STIG125_SBC_PIO2[2], CTS: STIG125_SBC_PIO2[1] */
+		/* OE: STIG125_SBC_PIO2[3] */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(STIG125_SBC_PIO(1), 7, 1),	/* TX */
+			STM_PAD_PIO_IN(STIG125_SBC_PIO(2), 0, 1),	/* RX */
+			STM_PAD_PIO_IN_NAMED(STIG125_SBC_PIO(2), 1, 1, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(STIG125_SBC_PIO(2), 2, 1, "RTS"),
+		},
+	},
+	[8] = {
+		/* SBC_UART1 (aka UART11) */
+		/* PIO section: SBC */
+		/* Tx: STIG125_SBC_PIO1[1], Rx: STIG125_SBC_PIO1[2],
+		   RTS: STIG125_SBC_PIO1[4], CTS: STIG125_SBC_PIO1[3] */
+		/* OE: STIG125_SBC_PIO1[5] */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(STIG125_SBC_PIO(1), 1, 3),	/* TX */
+			STM_PAD_PIO_IN(STIG125_SBC_PIO(1), 2, 3),	/* RX */
+			STM_PAD_PIO_IN_NAMED(STIG125_SBC_PIO(1), 3, 3, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(STIG125_SBC_PIO(1), 4, 3, "RTS"),
+		},
+	},
+	[STIG125_TELSIS_ASC] = {
+		/* TEL_UART */
+		.gpios_num = 4,
+		.gpios = (struct stm_pad_gpio []) {
+			STM_PAD_PIO_OUT(15, 2, 1),	/* TX */
+			STM_PAD_PIO_IN(15, 3, 1),	/* RX */
+			STM_PAD_PIO_IN_NAMED(15, 0, 1, "CTS"),
+			STM_PAD_PIO_OUT_NAMED(15, 1, 1, "RTS"),
+		},
+	},
+};
+
+static struct platform_device stig125_asc_devices[] = {
+
+	/* Comms block ASCs in SASG1 */
+	[0] = {
+		.name = "stm-asc",
+		/* .id set in stig125_configure_asc() */
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_ASC0_BASE, 0x2c),
+			STIG125_RESOURCE_IRQ(114),
+		},
+		.dev.platform_data = &(struct stm_plat_asc_data) {
+			.pad_config = &stig125_asc_pad_configs[0],
+		},
+	},
+	[1] = {
+		.name = "stm-asc",
+		/* .id set in stig125_configure_asc() */
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_ASC1_BASE, 0x2c),
+			STIG125_RESOURCE_IRQ(115),
+		},
+		.dev.platform_data = &(struct stm_plat_asc_data) {
+			.pad_config = &stig125_asc_pad_configs[1],
+		},
+	},
+
+	/* SBC comms block ASCs */
+	[7] = {
+		.name = "stm-asc",
+		/* .id set in stig125_configure_asc() */
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_SBC_ASC0_BASE, 0x2c),
+			STIG125_RESOURCE_IRQ(142),
+		},
+		.dev.platform_data = &(struct stm_plat_asc_data) {
+			.pad_config = &stig125_asc_pad_configs[7],
+			.regs = (void __iomem *)
+				IO_ADDRESS(STIG125_SBC_ASC0_BASE),
+			.clk_id = "sbc_comms_clk",
+		},
+	},
+	[8] = {
+		.name = "stm-asc",
+		/* .id set in stig125_configure_asc() */
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_SBC_ASC1_BASE, 0x2c),
+			STIG125_RESOURCE_IRQ(143),
+		},
+		.dev.platform_data = &(struct stm_plat_asc_data) {
+			.pad_config = &stig125_asc_pad_configs[8],
+			.regs = (void __iomem *)
+				IO_ADDRESS(STIG125_SBC_ASC1_BASE),
+			.clk_id = "sbc_comms_clk",
+		},
+	},
+	[STIG125_TELSIS_ASC] = {
+		/* TEL_UART */
+		.name = "stm-asc",
+		/* .id set in stig125_configure_asc() */
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_TELSIS_ASC_BASE, 0x2c),
+			{
+				.start = STIG125_IRQMUX(64),
+				.end = STIG125_IRQMUX(64),
+				.flags = IORESOURCE_IRQ,
+			},
+		},
+		.dev.platform_data = &(struct stm_plat_asc_data) {
+			.pad_config =
+				&stig125_asc_pad_configs[STIG125_TELSIS_ASC],
+			.clk_id = "telsis_comms_clk",
+		},
+	},
+};
+
+/* the serial console device */
+struct platform_device *stm_asc_console_device;
+
+/* Platform devices to register */
+unsigned int __initdata stm_asc_configured_devices_num;
+struct platform_device __initdata
+		*stm_asc_configured_devices[ARRAY_SIZE(stig125_asc_devices)];
+
+void __init stig125_configure_asc(int asc, struct stig125_asc_config *config)
+{
+	static int configured[ARRAY_SIZE(stig125_asc_devices)];
+	static int tty_id;
+	struct stig125_asc_config default_config = {};
+	struct platform_device *pdev;
+	struct stm_plat_asc_data *plat_data;
+
+	BUG_ON(asc < 0 || asc >= ARRAY_SIZE(stig125_asc_devices));
+
+	BUG_ON(configured[asc]);
+	configured[asc] = 1;
+
+	if (!config)
+		config = &default_config;
+
+	pdev = &stig125_asc_devices[asc];
+	plat_data = pdev->dev.platform_data;
+
+	pdev->id = tty_id++;
+	plat_data->hw_flow_control = config->hw_flow_control;
+	plat_data->force_m1 = config->force_m1;
+
+	/* No hardware flow control pins on some ports */
+	if (asc == 3 || asc == 5)
+		plat_data->hw_flow_control = 0;
+
+	if (!config->hw_flow_control) {
+		/* Don't claim RTS/CTS pads */
+		struct stm_pad_config *pad_config;
+		pad_config = &stig125_asc_pad_configs[asc];
+		stm_pad_set_pio_ignored(pad_config, "RTS");
+		stm_pad_set_pio_ignored(pad_config, "CTS");
+	}
+
+	if (config->is_console)
+		stm_asc_console_device = pdev;
+
+	stm_asc_configured_devices[stm_asc_configured_devices_num++] = pdev;
+}
+
+/* Add platform device as configured by board specific code */
+static int __init stig125_add_asc(void)
+{
+	return platform_add_devices(stm_asc_configured_devices,
+			stm_asc_configured_devices_num);
+}
+arch_initcall(stig125_add_asc);
+
+
+/* PIO ports resources ---------------------------------------------------- */
+
+static int stig125_pio_pin_name(char *name, int size, int port, int pin)
+{
+	if (port >= STIG125_SBC_PIO(0))
+		return snprintf(name, size, "SBC_PIO%d.%d",
+				port - STIG125_SBC_PIO(0), pin);
+	else
+		return snprintf(name, size, "PIO%d.%d", port, pin);
+}
+
+#define STIG125_PIO_ENTRY(_num, _base)					\
+	[_num] = {							\
+		.name = "stm-gpio",					\
+		.id = _num,						\
+		.num_resources = 1,					\
+		.resource = (struct resource[]) {			\
+			STM_PLAT_RESOURCE_MEM(_base, 0x100),		\
+		},							\
+		.dev.platform_data = &(struct stm_plat_pio_data) {	\
+			.regs = (void __iomem *)IO_ADDRESS(_base),	\
+			.pin_name = stig125_pio_pin_name,		\
+		},							\
+	}
+
+static struct platform_device stig125_pio_devices[27] = {
+	/* 0-9: PIO_WEST */
+	/* PIO 10 bank west edge */
+	STIG125_PIO_ENTRY(0, STIG125_PIO_WEST_BASE),
+	STIG125_PIO_ENTRY(1, STIG125_PIO_WEST_BASE + 0x1000),
+	STIG125_PIO_ENTRY(2, STIG125_PIO_WEST_BASE + 0x2000),
+	STIG125_PIO_ENTRY(3, STIG125_PIO_WEST_BASE + 0x3000),
+	STIG125_PIO_ENTRY(4, STIG125_PIO_WEST_BASE + 0x4000),
+	STIG125_PIO_ENTRY(5, STIG125_PIO_WEST_BASE + 0x5000),
+	STIG125_PIO_ENTRY(6, STIG125_PIO_WEST_BASE + 0x6000),
+	STIG125_PIO_ENTRY(7, STIG125_PIO_WEST_BASE + 0x7000),
+	STIG125_PIO_ENTRY(8, STIG125_PIO_WEST_BASE + 0x8000),
+	STIG125_PIO_ENTRY(9, STIG125_PIO_WEST_BASE + 0x9000),
+
+	/* 10-18: PIO_SOUTH */
+	/* PIO 10 bank on south edge */
+	STIG125_PIO_ENTRY(10, STIG125_PIO_SOUTH_BASE),
+	STIG125_PIO_ENTRY(11, STIG125_PIO_SOUTH_BASE + 0x1000),
+	STIG125_PIO_ENTRY(12, STIG125_PIO_SOUTH_BASE + 0x2000),
+	STIG125_PIO_ENTRY(13, STIG125_PIO_SOUTH_BASE + 0x3000),
+	STIG125_PIO_ENTRY(14, STIG125_PIO_SOUTH_BASE + 0x4000),
+	STIG125_PIO_ENTRY(15, STIG125_PIO_SOUTH_BASE + 0x5000),
+	STIG125_PIO_ENTRY(16, STIG125_PIO_SOUTH_BASE + 0x6000),
+	STIG125_PIO_ENTRY(17, STIG125_PIO_SOUTH_BASE + 0x7000),
+	STIG125_PIO_ENTRY(18, STIG125_PIO_SOUTH_BASE + 0x8000),
+
+	/* 19-22: PIO_NORTH */
+	/* PIO 10 bank on north edge */
+	STIG125_PIO_ENTRY(19, STIG125_PIO_NORTH_BASE),
+	STIG125_PIO_ENTRY(20, STIG125_PIO_NORTH_BASE + 0x1000),
+	STIG125_PIO_ENTRY(21, STIG125_PIO_NORTH_BASE + 0x2000),
+	STIG125_PIO_ENTRY(22, STIG125_PIO_NORTH_BASE + 0x3000),
+
+	/* SBC_PIO0-4 */
+	/* PIO inside SBC */
+	STIG125_PIO_ENTRY(23, STIG125_PIO_SBC_BASE),
+	STIG125_PIO_ENTRY(24, STIG125_PIO_SBC_BASE + 0x1000),
+	STIG125_PIO_ENTRY(25, STIG125_PIO_SBC_BASE + 0x2000),
+	STIG125_PIO_ENTRY(26, STIG125_PIO_SBC_BASE + 0x3000),
+};
+
+#define STIG125_PIO_ENTRY_CONTROL(_num, _alt_num,			\
+		_oe_num, _pu_num, _od_num, _lsb, _msb, ...)		\
+	[_num] = {							\
+		.alt = { SYSCONF(_alt_num) },				\
+		.oe = { SYSCONF(_oe_num), _lsb, _msb },			\
+		.pu = { SYSCONF(_pu_num), _lsb, _msb },			\
+		.od = { SYSCONF(_od_num), _lsb, _msb },			\
+		__VA_ARGS__,						\
+	}
+
+#define STIG125_PIO_ENTRY_CONTROL_NORET(_num, _alt_num,			\
+		_oe_num, _pu_num, _od_num, _lsb, _msb)			\
+	STIG125_PIO_ENTRY_CONTROL(_num, _alt_num,			\
+		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
+		.retime_style = stm_pio_control_retime_style_none)
+
+#define STIG125_SBC_PIO_ENTRY_CONTROL_NORET(_num, _alt_num,		\
+		_oe_num, _pu_num, _od_num, _lsb, _msb)			\
+	[_num] = {							\
+		.alt = { SYSCFG_SBC_BANK, _alt_num },			\
+		.oe = { SYSCFG_SBC_BANK, _oe_num, _lsb, _msb },		\
+		.pu = { SYSCFG_SBC_BANK, _pu_num, _lsb, _msb },		\
+		.od = { SYSCFG_SBC_BANK, _od_num, _lsb, _msb },		\
+		.retime_style = stm_pio_control_retime_style_none,	\
+	}
+
+#define STIG125_SBC_PIO_ENTRY_CONTROL_NORET4(_num, _alt_num,		\
+		_oe_num, _pu_num, _od_num)				\
+	STIG125_SBC_PIO_ENTRY_CONTROL_NORET(_num,   _alt_num,		\
+		_oe_num, _pu_num, _od_num,  0,  7),			\
+	STIG125_SBC_PIO_ENTRY_CONTROL_NORET(_num + 1, _alt_num + 1,	\
+		_oe_num, _pu_num, _od_num,  8, 15),			\
+	STIG125_SBC_PIO_ENTRY_CONTROL_NORET(_num + 2, _alt_num + 2,	\
+		_oe_num, _pu_num, _od_num, 16, 23),			\
+	STIG125_SBC_PIO_ENTRY_CONTROL_NORET(_num + 3, _alt_num + 3,	\
+		_oe_num, _pu_num, _od_num, 24, 31)
+
+static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
+	/*				pio, alt, oe, pu, od,lsb,msb */
+	/* 0-9: WEST */
+	STIG125_PIO_ENTRY_CONTROL_NORET(0,    0,  10, 13, 16,  0,  7),
+	STIG125_PIO_ENTRY_CONTROL_NORET(1,    1,  10, 13, 16,  8, 15),
+	STIG125_PIO_ENTRY_CONTROL_NORET(2,    2,  10, 13, 16, 16, 23),
+	STIG125_PIO_ENTRY_CONTROL_NORET(3,    3,  10, 13, 16, 24, 31),
+
+	STIG125_PIO_ENTRY_CONTROL_NORET(4,    4,  11, 14, 17,  0,  7),
+	STIG125_PIO_ENTRY_CONTROL_NORET(5,    5,  11, 14, 17,  8, 15),
+	STIG125_PIO_ENTRY_CONTROL(6,    6,  11, 14, 17, 16, 23,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xc0,
+		.retiming = {
+			[6] = { SYSCONF(19) },
+			[7] = { SYSCONF(20) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(7,          7,  11, 14, 17, 24, 31,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(21) },
+			{ SYSCONF(22) },
+			{ SYSCONF(23) },
+			{ SYSCONF(24) },
+			{ SYSCONF(25) },
+			{ SYSCONF(26) },
+			{ SYSCONF(27) },
+			{ SYSCONF(28) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(8,   8,  12,  15,  18,  0,  7,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(29) },
+			{ SYSCONF(30) },
+			{ SYSCONF(31) },
+			{ SYSCONF(32) },
+			{ SYSCONF(33) },
+			{ SYSCONF(34) },
+			{ SYSCONF(35) },
+			{ SYSCONF(36) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(9,   9,  12,  15,  18,  8, 15,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0x3f,
+		.retiming = {
+			{ SYSCONF(37) },
+			{ SYSCONF(38) },
+			{ SYSCONF(39) },
+			{ SYSCONF(40) },
+			{ SYSCONF(41) },
+			{ SYSCONF(42) },
+		}),
+	/* 10-18: SOUTH */
+	STIG125_PIO_ENTRY_CONTROL(10, 200, 209, 212, 215, 0, 7,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(218) },
+			{ SYSCONF(219) },
+			{ SYSCONF(220) },
+			{ SYSCONF(221) },
+			{ SYSCONF(222) },
+			{ SYSCONF(223) },
+			{ SYSCONF(224) },
+			{ SYSCONF(225) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(11, 201, 209, 212, 215, 8, 15,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(226) },
+			{ SYSCONF(227) },
+			{ SYSCONF(228) },
+			{ SYSCONF(229) },
+			{ SYSCONF(230) },
+			{ SYSCONF(231) },
+			{ SYSCONF(232) },
+			{ SYSCONF(233) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(12, 202, 209, 212, 215, 16, 23,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(234) },
+			{ SYSCONF(235) },
+			{ SYSCONF(236) },
+			{ SYSCONF(237) },
+			{ SYSCONF(238) },
+			{ SYSCONF(239) },
+			{ SYSCONF(240) },
+			{ SYSCONF(241) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(13, 203, 209, 212, 215, 24, 31,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(242) },
+			{ SYSCONF(243) },
+			{ SYSCONF(244) },
+			{ SYSCONF(245) },
+			{ SYSCONF(246) },
+			{ SYSCONF(247) },
+			{ SYSCONF(248) },
+			{ SYSCONF(249) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(14, 204, 210, 213, 216, 0, 7,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0x0f,
+		.retiming = {
+			{ SYSCONF(250) },
+			{ SYSCONF(251) },
+			{ SYSCONF(252) },
+			{ SYSCONF(253) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL_NORET(15, 205, 210, 213, 216,  8, 15),
+	STIG125_PIO_ENTRY_CONTROL_NORET(16, 206, 210, 213, 216, 16, 23),
+	STIG125_PIO_ENTRY_CONTROL_NORET(17, 207, 210, 213, 216, 24, 31),
+	STIG125_PIO_ENTRY_CONTROL_NORET(18, 208, 211, 214, 217,  0,  7),
+	/* 19-22: NORTH */
+	STIG125_PIO_ENTRY_CONTROL(19,       400, 404, 405, 406,  0,  7,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(407) },
+			{ SYSCONF(408) },
+			{ SYSCONF(409) },
+			{ SYSCONF(410) },
+			{ SYSCONF(411) },
+			{ SYSCONF(412) },
+			{ SYSCONF(413) },
+			{ SYSCONF(414) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL_NORET(20,401, 404, 405, 406,  8, 15),
+	STIG125_PIO_ENTRY_CONTROL(21,      402, 404, 405, 406, 16, 23,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(415) },
+			{ SYSCONF(416) },
+			{ SYSCONF(417) },
+			{ SYSCONF(418) },
+			{ SYSCONF(419) },
+			{ SYSCONF(420) },
+			{ SYSCONF(421) },
+			{ SYSCONF(422) },
+		}),
+	STIG125_PIO_ENTRY_CONTROL(22, 403, 404, 405, 406, 24, 31,
+		.retime_style = stm_pio_control_retime_style_dedicated,
+		.retime_pin_mask = 0xff,
+		.retiming = {
+			{ SYSCONF(423) },
+			{ SYSCONF(424) },
+			{ SYSCONF(425) },
+			{ SYSCONF(426) },
+			{ SYSCONF(427) },
+			{ SYSCONF(428) },
+			{ SYSCONF(429) },
+			{ SYSCONF(430) },
+		}),
+	/* SBC 0-4 */
+	STIG125_SBC_PIO_ENTRY_CONTROL_NORET4(STIG125_SBC_PIO(0),
+					0,   4,   5,   6),
+};
+
+static struct stm_pio_control stig125_pio_controls[27];
+
+static int stig125_pio_config(unsigned gpio,
+	enum stm_pad_gpio_direction direction, int function, void *priv)
+{
+	struct stm_pio_control_pad_config *config = priv;
+
+	return stm_pio_control_config_all(gpio, direction, function, config,
+		stig125_pio_controls, NULL,
+		ARRAY_SIZE(stig125_pio_devices), 8);
+}
+
+static void stig125_pio_report(unsigned gpio, char *buf, int len)
+{
+	stm_pio_control_report_all(gpio, stig125_pio_controls,
+		NULL, buf, len);
+}
+
+static const struct stm_pad_ops stig125_pad_ops = {
+	.gpio_config = stig125_pio_config,
+	.gpio_report = stig125_pio_report,
+};
+
+static void __init stig125_pio_init(void)
+{
+	stm_pio_control_init(stig125_pio_control_configs, stig125_pio_controls,
+			     ARRAY_SIZE(stig125_pio_control_configs));
+}
+
+
+
+/* sysconf resources ------------------------------------------------------ */
+
+static int stig125_sysconf_reg_name(char *name, int size,
+					int group, int num)
+{
+	int start = (group <= 2) ? (group * 200) : (((group-3) * 100) + 700);
+
+	return snprintf(name, size, "SYSCONF%d", start + num);
+}
+
+
+#define STIG125_SYSCONF_ENTRY(_num, _base, _size, _name, _reg_name)	\
+	[_num] = {							\
+		.name		= "sysconf",				\
+		.id		= _num,					\
+		.num_resources	= 1,					\
+		.resource	= (struct resource[]) {			\
+			STM_PLAT_RESOURCE_MEM(_base, _size),		\
+		},							\
+		.dev.platform_data = &(struct stm_plat_sysconf_data) {	\
+			.regs = (void __iomem *)IO_ADDRESS(_base),	\
+			.groups_num = 1,				\
+			.groups = (struct stm_plat_sysconf_group []) {	\
+				{					\
+					.group = _num,			\
+					.offset = 0,			\
+					.name = _name,			\
+					.reg_name = _reg_name,		\
+				}					\
+			},						\
+		},							\
+	}
+
+
+static struct platform_device stig125_sysconf_devices[] = {
+	/* CONFIG0-48, STATUS53-56 */
+	/* SYSCFG_WEST */
+	STIG125_SYSCONF_ENTRY(0, STIG125_SYSCONF_WEST_BASE, 0xe4,
+			      "SYSCFG_WEST", stig125_sysconf_reg_name),
+
+	/* CONFIG200-268, STATUS272-283 */
+	/* SYSCFG_SOUTH */
+	STIG125_SYSCONF_ENTRY(1, STIG125_SYSCONF_SOUTH_BASE, 0x150,
+			      "SYSCFG_SOUTH", stig125_sysconf_reg_name),
+
+	/* CONFIG400-430 */
+	/* SYSCFG_NORTH */
+	STIG125_SYSCONF_ENTRY(2, STIG125_SYSCONF_NORTH_BASE, 0x7c,
+			      "SYSCFG_NORTH", stig125_sysconf_reg_name),
+
+	/* CONFIG705-745, STATUS749-769 */
+	/* SYSCFG_CPU */
+	STIG125_SYSCONF_ENTRY(3, STIG125_SYSCONF_CPU_BASE, 0x118,
+			      "SYSCFG_CPU", stig125_sysconf_reg_name),
+
+	/* CONFIG800-808, STATUS812-813 */
+	/* SYSCFG_DDR */
+	STIG125_SYSCONF_ENTRY(4, STIG125_SYSCONF_DDR_BASE, 0x38,
+			      "SYSCFG_DDR", stig125_sysconf_reg_name),
+
+	/* CONFIG900-935, STATUS936-944 */
+	/* SYSCFG_HD */
+	STIG125_SYSCONF_ENTRY(5, STIG125_SYSCONF_HD_BASE, 0xbc,
+			      "SYSCFG_HD", stig125_sysconf_reg_name),
+
+	/* SBC: CONFIG0-23, STATUS24-36 */
+	/* SYSCFG_SBC */
+	STIG125_SYSCONF_ENTRY(6, STIG125_SYSCONF_SBC_BASE, 0xb4,
+			      "SYSCFG_SBC", NULL),
+
+	/* LPM CONFIG */
+	STIG125_SYSCONF_ENTRY(7, STIG125_SBC_LPM_CONF_BASE, 0x54,
+			      "LPM", NULL),
+
+	/* SYSCFG_DOCSIS: ??? */
+};
+
+/* Early initialisation-----------------------------------------------------*/
+
+/* Initialise devices which are required early in the boot process. */
+void __init stig125_early_device_init(void)
+{
+	struct sysconf_field *sc;
+
+	/* Initialise PIO and sysconf drivers */
+	sysconf_early_init(stig125_sysconf_devices,
+			   ARRAY_SIZE(stig125_sysconf_devices));
+	stig125_pio_init();
+	stm_gpio_early_init(stig125_pio_devices,
+			ARRAY_SIZE(stig125_pio_devices), 256);
+	stm_pad_init(ARRAY_SIZE(stig125_pio_devices) * STM_GPIO_PINS_PER_PORT,
+		     0, 0, &stig125_pad_ops);
+
+	sc = sysconf_claim(SBC_SYSCONF(36), 0, 31, "devid");
+	stm_soc_set(sysconf_read(sc), -1, -1);
+}
+
+static int stig125_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
+		long input, long *enable, long *output, long *inv)
+{
+	*enable = 1;
+	*inv = 0;
+	*output = STIG125_IRQMUX_MAPPING(input);
+
+	return 0;
+}
+
+static struct platform_device stig125_irqmux[2] = {
+	{
+		/* A9 IRQMUX */
+		.id = 0,
+		.name = "irq_mux",
+		.num_resources = 1,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_A9_IRQ_MUX_BASE, 0x800),
+		},
+		.dev.platform_data = &(struct stm_plat_irq_mux_data) {
+			.name = "A9 IRQ-MUX",
+			.num_input = STIG125_IRQMUX_NUM_INPUT,
+			.num_output = STIG125_IRQMUX_NUM_OUTPUT,
+			.custom_mapping = stig125_irqmux_config,
+		}
+	}, {
+		/* PIO IRQMUX */
+		.id = 1,
+		.name = "irq_mux",
+		.num_resources = 1,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_PIO_IRQ_MUX_BASE, 0x800),
+		},
+		.dev.platform_data = &(struct stm_plat_irq_mux_data) {
+			.name = "PIO IRQ-MUX",
+			.num_input = 27,
+			.num_output = 10,
+			.custom_mapping = stig125_irqmux_config,
+		},
+	}
+};
+
+/* Pre-arch initialisation ------------------------------------------------ */
+static int __init stig125_postcore_setup(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(stig125_pio_devices); i++)
+		platform_device_register(&stig125_pio_devices[i]);
+
+	for (i = 0; i < ARRAY_SIZE(stig125_irqmux); i++)
+		platform_device_register(&stig125_irqmux[i]);
+
+	return platform_device_register(&stig125_emi);
+}
+postcore_initcall(stig125_postcore_setup);
+
+/* Late initialisation ---------------------------------------------------- */
+
+/* Internal temperature sensor resources ---------------------------------- */
+static void stig125_temp_power(struct stm_device_state *device_state,
+		enum stm_device_power_state power)
+{
+	int value = (power == stm_device_power_on) ? 1 : 0;
+
+	stm_device_sysconf_write(device_state, "TEMP_PWR", value);
+}
+
+static struct platform_device stig125_temp_device = {
+	.name = "stm-temp",
+	.id = 0,
+	.dev.platform_data = &(struct plat_stm_temp_data) {
+		.dcorrect = { SYSCONF(743), 2, 6 },
+		.overflow = { SYSCONF(767), 9, 9 },
+		.data = { SYSCONF(767), 11, 18 },
+		.device_config = &(struct stm_device_config) {
+			.sysconfs_num = 1,
+			.power = stig125_temp_power,
+			.sysconfs = (struct stm_device_sysconf []){
+				STM_DEVICE_SYSCONF(SYSCONF(743),
+					7, 7, "TEMP_PWR"),
+			},
+		}
+	},
+};
+
+/* Keyscan resources -------------------------------------------------------*/
+static struct stm_pad_config stig125_keyscan_pad_config = {
+	.gpios_num = 8,
+	.gpios = (struct stm_pad_gpio []) {
+		STM_PAD_PIO_IN(STIG125_SBC_PIO(0), 0, 1),	/* KEYSCAN_IN[0] */
+		STM_PAD_PIO_IN(STIG125_SBC_PIO(0), 1, 1),	/* KEYSCAN_IN[1] */
+		STM_PAD_PIO_IN(STIG125_SBC_PIO(0), 2, 1),	/* KEYSCAN_IN[2] */
+		STM_PAD_PIO_IN(STIG125_SBC_PIO(1), 1, 2),	/* KEYSCAN_IN[3] */
+
+		STM_PAD_PIO_OUT(STIG125_SBC_PIO(0), 4, 1),	/* KEYSCAN_OUT[0] */
+		STM_PAD_PIO_OUT(STIG125_SBC_PIO(0), 5, 1),	/* KEYSCAN_OUT[1] */
+		STM_PAD_PIO_OUT(STIG125_SBC_PIO(0), 6, 1),	/* KEYSCAN_OUT[2] */
+		STM_PAD_PIO_OUT(STIG125_SBC_PIO(1), 2, 2),	/* KEYSCAN_OUT[3] */
+	},
+	.sysconfs_num = 1,
+	.sysconfs = (struct stm_pad_sysconf []) {
+		/* KEYSCAN_POWERDOWN_REQ */
+		STM_PAD_SYSCONF(LPM_CONFIG(1), 8, 8, 0),
+	}
+};
+
+static struct platform_device stig125_keyscan_device = {
+	.name = "stm-keyscan",
+	.id = -1,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(STIG125_SBC_KEYSCAN_BASE, 0x2000),
+		STIG125_RESOURCE_IRQ(148),
+	},
+	.dev.platform_data = &(struct stm_plat_keyscan_data) {
+		.pad_config = &stig125_keyscan_pad_config,
+	},
+};
+
+void stig125_configure_keyscan(const struct stm_keyscan_config *config)
+{
+	struct stm_plat_keyscan_data *plat_data;
+	int i;
+
+	plat_data = stig125_keyscan_device.dev.platform_data;
+	plat_data->keyscan_config = *config;    /* struct copy */
+
+	for (i = config->num_in_pads; i < 4; i++)
+		stig125_keyscan_pad_config.gpios[i].direction =
+			stm_pad_gpio_direction_ignored;
+	for (i = config->num_out_pads + 4; i < 8; i++)
+		stig125_keyscan_pad_config.gpios[i].direction =
+			stm_pad_gpio_direction_ignored;
+
+	clk_add_alias_platform_device(NULL, &stig125_keyscan_device,
+					"sbc_comms_clk", NULL);
+
+	platform_device_register(&stig125_keyscan_device);
+}
+
+/*
+ * FDMA resources --------------------------------
+ */
+static struct stm_plat_fdma_fw_regs stig125_fdma_fw = {
+	.rev_id		= 0x10000,
+	.cmd_statn	= 0x10200,
+	.req_ctln	= 0x10240,
+	.ptrn		= 0x10800,
+	.cntn		= 0x10808,
+	.saddrn		= 0x1080c,
+	.daddrn		= 0x10810,
+	.node_size	= 128,
+};
+
+static struct stm_plat_fdma_hw stig125_fdma_hw = {
+	.slim_regs = {
+		.id	  = 0x0000 + (0x000 << 2), /* 0x0000 */
+		.ver	  = 0x0000 + (0x001 << 2), /* 0x0004 */
+		.en	  = 0x0000 + (0x002 << 2), /* 0x0008 */
+		.clk_gate = 0x0000 + (0x003 << 2), /* 0x000c */
+	},
+	.dmem = {
+		.offset = 0x10000,
+		.size   = 0xc00 << 2, /* 3072 * 4 = 12K */
+	},
+	.periph_regs = {
+		.sync_reg = 0x17f88,
+		.cmd_sta  = 0x17fc0,
+		.cmd_set  = 0x17fc4,
+		.cmd_clr  = 0x17fc8,
+		.cmd_mask = 0x17fcc,
+		.int_sta  = 0x17fd0,
+		.int_set  = 0x17fd4,
+		.int_clr  = 0x17fd8,
+		.int_mask = 0x17fdc,
+	},
+	.imem = {
+		.offset = 0x18000,
+		.size   = 0x1800 << 2, /* 6144 * 4 = 24K (18K populated) */
+	},
+};
+
+static struct stm_plat_fdma_data stig125_fdma_platform_data = {
+	.hw = &stig125_fdma_hw,
+	.fw = &stig125_fdma_fw,
+	.xbar = 0,
+};
+
+static struct platform_device stig125_fdma_devices[] = {
+	{
+		.name = "stm-fdma",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfe2c0000, 0x20000),
+			STIG125_RESOURCE_IRQ(0), /* or 1? */
+		},
+		.dev.platform_data = &stig125_fdma_platform_data,
+	}, {
+		.name = "stm-fdma",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfe2e0000, 0x20000),
+			STIG125_RESOURCE_IRQ(2), /* or 3? */
+		},
+		.dev.platform_data = &stig125_fdma_platform_data,
+	}
+	/*
+	 * TVOUT_FDMA ?
+	 */
+};
+
+/* FDMA_MUX */
+static struct platform_device stig125_fdma_xbar_device = {
+	.name = "stm-fdma-xbar",
+	.id = 1,
+	.num_resources = 1,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM(0xfe96a000, 0x1000),
+	},
+	.dev.platform_data = &(struct stm_plat_fdma_xbar_data) {
+		.first_fdma_id = 0,
+		.last_fdma_id = 1, /* what about TVOUT_FDMA */
+	},
+};
+
+static struct platform_device *stig125_devices[] __initdata = {
+	&stig125_temp_device,
+	&stig125_fdma_devices[0],
+	&stig125_fdma_devices[1],
+	&stig125_fdma_xbar_device
+
+};
+
+static int __init stig125_devices_setup(void)
+{
+	return platform_add_devices(stig125_devices,
+			ARRAY_SIZE(stig125_devices));
+}
+device_initcall(stig125_devices_setup);

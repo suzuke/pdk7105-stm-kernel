@@ -3,8 +3,10 @@
  *
  * Debugging macro include header
  *
- * Copyright (C) 2010 STMicroelectronics Limited
- * Author: Stuart Menefy <stuart.menefy@st.com>
+ * Copyright (C) 2010-2012 STMicroelectronics Limited
+ *
+ * Author(s): Stuart Menefy <stuart.menefy@st.com>
+ *            Carmelo Amoroso <carmelo.amoroso@st.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -14,6 +16,11 @@
 #ifdef CONFIG_MACH_STM_FLI7610
 #include <mach/soc-fli7610.h>
 #define DEBUG_LL_UART_BASE	FLI7610_CONSOLE_BASE
+#endif
+
+#ifdef CONFIG_MACH_STM_STIG125
+#include <mach/soc-stig125.h>
+#define DEBUG_LL_UART_BASE		STIG125_SBC_ASC0_BASE
 #endif
 
 #ifdef CONFIG_MACH_STM_STIH415

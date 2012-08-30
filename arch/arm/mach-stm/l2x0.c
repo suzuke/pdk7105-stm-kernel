@@ -16,6 +16,7 @@
 #include <linux/stm/soc.h>
 #include <mach/hardware.h>
 #include <mach/mpe41.h>
+#include <mach/soc-stig125.h>
 #include <asm/hardware/cache-l2x0.h>
 
 static int __init stm_l2x0_init(void)
@@ -26,6 +27,8 @@ static int __init stm_l2x0_init(void)
 
 	if (stm_soc_is_fli7610() || stm_soc_is_stih415())
 		base = __io_address(MPE41_PL310_BASE);
+	else if (stm_soc_is_stig125())
+		base = __io_address(STIG125_PL310_BASE);
 	else
 		return -ENOSYS;
 

@@ -16,6 +16,12 @@ config MACH_STM_FLI7610
 	help
 	  Include support for a generic FLI7610 (Newman) platform.
 
+config MACH_STM_STIG125
+	bool "Support STiG125 generic platform"
+	select STM_IRQ_MUX
+	help
+	  Include support for a generic STiG125 (Barcelona) platform.
+
 config MACH_STM_STIH415
 	bool "Support STiH415 generic platform"
 	select CPU_SUBTYPE_STIH415
@@ -174,6 +180,55 @@ config MACH_STM_B2020
 	select MACH_STM_STIH415
 	help
 	  Include support for a B2020 - STiH415 (Orly) ADI Board.
+
+config MACH_STM_B2044
+	bool "Support B2044 - STiG125 (Barcelona) Evaluation Board"
+	select MACH_STM_STIG125
+	help
+	  Include support for a B2044 - STiG125 (Barcelona) Evaluation Board.
+
+if MACH_STM_B2044
+
+choice
+	prompt "B2044: card selection on CN55 connector"
+	default MACH_STM_B2044_CN55_NONE
+	help
+	  Select the appropriate version of the MMC card.
+
+config MACH_STM_B2044_CN55_NONE
+	bool "None"
+	help
+	  No card is plugged into CN55 of the B2044.
+
+config MACH_STM_B2044_CN55_B2048
+	bool "B2048A - eMMC/MMC Module"
+	help
+	  B2048A connected to CN55 of B2044
+	  There are two versions of this modules:
+	  a card with an embedded MMC device and another one
+	  with an MMC/SD slot.
+endchoice
+
+choice
+	prompt  "B2048A slot/eMMC selection"
+	depends on MACH_STM_B2044_CN55_B2048
+	default MACH_STM_B2044_B2048_EMMC
+	help
+	  Select if the board has the eMMC or the MMC/SD slot.
+
+config	MACH_STM_B2044_B2048_SLOT
+	bool "Multi Media Card slot on daughter board"
+	help
+	  Select this option if the board has an MMC card slot.
+
+config	MACH_STM_B2044_B2048_EMMC
+	bool "Embedded Multi Media Card (eMMC) on daughter board"
+	help
+	  Select this option if the board has an eMMC device.
+
+endchoice
+
+endif
 
 config MACH_STM_FLI76XXHDK01
 	bool "Support FLI76XX HDK01 (Newman) Board"
