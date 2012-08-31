@@ -731,7 +731,33 @@ static int stig125_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
 	return 0;
 }
 
-static struct platform_device stig125_irqmux[2] = {
+static int stig125_cid_config(struct stm_plat_irq_mux_data const *pdata,
+		long input, long *enable, long *output, long *inv)
+{
+	*enable = 1;
+	*inv = *output = 0;
+	return 0;
+}
+
+#define CID_DEVICE(_id, _base, _name)				\
+[_id] = {							\
+		.id = _id,					\
+		.name = "irq_mux",				\
+		.num_resources = 1,				\
+		.resource = (struct resource[]) {		\
+			STM_PLAT_RESOURCE_MEM(_base, 0x400),	\
+		},						\
+		.dev.platform_data = (void *)			\
+			&(struct stm_plat_irq_mux_data){	\
+				.name = _name"-CID",		\
+				.num_input = 16,		\
+				.num_output = 16,		\
+				.custom_mapping =		\
+					stig125_cid_config,	\
+			}					\
+	}
+
+static struct platform_device stig125_irqmux[] = {
 	{
 		/* A9 IRQMUX */
 		.id = 0,
@@ -760,7 +786,18 @@ static struct platform_device stig125_irqmux[2] = {
 			.num_output = 10,
 			.custom_mapping = stig125_irqmux_config,
 		},
-	}
+	},
+
+	/* CID steerer block (9 x IRQmux) */
+	CID_DEVICE(2, STIG125_CID_FDMA_0_BASE, "FDMA-0"),
+	CID_DEVICE(3, STIG125_CID_FDMA_1_BASE, "FDMA-1"),
+	CID_DEVICE(4, STIG125_CID_FDMA_2_BASE, "FDMA-2"),
+	CID_DEVICE(5, STIG125_CID_SIGCHK_BASE, "SIGCHK"),
+	CID_DEVICE(6, STIG125_CID_SIGDMA_BASE, "SIGDMA"),
+	CID_DEVICE(7, STIG125_CID_STBE_SC_BASE, "STB_SC"),
+	CID_DEVICE(8, STIG125_CID_STBE_TP_0_BASE, "STB_TP0"),
+	CID_DEVICE(9, STIG125_CID_STBE_TP_1_BASE, "STB_TP1"),
+	CID_DEVICE(10, STIG125_CID_STBE_TP_2_BASE, "STB_TP2"),
 };
 
 /* Pre-arch initialisation ------------------------------------------------ */
