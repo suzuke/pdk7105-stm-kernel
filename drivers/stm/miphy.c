@@ -112,7 +112,6 @@ struct stm_miphy *stm_miphy_claim(int port, enum miphy_mode mode,
 	struct stm_miphy *iterator;
 	struct stm_miphy *miphy = NULL;
 	struct stm_miphy_style *style;
-	u8 miphy_version, miphy_revision;
 
 	if (!owner)
 		return NULL;
@@ -153,11 +152,13 @@ struct stm_miphy *stm_miphy_claim(int port, enum miphy_mode mode,
 		goto _on_error;
 	}
 
-	miphy_version = stm_miphy_read(miphy, MIPHY_VERSION);
-	miphy_revision = stm_miphy_read(miphy, MIPHY_REVISION);
+	miphy->miphy_version = stm_miphy_read(miphy, MIPHY_VERSION);
+	miphy->miphy_revision = stm_miphy_read(miphy, MIPHY_REVISION);
 	pr_info("%s, c%d.%d Claimed by %s\n",
-			miphy->dev->style_id, (miphy_version & 0xf),
-			miphy_revision, dev_name(miphy->owner));
+			miphy->dev->style_id,
+			(miphy->miphy_version & 0xf),
+			miphy->miphy_revision,
+			dev_name(miphy->owner));
 
 	stm_miphy_start(miphy);
 

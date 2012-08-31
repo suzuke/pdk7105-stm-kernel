@@ -45,6 +45,8 @@ struct stm_miphy {
 	struct list_head node;
 	struct device *owner;
 	struct device *device;
+	u8 miphy_version;
+	u8 miphy_revision;
 };
 
 /* MiPHY style registration for diff versions of MiPHY */

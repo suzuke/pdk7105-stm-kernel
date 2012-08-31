@@ -868,6 +868,7 @@ static void stih415_pcie_mp_select(int port)
 }
 
 struct stm_plat_pcie_mp_data stih415_pcie_mp_platform_data = {
+	.style_id = ID_MIPHY365X,
 	.miphy_first = 0,
 	.miphy_count = MAX_PORTS,
 	.miphy_modes = stih415_miphy_modes,

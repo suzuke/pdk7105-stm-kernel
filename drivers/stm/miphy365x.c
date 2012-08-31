@@ -106,6 +106,7 @@ static void miphy365x_tap_start_port0(const struct stm_miphy_device *miphy_dev)
 	reg_read = miphy_dev->reg_read;
 	reg_write = miphy_dev->reg_write;
 
+#ifndef CONFIG_ARM
 	/* TODO: Get rid of this */
 	if (cpu_data->type == CPU_STX7108) {
 		/*Force SATA port 1 in Slumber Mode */
@@ -113,6 +114,7 @@ static void miphy365x_tap_start_port0(const struct stm_miphy_device *miphy_dev)
 		/*Force Power Mode selection from MiPHY soft register 0x11 */
 		reg_write(1, 0x10, 0x4);
 	}
+#endif
 
 	/* Force Macro1 in reset and request PLL calibration reset */
 
@@ -320,7 +322,7 @@ static int miphy365x_tap_pcie_start(int port,
  * MiPhy Port 0 & 1 Start function for SATA
  */
 
-static int miphy365x_uport_sata_start(int port,
+static int miphy365x_uport_sata_start(int port, u8 version, u8 revision,
 				      struct stm_miphy_device *miphy_dev)
 {
 	unsigned int regvalue;
@@ -334,17 +336,22 @@ static int miphy365x_uport_sata_start(int port,
 	reg_write = miphy_dev->reg_write;
 	reg_read = miphy_dev->reg_read;
 
-	/* Force PLL calibration reset, PLL reset
+	/* Force PHY macro reset,PLL calibration reset, PLL reset
 	 * and assert Deserializer Reset */
-	reg_write(port, 0x00, 0x16);
-	reg_write(port, 0x11, 0x0);
+	reg_write(port, 0x00, 0x96);
 	/* Force macro1 to use rx_lspd, tx_lspd
-	 * (by default rx_lspd and tx_lspd set for Gen1) */
+	 * (by default rx_lspd and tx_lspd set for Gen1 and 2) */
 	reg_write(port, 0x10, 0x1);
 	/* Force Rx_Clock on first I-DLL phase on macro1 */
 	reg_write(port, 0x72, 0x40);
-	/* Force Des in HP mode on macro1 */
-	reg_write(port, 0x12, 0x00);
+
+	if (revision == 9)
+		/* Force Des in HP mode on macro, rx_lspd, tx_lspd for Gen2 */
+		reg_write(port, 0x12, 0x09);
+	else
+		/* Force Des in HP mode on macro1 */
+		reg_write(port, 0x12, 0x00);
+
 
 	/*Wait for HFC_READY = 0*/
 	timeout = 50;
@@ -353,9 +360,14 @@ static int miphy365x_uport_sata_start(int port,
 	if (timeout < 0)
 		pr_err("%s(): HFC_READY timeout!\n", __func__);
 
-	/*Set properly comsr definition for 30 MHz ref clock */
-	reg_write(port, 0x41, 0x1E);
-	 /*Set properly comsr definition for 30 MHz ref clock */
+	/*--------Compensation Recaliberation--------------*/
+	if (revision == 9)
+		/*Set properly comp_2mhz_ratio for 30 MHz ref clock */
+		reg_write(port, 0x41, 0xF);
+	else
+		/*Set properly comp_1mhz_ratio for 30 MHz ref clock */
+		reg_write(port, 0x41, 0x1E);
+
 	reg_write(port, 0x42, 0x33);
 	/* Force VCO current to value defined by address 0x5A
 	 * and disable PCIe100Mref bit */
@@ -363,33 +375,43 @@ static int miphy365x_uport_sata_start(int port,
 	/* Enable auto load compensation for pll_i_bias */
 	reg_write(port, 0x47, 0x2A);
 
-	/* Force restart compensation and enable auto load for
-	 * Comzc_Tx, Comzc_Rx & Comsr on macro1 */
+	/* Force restart compensation and enable auto load
+	 * for Comzc_Tx, Comzc_Rx and Comsr on macro*/
 	reg_write(port, 0x40, 0x13);
 	while ((reg_read(port, 0x40) & 0xC) != 0xC)
 		cpu_relax();
 
-	/* STOS_SemaphoreWait(MiPHY_Int);  Wait for Compensation
-	 * Completion Interrupt : Not using MiPHY Interrupt for now */
-	/* Recommended Settings for Swing & slew rate FOR SATA GEN 1 from CCI
-	 * conf gen sel = 00b to program Gen1 banked registers &
-	 * VDDT filter ON */
-	reg_write(port, 0x20, 0x10);
-	/*(Tx Swing target 500-550mV peak-to-peak diff) */
-	reg_write(port, 0x21, 0x3);
-	/*(Tx Slew target120-140 ps rising/falling time) */
-	reg_write(port, 0x22, 0x4);
+	if (revision == 9) {
+		/* Recommended Settings for Swing & slew rate
+		* or SATA GEN 2 from CCI:(c1.9)
+		* conf gen sel=0x1 to program Gen2 banked registers
+		* and VDDT filter ON
+		*/
+		reg_write(port, 0x20, 0x01);
+		/*(Tx Swing target 550-600mV peak-to-peak diff) */
+		reg_write(port, 0x21, 0x04);
+		/*(Tx Slew target 90-110 ps rising/falling time) */
+		reg_write(port, 0x22, 0x2);
+		/*RX Equalization ON1, Sigdet threshold SDTH1*/
+		reg_write(port, 0x25, 0x11);
+	} else {
+		/* Recommended Settings for Swing & slew rate
+		* for SATA GEN 1 from CCI:(c1.51)
+		* conf gen sel = 00b to program Gen1 banked registers &
+		* VDDT filter ON
+		*/
+		reg_write(port, 0x20, 0x10);
+		/*(Tx Swing target 500-550mV peak-to-peak diff) */
+		reg_write(port, 0x21, 0x3);
+		/*(Tx Slew target120-140 ps rising/falling time) */
+		reg_write(port, 0x22, 0x4);
+	}
+
 	/*Force Macro1 in partial mode & release pll cal reset */
 	reg_write(port, 0x00, 0x10);
 	udelay(100);
 	/* SSC Settings. SSC will be enabled through Link */
-	/*  pll_offset */
-	reg_write(port, 0x53, 0x00);
-	/*  pll_offset */
-	reg_write(port, 0x54, 0x00);
-	/*  pll_offset */
-	reg_write(port, 0x55, 0x00);
-	/*  SSC Ampl.=0.4%  */
+	/*  SSC Ampl.=0.4% */
 	reg_write(port, 0x56, 0x03);
 	/*  SSC Ampl.=0.4% */
 	reg_write(port, 0x57, 0x63);
@@ -398,7 +420,10 @@ static int miphy365x_uport_sata_start(int port,
 	/*  SSC Freq=31KHz   */
 	reg_write(port, 0x59, 0xF1);
 	/*SSC Settings complete*/
-	reg_write(port, 0x50, 0x8D);
+	if (revision == 9)
+		reg_write(port, 0x50, 0xCD);
+	else
+		reg_write(port, 0x50, 0x8D);
 	/*MIPHY PLL ratio */
 	reg_read(port, 0x52);
 	/*  Wait for phy_ready */
@@ -444,10 +469,13 @@ static int miphy365x_start(struct stm_miphy *miphy)
 	void (*reg_write)(int port, u8 addr, u8 data);
 	int port;
 	int rval = -ENODEV;
+	u8 version, revision;
 
 	dev = miphy->dev;
 	reg_write = dev->reg_write;
 	port = miphy->port;
+	version = miphy->miphy_version;
+	revision = miphy->miphy_revision;
 
 	switch (miphy->mode) {
 	case SATA_MODE:
@@ -456,7 +484,8 @@ static int miphy365x_start(struct stm_miphy *miphy)
 			rval = miphy365x_tap_sata_start(port, dev);
 			break;
 		case UPORT_IF:
-			rval = miphy365x_uport_sata_start(port, dev);
+			rval = miphy365x_uport_sata_start(port, version,
+							  revision, dev);
 			break;
 		default:
 			BUG();
