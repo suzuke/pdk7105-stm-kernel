@@ -169,8 +169,6 @@ static int __devexit sdhci_stm_remove(struct platform_device *pdev)
 	clk_disable(pltfm_host->clk);
 	clk_put(pltfm_host->clk);
 
-	platform_set_drvdata(pdev, NULL);
-
 	return sdhci_pltfm_unregister(pdev);
 }
 
