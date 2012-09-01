@@ -165,7 +165,7 @@ static void __init b2020_init(void)
 		printk(KERN_ERR "Failed to claim HDMI-Hotplug pad!\n");
 
 	stih415_configure_ethernet(1, &(struct stih415_ethernet_config) {
-			.mode = stih415_ethernet_mode_rgmii,
+			.interface = PHY_INTERFACE_MODE_RGMII_ID,
 			.ext_clk = 1,
 			.phy_addr = 1,
 			.phy_bus = 1,

@@ -228,13 +228,13 @@ static int __init device_init(void)
 	stxh205_configure_ethernet(&(struct stxh205_ethernet_config) {
 #if defined(CONFIG_STM_B2057_IC101_MII) || \
     defined(CONFIG_STM_B2057_JP1_B2032)
-			.mode = stxh205_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 			.ext_clk = 1,
 #elif defined(CONFIG_STM_B2057_IC101_RMII)
-			.mode = stxh205_ethernet_mode_rmii,
+			.interface = PHY_INTERFACE_MODE_RMII,
 			.ext_clk = 1,
 #elif defined(CONFIG_STM_B2057_JP1_B2035)
-			.mode = stxh205_ethernet_mode_rmii,
+			.interface = PHY_INTERFACE_MODE_RMII,
 			.ext_clk = 0,
 #else
 #error Unknown PHY configuration

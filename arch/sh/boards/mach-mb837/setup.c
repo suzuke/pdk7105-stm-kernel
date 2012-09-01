@@ -294,7 +294,7 @@ static int __init mb837_devices_init(void)
 
 #ifdef CONFIG_SH_ST_MB837_STMMAC0
 	stx7108_configure_ethernet(0, &(struct stx7108_ethernet_config) {
-			.mode = stx7108_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 			.ext_clk = 1,
 			.phy_bus = 0,
 			.phy_addr = -1,
@@ -303,7 +303,7 @@ static int __init mb837_devices_init(void)
 #endif
 #ifdef CONFIG_SH_ST_MB837_STMMAC1
 	stx7108_configure_ethernet(1, &(struct stx7108_ethernet_config) {
-			.mode = stx7108_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 			.ext_clk = 1,
 			.phy_bus = 1,
 			.phy_addr = -1,

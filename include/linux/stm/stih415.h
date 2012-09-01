@@ -11,6 +11,7 @@
 #define __LINUX_STM_STIH415_H
 
 #include <linux/device.h>
+#include <linux/phy.h>
 #include <linux/spi/spi.h>
 #include <linux/stm/platform.h>
 
@@ -77,13 +78,7 @@ void stih415_configure_asc(int asc, struct stih415_asc_config *config);
 void stih415_configure_usb(int port);
 
 struct stih415_ethernet_config {
-	enum {
-		stih415_ethernet_mode_mii,
-		stih415_ethernet_mode_gmii,
-		stih415_ethernet_mode_rgmii,
-		stih415_ethernet_mode_rmii,
-		stih415_ethernet_mode_reverse_mii
-	} mode;
+	phy_interface_t interface;
 	int ext_clk;
 	int phy_bus;
 	char *phy_bus_name;

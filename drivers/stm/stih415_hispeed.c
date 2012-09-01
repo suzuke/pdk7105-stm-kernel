@@ -747,7 +747,6 @@ void __init stih415_configure_ethernet(int port,
 	struct stih415_ethernet_config default_config;
 	struct plat_stmmacenet_data *plat_data;
 	struct stm_pad_config *pad_config;
-	int interface;
 
 	BUG_ON(port < 0 || port >= ARRAY_SIZE(stih415_ethernet_devices));
 	BUG_ON(configured[port]++);
@@ -757,16 +756,15 @@ void __init stih415_configure_ethernet(int port,
 
 	plat_data = &stih415_ethernet_platform_data[port];
 
-	switch (config->mode) {
-	case stih415_ethernet_mode_mii:
+	switch (config->interface) {
+	case PHY_INTERFACE_MODE_MII:
 		pad_config = &stih415_ethernet_mii_pad_configs[port];
 		if (config->ext_clk)
 			stm_pad_set_pio_ignored(pad_config, "PHYCLK");
 		else
 			stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
-		interface = PHY_INTERFACE_MODE_MII;
 		break;
-	case stih415_ethernet_mode_gmii:
+	case PHY_INTERFACE_MODE_GMII:
 		pad_config = &stih415_ethernet_gmii_pad_configs[port];
 		stm_pad_set_pio_out(pad_config, "PHYCLK", 4);
 		if (port == 0)
@@ -777,9 +775,11 @@ void __init stih415_configure_ethernet(int port,
 					stih415_ethernet_gmii1_speed;
 
 		plat_data->bsp_priv = config->txclk_select;
-		interface = PHY_INTERFACE_MODE_GMII;
 		break;
-	case stih415_ethernet_mode_rgmii:
+	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_ID:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+	case PHY_INTERFACE_MODE_RGMII_TXID:
 		/* This mode is similar to GMII (GTX) except the data
 		 * buses are reduced down to 4 bits and the 2 error
 		 * signals are removed. The data rate is maintained by
@@ -798,9 +798,8 @@ void __init stih415_configure_ethernet(int port,
 
 		/* Configure so that stmmac gets clock */
 		plat_data->bsp_priv = config->txclk_select;
-		interface = PHY_INTERFACE_MODE_RGMII;
 		break;
-	case stih415_ethernet_mode_rmii:  {
+	case PHY_INTERFACE_MODE_RMII: {
 		struct sysconf_field *sc;
 		pad_config = &stih415_ethernet_rmii_pad_configs[port];
 
@@ -824,15 +823,13 @@ void __init stih415_configure_ethernet(int port,
 			/* SEL_INTERNAL_NO_EXT_PHYCLK */
 			sysconf_write(sc, 1);
 		}
-		interface = PHY_INTERFACE_MODE_RMII;
 	} break;
-	case stih415_ethernet_mode_reverse_mii:
+	case PHY_INTERFACE_MODE_REV_MII:
 		pad_config = &stih415_ethernet_reverse_mii_pad_configs[port];
 		if (config->ext_clk)
 			stm_pad_set_pio_ignored(pad_config, "PHYCLK");
 		else
 			stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
-		interface = PHY_INTERFACE_MODE_MII;
 		break;
 	default:
 		BUG();
@@ -840,7 +837,7 @@ void __init stih415_configure_ethernet(int port,
 	}
 
 	plat_data->custom_cfg = (void *) pad_config;
-	plat_data->interface = interface;
+	plat_data->interface = config->interface;
 	plat_data->bus_id = config->phy_bus;
 	plat_data->phy_bus_name = config->phy_bus_name;
 	plat_data->phy_addr = config->phy_addr;

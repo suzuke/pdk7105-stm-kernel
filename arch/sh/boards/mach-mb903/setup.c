@@ -390,14 +390,14 @@ static int __init mb903_device_init(void)
 	stx7108_configure_sata(1, &(struct stx7108_sata_config) { });
 	BUG_ON(fixed_phy_add(PHY_POLL, 1, &stmmac0_fixed_phy_status));
 	stx7108_configure_ethernet(0, &(struct stx7108_ethernet_config) {
-			.mode = stx7108_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 			.ext_clk = 1,
 			.phy_bus = 0,
 			.phy_addr = 1,
 		});
 
 	stx7108_configure_ethernet(1, &(struct stx7108_ethernet_config) {
-			.mode = stx7108_ethernet_mode_gmii_gtx,
+			.interface = PHY_INTERFACE_MODE_GMII,
 			.ext_clk = 0,
 			.phy_bus = 1,
 			.txclk_select = mb903_mi11_txclk_select,

@@ -11,6 +11,7 @@
 #define __LINUX_STM_STXH205_H
 
 #include <linux/device.h>
+#include <linux/phy.h>
 #include <linux/stm/platform.h>
 
 #define SYSCONFG_GROUP(x) \
@@ -128,11 +129,7 @@ struct stxh205_pwm_config {
 void stxh205_configure_pwm(struct stxh205_pwm_config *config);
 
 struct stxh205_ethernet_config {
-	enum {
-		stxh205_ethernet_mode_mii,
-		stxh205_ethernet_mode_rmii,
-		stxh205_ethernet_mode_reverse_mii
-	} mode;
+	phy_interface_t interface;
 	int no_txer;
 	int ext_clk;
 	int phy_bus;

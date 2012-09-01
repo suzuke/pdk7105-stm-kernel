@@ -636,7 +636,6 @@ void __init stx7108_configure_ethernet(int port,
 	struct plat_stmmacenet_data *plat_data;
 	struct stx7108_stmmac_priv *priv_data;
 	struct stm_pad_config *pad_config;
-	int interface;
 
 	BUG_ON(port < 0 || port >= ARRAY_SIZE(stx7108_ethernet_devices));
 	BUG_ON(configured[port]++);
@@ -647,28 +646,24 @@ void __init stx7108_configure_ethernet(int port,
 	plat_data = &stx7108_ethernet_platform_data[port];
 	priv_data = &stx7108_stmmac_priv_data[port];
 
-	switch (config->mode) {
-	case stx7108_ethernet_mode_mii:
+	switch (config->interface) {
+	case PHY_INTERFACE_MODE_MII:
 		pad_config = &stx7108_ethernet_mii_pad_configs[port];
 		if (config->ext_clk)
 			stm_pad_set_pio_ignored(pad_config, "PHYCLK");
 		else
 			stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
-		interface = PHY_INTERFACE_MODE_MII;
 		break;
-	case stx7108_ethernet_mode_gmii:
-		pad_config = &stx7108_ethernet_gmii_pad_configs[port];
-		stm_pad_set_pio_ignored(pad_config, "PHYCLK");
-		interface = PHY_INTERFACE_MODE_GMII;
-		break;
-	case stx7108_ethernet_mode_gmii_gtx:
+	case PHY_INTERFACE_MODE_GMII:
 		pad_config = &stx7108_ethernet_gmii_pad_configs[port];
 		stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
 		plat_data->fix_mac_speed = stx7108_ethernet_gtx_speed;
 		priv_data->txclk_select = config->txclk_select;
-		interface = PHY_INTERFACE_MODE_GMII;
 		break;
-	case stx7108_ethernet_mode_rgmii_gtx:
+	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_ID:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+	case PHY_INTERFACE_MODE_RGMII_TXID:
 		/* This mode is similar to GMII (GTX) except the data
 		 * buses are reduced down to 4 bits and the 2 error
 		 * signals are removed. The data rate is maintained by
@@ -679,9 +674,8 @@ void __init stx7108_configure_ethernet(int port,
 		stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
 		plat_data->fix_mac_speed = stx7108_ethernet_rgmii_gtx_speed;
 		priv_data->txclk_select = config->txclk_select;
-		interface = PHY_INTERFACE_MODE_RGMII;
 		break;
-	case stx7108_ethernet_mode_rmii: /* GMAC1 only tested */
+	case PHY_INTERFACE_MODE_RMII: /* GMAC1 only tested */
 		pad_config = &stx7108_ethernet_rmii_pad_configs[port];
 		if (config->ext_clk)
 			stm_pad_set_pio_in(pad_config, "PHYCLK", 2 + port);
@@ -703,15 +697,13 @@ void __init stx7108_configure_ethernet(int port,
 		else
 			priv_data->mac_speed_sel = sysconf_claim(SYS_CFG_BANK4,
 					23, 1, 1, "stmmac");
-		interface = PHY_INTERFACE_MODE_RMII;
 		break;
-	case stx7108_ethernet_mode_reverse_mii:
+	case PHY_INTERFACE_MODE_REV_MII:
 		pad_config = &stx7108_ethernet_reverse_mii_pad_configs[port];
 		if (config->ext_clk)
 			stm_pad_set_pio_ignored(pad_config, "PHYCLK");
 		else
 			stm_pad_set_pio_out(pad_config, "PHYCLK", 1 + port);
-		interface = PHY_INTERFACE_MODE_MII;
 		break;
 	default:
 		BUG();
@@ -719,7 +711,7 @@ void __init stx7108_configure_ethernet(int port,
 	}
 
 	plat_data->custom_cfg = (void *) pad_config;
-	plat_data->interface = interface;
+	plat_data->interface = config->interface;
 	plat_data->bus_id = config->phy_bus;
 	plat_data->phy_addr = config->phy_addr;
 	plat_data->mdio_bus_data = config->mdio_bus_data;

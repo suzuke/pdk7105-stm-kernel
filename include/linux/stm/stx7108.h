@@ -14,6 +14,7 @@
 #define __LINUX_STM_STX7108_H
 
 #include <linux/device.h>
+#include <linux/phy.h>
 #include <linux/spi/spi.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/pio-control.h>
@@ -111,14 +112,7 @@ void stx7108_configure_pwm(struct stx7108_pwm_config *config);
 
 
 struct stx7108_ethernet_config {
-	enum {
-		stx7108_ethernet_mode_mii,
-		stx7108_ethernet_mode_gmii,
-		stx7108_ethernet_mode_gmii_gtx,
-		stx7108_ethernet_mode_rmii,
-		stx7108_ethernet_mode_rgmii_gtx,
-		stx7108_ethernet_mode_reverse_mii
-	} mode;
+	phy_interface_t interface;
 	int ext_clk;
 	int phy_bus;
 	int phy_addr;

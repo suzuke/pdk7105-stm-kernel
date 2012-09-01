@@ -298,7 +298,7 @@ static void __init b2000_init(void)
 #if defined(CONFIG_MACH_STM_B2000_CN22_B2035) || defined(CONFIG_MACH_STM_B2000_CN22_B2032)
 	stih415_configure_ethernet(0, &(struct stih415_ethernet_config) {
 #ifdef CONFIG_MACH_STM_B2000_CN22_B2035
-			.mode = stih415_ethernet_mode_rmii,
+			.interface = PHY_INTERFACE_MODE_RMII,
 			.ext_clk = 0,
 			.phy_addr = 9,
 #endif /* CONFIG_MACH_STM_B2000_CN22_B2035 */
@@ -308,12 +308,12 @@ static void __init b2000_init(void)
 #if defined(CONFIG_MACH_STM_B2000_CN22_B2032_GIGA_MODE)
 			.txclk_select = b2000_gmac0_txclk_select,
 #ifdef CONFIG_MACH_STM_B2000_CN22_B2032_GMII_MODE
-			.mode = stih415_ethernet_mode_gmii,
+			.interface = PHY_INTERFACE_MODE_GMII,
 #else
-			.mode = stih415_ethernet_mode_rgmii,
+			.interface = PHY_INTERFACE_MODE_RGMII_ID,
 #endif /* CONFIG_MACH_STM_B2000_CN22_B2032_GMII_MODE */
 #else
-			.mode = stih415_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 #endif /* CONFIG_MACH_STM_B2000_CN22_B2032_GIGA_MODE */
 			.ext_clk = 1,
 			.phy_addr = 1,
@@ -328,7 +328,7 @@ static void __init b2000_init(void)
 #if !defined(CONFIG_MACH_STM_B2000_CN23_NONE)
 	stih415_configure_ethernet(1, &(struct stih415_ethernet_config) {
 #ifdef CONFIG_MACH_STM_B2000_CN23_B2035
-			.mode = stih415_ethernet_mode_rmii,
+			.interface = PHY_INTERFACE_MODE_RMII,
 			.ext_clk = 0,
 			.phy_addr = 9,
 #endif /* CONFIG_MACH_STM_B2000_CN23_B2035 */
@@ -339,12 +339,12 @@ static void __init b2000_init(void)
 #if defined(CONFIG_MACH_STM_B2000_CN23_B2032_GIGA_MODE)
 			.txclk_select = b2000_gmac1_txclk_select,
 #ifdef CONFIG_MACH_STM_B2000_CN23_B2032_GMII_MODE
-			.mode = stih415_ethernet_mode_gmii,
+			.interface = PHY_INTERFACE_MODE_GMII,
 #else
-			.mode = stih415_ethernet_mode_rgmii,
+			.interface = PHY_INTERFACE_MODE_RGMII_ID,
 #endif /* CONFIG_MACH_STM_B2000_CN23_B2032_GMII_MODE */
 #else
-			.mode = stih415_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 #endif /* CONFIG_MACH_STM_B2000_CN23_B2032 */
 			.ext_clk = 1,
 			.phy_addr = 1,

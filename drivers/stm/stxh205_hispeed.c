@@ -305,7 +305,6 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 	struct stxh205_ethernet_config default_config;
 	struct plat_stmmacenet_data *plat_data;
 	struct stm_pad_config *pad_config;
-	int interface;
 
 	BUG_ON(configured++);
 
@@ -314,8 +313,8 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 
 	plat_data = &stxh205_ethernet_platform_data;
 
-	switch (config->mode) {
-	case stxh205_ethernet_mode_mii:
+	switch (config->interface) {
+	case PHY_INTERFACE_MODE_MII:
 		pad_config = &stxh205_ethernet_mii_pad_config;
 		if (config->ext_clk)
 			stm_pad_set_pio_ignored(pad_config, "PHYCLK");
@@ -323,9 +322,8 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 			stm_pad_set_pio_out(pad_config, "PHYCLK", 1);
 		if (config->no_txer)
 			stm_pad_set_pio_ignored(pad_config, "TXER");
-		interface = PHY_INTERFACE_MODE_MII;
 		break;
-	case stxh205_ethernet_mode_rmii:
+	case PHY_INTERFACE_MODE_RMII:
 		pad_config = &stxh205_ethernet_rmii_pad_config;
 
 		if (config->ext_clk) {
@@ -337,9 +335,8 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 			/* ETH_SEL_INTERNAL_NOTEXT_PHYCLK */
 			pad_config->sysconfs[4].value = 1;
 		}
-		interface = PHY_INTERFACE_MODE_RMII;
 		break;
-	case stxh205_ethernet_mode_reverse_mii:
+	case PHY_INTERFACE_MODE_REV_MII:
 		pad_config = &stxh205_ethernet_reverse_mii_pad_config;
 		if (config->ext_clk)
 			stm_pad_set_pio_ignored(pad_config, "PHYCLK");
@@ -347,7 +344,6 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 			stm_pad_set_pio_out(pad_config, "PHYCLK", 1);
 		if (config->no_txer)
 			stm_pad_set_pio_ignored(pad_config, "TXER");
-		interface = PHY_INTERFACE_MODE_MII;
 		break;
 	default:
 		BUG();
@@ -355,7 +351,7 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 	}
 
 	plat_data->custom_cfg = (void *) pad_config;
-	plat_data->interface = interface;
+	plat_data->interface = config->interface;
 	plat_data->bus_id = config->phy_bus;
 	plat_data->phy_addr = config->phy_addr;
 	plat_data->mdio_bus_data = config->mdio_bus_data;

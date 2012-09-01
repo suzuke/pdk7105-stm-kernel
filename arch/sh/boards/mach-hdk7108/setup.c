@@ -541,7 +541,7 @@ static int __init device_init(void)
 
 #ifdef CONFIG_SH_ST_HDK7108_STMMAC0
 	stx7108_configure_ethernet(0, &(struct stx7108_ethernet_config) {
-			.mode = stx7108_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 			.ext_clk = 1,
 			.phy_bus = 0,
 			.phy_addr = -1,
@@ -570,9 +570,9 @@ static int __init device_init(void)
 
 	stx7108_configure_ethernet(1, &(struct stx7108_ethernet_config) {
 #ifndef CONFIG_SH_ST_HDK7108_GMAC_RGMII_MODE
-			.mode  = stx7108_ethernet_mode_gmii_gtx,
+			.interface = PHY_INTERFACE_MODE_GMII,
 #else
-			.mode  = stx7108_ethernet_mode_rgmii_gtx,
+			.interface = PHY_INTERFACE_MODE_RGMII_ID,
 #endif /* CONFIG_SH_ST_HDK7108_GMAC_RGMII_MODE */
 			.ext_clk  = 0,
 			.phy_bus = 1,
