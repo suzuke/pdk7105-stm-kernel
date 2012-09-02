@@ -21,6 +21,7 @@
  * used if required.
  */
 #if defined(CONFIG_SUPERH)
+#include <asm/irq-ilc.h>
 #define STIH415_IRQ(irq) ILC_IRQ(irq)
 #elif defined(CONFIG_ARM)
 #define STIH415_IRQ(irq) ((irq)+32)

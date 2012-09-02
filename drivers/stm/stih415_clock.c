@@ -20,8 +20,8 @@ int __init plat_clk_alias_init(void)
 #endif
 	/* comms clk */
 	clk_add_alias("comms_clk", NULL, "CLKS_ICN_REG_0", NULL);
-	/* module clk ?!?!?! */
-	clk_add_alias("module_clk", NULL, "CLKS_ICN_IF_0", NULL);
+	/* sh_tmu.* tmu_fck clocks */
+	clk_add_alias("tmu_fck", NULL, "CLKM_ICN_REG_10", NULL);
 	/* EMI clk */
 	clk_add_alias("emi_clk", NULL, "CLKS_EMISS", NULL);
 	/* SBC clk */

@@ -20,6 +20,7 @@
 /* set this to 65 to allow 64 (INTEVT 0xa00) to demux */
 #define ILC_FIRST_IRQ	65
 #define ILC_NR_IRQS	224
+#define ILC_IRQ(x)	(ILC_FIRST_IRQ + (x))
 #elif defined(CONFIG_CPU_SUBTYPE_STXH205)
 #define ILC_FIRST_IRQ	176
 #define ILC_NR_IRQS	224 /* or is it 300? */
