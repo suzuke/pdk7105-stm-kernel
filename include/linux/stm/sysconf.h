@@ -73,6 +73,6 @@ void sysconf_early_init(struct platform_device *pdevs, int pdevs_num);
  * @group: register group (ie. SYS_CFG, SYS_STA); SOC-specific
  * @num: register number
  */
-void sysconf_reg_name(char *name, int size, int group, int num);
+int sysconf_reg_name(char *name, int size, int group, int num);
 
 #endif

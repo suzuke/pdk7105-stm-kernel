@@ -312,6 +312,7 @@ struct stm_plat_sata_data {
 
 struct stm_plat_pio_data {
 	void __iomem *regs;
+	int (*pin_name)(char *name, int size, int port, int pin);
 };
 
 struct stm_plat_pio_irqmux_data {
@@ -334,7 +335,7 @@ struct stm_plat_sysconf_group {
 	int group;
 	unsigned long offset;
 	const char *name;
-	void (*reg_name)(char *name, int size, int group, int num);
+	int (*reg_name)(char *name, int size, int group, int num);
 };
 
 struct stm_plat_sysconf_data {

@@ -401,6 +401,13 @@ arch_initcall(stih415_add_asc);
 
 /* PIO ports resources ---------------------------------------------------- */
 
+static int stih415_pio_pin_name(char *name, int size, int port, int pin)
+{
+	if (port >= 19)
+		port += 100-19;
+	return snprintf(name, size, "PIO%d.%d", port, pin);
+}
+
 #define STIH415_PIO_ENTRY(_num, _base)					\
 	[_num] = {							\
 		.name = "stm-gpio",					\
@@ -411,6 +418,7 @@ arch_initcall(stih415_add_asc);
 		},							\
 		.dev.platform_data = &(struct stm_plat_pio_data) {	\
 			.regs = (void __iomem *)IO_ADDRESS(_base),	\
+			.pin_name = stih415_pio_pin_name,		\
 		},							\
 	}
 
@@ -529,8 +537,16 @@ static int stih415_pio_config(unsigned gpio,
 		ARRAY_SIZE(stih415_pio_devices), 6);
 }
 
+static void stih415_pio_report(unsigned gpio, char *buf, int len)
+{
+	stm_pio_control_report_all(gpio, stih415_pio_controls,
+		&stih415_pio_retime_offset,
+		buf, len);
+}
+
 static const struct stm_pad_ops stih415_pad_ops = {
 	.gpio_config = stih415_pio_config,
+	.gpio_report = stih415_pio_report,
 };
 
 static void __init stih415_pio_init(void)
@@ -887,6 +903,13 @@ static struct platform_device stih415_sas_fdma_xbar_device = {
 
 /* sysconf resources ------------------------------------------------------ */
 
+static int stih415_sysconf_reg_name(char *name, int size, int group, int num)
+{
+	if (group >= 2)
+		group++;
+	return snprintf(name, size, "SYSCONF%d", (group * 100) + num);
+}
+
 static struct platform_device stih415_sysconf_devices[] = {
 	/* SAS */
 	{
@@ -907,6 +930,7 @@ static struct platform_device stih415_sysconf_devices[] = {
 					.group = 0,
 					.offset = 0,
 					.name = "SYSCFG_SBC",
+					.reg_name = stih415_sysconf_reg_name,
 				}
 			},
 		}
@@ -928,6 +952,7 @@ static struct platform_device stih415_sysconf_devices[] = {
 					.group = 1,
 					.offset = 0,
 					.name = "SYSCFG_FRONT",
+					.reg_name = stih415_sysconf_reg_name,
 				}
 			},
 		}
@@ -949,6 +974,7 @@ static struct platform_device stih415_sysconf_devices[] = {
 					.group = 2,
 					.offset = 0,
 					.name = "SYSCFG_REAR",
+					.reg_name = stih415_sysconf_reg_name,
 				}
 			},
 		}
@@ -974,6 +1000,7 @@ static struct platform_device stih415_sysconf_devices[] = {
 					.group = 3,
 					.offset = 0,
 					.name = "SYSCFG_LEFT",
+					.reg_name = stih415_sysconf_reg_name,
 				}
 			},
 		}
@@ -995,6 +1022,7 @@ static struct platform_device stih415_sysconf_devices[] = {
 					.group = 4,
 					.offset = 0,
 					.name = "SYSCFG_RIGHT",
+					.reg_name = stih415_sysconf_reg_name,
 				}
 			},
 		}
@@ -1016,6 +1044,7 @@ static struct platform_device stih415_sysconf_devices[] = {
 					.group = 5,
 					.offset = 0,
 					.name = "SYSCFG_SYSTEM",
+					.reg_name = stih415_sysconf_reg_name,
 				}
 			},
 		}

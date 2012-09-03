@@ -164,6 +164,52 @@ static void stm_pio_control_config_retime(
 	sysconf_write(regs[1], values[1]);
 }
 
+static int stm_pio_control_report_direction(struct stm_pio_control *pio_control,
+		int pin, char *buf, int len)
+{
+	unsigned long oe_value, pu_value, od_value;
+
+	oe_value = sysconf_read(pio_control->oe);
+	pu_value = sysconf_read(pio_control->pu);
+	od_value = sysconf_read(pio_control->od);
+
+	return snprintf(buf, len, "oe %ld, pu %ld, od %ld",
+		(oe_value >> pin) & 1,
+		(pu_value >> pin) & 1,
+		(od_value >> pin) & 1);
+}
+
+static int stm_pio_control_report_retime_packed(
+		struct stm_pio_control *pio_control,
+		const struct stm_pio_control_retime_offset *offset,
+		int pin, char *buf, int len)
+{
+	unsigned long rt_value[2];
+	unsigned long rt_reduced;
+	int i, j;
+
+	rt_value[0] = sysconf_read(pio_control->retiming[0]);
+	rt_value[1] = sysconf_read(pio_control->retiming[1]);
+
+	rt_reduced = 0;
+	for (i = 0; i < 2; i++) {
+		for (j = 0; j < 4; j++) {
+			if (rt_value[i] & (1<<((8*j)+pin)))
+				rt_reduced |= 1 << ((i*4)+j);
+		}
+	}
+
+	return snprintf(buf, len,
+		 "rt %ld, c1nc0 %ld, cnd %ld, de %ld, ic %ld, dly %ld%ld",
+		 (rt_reduced >> offset->retime_offset) & 1,
+		 (rt_reduced >> offset->clk1notclk0_offset) & 1,
+		 (rt_reduced >> offset->clknotdata_offset) & 1,
+		 (rt_reduced >> offset->double_edge_offset) & 1,
+		 (rt_reduced >> offset->invertclk_offset) & 1,
+		 (rt_reduced >> offset->delay_msb_offset) & 1,
+		 (rt_reduced >> offset->delay_lsb_offset) & 1);
+}
+
 void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 		struct stm_pio_control *pio_control, int num)
 {
@@ -267,4 +313,39 @@ int stm_pio_control_config_all(unsigned gpio,
 	}
 
 	return 0;
+}
+
+void stm_pio_control_report_all(int gpio,
+		struct stm_pio_control *pio_controls,
+		const struct stm_pio_control_retime_offset *retime_offset,
+		char *buf, int len)
+{
+	int port = stm_gpio_port(gpio);
+	int pin = stm_gpio_pin(gpio);
+	struct stm_pio_control *pio_control = &pio_controls[port];
+	const struct stm_pio_control_config *pio_control_config = pio_control->config;
+	unsigned long alt_value;
+	unsigned long function;
+	int off;
+
+	alt_value = sysconf_read(pio_control->alt);
+	function = (alt_value >> (pin * 4)) & 0xf;
+	off = snprintf(buf, len, "alt fn %ld - ", function);
+
+	if (function == 0)
+		off += snprintf(buf+off, len-off, "%s",
+			stm_gpio_get_direction(gpio));
+	else
+		off += stm_pio_control_report_direction(pio_control,
+			pin, buf+off, len-off);
+
+	switch (pio_control->config->retime_style) {
+	case stm_pio_control_retime_style_none:
+		break;
+	case stm_pio_control_retime_style_packed:
+		off += snprintf(buf+off, len-off, " - ");
+		off += stm_pio_control_report_retime_packed(pio_control,
+			retime_offset, pin, buf+off, len-off);
+		break;
+	}
 }

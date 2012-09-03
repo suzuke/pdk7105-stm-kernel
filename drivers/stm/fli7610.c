@@ -235,6 +235,13 @@ arch_initcall(fli7610_add_asc);
 
 /* PIO ports resources ---------------------------------------------------- */
 
+static int fli7610_pio_pin_name(char *name, int size, int port, int pin)
+{
+	if (port >= FLI7610_PIO(100))
+		port += 100-FLI7610_PIO(100);
+	return snprintf(name, size, "PIO%d.%d", port, pin);
+}
+
 #define FLI7610_PIO_ENTRY(_num, _base)					\
 	[_num] = {							\
 		.name = "stm-gpio",					\
@@ -245,6 +252,7 @@ arch_initcall(fli7610_add_asc);
 		},							\
 		.dev.platform_data = &(struct stm_plat_pio_data) {	\
 			.regs = (void __iomem *)IO_ADDRESS(_base),	\
+			.pin_name = fli7610_pio_pin_name,		\
 		},							\
 	}
 
@@ -448,8 +456,16 @@ static int fli7610_pio_config(unsigned gpio,
 		ARRAY_SIZE(fli7610_pio_controls), 6);
 }
 
+static void fli7610_pio_report(unsigned gpio, char *buf, int len)
+{
+	stm_pio_control_report_all(gpio, fli7610_pio_controls,
+		&fli7610_pio_retime_offset,
+		buf, len);
+}
+
 static const struct stm_pad_ops fli7610_pad_ops = {
 	.gpio_config = fli7610_pio_config,
+	.gpio_report = fli7610_pio_report,
 };
 
 static void __init fli7610_pio_init(void)
@@ -843,6 +859,20 @@ void __init fli7610_configure_mmc(int emmc)
  * */
 /* sysconf resources ------------------------------------------------------ */
 
+static int fli7610_sysconf_reg_name_tae(char *name, int size,
+					int group, int num)
+{
+	int start = (group == 4) ? 450 : (group * 100);
+
+	return snprintf(name, size, "TAE_SYSCONF%d", start + num);
+}
+
+static int fli7610_sysconf_reg_name_mpe(char *name, int size,
+					int group, int num)
+{
+	return snprintf(name, size, "MPE_SYSCONF%d", ((group-1) * 100) + num);
+}
+
 static struct platform_device fli7610_sysconf_devices[] = {
 	/* TAE */
 	{
@@ -863,6 +893,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 0,
 					.offset = 0,
 					.name = "SYSCFG_TAE_BANK0",
+					.reg_name =
+						fli7610_sysconf_reg_name_tae,
 				}
 			},
 		}
@@ -885,6 +917,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 1,
 					.offset = 0,
 					.name = "SYSCFG_TAE_BANK1",
+					.reg_name =
+						fli7610_sysconf_reg_name_tae,
 				}
 			},
 		}
@@ -907,6 +941,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 2,
 					.offset = 0,
 					.name = "SYSCFG_TAE_BANK2",
+					.reg_name =
+						fli7610_sysconf_reg_name_tae,
 				}
 			},
 		}
@@ -929,6 +965,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 3,
 					.offset = 0,
 					.name = "SYSCFG_TAE_BANK3",
+					.reg_name =
+						fli7610_sysconf_reg_name_tae,
 				}
 			},
 		}
@@ -952,6 +990,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 4,
 					.offset = 0,
 					.name = "SYSCFG_TAE_BANK4",
+					.reg_name =
+						fli7610_sysconf_reg_name_tae,
 				}
 			},
 		}
@@ -979,6 +1019,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 5,
 					.offset = 0,
 					.name = "SYSCFG_MPE_LEFT",
+					.reg_name =
+						fli7610_sysconf_reg_name_mpe,
 				}
 			},
 		}
@@ -1002,6 +1044,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 6,
 					.offset = 0,
 					.name = "SYSCFG_MPE_RIGHT",
+					.reg_name =
+						fli7610_sysconf_reg_name_mpe,
 				}
 			},
 		}
@@ -1025,6 +1069,8 @@ static struct platform_device fli7610_sysconf_devices[] = {
 					.group = 7,
 					.offset = 0,
 					.name = "SYSCFG_MPE_SYSTEM",
+					.reg_name =
+						fli7610_sysconf_reg_name_mpe,
 				}
 			},
 		}

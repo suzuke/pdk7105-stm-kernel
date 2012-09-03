@@ -611,116 +611,69 @@ EXPORT_SYMBOL(stpio_set_irq_type);
 
 #endif /* CONFIG_STPIO */
 
-
-
 #ifdef CONFIG_DEBUG_FS
-static void stm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
+
+const char *stm_gpio_get_direction(int gpio)
 {
-	struct stm_gpio_port *port = to_stm_gpio_port(chip);
-	int port_no = chip->base / STM_GPIO_PINS_PER_PORT;
-	int pin_no;
+	int port_no = stm_gpio_port(gpio);
+	int pin_no = stm_gpio_pin(gpio);
+	struct stm_gpio_port *port = &stm_gpio_ports[port_no];
+	const char *direction;
 
-	for (pin_no = 0; pin_no < STM_GPIO_PINS_PER_PORT; pin_no++) {
-		unsigned gpio = stm_gpio(port_no, pin_no);
-		const char *owner, *direction;
-
-		seq_printf(s, " %-3d: PIO%d.%d: ", gpio, port_no, pin_no);
-
-		switch (get__PIO_PCx(port->base, pin_no)) {
-		case value__PIO_PCx__INPUT_WEAK_PULL_UP():
-			direction = "input (weak pull up)";
-			break;
-		case value__PIO_PCx__BIDIR_OPEN_DRAIN():
-		case value__PIO_PCx__BIDIR_OPEN_DRAIN__alt():
-			direction = "bidirectional (open drain)";
-			break;
-		case value__PIO_PCx__OUTPUT_PUSH_PULL():
-			direction = "output (push-pull)";
-			break;
-		case value__PIO_PCx__INPUT_HIGH_IMPEDANCE():
-		case value__PIO_PCx__INPUT_HIGH_IMPEDANCE__alt():
-			direction = "input (high impedance)";
-			break;
-		case value__PIO_PCx__ALTERNATIVE_OUTPUT_PUSH_PULL():
-			direction = "alternative function output "
-					"(push-pull)";
-			break;
-		case value__PIO_PCx__ALTERNATIVE_BIDIR_OPEN_DRAIN():
-			direction = "alternative function bidirectional "
-					"(open drain)";
-			break;
-		default:
-			/* Should never get here... */
-			__WARN();
-			direction = "unknown configuration";
-			break;
-		}
-
-		seq_printf(s, "%s, ", direction);
-
-		owner = gpiochip_is_requested(chip, pin_no);
-		if (owner) {
-			unsigned irq = gpio_to_irq(gpio);
-			struct irq_desc	*desc = irq_to_desc(irq);
-			struct irq_data *data = irq_get_irq_data(irq);
-
-			seq_printf(s, "allocated by GPIO to '%s'", owner);
-
-			/* This races with request_irq(), set_irq_type(),
-			 * and set_irq_wake() ... but those are "rare".
-			 *
-			 * More significantly, trigger type flags aren't
-			 * currently maintained by genirq. */
-			if (desc->action) {
-				char *trigger;
-
-				switch (irqd_get_trigger_type(data)) {
-				case IRQ_TYPE_NONE:
-					trigger = "default";
-					break;
-				case IRQ_TYPE_EDGE_FALLING:
-					trigger = "edge-falling";
-					break;
-				case IRQ_TYPE_EDGE_RISING:
-					trigger = "edge-rising";
-					break;
-				case IRQ_TYPE_EDGE_BOTH:
-					trigger = "edge-both";
-					break;
-				case IRQ_TYPE_LEVEL_HIGH:
-					trigger = "level-high";
-					break;
-				case IRQ_TYPE_LEVEL_LOW:
-					trigger = "level-low";
-					break;
-				default:
-					__WARN();
-					trigger = "unknown";
-					break;
-				}
-
-				seq_printf(s, " and IRQ %d (%s trigger%s)",
-					irq, trigger,
-					irqd_is_wakeup_set(data) ? " wakeup"
-								 : "");
-			}
-
-			seq_printf(s, "\n");
-		} else {
-			owner = stm_pad_get_gpio_owner(stm_gpio(port_no,
-						pin_no));
-			if (owner) {
-				seq_printf(s, "allocated by pad manager "
-						"to '%s'\n", owner);
-			} else {
-				seq_printf(s, "unused\n");
-			}
-		}
+	switch (get__PIO_PCx(port->base, pin_no)) {
+	case value__PIO_PCx__INPUT_WEAK_PULL_UP():
+		direction = "input (weak pull up)";
+		break;
+	case value__PIO_PCx__BIDIR_OPEN_DRAIN():
+	case value__PIO_PCx__BIDIR_OPEN_DRAIN__alt():
+		direction = "bidirectional (open drain)";
+		break;
+	case value__PIO_PCx__OUTPUT_PUSH_PULL():
+		direction = "output (push-pull)";
+		break;
+	case value__PIO_PCx__INPUT_HIGH_IMPEDANCE():
+	case value__PIO_PCx__INPUT_HIGH_IMPEDANCE__alt():
+		direction = "input (high impedance)";
+		break;
+	case value__PIO_PCx__ALTERNATIVE_OUTPUT_PUSH_PULL():
+		direction = "alternative function output "
+			"(push-pull)";
+		break;
+	case value__PIO_PCx__ALTERNATIVE_BIDIR_OPEN_DRAIN():
+		direction = "alternative function bidirectional "
+			"(open drain)";
+		break;
+	default:
+		/* Should never get here... */
+		__WARN();
+		direction = "unknown configuration";
+		break;
 	}
+
+	return direction;
 }
-#endif
 
+int stm_gpio_get_name(int gpio, char *buf, int len)
+{
+	int port_no = stm_gpio_port(gpio);
+	int pin_no = stm_gpio_pin(gpio);
+	struct stm_gpio_port *port = &stm_gpio_ports[port_no];
+	int (*pin_name)(char *name, int size, int port, int pin);
 
+	pin_name = NULL;
+	if (port->pdev) {
+		struct stm_plat_pio_data *plat_data;
+		plat_data = dev_get_platdata(&port->pdev->dev);
+		pin_name = plat_data->pin_name;
+	}
+
+	if (pin_name)
+		return pin_name(buf, len, port_no, pin_no);
+	else
+		return snprintf(buf, len, "PIO%d.%d", port_no, pin_no);
+}
+
+#endif /* CONFIG_DEBUG_FS */
 
 /*** Early initialization ***/
 
@@ -770,9 +723,6 @@ void __init stm_gpio_early_init(struct platform_device pdevs[], int num,
 		port->gpio_chip.direction_input = stm_gpio_direction_input;
 		port->gpio_chip.direction_output = stm_gpio_direction_output;
 		port->gpio_chip.to_irq = stm_gpio_to_irq;
-#ifdef CONFIG_DEBUG_FS
-		port->gpio_chip.dbg_show = stm_gpio_dbg_show;
-#endif
 		port->gpio_chip.base = port_no * STM_GPIO_PINS_PER_PORT;
 		port->gpio_chip.ngpio = STM_GPIO_PINS_PER_PORT;
 

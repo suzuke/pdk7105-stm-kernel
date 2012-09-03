@@ -41,7 +41,7 @@ struct sysconf_field {
 struct sysconf_group {
 	void __iomem *base;
 	const char *name;
-	void (*reg_name)(char *name, int size, int group, int num);
+	int (*reg_name)(char *name, int size, int group, int num);
 	struct sysconf_block *block;
 };
 
@@ -272,14 +272,14 @@ unsigned long sysconf_read(struct sysconf_field *field)
 }
 EXPORT_SYMBOL(sysconf_read);
 
-void sysconf_reg_name(char *name, int size, int group, int num)
+int sysconf_reg_name(char *name, int size, int group, int num)
 {
 	BUG_ON(group < 0 || group >= sysconf_groups_num);
 
 	if (sysconf_groups[group].reg_name)
-		sysconf_groups[group].reg_name(name, size, group, num);
+		return sysconf_groups[group].reg_name(name, size, group, num);
 	else
-		snprintf(name, size, "%s%d", sysconf_groups[group].name, num);
+		return snprintf(name, size, "%s%d", sysconf_groups[group].name, num);
 }
 EXPORT_SYMBOL(sysconf_reg_name);
 

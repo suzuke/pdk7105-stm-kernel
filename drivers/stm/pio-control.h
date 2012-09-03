@@ -63,4 +63,9 @@ int stm_pio_control_config_all(unsigned gpio,
 		const struct stm_pio_control_retime_offset *retime_offset,
 		int num_gpios, int num_functions);
 
+void stm_pio_control_report_all(int gpio,
+		struct stm_pio_control *pio_controls,
+		const struct stm_pio_control_retime_offset *offset,
+		char *buf, int len);
+
 #endif

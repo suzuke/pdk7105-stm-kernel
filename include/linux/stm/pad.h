@@ -196,6 +196,7 @@ struct stm_pad_ops {
 	int (*gpio_config)(unsigned gpio,
 		enum stm_pad_gpio_direction direction,
 		int function, void *priv);
+	void (*gpio_report)(unsigned int gpio, char *buf, int len);
 };
 
 /* Pad manager initialization

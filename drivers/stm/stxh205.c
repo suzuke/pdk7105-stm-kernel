@@ -129,8 +129,16 @@ static int stxh205_pio_config(unsigned gpio,
 			ARRAY_SIZE(stxh205_pio_devices), 6);
 }
 
+static void stxh205_pio_report(unsigned gpio, char *buf, int len)
+{
+	stm_pio_control_report_all(gpio, stxh205_pio_controls,
+			&stxh205_pio_retime_offset,
+			buf, len);
+}
+
 static const struct stm_pad_ops stxh205_pad_ops = {
 	.gpio_config = stxh205_pio_config,
+	.gpio_report = stxh205_pio_report,
 };
 
 static void __init stxh205_pio_init(void)
@@ -141,11 +149,11 @@ static void __init stxh205_pio_init(void)
 
 /* sysconf resources ------------------------------------------------------ */
 
-void stxh205_sysconf_reg_name(char *name, int size, int group, int num)
+static int stxh205_sysconf_reg_name(char *name, int size, int group, int num)
 {
 	if (group >= 3)
 		group++;
-	snprintf(name, size, "SYSCONF%d", (group * 100) + num);
+	return snprintf(name, size, "SYSCONF%d", (group * 100) + num);
 }
 
 static struct platform_device stxh205_sysconf_devices[] = {

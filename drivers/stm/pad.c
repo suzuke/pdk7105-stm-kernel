@@ -462,36 +462,51 @@ void stm_pad_release_gpio(unsigned gpio)
 	mutex_unlock(&stm_pad_mutex);
 }
 
-const char *stm_pad_get_gpio_owner(unsigned gpio)
+static int stm_pad_find_gpio_struct(unsigned gpio,
+	struct stm_pad_state **state_p,
+	struct stm_pad_gpio **pad_gpio_p)
 {
-	const char *result = NULL;
 	struct stm_pad_state *state;
 
 	BUG_ON(gpio > stm_pad_gpios_num);
-
-	mutex_lock(&stm_pad_mutex);
 
 	list_for_each_entry(state, &stm_pad_list, list) {
 		struct stm_pad_config *config = state->config;
 		int i;
 
 		for (i = 0; i < config->gpios_num; i++) {
-			if (config->gpios[i].gpio == gpio) {
-				result = state->owner;
-				if (!result)
-					result = "?";
+			struct stm_pad_gpio *pad_gpio = &config->gpios[i];
+
+			if (pad_gpio->direction ==
+			    stm_pad_gpio_direction_ignored)
+				continue;
+
+			if (pad_gpio->gpio == gpio) {
+				*state_p = state;
+				*pad_gpio_p = pad_gpio;
+				return 0;
 			}
 		}
-
-		if (result)
-			break;
 	}
 
-	mutex_unlock(&stm_pad_mutex);
-
-	return result;
+	return -ENOENT;
 }
 
+const char *stm_pad_get_gpio_owner(unsigned gpio)
+{
+	struct stm_pad_state *state;
+	struct stm_pad_gpio *pad_gpio;
+	int result;
+
+	mutex_lock(&stm_pad_mutex);
+	result = stm_pad_find_gpio_struct(gpio, &state, &pad_gpio);
+	mutex_unlock(&stm_pad_mutex);
+
+	if (!result)
+		return state->owner;
+	else
+		return "?";
+}
 
 
 /* GPIO interface */
@@ -627,6 +642,7 @@ static int stm_pad_seq_show(struct seq_file *s, void *v)
 
 	for (i = 0; i < config->gpios_num; i++) {
 		struct stm_pad_gpio *pad_gpio = &config->gpios[i];
+		char name[20];
 		static const char *directions[] = {
 			[stm_pad_gpio_direction_in] = "input",
 			[stm_pad_gpio_direction_out] = "output",
@@ -642,10 +658,9 @@ static int stm_pad_seq_show(struct seq_file *s, void *v)
 
 		BUG_ON(pad_gpio->direction >= ARRAY_SIZE(directions));
 
-		seq_printf(s, "  - %d: PIO%d.%d: %s, function %d",
-				pad_gpio->gpio,
-				stm_gpio_port(pad_gpio->gpio),
-				stm_gpio_pin(pad_gpio->gpio),
+		stm_gpio_get_name(pad_gpio->gpio, name, sizeof(name));
+		seq_printf(s, "  - %d: %s: %s, function %d",
+				pad_gpio->gpio, name,
 				directions[pad_gpio->direction],
 				pad_gpio->function);
 		if (pad_gpio->name)
@@ -669,9 +684,12 @@ static int stm_pad_seq_show(struct seq_file *s, void *v)
 		else
 			seq_printf(s, "[%d:%d]", sysconf->msb, sysconf->lsb);
 
-		seq_printf(s, " = 0x%0*lx\n",
+		seq_printf(s, " = 0x%0*lx",
 				(sysconf->msb - sysconf->lsb + 4) / 4,
 				sysconf_read(state->sysconf_fields[i]));
+		if (sysconf->name)
+			seq_printf(s, " '%s'", sysconf->name);
+		seq_printf(s, "\n");
 	}
 
 	if (config->custom_claim) {
@@ -708,10 +726,71 @@ static const struct file_operations stm_pad_debugfs_ops = {
 	.release = seq_release,
 };
 
+static int stm_pad_state_debugfs_show(struct seq_file *s, void *unused)
+{
+	int gpio;
+
+	mutex_lock(&stm_pad_mutex);
+
+	for (gpio = 0; gpio < stm_pad_gpios_num; gpio++) {
+		char name[20];
+		char buf[80];
+		const char *desc;
+		const char *states[] = {
+			[stm_pad_gpio_unused] =  "unused",
+			[stm_pad_gpio_normal_gpio] = "gpio",
+			[stm_pad_gpio_claimed] = "claimed",
+			[stm_pad_gpio_claimed_to_be_requested] = "claimed-gpio",
+			[stm_pad_gpio_claimed_requested] = "claimed-gpio",
+		};
+		struct stm_pad_state *state;
+		struct stm_pad_gpio *pad_gpio;
+
+		stm_gpio_get_name(gpio, name, sizeof(name));
+
+		if (stm_pad_gpio_ops->gpio_report) {
+			stm_pad_gpio_ops->gpio_report(gpio, buf, sizeof(buf));
+			desc = buf;
+		} else {
+			desc = stm_gpio_get_direction(gpio);
+		}
+
+		seq_printf(s, "%3d: %8s: %s %s",
+			   gpio, name, desc, states[stm_pad_gpios[gpio]]);
+
+		if (!stm_pad_find_gpio_struct(gpio, &state, &pad_gpio)) {
+			seq_printf(s, ": %s", state->owner);
+			if (pad_gpio->name)
+				seq_printf(s, " (%s)", pad_gpio->name);
+		}
+
+		seq_printf(s, "\n");
+	}
+
+	mutex_unlock(&stm_pad_mutex);
+
+	return 0;
+}
+
+static int stm_pad_state_debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, stm_pad_state_debugfs_show, NULL);
+}
+
+static const struct file_operations stm_pad_state_debugfs_ops = {
+	.open		= stm_pad_state_debugfs_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
 static int __init stm_pad_debugfs_init(void)
 {
 	debugfs_create_file("pads", S_IFREG | S_IRUGO,
 			NULL, NULL, &stm_pad_debugfs_ops);
+
+	debugfs_create_file("pad-state", S_IFREG | S_IRUGO,
+			NULL, NULL, &stm_pad_state_debugfs_ops);
 
 	return 0;
 }

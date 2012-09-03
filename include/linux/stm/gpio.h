@@ -90,5 +90,7 @@ void stm_gpio_early_init(struct platform_device pdevs[], int num, int irq_base);
 #define STM_GPIO_DIRECTION_ALT_OUT 0x6
 #define STM_GPIO_DIRECTION_ALT_BIDIR 0x7
 int stm_gpio_direction(unsigned int gpio, unsigned int direction);
+const char *stm_gpio_get_direction(int gpio);
+int stm_gpio_get_name(int gpio, char *buf, int len);
 
 #endif
