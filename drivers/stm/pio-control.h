@@ -16,6 +16,11 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/pio-control.h>
 
+enum stm_pio_control_retime_style {
+	stm_pio_control_retime_style_none,
+	stm_pio_control_retime_style_packed,
+};
+
 struct stm_pio_control_config {
 	struct {
 		u8 group, num;
@@ -23,13 +28,15 @@ struct stm_pio_control_config {
 	struct {
 		u8 group, num, lsb, msb;
 	} oe, pu, od;
+	enum stm_pio_control_retime_style retime_style:4;
+	unsigned int retime_pin_mask:8;
 	struct {
 		u8 group, num;
 	} retiming[2];
-	unsigned int no_retiming:1;
 };
 
 struct stm_pio_control {
+	const struct stm_pio_control_config *config;
 	struct sysconf_field *alt;
 	struct sysconf_field *oe, *pu, *od;
 	struct sysconf_field *retiming[2];

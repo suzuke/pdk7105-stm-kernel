@@ -170,6 +170,7 @@ void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 	int i, j;
 
 	for (i=0; i<num; i++) {
+		pio_control[i].config = &config[i];
 		pio_control[i].alt = sysconf_claim(config[i].alt.group,
 			config[i].alt.num, 0, 31,
 			"PIO Alternative Function Selector");
@@ -188,15 +189,19 @@ void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 			"PIO Open Drain Control");
 		if (!pio_control[i].od) goto failed;
 
-		if (config[i].no_retiming)
-			continue;
-
-		for (j=0; j<2; j++) {
-			pio_control[i].retiming[j] = sysconf_claim(
-				config[i].retiming[j].group,
-				config[i].retiming[j].num, 0, 31,
-				"PIO Retiming Configuration");
-			if (!pio_control[i].retiming[j]) goto failed;
+		switch (config[i].retime_style) {
+		case stm_pio_control_retime_style_none:
+			break;
+		case stm_pio_control_retime_style_packed:
+			for (j = 0; j < 2; j++) {
+				pio_control[i].retiming[j] = sysconf_claim(
+					config[i].retiming[j].group,
+					config[i].retiming[j].num, 0, 31,
+					"PIO Retiming Configuration");
+				if (!pio_control[i].retiming[j])
+					goto failed;
+			}
+			break;
 		}
 	}
 
@@ -225,11 +230,13 @@ int stm_pio_control_config_all(unsigned gpio,
 	int port = stm_gpio_port(gpio);
 	int pin = stm_gpio_pin(gpio);
 	struct stm_pio_control *pio_control;
+	const struct stm_pio_control_config *pio_control_config;
 
 	BUG_ON(port >= num_gpios);
 	BUG_ON(function < 0 || function >= num_functions);
 
 	pio_control = &pio_controls[port];
+	pio_control_config = pio_control->config;
 
 	if (function == 0) {
 		switch (direction) {
@@ -253,9 +260,11 @@ int stm_pio_control_config_all(unsigned gpio,
 
 	stm_pio_control_config_function(pio_control, pin, function);
 
-	if (config && config->retime)
+	if ((config && config->retime) &&
+	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
 		stm_pio_control_config_retime(pio_control,
 			retime_offset, pin, config->retime);
+	}
 
 	return 0;
 }

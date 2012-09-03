@@ -307,6 +307,8 @@ Need to add 32 for A9
 		.oe = { TAE_SYSCONF(_oe_num), _lsb, _msb },		\
 		.pu = { TAE_SYSCONF(_pu_num), _lsb, _msb },		\
 		.od = { TAE_SYSCONF(_od_num), _lsb, _msb },		\
+		.retime_style = stm_pio_control_retime_style_packed,	\
+		.retime_pin_mask = 0xff,				\
 		.retiming = {						\
 			{ TAE_SYSCONF(_rt) },				\
 			{ TAE_SYSCONF(_rt+1) }				\
@@ -336,7 +338,7 @@ Need to add 32 for A9
 		.oe = { TAE_SYSCONF(_oe_num), _lsb, _msb },		\
 		.pu = { TAE_SYSCONF(_pu_num), _lsb, _msb },		\
 		.od = { TAE_SYSCONF(_od_num), _lsb, _msb },		\
-		.no_retiming = 1,					\
+		.retime_style = stm_pio_control_retime_style_none,	\
 	}
 
 #define FLI7610_PIO_ENTRY_CONTROL4_NO_RET(_num, _alt_num,		\
@@ -358,6 +360,8 @@ Need to add 32 for A9
 		.oe = { MPE_SYSCONF(_oe_num), _lsb, _msb },		\
 		.pu = { MPE_SYSCONF(_pu_num), _lsb, _msb },		\
 		.od = { MPE_SYSCONF(_od_num), _lsb, _msb },		\
+		.retime_style = stm_pio_control_retime_style_packed,	\
+		.retime_pin_mask = 0xff,				\
 		.retiming = {						\
 			{ MPE_SYSCONF(_rt) },				\
 			{ MPE_SYSCONF(_rt+1) }				\

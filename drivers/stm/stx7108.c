@@ -751,13 +751,14 @@ static struct platform_device stx7108_pio_devices[] = {
 
 #define STX7108_PIO_CONTROL_(_num, _group, _alt_num,			\
 		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
-		_no_rt, _rt1_num, _rt2_num)				\
+		_style, _rt1_num, _rt2_num)				\
 	[_num] = {							\
 		.alt = { _group, _alt_num },				\
 		.oe = { _group, _oe_num, _lsb, _msb },			\
 		.pu = { _group, _pu_num, _lsb, _msb },			\
 		.od = { _group, _od_num, _lsb, _msb },			\
-		.no_retiming = _no_rt,					\
+		.retime_style = _style,					\
+		.retime_pin_mask = 0xff,				\
 		.retiming = {						\
 			{ _group, _rt1_num },				\
 			{ _group, _rt2_num }				\
@@ -787,8 +788,10 @@ static struct platform_device stx7108_pio_devices[] = {
 		_oe_num, _pu_num, _od_num, 24, 31,		\
 		_rt4)
 
-#define _NO_RETIMING		1, 0, 0
-#define _RETIMING(_group, _rt1, _rt2)	0, _rt1, _rt2
+#define _NO_RETIMING \
+	stm_pio_control_retime_style_none, 0, 0
+#define _RETIMING(_group, _rt1, _rt2) \
+	stm_pio_control_retime_style_packed, _rt1, _rt2
 
 static const struct stm_pio_control_config stx7108_pio_control_configs[27] = {
 	STX7108_PIO_CONTROL4(0, SYS_CFG_BANK2, 0, 15, 19, 23,

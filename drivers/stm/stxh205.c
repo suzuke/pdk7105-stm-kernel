@@ -69,6 +69,8 @@ static struct platform_device stxh205_pio_devices[16] = {
 		.oe = { SYSCONF(_oe_num), _lsb, _msb },			\
 		.pu = { SYSCONF(_pu_num), _lsb, _msb },			\
 		.od = { SYSCONF(_od_num), _lsb, _msb },			\
+		.retime_style = stm_pio_control_retime_style_packed,	\
+		.retime_pin_mask = 0xff,				\
 		.retiming = {						\
 			{ SYSCONF(_rt) },				\
 			{ SYSCONF(_rt+1) },				\
