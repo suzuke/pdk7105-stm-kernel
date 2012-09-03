@@ -846,7 +846,7 @@ static int stx7108_pio_config(unsigned gpio,
 {
 	int port = stm_gpio_port(gpio);
 	int pin = stm_gpio_pin(gpio);
-	struct stx7108_pio_config *config = priv;
+	struct stm_pio_control_pad_config *config = priv;
 	struct stm_pio_control *pio_control;
 
 	BUG_ON(port > ARRAY_SIZE(stx7108_pio_devices));
@@ -898,7 +898,7 @@ static void __init stx7108_pio_init(void)
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 1, \
 		.name = "MMCCLK", \
-		.priv = &(struct stx7108_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \
@@ -920,7 +920,7 @@ static void __init stx7108_pio_init(void)
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 1, \
-		.priv = &(struct stx7108_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \
@@ -933,7 +933,7 @@ static void __init stx7108_pio_init(void)
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 1, \
-		.priv = &(struct stx7108_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 0, \

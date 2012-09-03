@@ -37,13 +37,6 @@
 #define SYS_STA_BANK4		8
 #define SYS_CFG_BANK4		9
 
-
-struct stx7108_pio_config {
-	struct stm_pio_control_mode_config *mode;
-	struct stm_pio_control_retime_config *retime;
-};
-
-
 void stx7108_early_device_init(void);
 
 

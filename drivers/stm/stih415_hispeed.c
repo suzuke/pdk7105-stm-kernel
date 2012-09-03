@@ -37,7 +37,7 @@
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
 		.function = _func, \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -47,7 +47,7 @@
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _func, \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -59,7 +59,7 @@
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_bidir, \
 		.function = _func, \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 0, \
@@ -74,7 +74,7 @@
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
 		.function = _func, \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -84,7 +84,7 @@
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _func, \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -95,7 +95,7 @@
 		.direction = stm_pad_gpio_direction_unknown, \
 		.function = _func, \
 		.name = "PHYCLK", \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 		.retime = _retiming, \
 		}, \
 	}
@@ -106,7 +106,7 @@
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _func, \
 		.name = "MDIO", \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -116,7 +116,7 @@
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _func, \
 		.name = "MDC", \
-		.priv = &(struct stih415_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}

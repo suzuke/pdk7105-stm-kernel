@@ -521,7 +521,7 @@ static int stih415_pio_config(unsigned gpio,
 {
 	int port = stm_gpio_port(gpio);
 	int pin = stm_gpio_pin(gpio);
-	struct stih415_pio_config *config = priv;
+	struct stm_pio_control_pad_config *config = priv;
 	struct stm_pio_control *pio_control;
 
 	BUG_ON(port > ARRAY_SIZE(stih415_pio_devices));
@@ -641,7 +641,7 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 4, \
 		.name = "MMCCLK", \
-		.priv = &(struct stih415_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \
@@ -663,7 +663,7 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 4, \
-		.priv = &(struct stih415_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 0, \
@@ -676,7 +676,7 @@ static struct platform_device stih415_pio_irqmux_devices[5] = {
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 4, \
-		.priv = &(struct stih415_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \

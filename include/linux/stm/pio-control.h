@@ -28,6 +28,11 @@ struct stm_pio_control_retime_config {
 	int delay_input:3;
 };
 
+struct stm_pio_control_pad_config {
+	struct stm_pio_control_mode_config *mode;
+	struct stm_pio_control_retime_config *retime;
+};
+
 /*
  * 	Generic Retime Padlogic possible modes
  * Refer to GRP Functional specs (ADCS 8198257) for more details

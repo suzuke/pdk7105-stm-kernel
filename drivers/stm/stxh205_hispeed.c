@@ -35,7 +35,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
 		.function = _func, \
-		.priv = &(struct stxh205_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -45,7 +45,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _func, \
-		.priv = &(struct stxh205_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -57,7 +57,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _func, \
 		.name = "TXER", \
-		.priv = &(struct stxh205_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -71,7 +71,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = _func, \
-		.priv = &(struct stxh205_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
@@ -86,7 +86,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
 		.function = _func, \
-		.priv = &(struct stxh205_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -96,7 +96,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _func, \
-		.priv = &(struct stxh205_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -107,7 +107,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.direction = stm_pad_gpio_direction_unknown, \
 		.function = _func, \
 		.name = "PHYCLK", \
-		.priv = &(struct stxh205_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 		.retime = _retiming, \
 		}, \
 	}

@@ -61,12 +61,6 @@
 #define LPM_SYSCONF_BANK	(6)
 #define LPM_CONFIG(x)		LPM_SYSCONF_BANK, (x)
 
-struct stih415_pio_config {
-        struct stm_pio_control_mode_config *mode;
-        struct stm_pio_control_retime_config *retime;
-};
-
-
 void stih415_early_device_init(void);
 
 void stih415_configure_nand(struct stm_nand_config *config);

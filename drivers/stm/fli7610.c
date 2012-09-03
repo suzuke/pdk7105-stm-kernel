@@ -438,7 +438,7 @@ static int fli7610_pio_config(unsigned gpio,
 {
 	int port = stm_gpio_port(gpio);
 	int pin = stm_gpio_pin(gpio);
-	struct fli7610_pio_config *config = priv;
+	struct stm_pio_control_pad_config *config = priv;
 	struct stm_pio_control *pio_control;
 
 	BUG_ON(port > ARRAY_SIZE(fli7610_pio_devices));
@@ -758,7 +758,7 @@ static struct platform_device fli7610_tae_fdma_xbar_device = {
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 1, \
 		.name = "MMCCLK", \
-		.priv = &(struct fli7610_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \
@@ -772,7 +772,7 @@ static struct platform_device fli7610_tae_fdma_xbar_device = {
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 1, \
-		.priv = &(struct fli7610_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 0, \
@@ -785,7 +785,7 @@ static struct platform_device fli7610_tae_fdma_xbar_device = {
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = 1, \
-		.priv = &(struct fli7610_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \

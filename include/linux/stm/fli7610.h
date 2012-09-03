@@ -75,13 +75,6 @@
 #define LPM_SYSCONF_BANK	(8)
 #define LPM_SYSCONF(x) LPM_SYSCONF_BANK, x
 
-
-struct fli7610_pio_config {
-	struct stm_pio_control_mode_config *mode;
-	struct stm_pio_control_retime_config *retime;
-};
-
-
 void fli7610_early_device_init(void);
 
 struct fli7610_asc_config {

@@ -48,7 +48,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 
 	for (i = 0; i < gpios_num; i++) {
 		struct stm_pad_gpio *pad_gpio = &pad_config->gpios[i];
-		struct stx7108_pio_config *priv = pad_gpio->priv;
+		struct stm_pio_control_pad_config *priv = pad_gpio->priv;
 		struct stx7108_pio_retime_config *retime = priv->retime;
 
 		pr_info("PIO%d[%d]  %d\t\t%d\t\t%d\t%d\t\t%d\t\t%d\n",
@@ -68,7 +68,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -78,7 +78,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -90,7 +90,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 0, \
@@ -105,7 +105,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -115,7 +115,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
@@ -125,7 +125,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_in, \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = &_retiming, \
 		}, \
 	}
@@ -135,7 +135,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = &_retiming, \
 		}, \
 	}
@@ -145,7 +145,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_unknown, \
 		.name = "PHYCLK", \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 		.retime = _retiming, \
 		}, \
 	}
@@ -156,7 +156,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 		.direction = stm_pad_gpio_direction_in, \
 		.name = "TXCLK", \
 		.function = _gmac + 1, \
-		.priv = &(struct stx7108_pio_config) { \
+		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}

@@ -121,7 +121,7 @@ static int stxh205_pio_config(unsigned gpio,
 {
 	int port = stm_gpio_port(gpio);
 	int pin = stm_gpio_pin(gpio);
-	struct stxh205_pio_config *config = priv;
+	struct stm_pio_control_pad_config *config = priv;
 	struct stm_pio_control *pio_control;
 
 	BUG_ON(port > ARRAY_SIZE(stxh205_pio_devices));
@@ -381,7 +381,7 @@ static struct platform_device sth205_temp = {
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = funct, \
 		.name = "MMCCLK", \
-		.priv = &(struct stxh205_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 0, \
@@ -394,7 +394,7 @@ static struct platform_device sth205_temp = {
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = funct, \
-		.priv = &(struct stxh205_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 0, \
@@ -407,7 +407,7 @@ static struct platform_device sth205_temp = {
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_custom, \
 		.function = funct, \
-		.priv = &(struct stxh205_pio_config) {	\
+		.priv = &(struct stm_pio_control_pad_config) {	\
 			.mode = &(struct stm_pio_control_mode_config) { \
 				.oe = 1, \
 				.pu = 1, \
