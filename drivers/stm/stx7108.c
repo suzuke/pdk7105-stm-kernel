@@ -890,11 +890,11 @@ static void __init stx7108_pio_init(void)
 			}, \
 			.retime = &(struct stm_pio_control_retime_config) { \
 				.retime = -1, \
-				.clk1notclk0 = -1, \
+				.clk = -1, \
 				.clknotdata = 1, \
 				.double_edge = -1, \
 				.invertclk = -1, \
-				.delay_input = -1, \
+				.delay = -1, \
 			}, \
 		}, \
 	}

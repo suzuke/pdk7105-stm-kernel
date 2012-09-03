@@ -398,11 +398,11 @@ static struct platform_device sth205_temp = {
 			}, \
 			.retime = &(struct stm_pio_control_retime_config) { \
 				.retime = 0, \
-				.clk1notclk0 = 0, \
+				.clk = 0, \
 				.clknotdata = 0, \
 				.double_edge = 0, \
 				.invertclk = 0, \
-				.delay_input = 3, \
+				.delay = 3, \
 			}, \
 		}, \
 	}

@@ -108,7 +108,7 @@ static void stm_pio_control_config_function(
 	sysconf_write(selector, val);
 }
 
-static void stm_pio_control_config_retime(
+static void stm_pio_control_config_retime_packed(
 		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_offset *offset,
 		int pin, const struct stm_pio_control_retime_config *rt)
@@ -119,19 +119,19 @@ static void stm_pio_control_config_retime(
 	int i, j;
 
 	unsigned long retime_mask =
-		(rt->clk1notclk0   >= 0 ? 1<<offset->clk1notclk0_offset : 0) |
+		(rt->clk           >= 0 ? 1<<offset->clk1notclk0_offset : 0) |
 		(rt->clknotdata    >= 0 ? 1<<offset->clknotdata_offset : 0) |
-		(rt->delay_input   >= 0 ? (1<<offset->delay_lsb_offset |
+		(rt->delay         >= 0 ? (1<<offset->delay_lsb_offset |
 					   1<<offset->delay_msb_offset) : 0) |
 		(rt->double_edge   >= 0 ? 1<<offset->double_edge_offset : 0) |
 		(rt->invertclk     >= 0 ? 1<<offset->invertclk_offset : 0) |
 		(rt->retime        >= 0 ? 1<<offset->retime_offset : 0);
 
 	unsigned long retime_config =
-		(rt->clk1notclk0       ? 1<<offset->clk1notclk0_offset : 0) |
+		(rt->clk               ? 1<<offset->clk1notclk0_offset : 0) |
 		(rt->clknotdata        ? 1<<offset->clknotdata_offset : 0) |
-		((rt->delay_input & 1) ? 1<<offset->delay_lsb_offset : 0) |
-		((rt->delay_input & 2) ? 1<<offset->delay_msb_offset : 0) |
+		((rt->delay & 1)       ? 1<<offset->delay_lsb_offset : 0) |
+		((rt->delay & 2)       ? 1<<offset->delay_msb_offset : 0) |
 		(rt->double_edge       ? 1<<offset->double_edge_offset : 0) |
 		(rt->invertclk         ? 1<<offset->invertclk_offset : 0) |
 		(rt->retime            ? 1<<offset->retime_offset : 0);
@@ -162,6 +162,43 @@ static void stm_pio_control_config_retime(
 
 	sysconf_write(regs[0], values[0]);
 	sysconf_write(regs[1], values[1]);
+}
+
+static void stm_pio_control_config_retime_dedicated(
+		struct stm_pio_control *pio_control,
+		const struct stm_pio_control_retime_offset *unused_offset,
+		int pin, const struct stm_pio_control_retime_config *rt)
+{
+	struct sysconf_field *reg;
+	unsigned long value;
+
+	unsigned long retime_mask =
+		(rt->clk            >= 0 ? (0x3 << 0) : 0) |
+		(rt->clknotdata     >= 0 ? (0x1 << 2) : 0) |
+		(rt->delay          >= 0 ? (0xf << 3) : 0) |
+		(rt->delay_innotout >= 0 ? (0x1 << 7) : 0) |
+		(rt->double_edge    >= 0 ? (0x1 << 8) : 0) |
+		(rt->invertclk      >= 0 ? (0x1 << 9) : 0) |
+		(rt->retime         >= 0 ? (0x1 << 10) : 0);
+
+	unsigned long retime_config =
+		(rt->clk               ? (rt->clk << 0) : 0) |
+		(rt->clknotdata        ? (rt->clknotdata << 2) : 0) |
+		(rt->delay             ? (rt->delay << 3) : 0) |
+		(rt->delay_innotout    ? (rt->delay_innotout << 7) : 0) |
+		(rt->double_edge       ? (rt->double_edge << 8) : 0) |
+		(rt->invertclk         ? (rt->invertclk << 9) : 0) |
+		(rt->retime            ? (rt->retime << 10) : 0);
+
+	pr_debug("%s(pin=%d, retime_mask=%02lx, retime_config=%02lx)\n",
+		 __func__, pin, retime_mask, retime_config);
+
+	reg = pio_control->retiming[pin];
+
+	value = sysconf_read(reg);
+	value &= retime_mask;
+	value |= retime_config;
+	sysconf_write(reg, value);
 }
 
 static int stm_pio_control_report_direction(struct stm_pio_control *pio_control,
@@ -210,10 +247,30 @@ static int stm_pio_control_report_retime_packed(
 		 (rt_reduced >> offset->delay_lsb_offset) & 1);
 }
 
+static int stm_pio_control_report_retime_dedicated(
+		struct stm_pio_control *pio_control,
+		const struct stm_pio_control_retime_offset *unused_offset,
+		int pin, char *buf, int len)
+{
+	unsigned long value;
+
+	value = sysconf_read(pio_control->retiming[pin]);
+
+	return snprintf(buf, len,
+		"clk %ld, cnd %ld, dly %ld, dino %ld, de %ld, ic %ld, rt %ld",
+		((value >> 0) & 0x3),
+		((value >> 2) & 0x1),
+		((value >> 3) & 0xf),
+		((value >> 7) & 0x1),
+		((value >> 8) & 0x1),
+		((value >> 9) & 0x1),
+		((value >> 10) & 0x1));
+}
+
 void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 		struct stm_pio_control *pio_control, int num)
 {
-	int i, j;
+	unsigned int i, j;
 
 	for (i=0; i<num; i++) {
 		pio_control[i].config = &config[i];
@@ -248,6 +305,19 @@ void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 					goto failed;
 			}
 			break;
+		case stm_pio_control_retime_style_dedicated:
+			for (j = 0; j < 8; j++)
+				if ((1<<j) & config[i].retime_pin_mask) {
+					pio_control[i].retiming[j] =
+						sysconf_claim(
+						config[i].retiming[j].group,
+						config[i].retiming[j].num,
+						0, 10,
+						"PIO Retiming Configuration");
+					if (!pio_control[i].retiming[j])
+						goto failed;
+				}
+			break;
 		}
 	}
 
@@ -266,6 +336,22 @@ failed:
 
 #include <linux/stm/gpio.h>
 
+static void (*const config_retime_fn[])(struct stm_pio_control *pio_control,
+		const struct stm_pio_control_retime_offset *retime_offset,
+		int pin, const struct stm_pio_control_retime_config *rt) = {
+	[stm_pio_control_retime_style_none] = NULL,
+	[stm_pio_control_retime_style_packed] = stm_pio_control_config_retime_packed,
+	[stm_pio_control_retime_style_dedicated] = stm_pio_control_config_retime_dedicated,
+};
+
+static int (*const report_retime_fn[])(struct stm_pio_control *pio_control,
+		const struct stm_pio_control_retime_offset *retime_offset,
+		int pin, char *buf, int len) = {
+	[stm_pio_control_retime_style_none] = NULL,
+	[stm_pio_control_retime_style_packed] = stm_pio_control_report_retime_packed,
+	[stm_pio_control_retime_style_dedicated] = stm_pio_control_report_retime_dedicated,
+};
+
 int stm_pio_control_config_all(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function,
 		struct stm_pio_control_pad_config *config,
@@ -280,7 +366,7 @@ int stm_pio_control_config_all(unsigned gpio,
 	const struct stm_pio_control_retime_config no_retiming = {
 		.retime = 0,
 		.clknotdata = 0,
-		.delay_input = 0,
+		.delay = 0,
 	};
 
 	BUG_ON(port >= num_gpios);
@@ -311,10 +397,9 @@ int stm_pio_control_config_all(unsigned gpio,
 
 	stm_pio_control_config_function(pio_control, pin, function);
 
-	if ((pio_control_config->retime_style !=
-	    stm_pio_control_retime_style_none) &&
+	if (config_retime_fn[pio_control_config->retime_style] &&
 	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
-		stm_pio_control_config_retime(pio_control,
+		config_retime_fn[pio_control_config->retime_style](pio_control,
 			retime_offset, pin,
 			(config && config->retime) ? config->retime :
 				&no_retiming);
@@ -349,13 +434,11 @@ void stm_pio_control_report_all(int gpio,
 		off += stm_pio_control_report_direction(pio_control,
 			pin, buf+off, len-off);
 
-	switch (pio_control->config->retime_style) {
-	case stm_pio_control_retime_style_none:
-		break;
-	case stm_pio_control_retime_style_packed:
+	if (report_retime_fn[pio_control_config->retime_style] &&
+	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
 		off += snprintf(buf+off, len-off, " - ");
-		off += stm_pio_control_report_retime_packed(pio_control,
+		off += report_retime_fn[pio_control_config->retime_style](
+			pio_control,
 			retime_offset, pin, buf+off, len-off);
-		break;
 	}
 }
