@@ -277,6 +277,11 @@ int stm_pio_control_config_all(unsigned gpio,
 	int pin = stm_gpio_pin(gpio);
 	struct stm_pio_control *pio_control;
 	const struct stm_pio_control_config *pio_control_config;
+	const struct stm_pio_control_retime_config no_retiming = {
+		.retime = 0,
+		.clknotdata = 0,
+		.delay_input = 0,
+	};
 
 	BUG_ON(port >= num_gpios);
 	BUG_ON(function < 0 || function >= num_functions);
@@ -306,10 +311,15 @@ int stm_pio_control_config_all(unsigned gpio,
 
 	stm_pio_control_config_function(pio_control, pin, function);
 
-	if ((config && config->retime) &&
+	if ((pio_control_config->retime_style !=
+	    stm_pio_control_retime_style_none) &&
 	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
 		stm_pio_control_config_retime(pio_control,
-			retime_offset, pin, config->retime);
+			retime_offset, pin,
+			(config && config->retime) ? config->retime :
+				&no_retiming);
+	} else {
+		WARN_ON(config && config->retime);
 	}
 
 	return 0;
