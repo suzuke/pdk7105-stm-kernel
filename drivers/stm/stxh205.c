@@ -127,6 +127,10 @@ static int stxh205_pio_config(unsigned gpio,
 			ARRAY_SIZE(stxh205_pio_devices), 6);
 }
 
+static const struct stm_pad_ops stxh205_pad_ops = {
+	.gpio_config = stxh205_pio_config,
+};
+
 static void __init stxh205_pio_init(void)
 {
 	stm_pio_control_init(stxh205_pio_control_configs, stxh205_pio_controls,
@@ -261,7 +265,7 @@ void __init stxh205_early_device_init(void)
 			ARRAY_SIZE(stxh205_pio_devices),
 			ILC_FIRST_IRQ + ILC_NR_IRQS);
 	stm_pad_init(ARRAY_SIZE(stxh205_pio_devices) * STM_GPIO_PINS_PER_PORT,
-		     0, 0, stxh205_pio_config);
+		     0, 0, &stxh205_pad_ops);
 
 	sc = sysconf_claim(SYSCONF(41), 0, 31, "devid");
 	devid = sysconf_read(sc);

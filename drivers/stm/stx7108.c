@@ -852,6 +852,10 @@ static int stx7108_pio_config(unsigned gpio,
 		ARRAY_SIZE(stx7108_pio_controls), 6);
 }
 
+static const struct stm_pad_ops stx7108_pad_ops = {
+	.gpio_config = stx7108_pio_config,
+};
+
 static void __init stx7108_pio_init(void)
 {
 	stm_pio_control_init(stx7108_pio_control_configs, stx7108_pio_controls,
@@ -1102,7 +1106,7 @@ void __init stx7108_early_device_init(void)
 			ARRAY_SIZE(stx7108_pio_devices),
 			ILC_FIRST_IRQ + ILC_NR_IRQS);
 	stm_pad_init(ARRAY_SIZE(stx7108_pio_devices) * STM_GPIO_PINS_PER_PORT,
-		     0, 0, stx7108_pio_config);
+		     0, 0, &stx7108_pad_ops);
 
 	sc = sysconf_claim(SYS_STA_BANK1, 0, 0, 31, "devid");
 	devid = sysconf_read(sc);

@@ -21,8 +21,8 @@
  * "function" means the so-called "alternative PIO function",
  * usually described in SOCs datasheets. It just describes
  * which one of possible signals is to be multiplexed to
- * the actual pin. It is then used by SOC-specific "gpio_config"
- * callback provided when stm_pad_init() is called (see below).
+ * the actual pin. It is then used by SOC-specific "ops"
+ * callbacks provided when stm_pad_init() is called (see below).
  *
  * Function number meaning is absolutely up to the BSP author.
  * There is just a polite suggestion that 0 could mean "normal"
@@ -187,11 +187,19 @@ struct stm_pad_config {
 };
 
 
+struct stm_pad_ops {
+	int (*gpio_config)(unsigned gpio,
+		enum stm_pad_gpio_direction direction,
+		int function, void *priv);
+};
 
 /* Pad manager initialization
  *
- * The gpio_config function should be provided by the SOC BSP
- * and configure given GPIO to requested direction & alternative function.
+ * The ops structure should be provided by the SOC BSP, and contains the
+ * gpio_config member which is a pointer to a SoC specific function to
+ * configure given GPIO to requested direction & alternative function,
+ * and gpio_report which returns the current configuration as a string
+ * for use in debugfs.
  *
  * gpios_num is a overall number of PIO lines provided by the SOC,
  * gpio_function_in and gpio_function_out are the numbers that should be passed
@@ -201,9 +209,7 @@ struct stm_pad_config {
  * See also above (stm_pad_gpio_value definition). */
 
 int stm_pad_init(int gpios_num, int gpio_function_in, int gpio_function_out,
-			int (*gpio_config)(unsigned gpio,
-			enum stm_pad_gpio_direction direction,
-			int function, void *priv));
+			const struct stm_pad_ops *gpio_ops);
 
 
 

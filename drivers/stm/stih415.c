@@ -527,6 +527,10 @@ static int stih415_pio_config(unsigned gpio,
 		ARRAY_SIZE(stih415_pio_devices), 6);
 }
 
+static const struct stm_pad_ops stih415_pad_ops = {
+	.gpio_config = stih415_pio_config,
+};
+
 static void __init stih415_pio_init(void)
 {
 	stm_pio_control_init(stih415_pio_control_configs, stih415_pio_controls,
@@ -1121,7 +1125,7 @@ void __init stih415_early_device_init(void)
 #endif
 		);
 	stm_pad_init(ARRAY_SIZE(stih415_pio_devices) * STM_GPIO_PINS_PER_PORT,
-		     0, 0, stih415_pio_config);
+		     0, 0, &stih415_pad_ops);
 
 	sc = sysconf_claim(SYSCONF(427), 0, 31, "devid");
 	stm_soc_set(sysconf_read(sc), -1, -1);

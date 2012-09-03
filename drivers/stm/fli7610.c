@@ -444,6 +444,10 @@ static int fli7610_pio_config(unsigned gpio,
 		ARRAY_SIZE(fli7610_pio_controls), 6);
 }
 
+static const struct stm_pad_ops fli7610_pad_ops = {
+	.gpio_config = fli7610_pio_config,
+};
+
 static void __init fli7610_pio_init(void)
 {
 	BUG_ON(ARRAY_SIZE(fli7610_pio_devices) !=
@@ -1070,7 +1074,7 @@ void __init fli7610_early_device_init(void)
 #endif
 		);
 	stm_pad_init(ARRAY_SIZE(fli7610_pio_devices) * STM_GPIO_PINS_PER_PORT,
-		     0, 0, fli7610_pio_config);
+		     0, 0, &fli7610_pad_ops);
 
 	sc = sysconf_claim(MPE_SYSCONF(427), 0, 31, "devid");
 	stm_soc_set(sysconf_read(sc), -1, -1);
