@@ -19,7 +19,8 @@
 #include "pio-control.h"
 
 
-void stm_pio_control_config_direction(struct stm_pio_control *pio_control,
+static void stm_pio_control_config_direction(
+		struct stm_pio_control *pio_control,
 		int pin, enum stm_pad_gpio_direction direction,
 		struct stm_pio_control_mode_config *custom_mode)
 {
@@ -86,7 +87,8 @@ void stm_pio_control_config_direction(struct stm_pio_control *pio_control,
 	sysconf_write(open_drain, od_value);
 }
 
-void stm_pio_control_config_function(struct stm_pio_control *pio_control,
+static void stm_pio_control_config_function(
+		struct stm_pio_control *pio_control,
 		int pin, int function)
 {
 	struct sysconf_field *selector;
@@ -106,9 +108,10 @@ void stm_pio_control_config_function(struct stm_pio_control *pio_control,
 	sysconf_write(selector, val);
 }
 
-void stm_pio_control_config_retime(struct stm_pio_control *pio_control,
+static void stm_pio_control_config_retime(
+		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_offset *offset,
-		int pin, struct stm_pio_control_retime_config *rt)
+		int pin, const struct stm_pio_control_retime_config *rt)
 {
 	struct sysconf_field **regs;
 	unsigned long values[2];
@@ -202,4 +205,57 @@ void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 failed:
 	/* Can't do anything is early except panic */
 	panic("Unable to allocate PIO control sysconfs");
+}
+
+/*
+ * All the above functions only need basic sysconf capability.
+ * However these are aware of the way PIO hardware is also involved
+ * in pad control.
+ */
+
+#include <linux/stm/gpio.h>
+
+int stm_pio_control_config_all(unsigned gpio,
+		enum stm_pad_gpio_direction direction, int function,
+		struct stm_pio_control_pad_config *config,
+		struct stm_pio_control *pio_controls,
+		const struct stm_pio_control_retime_offset *retime_offset,
+		int num_gpios, int num_functions)
+{
+	int port = stm_gpio_port(gpio);
+	int pin = stm_gpio_pin(gpio);
+	struct stm_pio_control *pio_control;
+
+	BUG_ON(port >= num_gpios);
+	BUG_ON(function < 0 || function >= num_functions);
+
+	pio_control = &pio_controls[port];
+
+	if (function == 0) {
+		switch (direction) {
+		case stm_pad_gpio_direction_in:
+			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_IN);
+			break;
+		case stm_pad_gpio_direction_out:
+			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_OUT);
+			break;
+		case stm_pad_gpio_direction_bidir:
+			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_BIDIR);
+			break;
+		default:
+			BUG();
+			break;
+		}
+	} else {
+		stm_pio_control_config_direction(pio_control, pin,
+				direction, config ? config->mode : NULL);
+	}
+
+	stm_pio_control_config_function(pio_control, pin, function);
+
+	if (config && config->retime)
+		stm_pio_control_config_retime(pio_control,
+			retime_offset, pin, config->retime);
+
+	return 0;
 }

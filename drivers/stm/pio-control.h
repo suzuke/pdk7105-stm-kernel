@@ -46,17 +46,14 @@ struct stm_pio_control_retime_offset {
 	int delay_msb_offset;
 };
 
-void stm_pio_control_config_direction(struct stm_pio_control *pio_control,
-		int pin, enum stm_pad_gpio_direction direction,
-		struct stm_pio_control_mode_config *custom_mode);
-
-void stm_pio_control_config_function(struct stm_pio_control *pio_control,
-		int pin, int function);
-
-void stm_pio_control_config_retime(struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *retime_offset,
-		int pin, struct stm_pio_control_retime_config *rt);
-
 void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 		struct stm_pio_control *pio_control, int num);
+
+int stm_pio_control_config_all(unsigned gpio,
+		enum stm_pad_gpio_direction direction, int function,
+		struct stm_pio_control_pad_config *config,
+		struct stm_pio_control *pio_controls,
+		const struct stm_pio_control_retime_offset *retime_offset,
+		int num_gpios, int num_functions);
+
 #endif

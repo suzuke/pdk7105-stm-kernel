@@ -436,46 +436,21 @@ static const struct stm_pio_control_retime_offset fli7610_pio_retime_offset = {
 static int fli7610_pio_config(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function, void *priv)
 {
-	int port = stm_gpio_port(gpio);
-	int pin = stm_gpio_pin(gpio);
 	struct stm_pio_control_pad_config *config = priv;
-	struct stm_pio_control *pio_control;
 
-	BUG_ON(port > ARRAY_SIZE(fli7610_pio_devices));
-	BUG_ON(function < 0 || function > 7);
-
-	pio_control = &fli7610_pio_controls[port];
-
-	if (function == 0) {
-		switch (direction) {
-		case stm_pad_gpio_direction_in:
-			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_IN);
-			break;
-		case stm_pad_gpio_direction_out:
-			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_OUT);
-			break;
-		case stm_pad_gpio_direction_bidir:
-			stm_gpio_direction(gpio, STM_GPIO_DIRECTION_BIDIR);
-			break;
-		default:
-			BUG();
-			break;
-		}
-	} else
-		stm_pio_control_config_direction(pio_control, pin, direction,
-				config ? config->mode : NULL);
-
-	stm_pio_control_config_function(pio_control, pin, function);
-
-	if (config && config->retime)
-		stm_pio_control_config_retime(pio_control,
-			&fli7610_pio_retime_offset, pin, config->retime);
-
-	return 0;
+	return stm_pio_control_config_all(gpio, direction, function, config,
+		fli7610_pio_controls,
+		&fli7610_pio_retime_offset,
+		ARRAY_SIZE(fli7610_pio_controls), 6);
 }
 
 static void __init fli7610_pio_init(void)
 {
+	BUG_ON(ARRAY_SIZE(fli7610_pio_devices) !=
+	       ARRAY_SIZE(fli7610_pio_control_configs));
+	BUG_ON(ARRAY_SIZE(fli7610_pio_devices) !=
+	       ARRAY_SIZE(fli7610_pio_controls));
+
 	stm_pio_control_init(fli7610_pio_control_configs, fli7610_pio_controls,
 			     ARRAY_SIZE(fli7610_pio_control_configs));
 }
