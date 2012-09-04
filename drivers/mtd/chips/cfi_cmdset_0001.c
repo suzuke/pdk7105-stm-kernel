@@ -305,14 +305,15 @@ static struct cfi_fixup cfi_fixup_table[] = {
 #ifdef CMDSET0001_DISABLE_WRITE_SUSPEND
 	{ CFI_MFR_ANY, CFI_ID_ANY, fixup_no_write_suspend },
 #endif
-	{ CFI_MFR_ST, 0x00ba, /* M28W320CT */ fixup_st_m28wXX0_disable_bufferwrite, NULL },
-	{ CFI_MFR_ST, 0x00bb, /* M28W320CB */ fixup_st_m28w320cb, NULL },
-	{ CFI_MFR_ST, 0x8857, fixup_st_m28wXX0_disable_bufferwrite, NULL },
-	{ CFI_MFR_ST, 0x8858, fixup_st_m28wXX0_disable_bufferwrite, NULL },
-	{ CFI_MFR_ST, 0x8859, fixup_st_m28wXX0_disable_bufferwrite, NULL },
-	{ CFI_MFR_ST, 0x880a, fixup_st_m28wXX0_disable_bufferwrite, NULL },
-	{ CFI_MFR_ST, 0x880b, fixup_st_m28wXX0_disable_bufferwrite, NULL },
-	{ CFI_MFR_ST, 0x880c, fixup_st_m28wXX0_disable_bufferwrite, NULL },
+	{ CFI_MFR_ST, 0x00ba, /* M28W320CT */
+		fixup_st_m28wXX0_disable_bufferwrite },
+	{ CFI_MFR_ST, 0x00bb, /* M28W320CB */ fixup_st_m28w320cb },
+	{ CFI_MFR_ST, 0x8857, fixup_st_m28wXX0_disable_bufferwrite },
+	{ CFI_MFR_ST, 0x8858, fixup_st_m28wXX0_disable_bufferwrite },
+	{ CFI_MFR_ST, 0x8859, fixup_st_m28wXX0_disable_bufferwrite },
+	{ CFI_MFR_ST, 0x880a, fixup_st_m28wXX0_disable_bufferwrite },
+	{ CFI_MFR_ST, 0x880b, fixup_st_m28wXX0_disable_bufferwrite },
+	{ CFI_MFR_ST, 0x880c, fixup_st_m28wXX0_disable_bufferwrite },
 #if !FORCE_WORD_WRITE
 	{ CFI_MFR_ANY, CFI_ID_ANY, fixup_use_write_buffers },
 #endif
