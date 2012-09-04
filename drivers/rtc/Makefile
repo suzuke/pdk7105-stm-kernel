@@ -100,6 +100,7 @@ obj-$(CONFIG_RTC_DRV_SPEAR)	+= rtc-spear.o
 obj-$(CONFIG_RTC_DRV_STARFIRE)	+= rtc-starfire.o
 obj-$(CONFIG_RTC_DRV_STK17TA8)	+= rtc-stk17ta8.o
 obj-$(CONFIG_RTC_DRV_STM_LPC)	+= rtc-stm-lpc.o
+obj-$(CONFIG_RTC_DRV_STM_SBC)	+= rtc-stm-sbc.o
 obj-$(CONFIG_RTC_DRV_STM_SYS)	+= rtc-stm-sys.o
 obj-$(CONFIG_RTC_DRV_STMP)	+= rtc-stmp3xxx.o
 obj-$(CONFIG_RTC_DRV_SUN4V)	+= rtc-sun4v.o
