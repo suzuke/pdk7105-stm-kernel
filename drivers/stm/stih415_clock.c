@@ -74,7 +74,7 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("lpc_clk", NULL, "CLKM_MPELPC", NULL);
 
 	/* ETH-1 */
-	clk_add_alias("stmmac_clk", NULL, "CLKS_ICN_REG_0", NULL);
+	clk_add_alias("stmmaceth", NULL, "CLKS_ICN_REG_0", NULL);
 
 	/* Uniperipheral player clocks */
 	clk_add_alias("uni_player_clk", "snd_uni_player.0", "CLKS_B_PCM_FSYN0",

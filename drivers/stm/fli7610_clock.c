@@ -72,6 +72,9 @@ int __init plat_clk_alias_init(void)
 
 	/* SDHCI clocks */
 	clk_add_alias(NULL, "sdhci-stm.0", "CLK_SD_MS",  NULL);
+
+	/* MAC clock */
+	clk_add_alias("stmmaceth", NULL, "CLKA_GMAC", NULL);
+
 	return 0;
 }
-

@@ -41,7 +41,7 @@ int __init plat_clk_alias_init(void)
 	/* usb_phy_clk got from USBPhy tree currently unsupported in the LLA */
 
 	/* STM-MAC clocks */
-	clk_add_alias("stmmac_clk", NULL, "CLK_A1_IC_GMAC", NULL);
+	clk_add_alias("stmmaceth", NULL, "CLK_A1_IC_GMAC", NULL);
 	clk_add_alias("stmmac_phy_clk", NULL, "CLK_A1_ETH_PHY", NULL);
 
 	/* Sata/PCIe clocks */

@@ -47,5 +47,7 @@ int __init plat_clk_alias_init(void)
 		NULL);
 	clk_add_alias("spdif_player_clk", NULL, "CLKC_FS0_CH3", NULL);
 
+	clk_add_alias("stmmaceth", NULL, "CLKA_IC_GMAC_1", NULL);
+
 	return 0;
 }
