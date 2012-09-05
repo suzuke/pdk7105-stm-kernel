@@ -31,9 +31,6 @@
 #include <linux/phy.h>
 #include <linux/pci.h>
 #include "common.h"
-#ifdef CONFIG_STMMAC_TIMER
-#include "stmmac_timer.h"
-#endif
 
 struct stmmac_priv {
 	/* Frequently used values are kept adjacent for cache effect */
@@ -78,9 +75,6 @@ struct stmmac_priv {
 	spinlock_t tx_lock;
 	int wolopts;
 	int wol_irq;
-#ifdef CONFIG_STMMAC_TIMER
-	struct stmmac_timer *tm;
-#endif
 	struct plat_stmmacenet_data *plat;
 	struct stmmac_counters mmc;
 	struct dma_features dma_cap;
