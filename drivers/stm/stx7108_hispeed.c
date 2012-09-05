@@ -1250,3 +1250,115 @@ void __init stx7108_configure_sata(int port, struct stx7108_sata_config *config)
 
 	platform_device_register(&stx7108_sata_devices[port]);
 }
+
+/* MMC/SD resources ------------------------------------------------------ */
+/* Custom PAD configuration for the MMC Host controller */
+#define STX7108_PIO_MMC_CLK_OUT(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = 1, \
+		.name = "MMCCLK", \
+		.priv = &(struct stm_pio_control_pad_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 1, \
+				.od = 1, \
+			}, \
+			.retime = &(struct stm_pio_control_retime_config) { \
+				.retime = -1, \
+				.clk = -1, \
+				.clknotdata = 1, \
+				.double_edge = -1, \
+				.invertclk = -1, \
+				.delay = -1, \
+			}, \
+		}, \
+	}
+
+#define STX7108_PIO_MMC_OUT(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = 1, \
+		.priv = &(struct stm_pio_control_pad_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 1, \
+				.od = 1, \
+			}, \
+		}, \
+	}
+#define STX7108_PIO_MMC_BIDIR(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = 1, \
+		.priv = &(struct stm_pio_control_pad_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 0, \
+				.od = 0, \
+			}, \
+		}, \
+	}
+#define STX7108_PIO_MMC_IN(_port, _pin) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_in, \
+		.function = 1, \
+	}
+
+
+static struct stm_pad_config stx7108_mmc_pad_config = {
+	.gpios_num = 14,
+	.gpios = (struct stm_pad_gpio []) {
+		STX7108_PIO_MMC_CLK_OUT(1, 0),
+		STX7108_PIO_MMC_OUT(1, 1),	/* MMC command */
+		STX7108_PIO_MMC_IN(1, 2),	/* MMC Write Protection */
+		STX7108_PIO_MMC_IN(1, 3),	/* MMC Card Detect */
+		STX7108_PIO_MMC_OUT(1, 4),	/* MMC LED on */
+		STX7108_PIO_MMC_OUT(1, 5),	/* MMC Card PWR */
+		STX7108_PIO_MMC_BIDIR(0, 0),	/* MMC Data[0]*/
+		STX7108_PIO_MMC_BIDIR(0, 1),	/* MMC Data[1]*/
+		STX7108_PIO_MMC_BIDIR(0, 2),	/* MMC Data[2]*/
+		STX7108_PIO_MMC_BIDIR(0, 3),	/* MMC Data[3]*/
+		STX7108_PIO_MMC_BIDIR(0, 4),	/* MMC Data[4]*/
+		STX7108_PIO_MMC_BIDIR(0, 5),	/* MMC Data[5]*/
+		STX7108_PIO_MMC_BIDIR(0, 6),	/* MMC Data[6]*/
+		STX7108_PIO_MMC_BIDIR(0, 7),	/* MMC Data[7]*/
+	},
+};
+
+static struct stm_mmc_platform_data stx7108_mmc_platform_data = {
+	.init = &mmc_claim_resource,
+	.exit = &mmc_release_resource,
+	.custom_cfg = &stx7108_mmc_pad_config,
+	.nonremovable = false,
+};
+
+static struct platform_device stx7108_mmc_device = {
+		.name = "sdhci-stm",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfdaba000, 0x1000),
+			STM_PLAT_RESOURCE_IRQ_NAMED("mmcirq",
+						    ILC_IRQ(120), -1),
+		},
+		.dev = {
+			.platform_data = &stx7108_mmc_platform_data,
+		}
+};
+
+void __init stx7108_configure_mmc(int emmc)
+{
+	struct stm_mmc_platform_data *plat_data;
+
+	plat_data = &stx7108_mmc_platform_data;
+
+	if (unlikely(emmc))
+		plat_data->nonremovable = true;
+
+	platform_device_register(&stx7108_mmc_device);
+}
