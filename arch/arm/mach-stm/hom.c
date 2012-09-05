@@ -55,6 +55,7 @@ void hom_printk(char *buf, ...)
 extern volatile int pen_release;
 
 static void __iomem *virtual_eram_iomem;
+static void __iomem *virtual_tag_iomem;
 
 static struct stm_mem_hibernation *platform;
 static const unsigned long hom_end_table[] = { END_MARKER };
@@ -142,8 +143,6 @@ static void stm_hom_prepare_eram(struct stm_mem_hibernation *platform,
 
 static void __hom_marker(int enable)
 {
-	unsigned long *_ztext = (unsigned long *)
-		(CONFIG_HOM_TAG_VIRTUAL_ADDRESS);
 	const long linux_marker[] = {
 			0x7a6f7266,	/* froz */
 			0x6c5f6e65,	/* en_l */
@@ -151,8 +150,10 @@ static void __hom_marker(int enable)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(linux_marker); ++i)
-		_ztext[i] = enable ? linux_marker[i] : -2;
-	_ztext[ARRAY_SIZE(linux_marker)] = __pa(stm_defrost_kernel);
+		writel(enable ? linux_marker[i] : -2,
+			virtual_tag_iomem + i * sizeof(long));
+	writel(__pa(stm_defrost_kernel), virtual_tag_iomem +
+		ARRAY_SIZE(linux_marker) * sizeof(long));
 }
 
 static inline void hom_marker_enable(void)
@@ -282,6 +283,15 @@ int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 {
 	struct hom_table *table;
 	unsigned long table_size = 0;
+	void *va_tag_iomem = __va(CONFIG_HOM_TAG_PHYSICAL_ADDRESS);
+
+	if (va_tag_iomem < (void *)CONFIG_PAGE_OFFSET ||
+	    va_tag_iomem >= (void *)swapper_pg_dir) {
+		pr_err("stm pm hom: Error: HoM Tag is out of memory space!\n");
+		return -EINVAL;
+	}
+
+	virtual_tag_iomem = (void *)va_tag_iomem;
 
 	if (!data || platform)
 		return -EINVAL;

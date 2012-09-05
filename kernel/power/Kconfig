@@ -99,16 +99,14 @@ config HIBERNATION_ON_MEMORY
 	  will put the memory in self-refresh and after that it will turn-off
 	  the chip.
 
-config HOM_TAG_VIRTUAL_ADDRESS
-	hex "Hibernation on memory - Tag virtual addess"
+config HOM_TAG_PHYSICAL_ADDRESS
+	hex "Hibernation on memory - Tag physical address"
 	depends on HIBERNATION_ON_MEMORY
-	depends on SUPERH32 || ARM
-	default "0x80001800" if SUPERH32
-	default "0xc0001800" if ARM && VMSPLIT_3G
-	default "0x80001800" if ARM && VMSPLIT_2G
+	depends on ARM
+	default "0x60001800"
 	---help---
-	  Set the Absolute Virtual Address where the Hibernation,
-	  FIXME FINISH THIS SENTENCE
+	  Set the Absolute Physical Address where the Hibernation,
+	  writes the HoM maker.
 
 config HOM_DEBUG
 	bool "Hibernation on memory - Debug"
