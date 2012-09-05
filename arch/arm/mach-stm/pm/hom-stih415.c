@@ -32,8 +32,6 @@
 
 #include <mach/soc-stih415.h>
 
-#define SBC_MBX
-
 #define SBC_GPIO_PORT(_nr)	(0xfe610000 + (_nr) * 0x1000)
 #define LMI_RET_GPIO_PORT		4
 #define LMI_RET_GPIO_PIN		4
@@ -47,6 +45,8 @@
 #define SYSCONF_DDR1_PWR_DWN	SYSCONF_SYSTEM(613)
 #define SYSCONF_DDR1_PWR_ACK	SYSCONF_SYSTEM(672)
 
+#define SBC_MBX			0xfe4b4000
+#define SBC_MBX_WRITE_STATUS(x)	(SBC_MBX + 0x4 + 0x4 * (x))
 
 static const unsigned long __stxh415_hom_ddr_0[] = {
 OR32(STIH415_MPE_DDR0_PCTL_BASE + DDR_DTU_CFG, DDR_DTU_CFG_ENABLE),
@@ -76,6 +76,13 @@ POKE32(SBC_GPIO_PORT(LMI_RET_GPIO_PORT) + STM_GPIO_REG_CLR_POUT,
 	1 << LMI_RET_GPIO_PIN),
 };
 
+static const unsigned long __stxh415_hom_enter_passive[] = {
+/*
+ * Send message 'ENTER_PASSIVE' (0x5)
+ */
+POKE32(SBC_MBX_WRITE_STATUS(0), 0x5),
+};
+
 #define HOM_TBL(name) {					\
 		.addr = name,				\
 		.size = ARRAY_SIZE(name) * sizeof(long),\
@@ -85,6 +92,7 @@ static struct hom_table stxh415_hom_table[] = {
 	HOM_TBL(__stxh415_hom_ddr_0),
 	HOM_TBL(__stxh415_hom_ddr_1),
 	HOM_TBL(__stxh415_hom_lmi_retention),
+	HOM_TBL(__stxh415_hom_enter_passive),
 };
 
 static int stxh415_hom_prepare(void)
