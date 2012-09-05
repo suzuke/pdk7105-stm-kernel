@@ -456,12 +456,16 @@ static int fli7610_pio_config(unsigned gpio,
 		ARRAY_SIZE(fli7610_pio_controls), 6);
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void fli7610_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, fli7610_pio_controls,
 		&fli7610_pio_retime_offset,
 		buf, len);
 }
+#else
+#define fli7610_pio_report NULL
+#endif
 
 static const struct stm_pad_ops fli7610_pad_ops = {
 	.gpio_config = fli7610_pio_config,

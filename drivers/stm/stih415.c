@@ -537,12 +537,16 @@ static int stih415_pio_config(unsigned gpio,
 		ARRAY_SIZE(stih415_pio_devices), 6);
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void stih415_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, stih415_pio_controls,
 		&stih415_pio_retime_offset,
 		buf, len);
 }
+#else
+#define stih415_pio_report NULL
+#endif
 
 static const struct stm_pad_ops stih415_pad_ops = {
 	.gpio_config = stih415_pio_config,

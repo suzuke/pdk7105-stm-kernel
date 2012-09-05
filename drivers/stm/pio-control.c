@@ -201,6 +201,8 @@ static void stm_pio_control_config_retime_dedicated(
 	sysconf_write(reg, value);
 }
 
+#ifdef CONFIG_DEBUG_FS
+
 static int stm_pio_control_report_direction(struct stm_pio_control *pio_control,
 		int pin, char *buf, int len)
 {
@@ -266,6 +268,8 @@ static int stm_pio_control_report_retime_dedicated(
 		((value >> 9) & 0x1),
 		((value >> 10) & 0x1));
 }
+
+#endif /* CONFIG_DEBUG_FS */
 
 void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 		struct stm_pio_control *pio_control, int num)
@@ -344,14 +348,6 @@ static void (*const config_retime_fn[])(struct stm_pio_control *pio_control,
 	[stm_pio_control_retime_style_dedicated] = stm_pio_control_config_retime_dedicated,
 };
 
-static int (*const report_retime_fn[])(struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *retime_offset,
-		int pin, char *buf, int len) = {
-	[stm_pio_control_retime_style_none] = NULL,
-	[stm_pio_control_retime_style_packed] = stm_pio_control_report_retime_packed,
-	[stm_pio_control_retime_style_dedicated] = stm_pio_control_report_retime_dedicated,
-};
-
 int stm_pio_control_config_all(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function,
 		struct stm_pio_control_pad_config *config,
@@ -410,6 +406,16 @@ int stm_pio_control_config_all(unsigned gpio,
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
+
+static int (*const report_retime_fn[])(struct stm_pio_control *pio_control,
+		const struct stm_pio_control_retime_offset *retime_offset,
+		int pin, char *buf, int len) = {
+	[stm_pio_control_retime_style_none] = NULL,
+	[stm_pio_control_retime_style_packed] = stm_pio_control_report_retime_packed,
+	[stm_pio_control_retime_style_dedicated] = stm_pio_control_report_retime_dedicated,
+};
+
 void stm_pio_control_report_all(int gpio,
 		struct stm_pio_control *pio_controls,
 		const struct stm_pio_control_retime_offset *retime_offset,
@@ -442,3 +448,5 @@ void stm_pio_control_report_all(int gpio,
 			retime_offset, pin, buf+off, len-off);
 	}
 }
+
+#endif

@@ -853,12 +853,16 @@ static int stx7108_pio_config(unsigned gpio,
 		ARRAY_SIZE(stx7108_pio_controls), 6);
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void stx7108_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, stx7108_pio_controls,
 				   &stx7108_pio_retime_offset,
 				   buf, len);
 }
+#else
+#define stx7108_pio_report NULL
+#endif
 
 static const struct stm_pad_ops stx7108_pad_ops = {
 	.gpio_config = stx7108_pio_config,

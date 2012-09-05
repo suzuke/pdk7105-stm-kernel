@@ -605,11 +605,15 @@ static int stig125_pio_config(unsigned gpio,
 		ARRAY_SIZE(stig125_pio_devices), 8);
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void stig125_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, stig125_pio_controls,
 		NULL, buf, len);
 }
+#else
+#define stig125_pio_report NULL
+#endif
 
 static const struct stm_pad_ops stig125_pad_ops = {
 	.gpio_config = stig125_pio_config,
