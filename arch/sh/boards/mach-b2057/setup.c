@@ -279,10 +279,11 @@ static int __init device_init(void)
 	stxh205_configure_mmc(0);
 
 	stxh205_configure_nand(&(struct stm_nand_config) {
-			.driver = stm_nand_flex,
+			.driver = stm_nand_bch,
 			.nr_banks = 1,
 			.banks = &b2057_nand_flash,
-			.rbn.flex_connected = 1,});
+			.rbn.flex_connected = 1,
+			.bch_ecc_cfg = BCH_ECC_CFG_AUTO});
 
 	stxh205_configure_spifsm(&b2057_serial_flash);
 
