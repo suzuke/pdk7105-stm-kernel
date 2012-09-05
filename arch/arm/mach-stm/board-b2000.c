@@ -378,7 +378,8 @@ static void __init b2000_init(void)
 			.pwm = stih415_sbc_pwm,
 			.out0_enabled = 1, });
 
-#if defined(CONFIG_MACH_STM_B2000_CN22_B2035) || defined(CONFIG_STM_MMC_B2048A_CARD)
+#if defined(CONFIG_MACH_STM_B2000_CN22_B2035) || \
+	defined(CONFIG_MACH_STM_B2000_CN22_B2048)
 #ifdef CONFIG_MACH_STM_B2000_B2048_EMMC
 	/* eMMC on board */
 	stih415_configure_mmc(1);
