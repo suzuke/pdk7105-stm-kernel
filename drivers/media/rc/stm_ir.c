@@ -1074,30 +1074,6 @@ static int ir_stm_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	if (devm_request_irq(dev, irb_irq, ir_stm_interrupt, IRQF_DISABLED,
-			     IR_STM_NAME, (void *)ir_dev) < 0) {
-		pr_err(IR_STM_NAME ": IRQ %d register failed\n", irb_irq);
-		return -EIO;
-	}
-
-	/* Enable wakeup interrupt if any */
-	irb_irq_wup = platform_get_irq(pdev, 1);
-	if (irb_irq_wup >= 0) {
-		if (devm_request_irq
-		    (dev, irb_irq_wup, ir_stm_interrupt, IRQF_DISABLED,
-		     IR_STM_NAME, (void *)ir_dev) < 0) {
-			pr_err(IR_STM_NAME
-			       ": wakeup IRQ %d register failed\n",
-			       irb_irq_wup);
-			return -EIO;
-		}
-		disable_irq(irb_irq_wup);
-		enable_irq_wake(irb_irq_wup);
-		pr_info(IR_STM_NAME
-		       ": the driver has wakeup IRQ %d\n", irb_irq_wup);
-	}
-
-
 	/* Hardware IR block setup - the PIO ports should already be set up
 	 * in the board-dependent configuration.  We need to remap the
 	 * IR registers into kernel space - we do this in one chunk
@@ -1180,6 +1156,32 @@ static int ir_stm_probe(struct platform_device *pdev)
 
 	}
 	platform_set_drvdata(pdev, ir_dev);
+
+	if (devm_request_irq(dev, irb_irq, ir_stm_interrupt, IRQF_DISABLED,
+			     IR_STM_NAME, (void *)ir_dev) < 0) {
+		pr_err(IR_STM_NAME ": IRQ %d register failed\n", irb_irq);
+		ret = -EIO;
+		goto error1;
+	}
+
+	/* Enable wakeup interrupt if any */
+	irb_irq_wup = platform_get_irq(pdev, 1);
+	if (irb_irq_wup >= 0) {
+		if (devm_request_irq
+		    (dev, irb_irq_wup, ir_stm_interrupt, IRQF_DISABLED,
+		     IR_STM_NAME, (void *)ir_dev) < 0) {
+			pr_err(IR_STM_NAME
+			       ": wakeup IRQ %d register failed\n",
+			       irb_irq_wup);
+			ret = -EIO;
+			goto error1;
+		}
+		disable_irq(irb_irq_wup);
+		enable_irq_wake(irb_irq_wup);
+		pr_info(IR_STM_NAME
+		       ": the driver has wakeup IRQ %d\n", irb_irq_wup);
+	}
+
 
 	return ret;
 error1:
