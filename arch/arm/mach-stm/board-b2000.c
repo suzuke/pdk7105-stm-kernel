@@ -50,6 +50,7 @@ static void __init b2000_init_early(void)
 #define GMII1_PHY_CLKOUT_NOT_TXCLK_SEL stm_gpio(2, 5)
 #define HDMI_HOTPLUG	GMII1_PHY_CLKOUT_NOT_TXCLK_SEL
 #define GMII0_PHY_CLKOUT_NOT_TXCLK_SEL stm_gpio(13, 4)
+#define POWER_ON stm_gpio(4, 3)
 
 #if defined(CONFIG_MACH_STM_B2000_CN23_NONE)
 static struct stm_pad_config stih415_hdmi_hp_pad_config = {
@@ -269,6 +270,12 @@ static void b2000_ethphy_gpio_init(int cold_boot)
 
 static void __init b2000_init(void)
 {
+	/*
+	 * gpio-power on board power supplies
+	 * J31 should be not fitted, and J33 set to 1-2
+	 */
+	gpio_request(POWER_ON, "POWER_PIO");
+	gpio_direction_output(POWER_ON, 1);
 
 	b2000_ethphy_gpio_init(1);
 #if defined(CONFIG_MACH_STM_B2000_CN23_NONE)
