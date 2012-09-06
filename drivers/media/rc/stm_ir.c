@@ -1237,6 +1237,9 @@ static int ir_stm_freeze(struct device *dev)
 {
 	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
+	if (device_may_wakeup(dev))
+		return 0;
+
 	/* disable IR RX/TX interrupts plus clear status */
 	writel(0x00, ir_dev->rx_base + IRB_RX_EN);
 	writel(0xff, ir_dev->rx_base + IRB_RX_INT_CLEAR);
@@ -1250,6 +1253,9 @@ static int ir_stm_freeze(struct device *dev)
 static int ir_stm_restore(struct device *dev)
 {
 	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
+
+	if (device_may_wakeup(dev))
+		return 0;
 
 	clk_enable(ir_dev->sys_clock);
 
