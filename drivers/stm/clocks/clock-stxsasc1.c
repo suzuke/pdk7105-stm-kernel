@@ -544,9 +544,9 @@ static int clkgenax_recalc(struct clk *clk)
    Returns:     'clk_err_t' error code
    ======================================================================== */
 
+#ifdef ST_OS21
 static int clkgenax_observe(struct clk *clk, unsigned long *div_p)
 {
-#ifdef ST_OS21
 	unsigned long sel;
 	void *base_addr;
 	unsigned long divcfg;
@@ -598,12 +598,11 @@ static int clkgenax_observe(struct clk *clk, unsigned long *div_p)
 		SYSCONF_WRITE(0, 406, 30, 30, 0); /* Open drain */
 		SYSCONF_WRITE(0, 405, 30, 30, 0); /* pull up */
 	}
-#else
-# warning "warning: clkgenax_observe needs extra work because all the PIO"
-# warning "warning:  already acquired by PAD manager"
-#endif
 	return 0;
 }
+#else
+#define	clkgenax_observe	NULL
+#endif
 
 /* ========================================================================
    Name:        clkgenax_set_rate
@@ -699,7 +698,7 @@ static int clkgenax_set_rate(struct clk *clk, unsigned long freq)
    Description: Use internal HW feature (when avail.) to measure clock
    Returns:     'clk_err_t' error code.
    ======================================================================== */
-
+#ifdef ST_OS21
 static unsigned long clkgenax_get_measure(struct clk *clk)
 {
 	unsigned long src, data;
@@ -753,6 +752,9 @@ static unsigned long clkgenax_get_measure(struct clk *clk)
 
 	return measure;
 }
+#else
+#define clkgenax_get_measure	NULL
+#endif
 
 /******************************************************************************
 CLOCKGEN B - VCC (video/tango)
@@ -999,9 +1001,9 @@ static int clkgen_vcc_disable(struct clk *clk)
    Returns:     'clk_err_t' error code
    ======================================================================== */
 
+#ifdef ST_OS21
 static int clkgen_vcc_observe(struct clk *clk, unsigned long *div_p)
 {
-#ifdef ST_OS21
 	unsigned long channel, je_ctrl;
 	unsigned long base_addr;
 	int div;	/* final_div = (1 << div) */
@@ -1037,12 +1039,10 @@ static int clkgen_vcc_observe(struct clk *clk, unsigned long *div_p)
 	SYSCONF_WRITE(0, 405, 29, 29, 0);/* pull up */
 
 	return 0;
-#else
-# warning "warning: clkgen_vcc_observe needs extra work because all the PIO"
-# warning "warning:  already acquired by PAD manager"
-	return CLK_ERR_BAD_PARAMETER;
-#endif
 }
+#else
+#define clkgen_vcc_observe	NULL
+#endif
 
 /******************************************************************************
 CLOCKGEN B (video/tango)	seen as bank 0
@@ -1191,9 +1191,9 @@ static int clkgen_freq_synth_recalc(struct clk *clk)
    Returns:     'clk_err_t' error code
    ======================================================================== */
 
+#ifdef ST_OS21
 static int clkgen_freq_synth_observe(struct clk *clk, unsigned long *div_p)
 {
-#ifdef ST_OS21
 	int channel;
 	void *base_addr;
 	unsigned long je_ctrl;
@@ -1271,13 +1271,12 @@ static int clkgen_freq_synth_observe(struct clk *clk, unsigned long *div_p)
 		SYSCONF_WRITE(0, 17, 28, 28, 0);/* Open drain */
 		SYSCONF_WRITE(0, 14, 28, 28, 0);/* pull up */
 	}
-#else
-# warning "warning: clkgen_freq_synth_observe needs extra work "
-# warning "warning: because all the PIO"
-# warning "warning: already acquired by PAD manager"
-#endif
 	return 0;
 }
+#else
+#define clkgen_freq_synth_observe	NULL
+#endif
+
 /* ========================================================================
    Name:        clkgen_freq_synth_init
    Description: Read HW status to initialize 'struct clk' structure.
@@ -1608,6 +1607,22 @@ static int clkgen_ccm_set_divx(struct clk *clk, int gpout_id, int div)
 	gpout = div & 0xff;
 	gpout |= (1 << 8); /* input 1:1 */
 	gpout |= (1 << 17); /* select src_clk */
+	/*
+	 * USB PLL ref clk input's 12/24/48Mhz selection via fsx_gpout[19:18]
+	 */
+	if (clk->id == CLK_S_D_USB_REF)
+		switch (div) {
+		case 10:
+			gpout = ((gpout & ~(0x3 << 18)) | (0x1 << 19));
+			break;
+		case 20:
+		case 25:
+			gpout = ((gpout & ~(0x3 << 18)) | (0x1 << 18));
+			break;
+		default:
+			break;
+		}
+
 	CLK_WRITE(base_address + CKG_FS_GPOUT(gpout_id), gpout);
 	CLK_WRITE(base_address + CKG_FS_GPOUT_CTRL, (0x3 << (gpout_id * 2)));
 
@@ -1686,9 +1701,9 @@ static int clkgen_ccm_recalc(struct clk *clk)
    Returns:     'clk_err_t' error code
    ======================================================================== */
 
+#ifdef ST_OS21
 static int clkgen_ccm_observe(struct clk *clk, unsigned long *div_p)
 {
-#ifdef ST_OS21
 	if (!clk)
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -1743,13 +1758,10 @@ static int clkgen_ccm_observe(struct clk *clk, unsigned long *div_p)
 	}
 
 	return 0;
-
-#else
-# warning "warning: clkgen_ccm_observe needs extra work because all the PIO"
-# warning "warning:  already acquired by PAD manager"
-	return CLK_ERR_BAD_PARAMETER;
-#endif
 }
+#else
+#define clkgen_ccm_observe	NULL
+#endif
 
 static int clkgen_ccm_init(struct clk *clk)
 {
@@ -1875,9 +1887,9 @@ static int clkgena9_identify_parent(struct clk *clk)
    Returns:     'clk_err_t' error code
    ======================================================================== */
 
+#ifdef ST_OS21
 static int clkgena9_observe(struct clk *clk, unsigned long *div_p)
 {
-#ifdef ST_OS21
 	if (!clk)
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -1890,13 +1902,10 @@ static int clkgena9_observe(struct clk *clk, unsigned long *div_p)
 	SYSCONF_WRITE(0, 13, 23, 23, 0);	/* pull up */
 
 	return 0;
-
-#else
-# warning "warning: clkgena9_observe needs extra work because all the PIO"
-# warning "warning:  already acquired by PAD manager"
-	return CLK_ERR_BAD_PARAMETER;
-#endif
 }
+#else
+#define clkgena9_observe	NULL
+#endif
 
 /* ========================================================================
    Name:        clkgena9_init
