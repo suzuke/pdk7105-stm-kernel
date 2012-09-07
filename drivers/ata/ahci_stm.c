@@ -64,7 +64,7 @@ __init *prepare_ahci(struct platform_device *pdev)
 	return ahci;
 }
 
-static int __init ahci_stm_driver_probe(struct platform_device *pdev)
+static int __devinit ahci_stm_driver_probe(struct platform_device *pdev)
 {
 	struct stm_plat_ahci_data *pdata = dev_get_platdata(&pdev->dev);
 	struct ahci_stm_drv_data *drv_data;
@@ -147,7 +147,7 @@ static int ahci_stm_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver ahci_stm_drv = {
+static struct platform_driver ahci_stm_driver = {
 	.driver.name = "ahci_stm",
 	.driver.owner = THIS_MODULE,
 	.driver.pm = &ahci_stm_pm_ops,
@@ -157,6 +157,6 @@ static struct platform_driver ahci_stm_drv = {
 
 static int __init ahci_stm_init(void)
 {
-	return platform_driver_register(&ahci_stm_drv);
+	return platform_driver_register(&ahci_stm_driver);
 }
 module_init(ahci_stm_init);
