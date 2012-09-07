@@ -79,7 +79,7 @@ int __init clk_register_table(struct clk *clks, int num, int enable)
 		 * the LLA enables functions claim to support an
 		 * enables function, but then fail if you call it!
 		 */
-		if (enable) {
+		if (enable || clk->flags & CLK_ALWAYS_ENABLED) {
 			ret = clk_enable(clk);
 			if (ret)
 				pr_warning("Failed to enable clk %s, "
