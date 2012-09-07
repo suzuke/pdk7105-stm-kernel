@@ -1058,7 +1058,7 @@ static int ir_stm_probe(struct platform_device *pdev)
 	if (!ir_dev || !rdev)
 		goto error1;
 
-	ir_dev->sys_clock = clk_get(dev, "comms_clk");
+	ir_dev->sys_clock = devm_clk_get(dev, "comms_clk");
 	if (IS_ERR(ir_dev->sys_clock)) {
 		pr_err(IR_STM_NAME " system clock not found\n");
 		return PTR_ERR(ir_dev->sys_clock);
