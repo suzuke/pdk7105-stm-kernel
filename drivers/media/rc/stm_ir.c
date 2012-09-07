@@ -1014,6 +1014,7 @@ static int stm_ir_open(struct rc_dev *rdev)
 		dev->enabled = true;
 		ir_stm_scd_set(dev, 1);
 		dev->insert_scd_timing = true;
+		pm_runtime_get(dev->dev);
 	} else
 		DPRINTK("Device Already Enabled\n");
 
@@ -1030,6 +1031,7 @@ static void stm_ir_close(struct rc_dev *rdev)
 	if (dev->enabled) {
 		ir_stm_rx_flush(dev);
 		dev->enabled = false;
+		pm_runtime_put(dev->dev);
 	}
 
 }
@@ -1066,6 +1068,7 @@ static int ir_stm_probe(struct platform_device *pdev)
 	pr_info(IR_STM_NAME
 	       ": probe found data for platform device %s\n", pdev->name);
 	ir_dev->pdata = dev->platform_data;
+	ir_dev->dev = dev;
 
 	irb_irq = platform_get_irq(pdev, 0);
 	if (irb_irq < 0) {
