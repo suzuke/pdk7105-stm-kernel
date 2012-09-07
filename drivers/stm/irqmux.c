@@ -60,7 +60,7 @@ static int apply_irqmux_mapping(struct device *dev)
 	return 0;
 }
 
-static int __init irq_mux_driver_probe(struct platform_device *pdev)
+static int __devinit irq_mux_driver_probe(struct platform_device *pdev)
 {
 	struct stm_plat_irq_mux_data *pdata = dev_get_platdata(&pdev->dev);
 	struct irq_mux_drv_data *drv_data;
@@ -93,7 +93,7 @@ static int __init irq_mux_driver_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver irq_mux_drv = {
+static struct platform_driver irq_mux_driver = {
 	.driver.name = "irq_mux",
 	.driver.owner = THIS_MODULE,
 	.probe = irq_mux_driver_probe,
@@ -101,7 +101,7 @@ static struct platform_driver irq_mux_drv = {
 
 static int __init irqmux_init(void)
 {
-	return platform_driver_register(&irq_mux_drv);
+	return platform_driver_register(&irq_mux_driver);
 }
 core_initcall(irqmux_init);
 
