@@ -92,7 +92,7 @@ _CLK_OPS(clkaudio,
 );
 
 /* Physical clocks description */
-clk_t clk_clocks[] = {
+static clk_t clk_clocks[] = {
 
 _CLK(CLKA_REF, &clkgena, 0,
 	  CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
@@ -125,7 +125,7 @@ _CLK(CLKA_IC_200, 	&clkgena, 200000000, CLK_ALWAYS_ENABLED),
 
 };
 
-clk_t clksouth_clocks[] = {
+static clk_t clksouth_clocks[] = {
 /* Clockgen A */
 _CLK(CLKSOUTH_REF, &clksouth, 30000000,
 	CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
@@ -187,7 +187,7 @@ _CLK_P(CLK_NOTUSED_10, &clksouth,
 		 .private_data = (void *)(_divider)			\
 }
 
-clk_t clkaudio_clocks[] = {
+static clk_t clkaudio_clocks[] = {
 /* Clockgen A */
 _CLK(CLKAUDIO_REF, &clkaudio, 30000000,
 	CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
@@ -377,14 +377,20 @@ static int clkgena_enable(clk_t *clk_p)
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
+
 	if (!clk_p->parent)
 		/* Unsupported. Init must be called first. */
 		return CLK_ERR_BAD_PARAMETER;
 
-	/* PLL power up */
-	if (clk_p->id >= CLKA_PLL0HS && clk_p->id <= CLKA_PLL1)
+	switch (clk_p->id) {
+	case CLKA_REF:
+		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+	case CLKA_PLL0HS ... CLKA_PLL1:
+		/* PLL power up */
 		return clkgena_xable_pll(clk_p, 1);
-
+	default:
+		break;
+	}
 	err = clkgena_set_parent(clk_p, clk_p->parent);
 	/* clkgena_set_parent() is performing also a recalc() */
 
@@ -408,14 +414,15 @@ static int clkgena_disable(clk_t *clk_p)
 	if (clk_p->id < CLKA_PLL0HS || clk_p->id > CLK_NOT_USED_2)
 		return CLK_ERR_BAD_PARAMETER;
 
-	/* Can this clock be disabled ? */
-	if (clk_p->flags & CLK_ALWAYS_ENABLED)
-		return 0;
-
-	/* PLL power down */
-	if (clk_p->id >= CLKA_PLL0HS && clk_p->id <= CLKA_PLL1)
+	switch (clk_p->id) {
+	case CLKA_REF:
+		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+	case CLKA_PLL0HS ... CLKA_PLL1:
+		/* PLL power down */
 		return clkgena_xable_pll(clk_p, 0);
-
+	default:
+		break;
+	}
 	idx = clkgena_get_index(clk_p->id, &srcreg, &shift);
 	if (idx == -1)
 		return CLK_ERR_BAD_PARAMETER;
@@ -644,6 +651,10 @@ static int clksouth_fsyn_xable(clk_t *clk_p, unsigned long enable)
 	int channel;
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
+
+	if (clk_p->id == CLKSOUTH_REF)
+		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+
 	if (clk_p->id < CLK27_RECOVERY_1 || clk_p->id > CLK_NOTUSED_10)
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -724,7 +735,7 @@ static int clksouth_enable(clk_t *clk_p)
    ======================================================================== */
 static int clksouth_disable(clk_t *clk_p)
 {
-	return clksouth_fsyn_xable(clk_p, 1);
+	return clksouth_fsyn_xable(clk_p, 0);
 }
 
 /* ========================================================================
@@ -829,6 +840,10 @@ static int clkaudio_fsyn_xable(clk_t *clk_p, unsigned long enable)
 
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
+
+	if (clk_p->id == CLKAUDIO_REF)
+		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+
 	if (clk_p->id < CLK_512FS_FREE_RUN || clk_p->id > CLK_FS_DEC_2)
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -929,7 +944,7 @@ static int clkaudio_enable(clk_t *clk_p)
    ======================================================================== */
 static int clkaudio_disable(clk_t *clk_p)
 {
-	return clkaudio_fsyn_xable(clk_p, 1);
+	return clkaudio_fsyn_xable(clk_p, 0);
 }
 
 /* ========================================================================
