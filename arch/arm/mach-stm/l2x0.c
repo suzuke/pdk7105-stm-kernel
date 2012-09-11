@@ -67,8 +67,10 @@ static int __init stm_l2x0_init(void)
 	 * that the CPU will potentially see stale values, rather than what the
 	 * device has put into main memory. The stale value should not cause any
 	 * problems as it should never be accessed via the kernel mapping.
+	 *
+	 * Instruction and Data prefetching now enabled (bit 28 and 29)
 	 */
-	l2x0_init(base, 0x1<<22, 0xffbfffff);
+	l2x0_init(base, 0x1<<28 | 0x1<<29 | 0x1<<22, 0xcfbfffff);
 #endif
 	return 0;
 }
