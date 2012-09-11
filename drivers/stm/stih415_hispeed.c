@@ -126,6 +126,8 @@
 
 static struct sysconf_field *gbit_sc[MAX_GMACS];
 static char *gmac_clk_n[MAX_GMACS] = { "CLKS_GMAC0_PHY", "CLKS_ETH1_PHY" };
+static char *phy_clk_parent_100[MAX_GMACS] = { "CLKS_A1_PLL1", "CLKS_A0_PLL1" };
+static char *phy_clk_parent_10[MAX_GMACS] = { "CLKS_A1_REF", "CLKS_A0_REF" };
 
 int stih415_gmac0_claim(struct stm_pad_state *state, void *priv)
 {
@@ -602,7 +604,7 @@ static void stih415_ethernet_gmii1_speed(void *priv, unsigned int speed)
 
 
 static void stih415_ethernet_rgmii_speed(int port, void *priv,
-						unsigned int speed)
+					 unsigned int speed)
 {
 	/* TX Clock inversion is not set for 1000Mbps */
 	if (speed == SPEED_1000) {
@@ -612,8 +614,8 @@ static void stih415_ethernet_rgmii_speed(int port, void *priv,
 		 * */
 		sysconf_write(gbit_sc[port], 0);
 	} else {
-
-		static struct clk *phy_clk;
+		int ret;
+		static struct clk *phy_clk, *clk_parent;
 		unsigned long phy_clk_rate;
 		/* output clock driver by Clockgen
 		 * 125MHz clock provided by PHY is not suitable for retiming.
@@ -622,12 +624,25 @@ static void stih415_ethernet_rgmii_speed(int port, void *priv,
 		 * */
 		phy_clk = clk_get(NULL, gmac_clk_n[port]);
 		sysconf_write(gbit_sc[port], 6);
-		if (speed  == SPEED_100)
+		if (speed  == SPEED_100) {
+			clk_parent = clk_get(NULL, phy_clk_parent_100[port]);
 			phy_clk_rate = 25000000;
-		else
+		} else {
+			/*
+			 * We have to route the phy clk to a parent
+			 * (e.g. 30MHz quartz) to get 2.5MHz for RGMII.
+			 */
+			clk_parent = clk_get(NULL, phy_clk_parent_10[port]);
 			phy_clk_rate = 2500000;
+		}
+		ret = clk_set_parent(phy_clk, clk_parent);
+		if (ret)
+			pr_err("%s: error setting the parent clk\n", __func__);
 
 		clk_set_rate(phy_clk, phy_clk_rate);
+
+		pr_debug("%s: %d Speed - phy clk %lu\n", __func__,
+			 speed, clk_get_rate(phy_clk));
 	}
 	stih415_ethernet_gtx_speed(priv, speed);
 }
