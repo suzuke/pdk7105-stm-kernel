@@ -102,6 +102,7 @@ static struct stm_pad_config stig125_ssc_spi_pad_configs[SSC_NUMBER] = {
 			STIG125_RESOURCE_IRQ(irq),			\
 		},							\
 		.dev.platform_data = &(struct stm_plat_ssc_data) {	\
+			.i2c_speed = 100,				\
 		},							\
 	}
 
@@ -162,7 +163,7 @@ static void __init stig125_ssc_set_clk(int ssc)
 
 static int __initdata stig125_ssc_configured[ARRAY_SIZE(stig125_ssc_devices)];
 
-int __init stig125_configure_ssc_i2c(int ssc)
+int __init stig125_configure_ssc_i2c(int ssc, unsigned i2c_bus_speed)
 {
 	int ret;
 	static int i2c_busnum;
@@ -179,6 +180,7 @@ int __init stig125_configure_ssc_i2c(int ssc)
 	stig125_ssc_devices[ssc].id = i2c_busnum++;
 	plat_data = stig125_ssc_devices[ssc].dev.platform_data;
 	plat_data->pad_config = &stig125_ssc_i2c_pad_configs[ssc];
+	plat_data->i2c_speed = i2c_bus_speed;
 
 	stig125_ssc_set_clk(ssc);
 

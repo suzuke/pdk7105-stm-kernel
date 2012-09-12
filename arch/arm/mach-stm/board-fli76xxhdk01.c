@@ -187,19 +187,19 @@ static void __init fli76xxhdk01_init(void)
 
 	/* SCL1_3V, SDA1_3V */
 	fli7610_configure_ssc_i2c(FLI7610_I2C1,
-			&(struct fli7610_ssc_config) {.i2c_fastmode = 0,});
+			&(struct fli7610_ssc_config) {.i2c_speed = 100,});
 
 	/* SCL2_3V, SDA2_3V */
 	fli7610_configure_ssc_i2c(FLI7610_I2C2,
-			&(struct fli7610_ssc_config) {.i2c_fastmode = 0,});
+			&(struct fli7610_ssc_config) {.i2c_speed = 100,});
 
 	/* SCL3_3V, SDA3_3V */
 	fli7610_configure_ssc_i2c(FLI7610_I2C3,
-			&(struct fli7610_ssc_config) {.i2c_fastmode = 0,});
+			&(struct fli7610_ssc_config) {.i2c_speed = 100,});
 
 	/* SCL_LPM_3V3, SDA_LPM_3V3 */
 	fli7610_configure_ssc_i2c(FLI7610_I2C1_LPM,
-			&(struct fli7610_ssc_config) {.i2c_fastmode = 0,});
+			&(struct fli7610_ssc_config) {.i2c_speed = 100,});
 
 	fli7610_configure_lirc();
 

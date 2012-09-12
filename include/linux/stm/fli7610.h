@@ -102,7 +102,7 @@ void fli7610_configure_usb(int port);
 
 struct fli7610_ssc_config {
 	void (*spi_chipselect)(struct spi_device *spi, int is_on);
-	unsigned int i2c_fastmode:1;
+	unsigned int i2c_speed;
 };
 /* Use the above macros while passing SSC number. */
 int fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config);

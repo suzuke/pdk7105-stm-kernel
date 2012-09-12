@@ -72,10 +72,10 @@ static void __init b2044_init(void)
 
 	sti125_configure_sata(1);
 
-	stig125_configure_ssc_i2c(STIG125_TELSIS_SSC);
-	stig125_configure_ssc_i2c(STIG125_HDMI_SSC);
-	stig125_configure_ssc_i2c(STIG125_FE_SSC);
-	stig125_configure_ssc_i2c(STIG125_BE_SSC);
+	stig125_configure_ssc_i2c(STIG125_TELSIS_SSC, 100);
+	stig125_configure_ssc_i2c(STIG125_HDMI_SSC, 100);
+	stig125_configure_ssc_i2c(STIG125_FE_SSC, 100);
+	stig125_configure_ssc_i2c(STIG125_BE_SSC, 100);
 
 }
 

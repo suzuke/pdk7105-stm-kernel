@@ -79,7 +79,7 @@ struct stig125_ssc_config {
 	void (*spi_chipselect)(struct spi_device *spi, int is_on);
 };
 
-int stig125_configure_ssc_i2c(int ssc);
+int stig125_configure_ssc_i2c(int ssc, unsigned i2c_bus_speed);
 int stig125_configure_ssc_spi(int ssc, struct stig125_ssc_config *config);
 
 void stig125_configure_keyscan(const struct stm_keyscan_config *config);

@@ -182,7 +182,7 @@ int __init fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config)
 
 	plat_data->pad_config = pad_config;
 	if (config)
-		plat_data->i2c_fastmode = config->i2c_fastmode;
+		plat_data->i2c_speed = config->i2c_speed;
 
 	/* I2C bus number reservation (to prevent any hot-plug device
 	 * from using it) */
