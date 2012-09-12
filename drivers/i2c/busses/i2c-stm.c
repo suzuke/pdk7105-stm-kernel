@@ -1095,19 +1095,20 @@ static struct i2c_algorithm iic_stm_algo = {
 	.functionality = iic_stm_func,
 };
 
-static ssize_t iic_bus_show_fastmode(struct device *dev,
-				     struct device_attribute *attr, char *buf)
+static ssize_t iic_bus_show_speed(struct device *dev,
+				  struct device_attribute *attr, char *buf)
 {
 	struct i2c_adapter *adapter =
 	    container_of(dev, struct i2c_adapter, dev);
 	struct iic_ssc *iic_stm =
 	    container_of(adapter, struct iic_ssc, adapter);
-	return sprintf(buf, "%u\n", check_fastmode(iic_stm));
+
+	return sprintf(buf, "%u\n", check_fastmode(iic_stm) ? 400 : 100);
 }
 
-static ssize_t iic_bus_store_fastmode(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t count)
+static ssize_t iic_bus_store_speed(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
 {
 	struct i2c_adapter *adapter =
 	    container_of(dev, struct i2c_adapter, dev);
@@ -1116,20 +1117,26 @@ static ssize_t iic_bus_store_fastmode(struct device *dev,
 	unsigned long val;
 	int ret;
 
-	ret = strict_strtoul(buf, 10, &val);
+	ret = kstrtoul(buf, 10, &val);
 	if (ret)
 		return ret;
 
-	if (val)
-		iic_adap->config |= IIC_STM_CONFIG_SPEED_FAST;
-	else
+	switch (val) {
+	case 100:
 		iic_adap->config &= ~IIC_STM_CONFIG_SPEED_MASK;
+		break;
+	case 400:
+		iic_adap->config |= IIC_STM_CONFIG_SPEED_FAST;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	return count;
 }
 
-static DEVICE_ATTR(fastmode, S_IRUGO | S_IWUSR, iic_bus_show_fastmode,
-		   iic_bus_store_fastmode);
+static DEVICE_ATTR(speed, S_IRUGO | S_IWUSR, iic_bus_show_speed,
+		   iic_bus_store_speed);
 
 static int iic_stm_probe(struct platform_device *pdev)
 {
@@ -1207,7 +1214,7 @@ static int iic_stm_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	err = device_create_file(&(i2c_stm->adapter.dev), &dev_attr_fastmode);
+	err = device_create_file(&(i2c_stm->adapter.dev), &dev_attr_speed);
 	if (err) {
 		dev_err(&pdev->dev, "Cannot create fastmode sysfs entry\n");
 		return err;
