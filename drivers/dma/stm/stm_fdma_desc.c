@@ -45,6 +45,7 @@ struct stm_fdma_desc *stm_fdma_desc_alloc(struct stm_fdma_chan *fchan)
 
 	/* Initialise the descriptor */
 	fdesc->fchan = fchan;
+	INIT_LIST_HEAD(&fdesc->node);
 	INIT_LIST_HEAD(&fdesc->llu_list);
 
 	dma_async_tx_descriptor_init(&fdesc->dma_desc, &fchan->dma_chan);
@@ -61,15 +62,27 @@ error_kzalloc:
 	return NULL;
 }
 
+static void stm_fdma_desc_dealloc(struct stm_fdma_desc *fdesc)
+{
+	struct stm_fdma_device *fdev = fdesc->fchan->fdev;
+
+	/* Free the llu back to the dma pool and free the descriptor */
+	dma_pool_free(fdev->dma_pool, fdesc->llu, fdesc->dma_desc.phys);
+	kfree(fdesc);
+}
+
 void stm_fdma_desc_free(struct stm_fdma_desc *fdesc)
 {
-	if (fdesc) {
-		struct stm_fdma_device *fdev = fdesc->fchan->fdev;
+	struct stm_fdma_desc *ldesc, *_ldesc;
 
-		/* Free the llu back to the dma pool and free the descriptor */
-		dma_pool_free(fdev->dma_pool, fdesc->llu, fdesc->dma_desc.phys);
-		kfree(fdesc);
-	}
+	BUG_ON(!fdesc);
+
+	/* Ensure any lingering llu_list descriptors are also freed */
+	if (!list_empty(&fdesc->llu_list))
+		list_for_each_entry_safe(ldesc, _ldesc, &fdesc->llu_list, node)
+			stm_fdma_desc_dealloc(ldesc);
+
+	stm_fdma_desc_dealloc(fdesc);
 }
 
 struct stm_fdma_desc *stm_fdma_desc_get(struct stm_fdma_chan *fchan)
@@ -77,24 +90,42 @@ struct stm_fdma_desc *stm_fdma_desc_get(struct stm_fdma_chan *fchan)
 	struct stm_fdma_desc *fdesc = NULL, *tdesc, *_tdesc;
 	unsigned long irqflags = 0;
 
+	/*
+	 * Search the free list for the next available descriptor. Only those
+	 * descriptors that have been ACKed can be used. If a descriptor has
+	 * been ACKed but has a non-empty llu_list, add the descriptors in the
+	 * llu_list to the free list.
+	 *
+	 * We should only encounter a non-empty llu_list if a transfer is not
+	 * automatically ACKed upon completion. In case the transfer is to be
+	 * re-submitted, it is moved to the free list as a single complete
+	 * transfer entity.
+	 *
+	 * When the transfer is finally ACKed, the only time we can move the
+	 * llu_list to the free list is when getting the next available
+	 * descriptor.
+	 */
+
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
 	/* Search the free list for an available descriptor */
 	list_for_each_entry_safe(tdesc, _tdesc, &fchan->desc_free, node) {
 		/* If descriptor has been ACKed then remove from free list */
 		if (async_tx_test_ack(&tdesc->dma_desc)) {
+			/* Add llu_list to free list in case not empty */
+			list_splice_init(&tdesc->llu_list, &fchan->desc_free);
 			list_del_init(&tdesc->node);
 			fdesc = tdesc;
 			break;
 		}
-		dev_dbg(fchan->fdev->dev, "Descriptor %p not ACKed\n", fdesc);
+		dev_dbg(fchan->fdev->dev, "Descriptor %p not ACKed\n", tdesc);
 	}
 
 	if (!fdesc) {
 		spin_unlock_irqrestore(&fchan->lock, irqflags);
 
 		/* No descriptors available, attempt to allocate a new one */
-		dev_notice(fchan->fdev->dev, "Allocating a new descriptor\n");
+		dev_dbg(fchan->fdev->dev, "Allocating a new descriptor\n");
 		fdesc = stm_fdma_desc_alloc(fchan);
 		if (!fdesc) {
 			dev_err(fchan->fdev->dev, "Not enough descriptors\n");
@@ -220,9 +251,9 @@ void stm_fdma_desc_complete(unsigned long data)
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
 	/*
-	 * A terminate all or error may result in a completion with the active
-	 * descriptor list is empty. If no active descriptor, we are done,
-	 * unless a descriptor start is requested.
+	 * A terminate all or error may result in a completion with an empty
+	 * active descriptor list. If no active descriptor, we are done, unless
+	 * a descriptor start is requested.
 	 */
 
 	if (list_empty(&fchan->desc_active)) {
@@ -257,8 +288,24 @@ void stm_fdma_desc_complete(unsigned long data)
 					stm_fdma_desc_unmap_buffers(child);
 		}
 
-		/* Retire this descriptor to the free list */
-		list_splice_init(&fdesc->llu_list, &fchan->desc_free);
+		/*
+		 * If the transfer has been ACKed, then all individual
+		 * descriptors that make up the transfer can be moved to the
+		 * free list. If the transfer has not been ACKed, then it is
+		 * possible that it will be re-used, in which case the transfer
+		 * should be moved to the free list as-is.
+		 *
+		 * Until the ACK bit is set, the descriptor will not be re-used.
+		 * When the ACK bit is eventually set, and the descriptor is
+		 * about to be re-used, if the llu_list is not empty, the
+		 * llu_list will be added to the free list.
+		 */
+
+		/* Move the llu_list to the free list only if desriptor ACKed */
+		if (fdesc->dma_desc.flags & DMA_CTRL_ACK)
+			list_splice_init(&fdesc->llu_list, &fchan->desc_free);
+
+		/* Move the descriptor to the free list (regardless of ACK) */
 		list_move(&fdesc->node, &fchan->desc_free);
 	}
 

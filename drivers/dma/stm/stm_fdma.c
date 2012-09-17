@@ -229,7 +229,7 @@ dma_cookie_t stm_fdma_tx_submit(struct dma_async_tx_descriptor *desc)
 	desc->cookie = fchan->dma_chan.cookie;
 
 	/* Queue the descriptor */
-	list_add_tail(&fdesc->node, &fchan->desc_queue);
+	list_move_tail(&fdesc->node, &fchan->desc_queue);
 
 	/* Attempt to start the next available descriptor */
 	stm_fdma_desc_start(fchan);
