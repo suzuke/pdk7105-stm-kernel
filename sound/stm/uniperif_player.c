@@ -473,6 +473,7 @@ static void snd_stm_uniperif_player_comp_cb(void *param)
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
+	BUG_ON(!player->substream);
 
 	snd_pcm_period_elapsed(player->substream);
 }

@@ -341,6 +341,7 @@ static void snd_stm_uniperif_reader_dma_callback(void *param)
 
 	BUG_ON(!reader);
 	BUG_ON(!snd_stm_magic_valid(reader));
+	BUG_ON(!reader->substream);
 
 	if (!get__AUD_UNIPERIF_CTRL__OPERATION(reader))
 		return;
