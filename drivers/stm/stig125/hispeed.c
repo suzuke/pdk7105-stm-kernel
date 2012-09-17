@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/ahci_platform.h>
+#include <linux/stm/isve.h>
 
 #ifdef CONFIG_ARM
 #include <asm/mach/map.h>
@@ -633,3 +634,100 @@ void __init sti125_configure_sata(unsigned int sata_port)
 {
 	platform_device_register(&stig125_ahci_devices[sata_port]);
 }
+
+static struct plat_isve_data stig125_isve_platform_data[] = {
+	{
+		.downstream_queue_size = 32,
+		.upstream_queue_size = 32,
+		.queue_number = 3,
+		.ifname = "if17",
+	}, {
+		.downstream_queue_size = 32,
+		.upstream_queue_size = 32,
+		.queue_number = 4,
+		.ifname = "if18",
+	}, {
+		.downstream_queue_size = 32,
+		.upstream_queue_size = 32,
+		.queue_number = 5,
+		.ifname = "if16",
+	}
+};
+
+/* Integrated SoC Virtual Ethernet ISVE platform data */
+static u64 stig125_isve_dma_mask = DMA_BIT_MASK(32);
+#define STIG125_DOCSIS_BASE_ADD	0xfee00000
+
+static struct platform_device stig125_isve_devices[] = {
+	{
+		.name = "isve",
+		.id = 0,
+		.num_resources = 4,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(
+				DSFWD_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 3),
+						DSFWD_RPT_OFF),
+			STM_PLAT_RESOURCE_MEM(
+				UPIIM_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 3),
+						UPIIM_RPT_OFF),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_ds", 42),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_us", 50),
+		},
+		.dev = {
+			.dma_mask = &stig125_isve_dma_mask,
+			.coherent_dma_mask = DMA_BIT_MASK(32),
+			.platform_data = &stig125_isve_platform_data[0],
+		},
+	}, {
+		.name = "isve",
+		.id = 1,
+		.num_resources = 4,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(
+				DSFWD_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 4),
+						DSFWD_RPT_OFF),
+			STM_PLAT_RESOURCE_MEM(
+				UPIIM_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 4),
+						UPIIM_RPT_OFF),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_ds", 43),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_us", 51),
+		},
+		.dev = {
+			.dma_mask = &stig125_isve_dma_mask,
+			.coherent_dma_mask = DMA_BIT_MASK(32),
+			.platform_data = &stig125_isve_platform_data[1],
+		},
+	}, {
+		.name = "isve",
+		.id = 2,
+		.num_resources = 4,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(
+				DSFWD_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 5),
+						DSFWD_RPT_OFF),
+			STM_PLAT_RESOURCE_MEM(
+				UPIIM_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 5),
+						UPIIM_RPT_OFF),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_ds", 44),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_us", 52),
+		},
+		.dev = {
+			.dma_mask = &stig125_isve_dma_mask,
+			.coherent_dma_mask = DMA_BIT_MASK(32),
+			.platform_data = &stig125_isve_platform_data[2],
+		},
+	}
+};
+
+static struct platform_device *stig125_isve_configured_device[] __initdata = {
+	&stig125_isve_devices[0],
+	&stig125_isve_devices[1],
+	&stig125_isve_devices[2],
+};
+
+static int __init stig125_isve_devices_setup(void)
+{
+	return platform_add_devices(stig125_isve_configured_device,
+				    ARRAY_SIZE(stig125_isve_configured_device));
+}
+device_initcall(stig125_isve_devices_setup);
