@@ -151,20 +151,20 @@ void stm_fdma_desc_chain(struct stm_fdma_desc **head,
 	*prev = fdesc;
 }
 
+/*
+ * This function should be called with the channel locked!
+ */
 void stm_fdma_desc_start(struct stm_fdma_chan *fchan)
 {
 	struct stm_fdma_desc *fdesc;
-	unsigned long irqflags = 0;
-
-	spin_lock_irqsave(&fchan->lock, irqflags);
 
 	/* There must be no active descriptors */
 	if (!list_empty(&fchan->desc_active))
-		goto unlock;
+		return;
 
 	/* Descriptor queue must not be empty */
 	if (list_empty(&fchan->desc_queue))
-		goto unlock;
+		return;
 
 	/* Remove first descriptor from queue and add to active list */
 	fdesc = list_first_entry(&fchan->desc_queue, struct stm_fdma_desc,
@@ -183,9 +183,6 @@ void stm_fdma_desc_start(struct stm_fdma_chan *fchan)
 		stm_fdma_hw_channel_start(fchan, fdesc);
 		fchan->state = STM_FDMA_STATE_RUNNING;
 	}
-
-unlock:
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
 }
 
 void stm_fdma_desc_unmap_buffers(struct stm_fdma_desc *fdesc)
@@ -212,37 +209,62 @@ void stm_fdma_desc_unmap_buffers(struct stm_fdma_desc *fdesc)
 	}
 }
 
-void stm_fdma_desc_complete(struct stm_fdma_chan *fchan,
-		struct stm_fdma_desc *fdesc)
+void stm_fdma_desc_complete(unsigned long data)
 {
-	struct dma_async_tx_descriptor *desc = &fdesc->dma_desc;
+	struct stm_fdma_chan *fchan = (struct stm_fdma_chan *) data;
+	struct stm_fdma_desc *fdesc = NULL;
 	unsigned long irqflags = 0;
 
-	dev_dbg(fchan->fdev->dev, "%s(fchan=%p, fdesc=%p)\n", __func__,
-			fchan, fdesc);
+	dev_dbg(fchan->fdev->dev, "%s(data=%08lx)\n", __func__, data);
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
-	/* Set the cookie to the last completed descriptor cookie */
-	fchan->last_completed = desc->cookie;
+	/*
+	 * A terminate all or error may result in a completion with the active
+	 * descriptor list is empty. If no active descriptor, we are done,
+	 * unless a descriptor start is requested.
+	 */
 
-	/* Unmap dma address for descriptor and children */
-	if (!fchan->dma_chan.private) {
-		struct stm_fdma_desc *child;
-
-		stm_fdma_desc_unmap_buffers(fdesc);
-
-		list_for_each_entry(child, &fdesc->llu_list, node)
-			stm_fdma_desc_unmap_buffers(child);
+	if (list_empty(&fchan->desc_active)) {
+		/* Start the next descriptor (if available) */
+		stm_fdma_desc_start(fchan);
+		spin_unlock_irqrestore(&fchan->lock, irqflags);
+		return;
 	}
 
-	/* Retire this descriptor to the free list */
-	list_splice_init(&fdesc->llu_list, &fchan->desc_free);
-	list_move(&fdesc->node, &fchan->desc_free);
+	/* Get the head of the active list */
+	fdesc = list_first_entry(&fchan->desc_active, struct stm_fdma_desc,
+			node);
+
+	/* Process a non-cyclic descriptor */
+	if (!test_bit(STM_FDMA_IS_CYCLIC, &fchan->flags)) {
+		/* Remove non-cyclic descriptor from head of active list */
+		list_del_init(&fdesc->node);
+
+		/* Start the next descriptor */
+		stm_fdma_desc_start(fchan);
+
+		/* Set the cookie to the last completed descriptor cookie */
+		fchan->last_completed = fdesc->dma_desc.cookie;
+
+		/* Unmap dma address for descriptor and children */
+		if (!fchan->dma_chan.private) {
+			struct stm_fdma_desc *child;
+
+			stm_fdma_desc_unmap_buffers(fdesc);
+
+			list_for_each_entry(child, &fdesc->llu_list, node)
+					stm_fdma_desc_unmap_buffers(child);
+		}
+
+		/* Retire this descriptor to the free list */
+		list_splice_init(&fdesc->llu_list, &fchan->desc_free);
+		list_move(&fdesc->node, &fchan->desc_free);
+	}
 
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
 	/* Issue callback */
-	if (desc->callback)
-		desc->callback(desc->callback_param);
+	if (fdesc->dma_desc.callback)
+		fdesc->dma_desc.callback(fdesc->dma_desc.callback_param);
 }

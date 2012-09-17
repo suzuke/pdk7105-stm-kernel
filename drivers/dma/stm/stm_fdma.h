@@ -97,7 +97,6 @@ struct stm_fdma_chan {
 	struct list_head desc_active;
 	struct stm_fdma_desc *desc_park;
 
-	struct tasklet_struct tasklet_error;
 	struct tasklet_struct tasklet_complete;
 
 	dma_cookie_t last_completed;
@@ -223,8 +222,7 @@ void stm_fdma_desc_chain(struct stm_fdma_desc **head,
 		struct stm_fdma_desc **prev, struct stm_fdma_desc *fdesc);
 void stm_fdma_desc_start(struct stm_fdma_chan *fchan);
 void stm_fdma_desc_unmap_buffers(struct stm_fdma_desc *fdesc);
-void stm_fdma_desc_complete(struct stm_fdma_chan *fchan,
-		struct stm_fdma_desc *fdesc);
+void stm_fdma_desc_complete(unsigned long data);
 
 int stm_fdma_register_dreq_router(struct stm_fdma_dreq_router *router);
 void stm_fdma_unregister_dreq_router(struct stm_fdma_dreq_router *router);

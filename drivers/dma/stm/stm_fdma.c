@@ -30,13 +30,11 @@
  * Interrupt functions
  */
 
-static void stm_fdma_tasklet_error(unsigned long data)
+static void stm_fdma_irq_error(struct stm_fdma_chan *fchan)
 {
-	struct stm_fdma_chan *fchan = (struct stm_fdma_chan *) data;
-	struct stm_fdma_desc *fdesc = NULL;
-	unsigned long irqflags = 0;
-
-	spin_lock_irqsave(&fchan->lock, irqflags);
+	/* Print an error indicating the channel and hardware error code */
+	dev_err(fchan->fdev->dev, "Error %d on channel %d\n",
+			stm_fdma_hw_channel_error(fchan), fchan->id);
 
 	/* A channel can no longer be cyclic after a descriptor error! */
 	clear_bit(STM_FDMA_IS_CYCLIC, &fchan->flags);
@@ -49,35 +47,12 @@ static void stm_fdma_tasklet_error(unsigned long data)
 	fchan->state = STM_FDMA_STATE_ERROR;
 	stm_fdma_hw_channel_pause(fchan, 0);
 
-	/* Remove the first descriptor from the active list (if there is one) */
-	if (!list_empty(&fchan->desc_active)) {
-		fdesc = list_first_entry(&fchan->desc_active,
-				struct stm_fdma_desc, node);
-		list_del_init(&fdesc->node);
-	}
-
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
-
-	/* Print an error message */
-	dev_err(fchan->fdev->dev, "Error on channel %d, descriptor %d\n",
-			fchan->id, fdesc ? fdesc->dma_desc.cookie : -1);
-
-	/* Start the next descriptor */
-	stm_fdma_desc_start(fchan);
-
-	/* Complete the descriptor */
-	if (fdesc)
-		stm_fdma_desc_complete(fchan, fdesc);
+	/* Complete the active descriptor */
+	tasklet_schedule(&fchan->tasklet_complete);
 }
 
-static void stm_fdma_tasklet_complete(unsigned long data)
+static void stm_fdma_irq_complete(struct stm_fdma_chan *fchan)
 {
-	struct stm_fdma_chan *fchan = (struct stm_fdma_chan *) data;
-	struct stm_fdma_desc *fdesc;
-	unsigned long irqflags = 0;
-
-	spin_lock_irqsave(&fchan->lock, irqflags);
-
 	/* Update the channel state */
 	switch (stm_fdma_hw_channel_status(fchan)) {
 	case CMD_STAT_STATUS_PAUSED:
@@ -116,10 +91,8 @@ static void stm_fdma_tasklet_complete(unsigned long data)
 
 	case CMD_STAT_STATUS_RUNNING:
 		/* Return if currently processing an error */
-		if (fchan->state == STM_FDMA_STATE_ERROR) {
-			spin_unlock_irqrestore(&fchan->lock, irqflags);
+		if (fchan->state == STM_FDMA_STATE_ERROR)
 			return;
-		}
 		break;
 
 	default:
@@ -127,38 +100,8 @@ static void stm_fdma_tasklet_complete(unsigned long data)
 		BUG();
 	}
 
-	/*
-	 * A terminate all or error may result in a completion with the active
-	 * descriptor list is empty. If no active descriptor, we are done.
-	 */
-
-	if (list_empty(&fchan->desc_active)) {
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-		return;
-	}
-
-	/* Get the head of the active list */
-	fdesc = list_first_entry(&fchan->desc_active, struct stm_fdma_desc,
-			node);
-
-
-	if (test_bit(STM_FDMA_IS_CYCLIC, &fchan->flags)) {
-		/* Assume end of period and issue callback */
-		struct dma_async_tx_descriptor *desc = &fdesc->dma_desc;
-
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-
-		if (desc->callback)
-			desc->callback(desc->callback_param);
-	} else {
-		spin_unlock_irqrestore(&fchan->lock, irqflags);
-
-		/* Complete the descriptor */
-		stm_fdma_desc_complete(fchan, fdesc);
-
-		/* Start the next descriptor */
-		stm_fdma_desc_start(fchan);
-	}
+	/* Complete the descriptor */
+	tasklet_schedule(&fchan->tasklet_complete);
 }
 
 static irqreturn_t stm_fdma_irq_handler(int irq, void *dev_id)
@@ -195,22 +138,20 @@ static irqreturn_t stm_fdma_irq_handler(int irq, void *dev_id)
 
 			/* Only handle error if not suppressing it */
 			if (!ignore) {
-				tasklet_schedule(
-					&fdev->ch_list[c].tasklet_error);
+				stm_fdma_irq_error(&fdev->ch_list[c]);
 				result = IRQ_HANDLED;
 				continue;
 			}
 		}
 
 		if (status & 1) {
-			tasklet_schedule(&fdev->ch_list[c].tasklet_complete);
+			stm_fdma_irq_complete(&fdev->ch_list[c]);
 			result = IRQ_HANDLED;
 		}
 	}
 
 	return result;
 }
-
 
 
 /*
@@ -290,10 +231,10 @@ dma_cookie_t stm_fdma_tx_submit(struct dma_async_tx_descriptor *desc)
 	/* Queue the descriptor */
 	list_add_tail(&fdesc->node, &fchan->desc_queue);
 
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
-
 	/* Attempt to start the next available descriptor */
 	stm_fdma_desc_start(fchan);
+
+	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
 	return desc->cookie;
 }
@@ -407,6 +348,11 @@ static void stm_fdma_free_chan_resources(struct dma_chan *chan)
 
 	dev_dbg(fchan->fdev->dev, "%s(chan=%p)\n", __func__, chan);
 
+	/* Stop the completion tasklet (this waits until tasklet finishes) */
+	tasklet_kill(&fchan->tasklet_complete);
+
+	spin_lock_irqsave(&fchan->lock, irqflags);
+
 	/*
 	 * Channel must not be running and there must be no active or queued
 	 * descriptors. We cannot check for being idle as on PM suspend we may
@@ -416,7 +362,6 @@ static void stm_fdma_free_chan_resources(struct dma_chan *chan)
 	BUG_ON(!list_empty(&fchan->desc_queue));
 	BUG_ON(!list_empty(&fchan->desc_active));
 
-	spin_lock_irqsave(&fchan->lock, irqflags);
 	list_splice_init(&fchan->desc_free, &list);
 	fchan->desc_count = 0;
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
@@ -950,20 +895,20 @@ static int stm_fdma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 	return -ENOSYS;
 }
 
+/*
+ * Assume we only get called with the channel lock held! As we should only be
+ * called from stm_fdma_tx_status this should not be an issue.
+ */
 static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 {
-	unsigned long irqflags = 0;
 	int count = 0;
 
 	dev_dbg(fchan->fdev->dev, "%s(fchan=%p)\n", __func__, fchan);
 
-	spin_lock_irqsave(&fchan->lock, irqflags);
-
 	/* If channel is parked, return a notional residue */
 	if (test_bit(STM_FDMA_IS_PARKED, &fchan->flags)) {
 		BUG_ON(!fchan->desc_park);
-		count = fchan->desc_park->llu->nbytes;
-		goto unlock;
+		return fchan->desc_park->llu->nbytes;
 	}
 
 	/* Only attempt to get residue on a non-idle channel */
@@ -991,8 +936,7 @@ static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 			 * change the channel state. Pretend still data to
 			 * process and let interrupt do tidy up.
 			 */
-			count = 1;
-			goto unlock;
+			return 1;
 
 		case CMD_STAT_STATUS_RUNNING:
 		case CMD_STAT_STATUS_PAUSED:
@@ -1049,8 +993,6 @@ static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 		BUG_ON(found_node == 0);
 	}
 
-unlock:
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
 	return count;
 }
 
@@ -1088,8 +1030,6 @@ static enum dma_status stm_fdma_tx_status(struct dma_chan *chan,
 				last_used);
 	}
 
-	spin_unlock_irqrestore(&fchan->lock, irqflags);
-
 	/* Get the transfer residue based on transfer status */
 	switch (status) {
 	case DMA_SUCCESS:
@@ -1104,6 +1044,8 @@ static enum dma_status stm_fdma_tx_status(struct dma_chan *chan,
 		residue = stm_fdma_get_residue(fchan);
 	}
 
+	spin_unlock_irqrestore(&fchan->lock, irqflags);
+
 	/* Set the state */
 	dma_set_tx_state(txstate, last_complete, last_used, residue);
 
@@ -1113,11 +1055,14 @@ static enum dma_status stm_fdma_tx_status(struct dma_chan *chan,
 static void stm_fdma_issue_pending(struct dma_chan *chan)
 {
 	struct stm_fdma_chan *fchan = to_stm_fdma_chan(chan);
+	unsigned long irqflags = 0;
 
 	dev_dbg(fchan->fdev->dev, "%s(chan=%p)\n", __func__, chan);
 
 	/* Try starting any next available descriptor */
+	spin_lock_irqsave(&fchan->lock, irqflags);
 	stm_fdma_desc_start(fchan);
+	spin_unlock_irqrestore(&fchan->lock, irqflags);
 }
 
 
@@ -1212,11 +1157,8 @@ static int __init stm_fdma_probe(struct platform_device *pdev)
 		INIT_LIST_HEAD(&fchan->desc_queue);
 		INIT_LIST_HEAD(&fchan->desc_active);
 
-		/* Initialise the irq tasklet */
-		tasklet_init(&fchan->tasklet_error, stm_fdma_tasklet_error,
-				(unsigned long) fchan);
-		tasklet_init(&fchan->tasklet_complete,
-				stm_fdma_tasklet_complete,
+		/* Initialise the completion tasklet */
+		tasklet_init(&fchan->tasklet_complete, stm_fdma_desc_complete,
 				(unsigned long) fchan);
 
 		/* Set the dmaengine channel data */
@@ -1312,14 +1254,11 @@ error_register:
 error_req_irq:
 	dma_pool_destroy(fdev->dma_pool);
 error_dma_pool:
-	/* Kill tasklet for each channel */
+	/* Kill completion tasklet for each channel */
 	for (i = STM_FDMA_MIN_CHANNEL; i <= STM_FDMA_MAX_CHANNEL; ++i) {
 		struct stm_fdma_chan *fchan = &fdev->ch_list[i];
 
-		tasklet_disable(&fchan->tasklet_error);
 		tasklet_disable(&fchan->tasklet_complete);
-
-		tasklet_kill(&fchan->tasklet_error);
 		tasklet_kill(&fchan->tasklet_complete);
 	}
 error_clk_enb:
@@ -1358,10 +1297,7 @@ static int __exit stm_fdma_remove(struct platform_device *pdev)
 	for (i = STM_FDMA_MIN_CHANNEL; i <= STM_FDMA_MAX_CHANNEL; ++i) {
 		struct stm_fdma_chan *fchan = &fdev->ch_list[i];
 
-		tasklet_disable(&fchan->tasklet_error);
 		tasklet_disable(&fchan->tasklet_complete);
-
-		tasklet_kill(&fchan->tasklet_error);
 		tasklet_kill(&fchan->tasklet_complete);
 	}
 
