@@ -99,6 +99,7 @@ static void stm_fdma_tasklet_complete(unsigned long data)
 
 	case CMD_STAT_STATUS_IDLE:
 		switch (fchan->state) {
+		case STM_FDMA_STATE_IDLE:	/* Ignore IDLE -> IDLE */
 		case STM_FDMA_STATE_RUNNING:
 		case STM_FDMA_STATE_PAUSING:
 		case STM_FDMA_STATE_STOPPING:
