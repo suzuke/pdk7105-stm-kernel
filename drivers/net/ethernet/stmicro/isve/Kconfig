@@ -1,0 +1,30 @@
+config STM_ISVE
+	tristate "Integrated SoC Virtual Ethernet driver (EXPERIMENTAL)"
+	depends on HAS_IOMEM && ARCH_STM && EXPERIMENTAL
+	select NET_CORE
+	select CRC32
+	---help---
+	  This is the virtual Ethernet driver used in the new ST SoC
+	  generations.
+	  It dials with a special HW bridge designed to allow the communication
+	  among DOCSIS system CPUs.
+	  This means that all devices connected through a sort of virtual
+	  Ethernet devices.
+
+	  Say N to exclude this support.
+
+if STM_ISVE
+
+config ISVE_DEBUG
+	tristate "Enable ISVE internal debugging option"
+	depends on STM_ISVE
+	default n
+	---help---
+	  This option improves the driver message output proving
+	  several information about its configuration.
+	  Pay attention that it also enables the verbosity for the
+	  receive and transmit processes generating an huge amount
+	  of message actually useful for debugging purpose.
+
+	  If unsure, say N.
+endif

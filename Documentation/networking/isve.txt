@@ -1,0 +1,109 @@
+--------------------------------------------------------------------------------
+		Integrate SoC Virtual Ethernet (ISVE)
+
+(c) 2012 STMicroelectronics Limited
+
+Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
+--------------------------------------------------------------------------------
+
+This is the Virtual Ethernet driver used in the new ST SoC generations.
+It dials with a special HW bridge designed to allow the communication
+among DOCSIS system and CPUs.
+This means that all devices are connected through as sort of virtual
+Ethernet devices and can communicate just like a simple Ethernet
+network.
+
+For each device it is allocated an instance of the driver that will use
+some dedicated DMA queues for managing the transmission and reception
+processes.
+The reception process is also called Downstream Forwarding (DFWD) and provides
+a output memory queue of 32 entries.
+Transmission is the Upstream process, also called UPIIM, and provides input queue
+of 32 elements.
+
+It's mandatory, before using this driver, to load in the system an own
+driver to program the bridge HW. The ISVR is not able to program this
+but it only treats the HW queues managing the receive and transmit
+processes.
+
+For both RX and TX the check-sum is done in SW and all the socket buffers
+passed from/to the DMA has to be aligned to a 32-byte boundary.
+TX and Rx processes are so handled by using pre-allocated buffers.
+Streaming DMA mappings is used to map these buffer for the DMA from/to transfer,
+Reception process is managed by NAPI.
+
+ISVE also provides some internal statistic via ethtool and it's also
+to change the driver's message level.
+
+User can turn-on the ISVE_DEBUG option.
+This option improves the driver message output proving several information
+about its configuration.
+Pay attention that it also enables the verbosity for the receive and transmit
+processes generating an huge amount of message actually useful for debugging
+purpose.
+
+ISVE is a platform driver and the example below shows its configuration at SoC
+level provided for SASC1:
+
+static struct plat_isve_data stih125_isve_platform_data[] = {
+	{
+		.downstream_queue_size = 32,
+		.upstream_queue_size = 32,
+		.queue_number = 3,
+		.ifname = "if16",
+	}, {
+
+#define STIG125_DOCSIS_BASE_ADD		0xfee00000
+
+static struct platform_device stig125_isve_devices[] = {
+	{
+		.name = "isve",
+		.id = 0,
+		.num_resources = 4,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(
+				DSFWD_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 3),
+						DSFWD_RPT_OFF),
+			STM_PLAT_RESOURCE_MEM(
+				UPIIM_QUEUE_ADD(STIG125_DOCSIS_BASE_ADD, 3),
+						UPIIM_RPT_OFF),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_ds", 42),
+			STIG125_RESOURCE_IRQ_NAMED("isveirq_us", 50),
+		},
+		.dev = {
+			.dma_mask = &stig125_isve_dma_mask,
+			.coherent_dma_mask = DMA_BIT_MASK(32),
+			.platform_data = &stig125_isve_platform_data[0],
+		},
+	}, {
+
+
+  [snip]
+
+static struct platform_device *stih125_devices[] __initdata = {
+  [snip]
+	&stih125_isve_devices[0],
+  [snip]
+};
+
+The DOCSIS base address is mandatory.
+Also, first resource is for the DFWD and the second one for the UPIIM.
+
+plat_isve_data: it is the ISVR platform data structure used for providing some
+internal fields, e.g. the queue sizes (that could change in the future for
+on platforms).
+
+If we pass the .ifname field it will be used to rename the interface.
+For example, if we pass if16 then we will get:
+
+# ifconfig -a
+if16      Link encap:Ethernet  HWaddr 5A:D0:1F:CD:B1:F3
+          inet addr:192.168.1.56  Bcast:192.168.1.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:0 errors:1 dropped:1 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+
+if this is not passed from the platform then the interface will be registered
+as ethX.
