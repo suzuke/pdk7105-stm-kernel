@@ -111,6 +111,7 @@ static void stm_pio_control_config_function(
 static void stm_pio_control_config_retime_packed(
 		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction,
 		int pin, const struct stm_pio_control_retime_config *rt)
 {
 	const struct stm_pio_control_retime_offset *offset
@@ -156,6 +157,7 @@ static void stm_pio_control_config_retime_packed(
 static void stm_pio_control_config_retime_dedicated(
 		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction,
 		int pin, const struct stm_pio_control_retime_config *rt)
 {
 	struct sysconf_field *reg;
@@ -180,13 +182,18 @@ static void stm_pio_control_config_retime_dedicated(
 #ifdef CONFIG_DEBUG_FS
 
 static int stm_pio_control_report_direction(struct stm_pio_control *pio_control,
-		int pin, char *buf, int len)
+		int pin, char *buf, int len,
+		enum stm_pad_gpio_direction *direction)
 {
 	unsigned long oe_value, pu_value, od_value;
 
 	oe_value = sysconf_read(pio_control->oe);
 	pu_value = sysconf_read(pio_control->pu);
 	od_value = sysconf_read(pio_control->od);
+
+	if (direction)
+		*direction = oe_value ? stm_pad_gpio_direction_out :
+			stm_pad_gpio_direction_in;
 
 	return snprintf(buf, len, "oe %ld, pu %ld, od %ld",
 		(oe_value >> pin) & 1,
@@ -197,6 +204,7 @@ static int stm_pio_control_report_direction(struct stm_pio_control *pio_control,
 static int stm_pio_control_report_retime_packed(
 		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction,
 		int pin, char *buf, int len)
 {
 	const struct stm_pio_control_retime_offset *offset
@@ -230,6 +238,7 @@ static int stm_pio_control_report_retime_packed(
 static int stm_pio_control_report_retime_dedicated(
 		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction,
 		int pin, char *buf, int len)
 {
 	unsigned long value;
@@ -320,6 +329,7 @@ failed:
 
 static void (*const config_retime_fn[])(struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction,
 		int pin, const struct stm_pio_control_retime_config *rt) = {
 	[stm_pio_control_retime_style_none] = NULL,
 	[stm_pio_control_retime_style_packed] = stm_pio_control_config_retime_packed,
@@ -373,7 +383,7 @@ int stm_pio_control_config_all(unsigned gpio,
 	if (config_retime_fn[pio_control_config->retime_style] &&
 	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
 		config_retime_fn[pio_control_config->retime_style](pio_control,
-			pio_control_config->retime_params, pin,
+			pio_control_config->retime_params, direction, pin,
 			(config && config->retime) ? config->retime :
 				&no_retiming);
 	} else {
@@ -387,6 +397,7 @@ int stm_pio_control_config_all(unsigned gpio,
 
 static int (*const report_retime_fn[])(struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction,
 		int pin, char *buf, int len) = {
 	[stm_pio_control_retime_style_none] = NULL,
 	[stm_pio_control_retime_style_packed] = stm_pio_control_report_retime_packed,
@@ -404,6 +415,7 @@ void stm_pio_control_report_all(int gpio,
 	unsigned long alt_value;
 	unsigned long function;
 	int off;
+	enum stm_pad_gpio_direction direction = stm_pad_gpio_direction_unknown;
 
 	alt_value = sysconf_read(pio_control->alt);
 	function = (alt_value >> (pin * 4)) & 0xf;
@@ -414,14 +426,14 @@ void stm_pio_control_report_all(int gpio,
 			stm_gpio_get_direction(gpio));
 	else
 		off += stm_pio_control_report_direction(pio_control,
-			pin, buf+off, len-off);
+			pin, buf+off, len-off, &direction);
 
 	if (report_retime_fn[pio_control_config->retime_style] &&
 	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
 		off += snprintf(buf+off, len-off, " - ");
 		off += report_retime_fn[pio_control_config->retime_style](
 			pio_control, pio_control_config->retime_params,
-			pin, buf+off, len-off);
+			direction, pin, buf+off, len-off);
 	}
 }
 
