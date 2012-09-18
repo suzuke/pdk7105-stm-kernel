@@ -462,6 +462,20 @@ static struct platform_device stih415_pio_devices[27] = {
 	STIH415_PIO_ENTRY(26, 0xfd334000),
 };
 
+static const struct stm_pio_control_retime_offset stih415_pio_retime_offset = {
+	.clk1notclk0_offset	= 0,
+	.delay_lsb_offset	= 2,
+	.delay_msb_offset	= 3,
+	.invertclk_offset	= 4,
+	.retime_offset		= 5,
+	.clknotdata_offset	= 6,
+	.double_edge_offset	= 7,
+};
+
+static const struct stm_pio_control_retime_params stih415_retime_params = {
+	.retime_offset = &stih415_pio_retime_offset,
+};
+
 #define STIH415_PIO_ENTRY_CONTROL(_num, _alt_num,				\
 		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
 		_rt)				\
@@ -472,6 +486,7 @@ static struct platform_device stih415_pio_devices[27] = {
 		.od = { SYSCONF(_od_num), _lsb, _msb },			\
 		.retime_style = stm_pio_control_retime_style_packed,	\
 		.retime_pin_mask = 0xff,				\
+		.retime_params = &stih415_retime_params,		\
 		.retiming = {						\
 			{ SYSCONF(_rt) },				\
 			{ SYSCONF(_rt+1) }				\
@@ -516,16 +531,6 @@ static const struct stm_pio_control_config stih415_pio_control_configs[27] = {
 
 static struct stm_pio_control stih415_pio_controls[27];
 
-static const struct stm_pio_control_retime_offset stih415_pio_retime_offset = {
-	.clk1notclk0_offset 	= 0,
-	.delay_lsb_offset	= 2,
-	.delay_msb_offset	= 3,
-	.invertclk_offset	= 4,
-	.retime_offset		= 5,
-	.clknotdata_offset	= 6,
-	.double_edge_offset	= 7,
-};
-
 static int stih415_pio_config(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function, void* priv)
 {
@@ -533,7 +538,6 @@ static int stih415_pio_config(unsigned gpio,
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
 		stih415_pio_controls,
-		&stih415_pio_retime_offset,
 		ARRAY_SIZE(stih415_pio_devices), 6);
 }
 
@@ -541,7 +545,6 @@ static int stih415_pio_config(unsigned gpio,
 static void stih415_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, stih415_pio_controls,
-		&stih415_pio_retime_offset,
 		buf, len);
 }
 #else

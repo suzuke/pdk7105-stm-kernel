@@ -736,6 +736,20 @@ static struct platform_device stx7108_pio_devices[] = {
 	},
 };
 
+static const struct stm_pio_control_retime_offset stx7108_pio_retime_offset = {
+	.clk1notclk0_offset	= 0,
+	.clknotdata_offset	= 1,
+	.delay_lsb_offset	= 2,
+	.double_edge_offset	= 3,
+	.invertclk_offset	= 4,
+	.retime_offset		= 5,
+	.delay_msb_offset	= 6,
+};
+
+static const struct stm_pio_control_retime_params stx7108_retime_params = {
+	.retime_offset = &stx7108_pio_retime_offset,
+};
+
 #define STX7108_PIO_CONTROL_(_num, _group, _alt_num,			\
 		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
 		_style, _rt1_num, _rt2_num)				\
@@ -746,6 +760,7 @@ static struct platform_device stx7108_pio_devices[] = {
 		.od = { _group, _od_num, _lsb, _msb },			\
 		.retime_style = _style,					\
 		.retime_pin_mask = 0xff,				\
+		.retime_params = &stx7108_retime_params,		\
 		.retiming = {						\
 			{ _group, _rt1_num },				\
 			{ _group, _rt2_num }				\
@@ -821,16 +836,6 @@ static const struct stm_pio_control_config stx7108_pio_control_configs[27] = {
 
 static struct stm_pio_control stx7108_pio_controls[27];
 
-static const struct stm_pio_control_retime_offset stx7108_pio_retime_offset = {
-	.clk1notclk0_offset 	= 0,
-	.clknotdata_offset	= 1,
-	.delay_lsb_offset	= 2,
-	.double_edge_offset	= 3,
-	.invertclk_offset	= 4,
-	.retime_offset		= 5,
-	.delay_msb_offset	= 6,
-};
-
 static int stx7108_pio_config(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function, void *priv)
 {
@@ -838,7 +843,6 @@ static int stx7108_pio_config(unsigned gpio,
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
 		stx7108_pio_controls,
-		&stx7108_pio_retime_offset,
 		ARRAY_SIZE(stx7108_pio_controls), 6);
 }
 
@@ -846,7 +850,6 @@ static int stx7108_pio_config(unsigned gpio,
 static void stx7108_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, stx7108_pio_controls,
-				   &stx7108_pio_retime_offset,
 				   buf, len);
 }
 #else

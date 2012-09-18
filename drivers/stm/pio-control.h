@@ -85,6 +85,10 @@ enum stm_pio_control_retime_style {
 	stm_pio_control_retime_style_dedicated,
 };
 
+struct stm_pio_control_retime_params {
+	const struct stm_pio_control_retime_offset *retime_offset;
+};
+
 struct stm_pio_control_config {
 	struct {
 		u8 group;
@@ -97,6 +101,7 @@ struct stm_pio_control_config {
 	} oe, pu, od;
 	enum stm_pio_control_retime_style retime_style:4;
 	unsigned int retime_pin_mask:8;
+	const struct stm_pio_control_retime_params *retime_params;
 	struct {
 		u8 group;
 		u16 num;
@@ -128,12 +133,10 @@ int stm_pio_control_config_all(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function,
 		struct stm_pio_control_pad_config *config,
 		struct stm_pio_control *pio_controls,
-		const struct stm_pio_control_retime_offset *retime_offset,
 		int num_gpios, int num_functions);
 
 void stm_pio_control_report_all(int gpio,
 		struct stm_pio_control *pio_controls,
-		const struct stm_pio_control_retime_offset *offset,
 		char *buf, int len);
 
 #endif

@@ -391,6 +391,10 @@ static struct platform_device stig125_pio_devices[27] = {
 	STIG125_PIO_ENTRY(26, STIG125_PIO_SBC_BASE + 0x3000),
 };
 
+static const struct stm_pio_control_retime_params stig125_retime_params = {
+	.retime_offset = NULL,
+};
+
 #define STIG125_PIO_ENTRY_CONTROL(_num, _alt_num,			\
 		_oe_num, _pu_num, _od_num, _lsb, _msb, ...)		\
 	[_num] = {							\
@@ -441,6 +445,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(6,    6,  11, 14, 17, 16, 23,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xc0,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			[6] = { SYSCONF(19) },
 			[7] = { SYSCONF(20) },
@@ -448,6 +453,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(7,          7,  11, 14, 17, 24, 31,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(21) },
 			{ SYSCONF(22) },
@@ -461,6 +467,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(8,   8,  12,  15,  18,  0,  7,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(29) },
 			{ SYSCONF(30) },
@@ -474,6 +481,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(9,   9,  12,  15,  18,  8, 15,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0x3f,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(37) },
 			{ SYSCONF(38) },
@@ -486,6 +494,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(10, 200, 209, 212, 215, 0, 7,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(218) },
 			{ SYSCONF(219) },
@@ -499,6 +508,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(11, 201, 209, 212, 215, 8, 15,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(226) },
 			{ SYSCONF(227) },
@@ -512,6 +522,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(12, 202, 209, 212, 215, 16, 23,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(234) },
 			{ SYSCONF(235) },
@@ -525,6 +536,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(13, 203, 209, 212, 215, 24, 31,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(242) },
 			{ SYSCONF(243) },
@@ -538,6 +550,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(14, 204, 210, 213, 216, 0, 7,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0x0f,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(250) },
 			{ SYSCONF(251) },
@@ -552,6 +565,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(19,       400, 404, 405, 406,  0,  7,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(407) },
 			{ SYSCONF(408) },
@@ -566,6 +580,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(21,      402, 404, 405, 406, 16, 23,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(415) },
 			{ SYSCONF(416) },
@@ -579,6 +594,7 @@ static const struct stm_pio_control_config stig125_pio_control_configs[27] = {
 	STIG125_PIO_ENTRY_CONTROL(22, 403, 404, 405, 406, 24, 31,
 		.retime_style = stm_pio_control_retime_style_dedicated,
 		.retime_pin_mask = 0xff,
+		.retime_params = &stig125_retime_params,
 		.retiming = {
 			{ SYSCONF(423) },
 			{ SYSCONF(424) },
@@ -602,7 +618,7 @@ static int stig125_pio_config(unsigned gpio,
 	struct stm_pio_control_pad_config *config = priv;
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
-		stig125_pio_controls, NULL,
+		stig125_pio_controls,
 		ARRAY_SIZE(stig125_pio_devices), 8);
 }
 
@@ -610,7 +626,7 @@ static int stig125_pio_config(unsigned gpio,
 static void stig125_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, stig125_pio_controls,
-		NULL, buf, len);
+		buf, len);
 }
 #else
 #define stig125_pio_report NULL

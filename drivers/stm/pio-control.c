@@ -110,9 +110,11 @@ static void stm_pio_control_config_function(
 
 static void stm_pio_control_config_retime_packed(
 		struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *offset,
+		const struct stm_pio_control_retime_params *retime_params,
 		int pin, const struct stm_pio_control_retime_config *rt)
 {
+	const struct stm_pio_control_retime_offset *offset
+		= retime_params->retime_offset;
 	struct sysconf_field **regs;
 	unsigned long values[2];
 	unsigned long mask;
@@ -153,7 +155,7 @@ static void stm_pio_control_config_retime_packed(
 
 static void stm_pio_control_config_retime_dedicated(
 		struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *unused_offset,
+		const struct stm_pio_control_retime_params *retime_params,
 		int pin, const struct stm_pio_control_retime_config *rt)
 {
 	struct sysconf_field *reg;
@@ -194,9 +196,11 @@ static int stm_pio_control_report_direction(struct stm_pio_control *pio_control,
 
 static int stm_pio_control_report_retime_packed(
 		struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *offset,
+		const struct stm_pio_control_retime_params *retime_params,
 		int pin, char *buf, int len)
 {
+	const struct stm_pio_control_retime_offset *offset
+		= retime_params->retime_offset;
 	unsigned long rt_value[2];
 	unsigned long rt_reduced;
 	int i, j;
@@ -225,7 +229,7 @@ static int stm_pio_control_report_retime_packed(
 
 static int stm_pio_control_report_retime_dedicated(
 		struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *unused_offset,
+		const struct stm_pio_control_retime_params *retime_params,
 		int pin, char *buf, int len)
 {
 	unsigned long value;
@@ -315,7 +319,7 @@ failed:
 #include <linux/stm/gpio.h>
 
 static void (*const config_retime_fn[])(struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *retime_offset,
+		const struct stm_pio_control_retime_params *retime_params,
 		int pin, const struct stm_pio_control_retime_config *rt) = {
 	[stm_pio_control_retime_style_none] = NULL,
 	[stm_pio_control_retime_style_packed] = stm_pio_control_config_retime_packed,
@@ -326,7 +330,6 @@ int stm_pio_control_config_all(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function,
 		struct stm_pio_control_pad_config *config,
 		struct stm_pio_control *pio_controls,
-		const struct stm_pio_control_retime_offset *retime_offset,
 		int num_gpios, int num_functions)
 {
 	int port = stm_gpio_port(gpio);
@@ -370,7 +373,7 @@ int stm_pio_control_config_all(unsigned gpio,
 	if (config_retime_fn[pio_control_config->retime_style] &&
 	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
 		config_retime_fn[pio_control_config->retime_style](pio_control,
-			retime_offset, pin,
+			pio_control_config->retime_params, pin,
 			(config && config->retime) ? config->retime :
 				&no_retiming);
 	} else {
@@ -383,7 +386,7 @@ int stm_pio_control_config_all(unsigned gpio,
 #ifdef CONFIG_DEBUG_FS
 
 static int (*const report_retime_fn[])(struct stm_pio_control *pio_control,
-		const struct stm_pio_control_retime_offset *retime_offset,
+		const struct stm_pio_control_retime_params *retime_params,
 		int pin, char *buf, int len) = {
 	[stm_pio_control_retime_style_none] = NULL,
 	[stm_pio_control_retime_style_packed] = stm_pio_control_report_retime_packed,
@@ -392,7 +395,6 @@ static int (*const report_retime_fn[])(struct stm_pio_control *pio_control,
 
 void stm_pio_control_report_all(int gpio,
 		struct stm_pio_control *pio_controls,
-		const struct stm_pio_control_retime_offset *retime_offset,
 		char *buf, int len)
 {
 	int port = stm_gpio_port(gpio);
@@ -418,8 +420,8 @@ void stm_pio_control_report_all(int gpio,
 	    ((1 << pin) & pio_control_config->retime_pin_mask)) {
 		off += snprintf(buf+off, len-off, " - ");
 		off += report_retime_fn[pio_control_config->retime_style](
-			pio_control,
-			retime_offset, pin, buf+off, len-off);
+			pio_control, pio_control_config->retime_params,
+			pin, buf+off, len-off);
 	}
 }
 

@@ -307,6 +307,20 @@ PIO_REAR 182
 Need to add 32 for A9
 */
 
+static const struct stm_pio_control_retime_offset fli7610_pio_retime_offset = {
+	.clk1notclk0_offset	= 0,
+	.delay_lsb_offset	= 2,
+	.delay_msb_offset	= 3,
+	.invertclk_offset	= 4,
+	.retime_offset		= 5,
+	.clknotdata_offset	= 6,
+	.double_edge_offset	= 7,
+};
+
+static const struct stm_pio_control_retime_params fli7610_retime_params = {
+	.retime_offset = &fli7610_pio_retime_offset,
+};
+
 #define FLI7610_PIO_ENTRY_CONTROL(_num, _alt_num,			\
 		_oe_num, _pu_num, _od_num, _lsb, _msb,			\
 		_rt)				\
@@ -317,6 +331,7 @@ Need to add 32 for A9
 		.od = { TAE_SYSCONF(_od_num), _lsb, _msb },		\
 		.retime_style = stm_pio_control_retime_style_packed,	\
 		.retime_pin_mask = 0xff,				\
+		.retime_params = &fli7610_retime_params,		\
 		.retiming = {						\
 			{ TAE_SYSCONF(_rt) },				\
 			{ TAE_SYSCONF(_rt+1) }				\
@@ -435,16 +450,6 @@ static const struct stm_pio_control_config fli7610_pio_control_configs[34] = {
 
 static struct stm_pio_control fli7610_pio_controls[34];
 
-static const struct stm_pio_control_retime_offset fli7610_pio_retime_offset = {
-	.clk1notclk0_offset	= 0,
-	.delay_lsb_offset	= 2,
-	.delay_msb_offset	= 3,
-	.invertclk_offset	= 4,
-	.retime_offset		= 5,
-	.clknotdata_offset	= 6,
-	.double_edge_offset	= 7,
-};
-
 static int fli7610_pio_config(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function, void *priv)
 {
@@ -452,7 +457,6 @@ static int fli7610_pio_config(unsigned gpio,
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
 		fli7610_pio_controls,
-		&fli7610_pio_retime_offset,
 		ARRAY_SIZE(fli7610_pio_controls), 6);
 }
 
@@ -460,7 +464,6 @@ static int fli7610_pio_config(unsigned gpio,
 static void fli7610_pio_report(unsigned gpio, char *buf, int len)
 {
 	stm_pio_control_report_all(gpio, fli7610_pio_controls,
-		&fli7610_pio_retime_offset,
 		buf, len);
 }
 #else
