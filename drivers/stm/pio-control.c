@@ -108,6 +108,48 @@ static void stm_pio_control_config_function(
 	sysconf_write(selector, val);
 }
 
+static unsigned long stm_pio_control_delay_to_bit(unsigned int delay,
+		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction)
+{
+	unsigned int *delay_times;
+	int num_delay_times;
+	int i;
+	unsigned int closest_divergence = UINT_MAX;
+	int closest_index = -1;
+
+	switch (direction) {
+	case stm_pad_gpio_direction_in:
+		delay_times = retime_params->delay_times_in;
+		num_delay_times = retime_params->num_delay_times_in;
+		break;
+	case stm_pad_gpio_direction_out:
+		delay_times = retime_params->delay_times_out;
+		num_delay_times = retime_params->num_delay_times_out;
+		break;
+	default:
+		WARN(delay, "Attempt to set delay without knowing direction");
+		return 0;
+	}
+
+	for (i = 0; i < num_delay_times; i++) {
+		unsigned int divergence = abs(delay - delay_times[i]);
+
+		if (divergence == 0)
+			return i;
+
+		if (divergence < closest_divergence) {
+			closest_divergence = divergence;
+			closest_index = i;
+		}
+	}
+
+	WARN(1, "Attempt to set delay %d, closest available %d\n",
+	     delay, delay_times[closest_index]);
+
+	return closest_index;
+}
+
 static void stm_pio_control_config_retime_packed(
 		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
@@ -121,11 +163,14 @@ static void stm_pio_control_config_retime_packed(
 	unsigned long mask;
 	int i, j;
 
+	unsigned long delay = stm_pio_control_delay_to_bit(
+		rt->delay, retime_params, direction);
+
 	unsigned long retime_config =
 		((rt->clk          & 1) << offset->clk1notclk0_offset) |
 		((rt->clknotdata   & 1) << offset->clknotdata_offset) |
-		((rt->delay        & 1) << offset->delay_lsb_offset) |
-		(((rt->delay >> 1) & 1) << offset->delay_msb_offset) |
+		((delay            & 1) << offset->delay_lsb_offset) |
+		(((delay >> 1)     & 1) << offset->delay_msb_offset) |
 		((rt->double_edge  & 1) << offset->double_edge_offset) |
 		((rt->invertclk    & 1) << offset->invertclk_offset) |
 		((rt->retime       & 1) << offset->retime_offset);
@@ -162,10 +207,13 @@ static void stm_pio_control_config_retime_dedicated(
 {
 	struct sysconf_field *reg;
 
+	unsigned long delay = stm_pio_control_delay_to_bit(
+		rt->delay, retime_params, direction);
+
 	unsigned long retime_config =
 		((rt->clk            & 0x3) << 0) |
 		((rt->clknotdata     & 0x1) << 2) |
-		((rt->delay          & 0xf) << 3) |
+		((delay              & 0xf) << 3) |
 		((direction == stm_pad_gpio_direction_in) ? (1 << 7) : 0) |
 		((rt->double_edge    & 0x1) << 8) |
 		((rt->invertclk      & 0x1) << 9) |

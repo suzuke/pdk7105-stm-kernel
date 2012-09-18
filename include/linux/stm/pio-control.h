@@ -25,7 +25,7 @@ struct stm_pio_control_retime_config {
 	unsigned int clknotdata:1;
 	unsigned int double_edge:1;
 	unsigned int invertclk:1;
-	unsigned int delay:4;
+	unsigned int delay:16;
 };
 
 struct stm_pio_control_pad_config {

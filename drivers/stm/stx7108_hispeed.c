@@ -142,16 +142,16 @@ static struct stm_pad_config stx7108_ethernet_mii_pad_configs[] = {
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
 			CLOCK_IN(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO*/
+			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO*/
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
-			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(2, 0)),/* RXD[0] */
-			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(2, 0)),/* RXD[1] */
-			DATA_IN(0, 8, 2, RET_SE_NICLK_IO(2, 0)),/* RXD[2] */
-			DATA_IN(0, 8, 3, RET_SE_NICLK_IO(2, 0)),/* RXD[3] */
-			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(2, 0)),/* RXDV */
-			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(2, 0)),/* RX_ER */
+			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(1000, 0)),/* RXD[0] */
+			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(1000, 0)),/* RXD[1] */
+			DATA_IN(0, 8, 2, RET_SE_NICLK_IO(1000, 0)),/* RXD[2] */
+			DATA_IN(0, 8, 3, RET_SE_NICLK_IO(1000, 0)),/* RXD[3] */
+			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(1000, 0)),/* RXDV */
+			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(1000, 0)),/* RX_ER */
 			CLOCK_IN(0, 9, 2, RET_NICLK(0, 0)),/* RXCLK */
 			PHY_CLOCK(0, 9, 3, RET_NICLK(0, 0)),/* PHYCLK */
 		},
@@ -179,14 +179,14 @@ static struct stm_pad_config stx7108_ethernet_mii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_IN(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_IN(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
-			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(2, 1)),/* RXDV */
-			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(2, 1)),/* RX_ER */
-			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(2, 1)),/* RXD[0] */
-			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(2, 1)),/* RXD[1] */
-			DATA_IN(1, 18, 2, RET_SE_NICLK_IO(2, 1)),/* RXD[2] */
-			DATA_IN(1, 18, 3, RET_SE_NICLK_IO(2, 1)),/* RXD[3] */
+			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 1)),/* RXDV */
+			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 1)),/* RX_ER */
+			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(1000, 1)),/* RXD[0] */
+			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(1000, 1)),/* RXD[1] */
+			DATA_IN(1, 18, 2, RET_SE_NICLK_IO(1000, 1)),/* RXD[2] */
+			DATA_IN(1, 18, 3, RET_SE_NICLK_IO(1000, 1)),/* RXD[3] */
 			CLOCK_IN(1, 19, 0, RET_NICLK(0, 0)),/* RXCLK */
 		},
 		.sysconfs_num = 3,
@@ -205,32 +205,32 @@ static struct stm_pad_config stx7108_ethernet_gmii_pad_configs[] = {
 	[0] =  {
 		.gpios_num = 28,
 		.gpios = (struct stm_pad_gpio []) {
-			DATA_OUT(0, 6, 0, RET_SE_NICLK_IO(3, 0)),/* TXD[0] */
-			DATA_OUT(0, 6, 1, RET_SE_NICLK_IO(3, 0)),/* TXD[1] */
-			DATA_OUT(0, 6, 2, RET_SE_NICLK_IO(3, 0)),/* TXD[2] */
-			DATA_OUT(0, 6, 3, RET_SE_NICLK_IO(3, 0)),/* TXD[3] */
-			DATA_OUT(0, 6, 4, RET_SE_NICLK_IO(3, 0)),/* TXD[4] */
-			DATA_OUT(0, 6, 5, RET_SE_NICLK_IO(3, 0)),/* TXD[5] */
-			DATA_OUT(0, 6, 6, RET_SE_NICLK_IO(3, 0)),/* TXD[6] */
-			DATA_OUT(0, 6, 7, RET_SE_NICLK_IO(3, 0)),/* TXD[7] */
-			DATA_OUT(0, 7, 0, RET_SE_NICLK_IO(3, 0)),/* TXER */
-			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(3, 0)),/* TXEN */
+			DATA_OUT(0, 6, 0, RET_SE_NICLK_IO(3000, 0)),/* TXD[0] */
+			DATA_OUT(0, 6, 1, RET_SE_NICLK_IO(3000, 0)),/* TXD[1] */
+			DATA_OUT(0, 6, 2, RET_SE_NICLK_IO(3000, 0)),/* TXD[2] */
+			DATA_OUT(0, 6, 3, RET_SE_NICLK_IO(3000, 0)),/* TXD[3] */
+			DATA_OUT(0, 6, 4, RET_SE_NICLK_IO(3000, 0)),/* TXD[4] */
+			DATA_OUT(0, 6, 5, RET_SE_NICLK_IO(3000, 0)),/* TXD[5] */
+			DATA_OUT(0, 6, 6, RET_SE_NICLK_IO(3000, 0)),/* TXD[6] */
+			DATA_OUT(0, 6, 7, RET_SE_NICLK_IO(3000, 0)),/* TXD[7] */
+			DATA_OUT(0, 7, 0, RET_SE_NICLK_IO(3000, 0)),/* TXER */
+			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(3000, 0)),/* TXEN */
 			CLOCK_IN(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
-			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(2, 0)),/* RXD[0] */
-			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(2, 0)),/* RXD[1] */
-			DATA_IN(0, 8, 2, RET_SE_NICLK_IO(2, 0)),/* RXD[2] */
-			DATA_IN(0, 8, 3, RET_SE_NICLK_IO(2, 0)),/* RXD[3] */
-			DATA_IN(0, 8, 4, RET_SE_NICLK_IO(2, 0)),/* RXD[4] */
-			DATA_IN(0, 8, 5, RET_SE_NICLK_IO(2, 0)),/* RXD[5] */
-			DATA_IN(0, 8, 6, RET_SE_NICLK_IO(2, 0)),/* RXD[6] */
-			DATA_IN(0, 8, 7, RET_SE_NICLK_IO(2, 0)),/* RXD[7] */
-			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(2, 0)),/* RXDV */
-			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(2, 0)),/* RX_ER */
+			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(1000, 0)),/* RXD[0] */
+			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(1000, 0)),/* RXD[1] */
+			DATA_IN(0, 8, 2, RET_SE_NICLK_IO(1000, 0)),/* RXD[2] */
+			DATA_IN(0, 8, 3, RET_SE_NICLK_IO(1000, 0)),/* RXD[3] */
+			DATA_IN(0, 8, 4, RET_SE_NICLK_IO(1000, 0)),/* RXD[4] */
+			DATA_IN(0, 8, 5, RET_SE_NICLK_IO(1000, 0)),/* RXD[5] */
+			DATA_IN(0, 8, 6, RET_SE_NICLK_IO(1000, 0)),/* RXD[6] */
+			DATA_IN(0, 8, 7, RET_SE_NICLK_IO(1000, 0)),/* RXD[7] */
+			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(1000, 0)),/* RXDV */
+			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(1000, 0)),/* RX_ER */
 			CLOCK_IN(0, 9, 2, RET_NICLK(0, 0)),/* RXCLK */
 			PHY_CLOCK(0, 9, 3, RET_NICLK(0, 1)),/* GTXCLK */
 		},
@@ -249,31 +249,31 @@ static struct stm_pad_config stx7108_ethernet_gmii_pad_configs[] = {
 		.gpios = (struct stm_pad_gpio []) {
 			PHY_CLOCK(1, 15, 5, RET_NICLK(0, 1)), /* GTXCLK */
 			DATA_IN(1, 15, 6, RET_BYPASS(0)),/* MDINT */
-			DATA_OUT(1, 15, 7, RET_SE_NICLK_IO(3, 1)),/* TXEN */
-			DATA_OUT(1, 16, 0, RET_SE_NICLK_IO(3, 1)),/* TXD[0] */
-			DATA_OUT(1, 16, 1, RET_SE_NICLK_IO(3, 1)),/* TXD[1] */
-			DATA_OUT(1, 16, 2, RET_SE_NICLK_IO(3, 1)),/* TXD[2] */
-			DATA_OUT(1, 16, 3, RET_SE_NICLK_IO(3, 1)),/* TXD[3] */
-			DATA_OUT(1, 16, 4, RET_SE_NICLK_IO(3, 1)),/* TXD[4] */
-			DATA_OUT(1, 16, 5, RET_SE_NICLK_IO(3, 1)),/* TXD[5] */
-			DATA_OUT(1, 16, 6, RET_SE_NICLK_IO(3, 1)),/* TXD[6] */
-			DATA_OUT(1, 16, 7, RET_SE_NICLK_IO(3, 1)),/* TXD[7] */
+			DATA_OUT(1, 15, 7, RET_SE_NICLK_IO(3000, 1)),/* TXEN */
+			DATA_OUT(1, 16, 0, RET_SE_NICLK_IO(3000, 1)),/* TXD[0]*/
+			DATA_OUT(1, 16, 1, RET_SE_NICLK_IO(3000, 1)),/* TXD[1]*/
+			DATA_OUT(1, 16, 2, RET_SE_NICLK_IO(3000, 1)),/* TXD[2]*/
+			DATA_OUT(1, 16, 3, RET_SE_NICLK_IO(3000, 1)),/* TXD[3]*/
+			DATA_OUT(1, 16, 4, RET_SE_NICLK_IO(3000, 1)),/* TXD[4]*/
+			DATA_OUT(1, 16, 5, RET_SE_NICLK_IO(3000, 1)),/* TXD[5]*/
+			DATA_OUT(1, 16, 6, RET_SE_NICLK_IO(3000, 1)),/* TXD[6]*/
+			DATA_OUT(1, 16, 7, RET_SE_NICLK_IO(3000, 1)),/* TXD[7]*/
 			CLOCK_IN(1, 17, 0, RET_NICLK(0, 0)),/* TXCLK */
-			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(3, 1)),/* TXER */
+			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(3000, 1)),/* TXER */
 			DATA_IN(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_IN(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
-			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(2, 1)),/* RXDV */
-			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(2, 1)),/* RX_ER */
-			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(2, 1)),/* RXD[0] */
-			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(2, 1)),/* RXD[1] */
-			DATA_IN(1, 18, 2, RET_SE_NICLK_IO(2, 1)),/* RXD[2] */
-			DATA_IN(1, 18, 3, RET_SE_NICLK_IO(2, 1)),/* RXD[3] */
-			DATA_IN(1, 18, 4, RET_SE_NICLK_IO(2, 1)),/* RXD[4] */
-			DATA_IN(1, 18, 5, RET_SE_NICLK_IO(2, 1)),/* RXD[5] */
-			DATA_IN(1, 18, 6, RET_SE_NICLK_IO(2, 1)),/* RXD[6] */
-			DATA_IN(1, 18, 7, RET_SE_NICLK_IO(2, 1)),/* RXD[7] */
+			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 1)),/* RXDV */
+			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 1)),/* RX_ER */
+			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(1000, 1)),/* RXD[0] */
+			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(1000, 1)),/* RXD[1] */
+			DATA_IN(1, 18, 2, RET_SE_NICLK_IO(1000, 1)),/* RXD[2] */
+			DATA_IN(1, 18, 3, RET_SE_NICLK_IO(1000, 1)),/* RXD[3] */
+			DATA_IN(1, 18, 4, RET_SE_NICLK_IO(1000, 1)),/* RXD[4] */
+			DATA_IN(1, 18, 5, RET_SE_NICLK_IO(1000, 1)),/* RXD[5] */
+			DATA_IN(1, 18, 6, RET_SE_NICLK_IO(1000, 1)),/* RXD[6] */
+			DATA_IN(1, 18, 7, RET_SE_NICLK_IO(1000, 1)),/* RXD[7] */
 			CLOCK_IN(1, 19, 0, RET_NICLK(0, 0)),/* RXCLK */
 		},
 		.sysconfs_num = 3,
@@ -300,7 +300,7 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 			/* TX Clock inversion is not set for 1000Mbps */
 			TX_CLOCK(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)), /* MDINT */
 			DATA_IN(0, 8, 0, RET_DE_IO(0, 0)),/* RXD[0] */
@@ -334,7 +334,7 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 			/* TX Clock inversion is not set for 1000Mbps */
 			TX_CLOCK(1, 17, 0, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_DE_IO(0, 1)),/* RXDV */
 			DATA_IN(1, 18, 0, RET_DE_IO(0, 1)),/* RXD[0] */
@@ -363,14 +363,14 @@ static struct stm_pad_config stx7108_ethernet_rmii_pad_configs[] = {
 			DATA_OUT(0, 7, 0, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 1)),/* TXEN */
 			DATA_OUT(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
-			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(2, 1)),/* RXD.0 */
-			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(2, 1)),/* RXD.1 */
-			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(2, 1)),/* RXDV */
-			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(2, 1)),/* RX_ER */
+			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(1000, 1)),/* RXD.0 */
+			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(1000, 1)),/* RXD.1 */
+			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(1000, 1)),/* RXDV */
+			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(1000, 1)),/* RX_ER */
 			PHY_CLOCK(0, 9, 3, RET_NICLK(0, 0)),/* PHYCLK */
 		},
 		.sysconfs_num = 3,
@@ -394,12 +394,12 @@ static struct stm_pad_config stx7108_ethernet_rmii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 0)),/* TXER */
 			DATA_OUT(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_OUT(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
-			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(2, 0)),/* RXDV */
-			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(2, 0)),/* RX_ER */
-			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(2, 0)),/* RXD[0] */
-			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(2, 0)),/* RXD[1] */
+			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 0)),/* RXDV */
+			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 0)),/* RX_ER */
+			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(1000, 0)),/* RXD[0] */
+			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(1000, 0)),/* RXD[1] */
 		},
 		.sysconfs_num = 3,
 		.sysconfs = (struct stm_pad_sysconf []) {
@@ -425,16 +425,16 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
 			CLOCK_IN(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_OUT(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3)),/* MDIO*/
+			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO*/
 			CLOCK_IN(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_OUT(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
-			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(2, 0)),/* RXD[0] */
-			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(2, 0)),/* RXD[1] */
-			DATA_IN(0, 8, 2, RET_SE_NICLK_IO(2, 0)),/* RXD[2] */
-			DATA_IN(0, 8, 3, RET_SE_NICLK_IO(2, 0)),/* RXD[3] */
-			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(2, 0)),/* RXDV */
-			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(2, 0)),/* RX_ER */
+			DATA_IN(0, 8, 0, RET_SE_NICLK_IO(1000, 0)),/* RXD[0] */
+			DATA_IN(0, 8, 1, RET_SE_NICLK_IO(1000, 0)),/* RXD[1] */
+			DATA_IN(0, 8, 2, RET_SE_NICLK_IO(1000, 0)),/* RXD[2] */
+			DATA_IN(0, 8, 3, RET_SE_NICLK_IO(1000, 0)),/* RXD[3] */
+			DATA_IN(0, 9, 0, RET_SE_NICLK_IO(1000, 0)),/* RXDV */
+			DATA_IN(0, 9, 1, RET_SE_NICLK_IO(1000, 0)),/* RX_ER */
 			CLOCK_IN(0, 9, 2, RET_NICLK(0, 0)),/* RXCLK */
 			PHY_CLOCK(0, 9, 3, RET_NICLK(0, 0)),/* PHYCLK */
 		},
@@ -462,14 +462,14 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_OUT(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_OUT(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3)),/* MDIO */
+			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_IN(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
-			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(2, 1)),/* RXDV */
-			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(2, 1)),/* RX_ER */
-			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(2, 1)),/* RXD[0] */
-			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(2, 1)),/* RXD[1] */
-			DATA_IN(1, 18, 2, RET_SE_NICLK_IO(2, 1)),/* RXD[2] */
-			DATA_IN(1, 18, 3, RET_SE_NICLK_IO(2, 1)),/* RXD[3] */
+			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 1)),/* RXDV */
+			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 1)),/* RX_ER */
+			DATA_IN(1, 18, 0, RET_SE_NICLK_IO(1000, 1)),/* RXD[0] */
+			DATA_IN(1, 18, 1, RET_SE_NICLK_IO(1000, 1)),/* RXD[1] */
+			DATA_IN(1, 18, 2, RET_SE_NICLK_IO(1000, 1)),/* RXD[2] */
+			DATA_IN(1, 18, 3, RET_SE_NICLK_IO(1000, 1)),/* RXD[3] */
 			CLOCK_IN(1, 19, 0, RET_NICLK(0, 0)),/* RXCLK */
 		},
 		.sysconfs_num = 3,
