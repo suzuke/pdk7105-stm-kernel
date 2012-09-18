@@ -95,26 +95,26 @@ struct stm_pio_control_pad_config {
  * CIV0, CIV1 modes with inverted clock
  * Retiming the clk pins will park clock & reduce the noise within the core.
  */
-#define RET_ICLK(_clk) (&(struct stm_pio_control_retime_config){ \
+#define RET_ICLK(_delay, _clk) (&(struct stm_pio_control_retime_config){ \
 	.retime = 1, \
 	.clk = _clk, \
 	.clknotdata = 1, \
 	.double_edge = 0, \
 	.invertclk = 1, \
-	.delay = 0, \
+	.delay = _delay, \
 })
 
 /*
  * CLK0, CLK1 modes with non-inverted clock
  * Retiming the clk pins will park clock & reduce the noise within the core.
  */
-#define RET_NICLK(_clk) (&(struct stm_pio_control_retime_config){ \
+#define RET_NICLK(_delay, _clk) (&(struct stm_pio_control_retime_config){ \
 	.retime = 1, \
 	.clk = _clk, \
 	.clknotdata = 1, \
 	.double_edge = 0, \
 	.invertclk = 0, \
-	.delay = 0, \
+	.delay = _delay, \
 })
 
 #endif

@@ -382,7 +382,7 @@ void __init stig125_configure_usb(int port)
 				.pu = 1, \
 				.od = 0, \
 			}, \
-			.retime = RET_NICLK(0), \
+			.retime = RET_NICLK(0, 0),	\
 		}, \
 	}
 
