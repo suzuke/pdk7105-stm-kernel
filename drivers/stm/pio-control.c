@@ -118,27 +118,17 @@ static void stm_pio_control_config_retime_packed(
 	unsigned long mask;
 	int i, j;
 
-	unsigned long retime_mask =
-		(rt->clk           >= 0 ? 1<<offset->clk1notclk0_offset : 0) |
-		(rt->clknotdata    >= 0 ? 1<<offset->clknotdata_offset : 0) |
-		(rt->delay         >= 0 ? (1<<offset->delay_lsb_offset |
-					   1<<offset->delay_msb_offset) : 0) |
-		(rt->double_edge   >= 0 ? 1<<offset->double_edge_offset : 0) |
-		(rt->invertclk     >= 0 ? 1<<offset->invertclk_offset : 0) |
-		(rt->retime        >= 0 ? 1<<offset->retime_offset : 0);
-
 	unsigned long retime_config =
-		(rt->clk               ? 1<<offset->clk1notclk0_offset : 0) |
-		(rt->clknotdata        ? 1<<offset->clknotdata_offset : 0) |
-		((rt->delay & 1)       ? 1<<offset->delay_lsb_offset : 0) |
-		((rt->delay & 2)       ? 1<<offset->delay_msb_offset : 0) |
-		(rt->double_edge       ? 1<<offset->double_edge_offset : 0) |
-		(rt->invertclk         ? 1<<offset->invertclk_offset : 0) |
-		(rt->retime            ? 1<<offset->retime_offset : 0);
+		((rt->clk          & 1) << offset->clk1notclk0_offset) |
+		((rt->clknotdata   & 1) << offset->clknotdata_offset) |
+		((rt->delay        & 1) << offset->delay_lsb_offset) |
+		(((rt->delay >> 1) & 1) << offset->delay_msb_offset) |
+		((rt->double_edge  & 1) << offset->double_edge_offset) |
+		((rt->invertclk    & 1) << offset->invertclk_offset) |
+		((rt->retime       & 1) << offset->retime_offset);
 
-
-	pr_debug("%s(pin=%d, retime_mask=%02lx, retime_config=%02lx)\n",
-		 __func__, pin, retime_mask, retime_config);
+	pr_debug("%s(pin=%d, retime_config=%02lx)\n",
+		 __func__, pin, retime_config);
 
 	regs = pio_control->retiming;
 
@@ -148,14 +138,11 @@ static void stm_pio_control_config_retime_packed(
 	for (i = 0; i < 2; i++) {
 		mask = 1 << pin;
 		for (j = 0; j < 4; j++) {
-			if (retime_mask & 1) {
-				if (retime_config & 1)
-					values[i] |= mask;
-				else
-					values[i] &= ~mask;
-			}
+			if (retime_config & 1)
+				values[i] |= mask;
+			else
+				values[i] &= ~mask;
 			mask <<= 8;
-			retime_mask >>= 1;
 			retime_config >>= 1;
 		}
 	}
@@ -170,35 +157,22 @@ static void stm_pio_control_config_retime_dedicated(
 		int pin, const struct stm_pio_control_retime_config *rt)
 {
 	struct sysconf_field *reg;
-	unsigned long value;
-
-	unsigned long retime_mask =
-		(rt->clk            >= 0 ? (0x3 << 0) : 0) |
-		(rt->clknotdata     >= 0 ? (0x1 << 2) : 0) |
-		(rt->delay          >= 0 ? (0xf << 3) : 0) |
-		(rt->delay_innotout >= 0 ? (0x1 << 7) : 0) |
-		(rt->double_edge    >= 0 ? (0x1 << 8) : 0) |
-		(rt->invertclk      >= 0 ? (0x1 << 9) : 0) |
-		(rt->retime         >= 0 ? (0x1 << 10) : 0);
 
 	unsigned long retime_config =
-		(rt->clk               ? (rt->clk << 0) : 0) |
-		(rt->clknotdata        ? (rt->clknotdata << 2) : 0) |
-		(rt->delay             ? (rt->delay << 3) : 0) |
-		(rt->delay_innotout    ? (rt->delay_innotout << 7) : 0) |
-		(rt->double_edge       ? (rt->double_edge << 8) : 0) |
-		(rt->invertclk         ? (rt->invertclk << 9) : 0) |
-		(rt->retime            ? (rt->retime << 10) : 0);
+		((rt->clk            & 0x3) << 0) |
+		((rt->clknotdata     & 0x1) << 2) |
+		((rt->delay          & 0xf) << 3) |
+		((rt->delay_innotout & 0x1) << 7) |
+		((rt->double_edge    & 0x1) << 8) |
+		((rt->invertclk      & 0x1) << 9) |
+		((rt->retime         & 0x1) << 10);
 
-	pr_debug("%s(pin=%d, retime_mask=%02lx, retime_config=%02lx)\n",
-		 __func__, pin, retime_mask, retime_config);
+	pr_debug("%s(pin=%d, retime_config=%02lx)\n",
+		 __func__, pin, retime_config);
 
 	reg = pio_control->retiming[pin];
 
-	value = sysconf_read(reg);
-	value &= retime_mask;
-	value |= retime_config;
-	sysconf_write(reg, value);
+	sysconf_write(reg, retime_config);
 }
 
 #ifdef CONFIG_DEBUG_FS

@@ -20,13 +20,13 @@ struct stm_pio_control_mode_config {
 };
 
 struct stm_pio_control_retime_config {
-	int retime:2;
-	int clk:3;
-	int clknotdata:2;
-	int double_edge:2;
-	int invertclk:2;
-	int delay:5;
-	int delay_innotout:2;
+	unsigned int retime:1;
+	unsigned int clk:2;
+	unsigned int clknotdata:1;
+	unsigned int double_edge:1;
+	unsigned int invertclk:1;
+	unsigned int delay:4;
+	unsigned int delay_innotout:1;
 };
 
 struct stm_pio_control_pad_config {
@@ -45,10 +45,10 @@ struct stm_pio_control_pad_config {
  */
 #define RET_BYPASS(_delay) (&(struct stm_pio_control_retime_config){ \
 	.retime = 0, \
-	.clk = -1, \
+	.clk = 0, \
 	.clknotdata = 0, \
-	.double_edge = -1, \
-	.invertclk = -1, \
+	.double_edge = 0, \
+	.invertclk = 0, \
 	.delay = _delay, \
 })
 
@@ -87,7 +87,7 @@ struct stm_pio_control_pad_config {
 	.clk = _clk, \
 	.clknotdata = 0, \
 	.double_edge = 1, \
-	.invertclk = -1, \
+	.invertclk = 0, \
 	.delay = _delay, \
 })
 
@@ -99,7 +99,7 @@ struct stm_pio_control_pad_config {
 	.retime = 1, \
 	.clk = _clk, \
 	.clknotdata = 1, \
-	.double_edge = -1, \
+	.double_edge = 0, \
 	.invertclk = 1, \
 	.delay = 0, \
 })
@@ -112,7 +112,7 @@ struct stm_pio_control_pad_config {
 	.retime = 1, \
 	.clk = _clk, \
 	.clknotdata = 1, \
-	.double_edge = -1, \
+	.double_edge = 0, \
 	.invertclk = 0, \
 	.delay = 0, \
 })
