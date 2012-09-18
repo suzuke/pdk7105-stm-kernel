@@ -16,6 +16,9 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_irq.h>
+#include <linux/of_address.h>
 
 #include <asm/mach/irq.h>
 #include <asm/smp_gt.h>
@@ -273,6 +276,47 @@ void __init global_timer_init(void __iomem *base, unsigned int timer_irq)
 	gt_clockevents_init(evt);
 
 }
+
+
+#ifdef CONFIG_OF
+static struct of_device_id smp_gt_of_match[] __initconst = {
+	{ .compatible = "arm,cortex-a9-global-timer",},
+	{ },
+};
+
+void __init smp_gt_of_register(void)
+{
+	struct device_node *np;
+	int err = 0;
+	int smp_gt_ppi;
+	static void __iomem *smp_gt_base;
+
+	np = of_find_matching_node(NULL, smp_gt_of_match);
+	if (!np) {
+		err = -ENODEV;
+		goto out;
+	}
+
+	smp_gt_ppi = irq_of_parse_and_map(np, 0);
+	if (!smp_gt_ppi) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	smp_gt_base = of_iomap(np, 0);
+	if (!smp_gt_base) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	global_timer_init(smp_gt_base, smp_gt_ppi);
+
+
+out:
+	WARN(err, "twd_local_timer_of_register failed (%d)\n", err);
+}
+#endif
+
 
 #ifdef CONFIG_CPU_FREQ
 

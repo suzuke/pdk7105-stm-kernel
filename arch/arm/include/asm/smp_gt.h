@@ -10,3 +10,4 @@
  */
 
 void __init global_timer_init(void __iomem *base, unsigned int timer_irq);
+void __init smp_gt_of_register(void);
