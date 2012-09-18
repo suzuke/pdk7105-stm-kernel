@@ -56,6 +56,7 @@ static void *mdio_gpio_of_get_data(struct platform_device *pdev)
 	if (ret < 0)
 		return NULL;
 	pdata->mdio = ret;
+	pdev->id = of_alias_get_id(np, "mdio-gpio");
 
 	return pdata;
 }
