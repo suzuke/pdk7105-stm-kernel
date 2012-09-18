@@ -166,7 +166,7 @@ static void stm_pio_control_config_retime_dedicated(
 		((rt->clk            & 0x3) << 0) |
 		((rt->clknotdata     & 0x1) << 2) |
 		((rt->delay          & 0xf) << 3) |
-		((rt->delay_innotout & 0x1) << 7) |
+		((direction == stm_pad_gpio_direction_in) ? (1 << 7) : 0) |
 		((rt->double_edge    & 0x1) << 8) |
 		((rt->invertclk      & 0x1) << 9) |
 		((rt->retime         & 0x1) << 10);
