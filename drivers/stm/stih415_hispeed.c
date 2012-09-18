@@ -1126,14 +1126,7 @@ void __init stih415_configure_sata(int port, struct stih415_sata_config *config)
 				.pu = 1, \
 				.od = 0, \
 			}, \
-			.retime = &(struct stm_pio_control_retime_config) { \
-				.retime = 0, \
-				.clk = 1, \
-				.clknotdata = 1, \
-				.double_edge = 0, \
-				.invertclk = 0, \
-				.delay = 0, \
-			}, \
+			.retime = RET_NICLK(1), \
 		}, \
 	}
 
@@ -1161,14 +1154,7 @@ void __init stih415_configure_sata(int port, struct stih415_sata_config *config)
 				.pu = 1, \
 				.od = 0, \
 			}, \
-			.retime = &(struct stm_pio_control_retime_config) { \
-				.retime = 0, \
-				.clk = 0, \
-				.clknotdata = 0, \
-				.double_edge = 0, \
-				.invertclk = 0, \
-				.delay = 3, \
-			}, \
+			.retime = RET_BYPASS(3), \
 		}, \
 	}
 #define STIH415_PIO_MMC_IN(_port, _pin) \

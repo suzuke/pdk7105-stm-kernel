@@ -1265,14 +1265,7 @@ void __init stx7108_configure_sata(int port, struct stx7108_sata_config *config)
 				.pu = 1, \
 				.od = 1, \
 			}, \
-			.retime = &(struct stm_pio_control_retime_config) { \
-				.retime = -1, \
-				.clk = -1, \
-				.clknotdata = 1, \
-				.double_edge = -1, \
-				.invertclk = -1, \
-				.delay = -1, \
-			}, \
+			.retime = RET_NICLK(0), \
 		}, \
 	}
 

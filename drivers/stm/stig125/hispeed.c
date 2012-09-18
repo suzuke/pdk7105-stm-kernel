@@ -382,13 +382,7 @@ void __init stig125_configure_usb(int port)
 				.pu = 1, \
 				.od = 0, \
 			}, \
-			.retime = &(struct stm_pio_control_retime_config) { \
-				.retime = 0, \
-				.clknotdata = 1, \
-				.double_edge = 0, \
-				.invertclk = 0, \
-				.delay = 0, \
-			}, \
+			.retime = RET_NICLK(0), \
 		}, \
 	}
 

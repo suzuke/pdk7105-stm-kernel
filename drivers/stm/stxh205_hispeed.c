@@ -613,14 +613,7 @@ void __init stxh205_configure_usb(int port)
 				.pu = 1, \
 				.od = 0, \
 			}, \
-			.retime = &(struct stm_pio_control_retime_config) { \
-				.retime = 0, \
-				.clk = 0, \
-				.clknotdata = 0, \
-				.double_edge = 0, \
-				.invertclk = 0, \
-				.delay = 3, \
-			}, \
+			.retime = RET_BYPASS(3), \
 		}, \
 	}
 #define STXH205_PIO_MMC_IN(_port, _pin, funct) \
