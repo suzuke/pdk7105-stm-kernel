@@ -472,8 +472,26 @@ static const struct stm_pio_control_retime_offset stih415_pio_retime_offset = {
 	.double_edge_offset	= 7,
 };
 
+static unsigned int stih415_pio_control_delays_in[] = {
+	0,	/* 00: 0.0ns */
+	500,	/* 01: 0.5ns */
+	1000,	/* 10: 1.0ns */
+	1500,	/* 11: 1.5ns */
+};
+
+static unsigned int stih415_pio_control_delays_out[] = {
+	0,	/* 00: 0.0ns */
+	1000,	/* 01: 1.0ns */
+	2000,	/* 10: 2.0ns */
+	3000,	/* 11: 3.0ns */
+};
+
 static const struct stm_pio_control_retime_params stih415_retime_params = {
 	.retime_offset = &stih415_pio_retime_offset,
+	.delay_times_in = stih415_pio_control_delays_in,
+	.num_delay_times_in = ARRAY_SIZE(stih415_pio_control_delays_in),
+	.delay_times_out = stih415_pio_control_delays_out,
+	.num_delay_times_out = ARRAY_SIZE(stih415_pio_control_delays_out),
 };
 
 #define STIH415_PIO_ENTRY_CONTROL(_num, _alt_num,				\

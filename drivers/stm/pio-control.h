@@ -87,6 +87,10 @@ enum stm_pio_control_retime_style {
 
 struct stm_pio_control_retime_params {
 	const struct stm_pio_control_retime_offset *retime_offset;
+	unsigned int *delay_times_in;
+	int num_delay_times_in;
+	unsigned int *delay_times_out;
+	int num_delay_times_out;
 };
 
 struct stm_pio_control_config {

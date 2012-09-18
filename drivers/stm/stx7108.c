@@ -746,8 +746,26 @@ static const struct stm_pio_control_retime_offset stx7108_pio_retime_offset = {
 	.delay_msb_offset	= 6,
 };
 
+static unsigned int stx7108_pio_control_delays_in[] = {
+	0,	/* 00: 0.0ns */
+	500,	/* 01: 0.5ns */
+	1000,	/* 10: 1.0ns */
+	1500,	/* 11: 1.5ns */
+};
+
+static unsigned int stx7108_pio_control_delays_out[] = {
+	0,	/* 00: 0.0ns */
+	1000,	/* 01: 1.0ns */
+	2000,	/* 10: 2.0ns */
+	3000,	/* 11: 3.0ns */
+};
+
 static const struct stm_pio_control_retime_params stx7108_retime_params = {
 	.retime_offset = &stx7108_pio_retime_offset,
+	.delay_times_in = stx7108_pio_control_delays_in,
+	.num_delay_times_in = ARRAY_SIZE(stx7108_pio_control_delays_in),
+	.delay_times_out = stx7108_pio_control_delays_out,
+	.num_delay_times_out = ARRAY_SIZE(stx7108_pio_control_delays_out),
 };
 
 #define STX7108_PIO_CONTROL_(_num, _group, _alt_num,			\

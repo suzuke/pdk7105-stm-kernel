@@ -391,8 +391,29 @@ static struct platform_device stig125_pio_devices[27] = {
 	STIG125_PIO_ENTRY(26, STIG125_PIO_SBC_BASE + 0x3000),
 };
 
+static unsigned int stig125_pio_control_delays[] = {
+	0,	/* 0000: 0 */
+	300,	/* 0001: 0.3 */
+	500,	/* 0010: 0.5 */
+	750,	/* 0011: 0.75 */
+	1000,	/* 0100: 1.0 */
+	1250,	/* 0101: 1.25 */
+	1500,	/* 0110: 1.5 */
+	1750,	/* 0111: 1.75 */
+	2000,	/* 1000: 2.0 */
+	2250,	/* 1001: 2.25 */
+	2500,	/* 1010: 2.5 */
+	2750,	/* 1011: 2.75 */
+	3000,	/* 1100: 3.0 */
+	3250,	/* 1101: 3.25 */
+};
+
 static const struct stm_pio_control_retime_params stig125_retime_params = {
 	.retime_offset = NULL,
+	.delay_times_in = stig125_pio_control_delays,
+	.num_delay_times_in = ARRAY_SIZE(stig125_pio_control_delays),
+	.delay_times_out = stig125_pio_control_delays,
+	.num_delay_times_out = ARRAY_SIZE(stig125_pio_control_delays),
 };
 
 #define STIG125_PIO_ENTRY_CONTROL(_num, _alt_num,			\
