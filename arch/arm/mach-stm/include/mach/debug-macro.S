@@ -15,17 +15,25 @@
 
 #ifdef CONFIG_MACH_STM_FLI7610
 #include <linux/stm/fli7610-periphs.h>
+#ifdef CONFIG_MACH_STM_FLI76XXHDK01
 #define DEBUG_LL_UART_BASE	FLI7610_CONSOLE_BASE
+#endif
 #endif
 
 #ifdef CONFIG_MACH_STM_STIG125
 #include <linux/stm/stig125-periphs.h>
-#define DEBUG_LL_UART_BASE		STIG125_SBC_ASC0_BASE
+#ifdef CONFIG_MACH_STM_B2044
+#define DEBUG_LL_UART_BASE	STIG125_SBC_ASC0_BASE
+#endif
 #endif
 
 #ifdef CONFIG_MACH_STM_STIH415
 #include <linux/stm/stih415-periphs.h>
-#define DEBUG_LL_UART_BASE	STIH415_SBC_ASC0_BASE
+#ifdef CONFIG_MACH_STM_B2000
+#define DEBUG_LL_UART_BASE	STIH415_ASC2_BASE
+#elif defined CONFIG_MACH_STM_B2020
+#define DEBUG_LL_UART_BASE	STIH415_SBC_ASC1_BASE
+#endif
 #endif
 
 #ifndef DEBUG_LL_UART_BASE
