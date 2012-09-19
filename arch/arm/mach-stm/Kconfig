@@ -10,20 +10,20 @@ config CPU_SUBTYPE_STIH415
        def_bool n
 
 config MACH_STM_FLI7610
-	bool "Support FLI7610 generic platform"
+	def_bool n
 	select CPU_SUBTYPE_FLI7610
 	select STM_HAS_MALI
 	help
 	  Include support for a generic FLI7610 (Newman) platform.
 
 config MACH_STM_STIG125
-	bool "Support STiG125 generic platform"
+	def_bool n
 	select STM_IRQ_MUX
 	help
 	  Include support for a generic STiG125 (Barcelona) platform.
 
 config MACH_STM_STIH415
-	bool "Support STiH415 generic platform"
+	def_bool n
 	select CPU_SUBTYPE_STIH415
 	select ARCH_HAS_CPUFREQ
 	select STM_HAS_MALI
@@ -231,7 +231,7 @@ endchoice
 endif
 
 config MACH_STM_FLI76XXHDK01
-	bool "Support FLI76XX HDK01 (Newman) Board"
+	bool "Support FLI76XX HDK01 - FLI7610 (Newman) Board"
 	select MACH_STM_FLI7610
 	help
 	  Include support for a FLI76XX HDK01 (Newman) Board.
