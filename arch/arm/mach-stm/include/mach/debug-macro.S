@@ -14,17 +14,17 @@
  */
 
 #ifdef CONFIG_MACH_STM_FLI7610
-#include <mach/soc-fli7610.h>
+#include <linux/stm/fli7610-periphs.h>
 #define DEBUG_LL_UART_BASE	FLI7610_CONSOLE_BASE
 #endif
 
 #ifdef CONFIG_MACH_STM_STIG125
-#include <mach/soc-stig125.h>
+#include <linux/stm/stig125-periphs.h>
 #define DEBUG_LL_UART_BASE		STIG125_SBC_ASC0_BASE
 #endif
 
 #ifdef CONFIG_MACH_STM_STIH415
-#include <mach/soc-stih415.h>
+#include <linux/stm/stih415-periphs.h>
 #define DEBUG_LL_UART_BASE	STIH415_SBC_ASC0_BASE
 #endif
 
