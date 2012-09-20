@@ -85,7 +85,7 @@ static void __init b2044_init_early(void)
 
 	stig125_early_device_init();
 
-	stig125_configure_asc(7, &(struct stig125_asc_config) {
+	stig125_configure_asc(STIG125_SBC_ASC(0), &(struct stig125_asc_config) {
 			.hw_flow_control = 0,
 			.is_console = 1,
 			.force_m1 = 1, });
