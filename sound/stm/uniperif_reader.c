@@ -987,6 +987,7 @@ static const struct dev_pm_ops snd_stm_uniperif_reader_pm_ops = {
 	.freeze	 = snd_stm_uniperif_reader_suspend,
 	.resume	 = snd_stm_uniperif_reader_resume,
 	.thaw	 = snd_stm_uniperif_reader_resume,
+	.restore = snd_stm_uniperif_reader_resume,
 };
 #endif
 
