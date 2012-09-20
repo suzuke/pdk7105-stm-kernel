@@ -15,6 +15,9 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("cpu_clk", NULL, "CLKM_A9", NULL);
 	clk_add_alias("gpu_clk", NULL, "CLKM_GPU", NULL);
 
+#if defined(CONFIG_ARM) && defined(CONFIG_HAVE_ARM_TWD)
+	clk_add_alias(NULL, "smp_twd", "arm_periph_clk", NULL);
+#endif
 	/* comms clk */
 	clk_add_alias("comms_clk", NULL, "CLKA_IC_100", NULL);
 	/* module clk ?!?!?! */
