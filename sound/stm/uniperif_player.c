@@ -2345,6 +2345,7 @@ static const struct dev_pm_ops snd_stm_uniperif_player_pm_ops = {
 	.freeze	 = snd_stm_uniperif_player_suspend,
 	.resume	 = snd_stm_uniperif_player_resume,
 	.thaw	 = snd_stm_uniperif_player_resume,
+	.restore = snd_stm_uniperif_player_resume,
 };
 #endif
 
