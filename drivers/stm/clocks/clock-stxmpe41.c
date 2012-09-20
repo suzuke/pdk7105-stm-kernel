@@ -423,6 +423,23 @@ _CLK_P(CLKM_GPU, &clkgengpu, 400000000,
 	0, &clk_clocks[CLKM_GPU_PHI]),
 };
 
+#ifdef CONFIG_ARM
+static int arm_periph_recalc(struct clk *clk)
+{
+	clk->rate = clk_get_rate(clk_get_parent(clk)) / 2;
+	return 0;
+}
+static struct clk_ops arm_periph_ops = {
+	.recalc = arm_periph_recalc,
+	.init = arm_periph_recalc,
+};
+
+static struct clk arm_periph_clk = {
+	.name = "arm_periph_clk",
+	.ops = &arm_periph_ops,
+};
+#endif
+
 /* ========================================================================
    Name:        mpe41_clk_init()
    Description: SOC specific LLA initialization
@@ -653,6 +670,12 @@ int __init mpe41_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	ret |= clk_register_table(&clk_clocks[CLKM_E_REF],
 		ARRAY_SIZE(clk_clocks) - CLKM_E_REF, 0);
 #endif
+
+#if defined(CONFIG_ARM)
+	arm_periph_clk.parent = clk_get(NULL, "CLKM_A9");
+	clk_register_table(&arm_periph_clk, 1, 0);
+#endif
+
 	return ret;
 }
 
