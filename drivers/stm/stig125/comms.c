@@ -25,7 +25,7 @@
  * - 3 SSCs in the SBC
  * - 2 SSCs standalone @ 0xFE2A8000
  * - 8 SSCs in Comms block
- * - 1 SSC in TelSIS block
+ * - 1 SSC in TelSS block
  */
 #define SSC_NUMBER		14
 /* Pad configuration for I2C mode */
@@ -56,8 +56,8 @@ static struct stm_pad_config stig125_ssc_i2c_pad_configs[SSC_NUMBER] = {
 	I2C_PAD(10, 26, 0, 1, 26, 1, 1),
 	I2C_PAD(11, 24, 5, 2, 24, 4, 2),
 	I2C_PAD(12, 25, 2, 2, 25, 1, 2),
-	/* SSC in TELSIS */
-	I2C_PAD(STIG125_TELSIS_SSC, 16, 0, 1, 16, 1, 1),
+	/* SSC in TELSS */
+	I2C_PAD(STIG125_TELSS_SSC, 16, 0, 1, 16, 1, 1),
 };
 
 /* Pad configuration for SPI mode */
@@ -91,7 +91,7 @@ static struct stm_pad_config stig125_ssc_spi_pad_configs[SSC_NUMBER] = {
 	SPI_PAD(11, 24, 5, 2, 24, 4, 2, 24, 3, 2),
 	SPI_PAD(12, 25, 2, 2, 25, 1, 2, 24, 7, 2),
 	/* NO SPI mode on SSC_12 */
-	SPI_PAD(STIG125_TELSIS_SSC, 16, 0, 1, 16, 1, 1, 16, 2, 1),
+	SPI_PAD(STIG125_TELSS_SSC, 16, 0, 1, 16, 1, 1, 16, 2, 1),
 };
 
 #define SSC_DEVICE(id, base, irq)					\
@@ -123,11 +123,11 @@ static struct platform_device stig125_ssc_devices[SSC_NUMBER] = {
 	SSC_DEVICE(10, STIG125_SBC_SSC0_BASE, 139),
 	SSC_DEVICE(11, STIG125_SBC_SSC1_BASE, 140),
 	SSC_DEVICE(12, STIG125_SBC_SSC2_BASE, 141),
-	/* TELSIS SSC */
-	[STIG125_TELSIS_SSC] = {
+	/* TELSS SSC */
+	[STIG125_TELSS_SSC] = {
 		.num_resources = 2,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIG125_TELSIS_SSC_BASE, 0x110),
+			STM_PLAT_RESOURCE_MEM(STIG125_TELSS_SSC_BASE, 0x110),
 			{
 				.start = STIG125_IRQMUX(63),
 				.end = STIG125_IRQMUX(63),
@@ -151,10 +151,10 @@ static void __init stig125_ssc_set_clk(int ssc)
 		clk_add_alias_platform_device(NULL, &stig125_ssc_devices[ssc],
 			"sbc_comms_clk", NULL);
 		break;
-	case STIG125_TELSIS_SSC:
-		/* TELSIS-SSC is using a dedicate telsis_comms_clk */
+	case STIG125_TELSS_SSC:
+		/* TELSS-SSC is using a dedicate telss_comms_clk */
 		clk_add_alias_platform_device(NULL, &stig125_ssc_devices[ssc],
-			"telsis_comms_clk", NULL);
+			"telss_comms_clk", NULL);
 		break;
 	default:
 		break;

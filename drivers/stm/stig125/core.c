@@ -174,7 +174,7 @@ static struct stm_pad_config stig125_asc_pad_configs[] = {
 			STM_PAD_PIO_OUT_NAMED(STIG125_SBC_PIO(1), 4, 3, "RTS"),
 		},
 	},
-	[STIG125_TELSIS_ASC] = {
+	[STIG125_TELSS_ASC] = {
 		/* TEL_UART */
 		.gpios_num = 4,
 		.gpios = (struct stm_pad_gpio []) {
@@ -245,13 +245,13 @@ static struct platform_device stig125_asc_devices[] = {
 			.clk_id = "sbc_comms_clk",
 		},
 	},
-	[STIG125_TELSIS_ASC] = {
+	[STIG125_TELSS_ASC] = {
 		/* TEL_UART */
 		.name = "stm-asc",
 		/* .id set in stig125_configure_asc() */
 		.num_resources = 2,
 		.resource = (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIG125_TELSIS_ASC_BASE, 0x2c),
+			STM_PLAT_RESOURCE_MEM(STIG125_TELSS_ASC_BASE, 0x2c),
 			{
 				.start = STIG125_IRQMUX(64),
 				.end = STIG125_IRQMUX(64),
@@ -260,8 +260,8 @@ static struct platform_device stig125_asc_devices[] = {
 		},
 		.dev.platform_data = &(struct stm_plat_asc_data) {
 			.pad_config =
-				&stig125_asc_pad_configs[STIG125_TELSIS_ASC],
-			.clk_id = "telsis_comms_clk",
+				&stig125_asc_pad_configs[STIG125_TELSS_ASC],
+			.clk_id = "telss_comms_clk",
 		},
 	},
 };

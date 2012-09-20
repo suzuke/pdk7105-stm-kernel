@@ -59,7 +59,7 @@ void stig125_early_device_init(void);
 
 #define STIG125_SBC_ASC(num)		(num + 7)
 #define STIG125_ASC(num)		(num)
-#define STIG125_TELSIS_ASC		(9)
+#define STIG125_TELSS_ASC		(9)
 
 struct stig125_asc_config {
 	int hw_flow_control;
@@ -70,7 +70,7 @@ void stig125_configure_asc(int asc, struct stig125_asc_config *config);
 
 #define STIG125_SSC(num)		(num)
 #define STIG125_SBC_SSC(num)		(num + 10)
-#define STIG125_TELSIS_SSC		(13)
+#define STIG125_TELSS_SSC		(13)
 #define STIG125_HDMI_SSC		(7)
 #define STIG125_FE_SSC			(1)
 #define STIG125_BE_SSC			(8)

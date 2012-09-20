@@ -23,7 +23,7 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("comms_clk", NULL, "CLK_S_A1_IC_LP_HD", NULL);
 	clk_add_alias("ssc_comms_clk", NULL, "CLK_S_A1_IC_LP_CPU", NULL);
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
-	clk_add_alias("telsis_comms_clk", NULL, "CLK_S_A1_IC_LP_ETH", NULL);
+	clk_add_alias("telss_comms_clk", NULL, "CLK_S_A1_IC_LP_ETH", NULL);
 
 	/* EMI clock */
 	clk_add_alias("emi_clk", NULL, "CLK_S_A1_IC_EMI", NULL);
