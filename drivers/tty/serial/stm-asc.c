@@ -181,7 +181,12 @@ static void asc_break_ctl(struct uart_port *port, int break_state)
  */
 static int asc_startup(struct uart_port *port)
 {
-	asc_request_irq(port);
+	int ret;
+
+	ret = asc_request_irq(port);
+	if (ret)
+		return ret;
+
 	asc_transmit_chars(port);
 	asc_enable_rx_interrupts(port);
 
