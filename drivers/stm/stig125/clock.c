@@ -16,9 +16,14 @@ int __init plat_clk_alias_init(void)
 {
 	/* CA9 clock */
 	clk_add_alias("cpu_clk", NULL, "CLK_S_A9", NULL);
-#if defined(CONFIG_ARM) && defined(CONFIG_HAVE_ARM_TWD)
+	/*
+	 * The local/global timer
+	 * may not actually be configured, but there is no harm in creating
+	 * the aliases anyway.
+	 */
 	clk_add_alias(NULL, "smp_twd", "CLK_S_A9_PERIPH", NULL);
-#endif
+	clk_add_alias(NULL, "smp_gt", "CLK_S_A9_PERIPH", NULL);
+
 	/* comms clock */
 	clk_add_alias("comms_clk", NULL, "CLK_S_A1_IC_LP_HD", NULL);
 	clk_add_alias("ssc_comms_clk", NULL, "CLK_S_A1_IC_LP_CPU", NULL);

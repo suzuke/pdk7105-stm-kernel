@@ -15,9 +15,15 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("cpu_clk", NULL, "CLKM_A9", NULL);
 	clk_add_alias("gpu_clk", NULL, "CLKM_GPU", NULL);
 
-#if defined(CONFIG_ARM) && defined(CONFIG_HAVE_ARM_TWD)
+	/*
+	 * arm_periph_clk does not exist on SH4 on which case this will
+	 * fail silently. Alternatively the local/global timer
+	 * may not actually be used, but there is no harm in creating
+	 * the aliases anyway.
+	 */
 	clk_add_alias(NULL, "smp_twd", "arm_periph_clk", NULL);
-#endif
+	clk_add_alias(NULL, "smp_gt", "arm_periph_clk", NULL);
+
 	/* comms clk */
 	clk_add_alias("comms_clk", NULL, "CLKA_IC_100", NULL);
 	/* module clk ?!?!?! */

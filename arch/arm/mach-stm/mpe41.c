@@ -65,7 +65,7 @@ static void __init mpe41_timer_init(void)
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(MPE41_GLOBAL_TIMER_BASE),
-			IRQ_GLOBALTIMER, clk_get_rate(a9_clk)/2);
+			IRQ_GLOBALTIMER);
 #endif
 
 	mpe41_twd_init();

@@ -13,6 +13,8 @@
 #include <linux/interrupt.h>
 #include <linux/clocksource.h>
 #include <linux/clockchips.h>
+#include <linux/clk.h>
+#include <linux/err.h>
 #include <linux/io.h>
 
 #include <asm/mach/irq.h>
@@ -41,6 +43,7 @@ static void __iomem *gt_base;
 /* We are clocked by PERIPHCLK */
 /* Note we are using a prescaler value of zero currently, so this is
  * the units for all operations. */
+static struct clk *gt_clk;
 static unsigned long gt_periphclk;
 
 #ifndef CONFIG_CPU_FREQ
@@ -225,14 +228,45 @@ static void __init gt_clocksource_init(void)
 		clocksource_hz2mult(gt_periphclk, gt_clocksource.shift);
 	clocksource_register(&gt_clocksource);
 }
+static struct clk *gt_get_clock(void)
+{
+	struct clk *clk;
+	int err;
 
-void __init global_timer_init(void __iomem *base, unsigned int timer_irq,
-			      unsigned long freq)
+	clk = clk_get_sys("smp_gt", NULL);
+	if (IS_ERR(clk)) {
+		pr_err("smp_gt: clock not found: %d\n", (int)PTR_ERR(clk));
+		return clk;
+	}
+
+	err = clk_prepare(clk);
+	if (err) {
+		pr_err("smp_gt: clock failed to prepare: %d\n", err);
+		clk_put(clk);
+		return ERR_PTR(err);
+	}
+
+	err = clk_enable(clk);
+	if (err) {
+		pr_err("smp_gt: clock failed to enable: %d\n", err);
+		clk_unprepare(clk);
+		clk_put(clk);
+		return ERR_PTR(err);
+	}
+
+	return clk;
+}
+
+
+void __init global_timer_init(void __iomem *base, unsigned int timer_irq)
 {
 	unsigned int cpu = smp_processor_id();
 	struct clock_event_device *evt = &per_cpu(gt_clockevent, cpu);
 	gt_base = base;
-	gt_periphclk = freq;
+	if (!gt_clk)
+		gt_clk = gt_get_clock();
+
+	gt_periphclk = clk_get_rate(gt_clk);
 	gt_clocksource_init();
 	evt->irq = timer_irq;
 	evt->cpumask = cpumask_of(cpu);

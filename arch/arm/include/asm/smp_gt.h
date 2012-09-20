@@ -9,5 +9,4 @@
  * published by the Free Software Foundation.
  */
 
-void __init global_timer_init(void __iomem *base, unsigned int timer_irq,
-	unsigned long freq);
+void __init global_timer_init(void __iomem *base, unsigned int timer_irq);

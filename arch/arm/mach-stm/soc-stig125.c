@@ -170,18 +170,13 @@ static void __init stig125_twd_init(void)
 
 static void __init stig125_timer_init(void)
 {
-	struct clk *a9_clk;
 
 	plat_clk_init();
 	plat_clk_alias_init();
 
-	a9_clk = clk_get(NULL, "cpu_clk");
-	if (IS_ERR(a9_clk))
-		panic("Unable to determine Cortex A9 clock frequency\n");
-
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(STIG125_GLOBAL_TIMER_BASE),
-			  IRQ_GLOBALTIMER, clk_get_rate(a9_clk)/2);
+			  IRQ_GLOBALTIMER);
 #endif
 
 	stig125_twd_init();
