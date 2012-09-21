@@ -451,15 +451,15 @@ static struct platform_device stih415_pio_devices[27] = {
 	/* MPE */
 	/* NB the data sheet has these two reversed, which is correct? */
 	/* 100-102: PIO_RIGHT (aka MPE_PIO) */
-	STIH415_PIO_ENTRY(19, 0xfd6b0000),
-	STIH415_PIO_ENTRY(20, 0xfd6b1000),
-	STIH415_PIO_ENTRY(21, 0xfd6b2000),
+	STIH415_PIO_ENTRY(19, MPE41_PIO_RIGHT_BASE + 0x0000),
+	STIH415_PIO_ENTRY(20, MPE41_PIO_RIGHT_BASE + 0x1000),
+	STIH415_PIO_ENTRY(21, MPE41_PIO_RIGHT_BASE + 0x2000),
 	/* 103-107: PIO_LEFT (aka PIO_1_MPE) */
-	STIH415_PIO_ENTRY(22, 0xfd330000),
-	STIH415_PIO_ENTRY(23, 0xfd331000),
-	STIH415_PIO_ENTRY(24, 0xfd332000),
-	STIH415_PIO_ENTRY(25, 0xfd333000),
-	STIH415_PIO_ENTRY(26, 0xfd334000),
+	STIH415_PIO_ENTRY(22, MPE41_PIO_LEFT_BASE + 0x0000),
+	STIH415_PIO_ENTRY(23, MPE41_PIO_LEFT_BASE + 0x1000),
+	STIH415_PIO_ENTRY(24, MPE41_PIO_LEFT_BASE + 0x2000),
+	STIH415_PIO_ENTRY(25, MPE41_PIO_LEFT_BASE + 0x3000),
+	STIH415_PIO_ENTRY(26, MPE41_PIO_LEFT_BASE + 0x4000),
 };
 
 static const struct stm_pio_control_retime_offset stih415_pio_retime_offset = {
@@ -881,10 +881,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 3,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIH415_MPE_LEFT_SYSCONF_BASE, 0x78),
+			STM_PLAT_RESOURCE_MEM(MPE41_LEFT_SYSCONF_BASE, 0x78),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(STIH415_MPE_LEFT_SYSCONF_BASE),
+			.regs = (void __iomem *)IO_ADDRESS(MPE41_LEFT_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -903,10 +903,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 4,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIH415_MPE_RIGHT_SYSCONF_BASE, 0x180),
+			STM_PLAT_RESOURCE_MEM(MPE41_RIGHT_SYSCONF_BASE, 0x180),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(STIH415_MPE_RIGHT_SYSCONF_BASE),
+			.regs = (void __iomem *)IO_ADDRESS(MPE41_RIGHT_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -925,10 +925,10 @@ static struct platform_device stih415_sysconf_devices[] = {
 		.id		= 5,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
-			STM_PLAT_RESOURCE_MEM(STIH415_MPE_SYSTEM_SYSCONF_BASE, 0x15c),
+			STM_PLAT_RESOURCE_MEM(MPE41_SYSTEM_SYSCONF_BASE, 0x15c),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
-			.regs = (void __iomem *)IO_ADDRESS(STIH415_MPE_SYSTEM_SYSCONF_BASE),
+			.regs = (void __iomem *)IO_ADDRESS(MPE41_SYSTEM_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{

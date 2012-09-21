@@ -287,15 +287,15 @@ static struct platform_device fli7610_pio_devices[34] = {
 
 	/* MPE */
 	/* 100-102: PIO_RIGHT (aka MPE_PIO) */
-	FLI7610_PIO_ENTRY(26, 0xfd6b0000),
-	FLI7610_PIO_ENTRY(27, 0xfd6b1000),
-	FLI7610_PIO_ENTRY(28, 0xfd6b2000),
+	FLI7610_PIO_ENTRY(26, MPE41_PIO_RIGHT_BASE + 0x0000),
+	FLI7610_PIO_ENTRY(27, MPE41_PIO_RIGHT_BASE + 0x1000),
+	FLI7610_PIO_ENTRY(28, MPE41_PIO_RIGHT_BASE + 0x2000),
 	/* 103-107: PIO_LEFT (aka PIO_1_MPE) */
-	FLI7610_PIO_ENTRY(29, 0xfd330000),
-	FLI7610_PIO_ENTRY(30, 0xfd331000),
-	FLI7610_PIO_ENTRY(31, 0xfd332000),
-	FLI7610_PIO_ENTRY(32, 0xfd333000),
-	FLI7610_PIO_ENTRY(33, 0xfd334000),
+	FLI7610_PIO_ENTRY(29, MPE41_PIO_LEFT_BASE + 0x0000),
+	FLI7610_PIO_ENTRY(30, MPE41_PIO_LEFT_BASE + 0x1000),
+	FLI7610_PIO_ENTRY(31, MPE41_PIO_LEFT_BASE + 0x2000),
+	FLI7610_PIO_ENTRY(32, MPE41_PIO_LEFT_BASE + 0x3000),
+	FLI7610_PIO_ENTRY(33, MPE41_PIO_LEFT_BASE + 0x4000),
 };
 
 /* Interrupts
@@ -928,11 +928,11 @@ static struct platform_device fli7610_sysconf_devices[] = {
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(
-				FLI7610_MPE_LEFT_SYSCONF_BASE, 0x78),
+				MPE41_LEFT_SYSCONF_BASE, 0x78),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
 			.regs = (void __iomem *)IO_ADDRESS(
-					FLI7610_MPE_LEFT_SYSCONF_BASE),
+					MPE41_LEFT_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -953,11 +953,11 @@ static struct platform_device fli7610_sysconf_devices[] = {
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(
-				FLI7610_MPE_RIGHT_SYSCONF_BASE, 0x180),
+				MPE41_RIGHT_SYSCONF_BASE, 0x180),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
 			.regs = (void __iomem *)IO_ADDRESS(
-					FLI7610_MPE_RIGHT_SYSCONF_BASE),
+					MPE41_RIGHT_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{
@@ -978,11 +978,11 @@ static struct platform_device fli7610_sysconf_devices[] = {
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
 			STM_PLAT_RESOURCE_MEM(
-				FLI7610_MPE_SYSTEM_SYSCONF_BASE, 0x15c),
+				MPE41_SYSTEM_SYSCONF_BASE, 0x15c),
 		},
 		.dev.platform_data = &(struct stm_plat_sysconf_data) {
 			.regs = (void __iomem *)IO_ADDRESS(
-					FLI7610_MPE_SYSTEM_SYSCONF_BASE),
+					MPE41_SYSTEM_SYSCONF_BASE),
 			.groups_num = 1,
 			.groups = (struct stm_plat_sysconf_group []) {
 				{

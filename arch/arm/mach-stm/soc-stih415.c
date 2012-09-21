@@ -68,13 +68,13 @@ static struct map_desc stih415_io_desc[] __initdata = {
 		.length		= SZ_64K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual	= IO_ADDRESS(STIH415_PIO_MPE_RIGHT_BASE),
-		.pfn		= __phys_to_pfn(STIH415_PIO_MPE_RIGHT_BASE),
+		.virtual	= IO_ADDRESS(MPE41_PIO_RIGHT_BASE),
+		.pfn		= __phys_to_pfn(MPE41_PIO_RIGHT_BASE),
 		.length		= SZ_64K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual	= IO_ADDRESS(STIH415_PIO_MPE_LEFT_BASE),
-		.pfn		= __phys_to_pfn(STIH415_PIO_MPE_LEFT_BASE),
+		.virtual	= IO_ADDRESS(MPE41_PIO_LEFT_BASE),
+		.pfn		= __phys_to_pfn(MPE41_PIO_LEFT_BASE),
 		.length		= SZ_64K,
 		.type		= MT_DEVICE,
 	}, {
@@ -93,18 +93,18 @@ static struct map_desc stih415_io_desc[] __initdata = {
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual	= IO_ADDRESS(STIH415_MPE_LEFT_SYSCONF_BASE),
-		.pfn		= __phys_to_pfn(STIH415_MPE_LEFT_SYSCONF_BASE),
+		.virtual	= IO_ADDRESS(MPE41_LEFT_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(MPE41_LEFT_SYSCONF_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual	= IO_ADDRESS(STIH415_MPE_RIGHT_SYSCONF_BASE),
-		.pfn		= __phys_to_pfn(STIH415_MPE_RIGHT_SYSCONF_BASE),
+		.virtual	= IO_ADDRESS(MPE41_RIGHT_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(MPE41_RIGHT_SYSCONF_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {
-		.virtual	= IO_ADDRESS(STIH415_MPE_SYSTEM_SYSCONF_BASE),
-		.pfn		= __phys_to_pfn(STIH415_MPE_SYSTEM_SYSCONF_BASE),
+		.virtual	= IO_ADDRESS(MPE41_SYSTEM_SYSCONF_BASE),
+		.pfn		= __phys_to_pfn(MPE41_SYSTEM_SYSCONF_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	}, {

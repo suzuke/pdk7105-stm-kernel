@@ -35,23 +35,23 @@
 #include <linux/stm/synopsys_dwc_ddr32.h>
 
 static const long stih415_ddr0_enter[] = {
-synopsys_ddr32_in_self_refresh(STIH415_MPE_DDR0_PCTL_BASE),
-synopsys_ddr32_phy_standby_enter(STIH415_MPE_DDR0_PCTL_BASE),
+synopsys_ddr32_in_self_refresh(MPE41_DDR0_PCTL_BASE),
+synopsys_ddr32_phy_standby_enter(MPE41_DDR0_PCTL_BASE),
 };
 
 static const long stih415_ddr1_enter[] = {
-synopsys_ddr32_in_self_refresh(STIH415_MPE_DDR1_PCTL_BASE),
-synopsys_ddr32_phy_standby_enter(STIH415_MPE_DDR1_PCTL_BASE),
+synopsys_ddr32_in_self_refresh(MPE41_DDR1_PCTL_BASE),
+synopsys_ddr32_phy_standby_enter(MPE41_DDR1_PCTL_BASE),
 };
 
 static const long stih415_ddr0_exit[] = {
-synopsys_ddr32_phy_standby_exit(STIH415_MPE_DDR0_PCTL_BASE),
-synopsys_ddr32_out_of_self_refresh(STIH415_MPE_DDR0_PCTL_BASE),
+synopsys_ddr32_phy_standby_exit(MPE41_DDR0_PCTL_BASE),
+synopsys_ddr32_out_of_self_refresh(MPE41_DDR0_PCTL_BASE),
 };
 
 static const long stih415_ddr1_exit[] = {
-synopsys_ddr32_phy_standby_exit(STIH415_MPE_DDR1_PCTL_BASE),
-synopsys_ddr32_out_of_self_refresh(STIH415_MPE_DDR1_PCTL_BASE),
+synopsys_ddr32_phy_standby_exit(MPE41_DDR1_PCTL_BASE),
+synopsys_ddr32_out_of_self_refresh(MPE41_DDR1_PCTL_BASE),
 };
 
 #define SUSPEND_TBL(_enter, _exit) {			\
