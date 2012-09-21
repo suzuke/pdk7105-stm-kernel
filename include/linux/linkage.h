@@ -4,14 +4,8 @@
 #include <linux/compiler.h>
 #include <asm/linkage.h>
 
-#ifdef __cplusplus
-#define CPP_ASMLINKAGE extern "C"
-#else
-#define CPP_ASMLINKAGE
-#endif
-
 #ifndef asmlinkage
-#define asmlinkage CPP_ASMLINKAGE
+#define asmlinkage
 #endif
 
 #define __page_aligned_data	__section(.data..page_aligned) __aligned(PAGE_SIZE)
