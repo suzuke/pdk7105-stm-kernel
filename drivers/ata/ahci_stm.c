@@ -117,7 +117,7 @@ static int ahci_stm_suspend(struct device *dev)
 {
 	struct ahci_stm_drv_data *data = dev_get_drvdata(dev);
 
-	stm_device_power(data->state, stm_device_power_off);
+	stm_device_power(data->device_state, stm_device_power_off);
 	pm_clk_suspend(dev);
 
 	return 0;
@@ -128,7 +128,7 @@ static int ahci_stm_resume(struct device *dev)
 	struct ahci_stm_drv_data *data = dev_get_drvdata(dev);
 
 	pm_clk_resume(dev);
-	stm_device_power(data->state, stm_device_power_on);
+	stm_device_power(data->device_state, stm_device_power_on);
 
 	return 0;
 }
