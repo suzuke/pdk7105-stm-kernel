@@ -54,7 +54,7 @@
 static void __iomem *clks_base[2];
 static struct stm_wakeup_devices stig125_wkd;
 
-static long stig125_mem_enter[] __cacheline_aligned = {
+static long stig125_ddr0_enter[] = {
 synopsys_ddr32_in_self_refresh(STIG125_DDR_PCTL_BASE),
 
 synopsys_ddr32_phy_standby_enter(STIG125_DDR_PCTL_BASE),
@@ -69,7 +69,7 @@ OR32(SYSCONF_CPU_722, 1),
 END_MARKER,
 };
 
-static long stig125_mem_exit[] __cacheline_aligned = {
+static long stig125_ddr0_exit[] = {
 /* enable, wait and don't bypass the A9.PLL */
 UPDATE32(SYSCONF_CPU_722, ~1, 0),
 WHILE_NE32(SYSCONF_CPU_760, 1, 1),
@@ -91,6 +91,17 @@ synopsys_ddr32_out_of_self_refresh(STIG125_DDR_PCTL_BASE),
 END_MARKER,
 };
 
+
+#define SUSPEND_TBL(_enter, _exit) {				\
+	.enter = _enter,					\
+	.enter_size = ARRAY_SIZE(_enter) * sizeof(long),	\
+	.exit = _exit,						\
+	.exit_size = ARRAY_SIZE(_exit) * sizeof(long),		\
+}
+
+static struct stm_suspend_table stig125_suspend_tables[] = {
+	SUSPEND_TBL(stig125_ddr0_enter, stig125_ddr0_exit)
+};
 
 static int stig125_suspend_begin(suspend_state_t state)
 {
@@ -208,17 +219,12 @@ static struct stm_platform_suspend stig125_suspend = {
 	.eram_iomem = (void *)0xfe240000,
 	.get_wake_irq = stig125_get_wake_irq,
 
-	.memstandby = &(struct stm_suspend_data) {
-		.enter_table = stig125_mem_enter,
-		.enter_table_size =
-			ARRAY_SIZE(stig125_mem_enter) * sizeof(long),
-		.exit_table = stig125_mem_exit,
-		.exit_table_size = ARRAY_SIZE(stig125_mem_exit) * sizeof(long),
-	},
 };
 
 static int __init stig125_suspend_setup(void)
 {
+	int i;
+
 	clks_base[0] = ioremap_nocache(0xFEE48000, 0x1000);
 
 	if (!clks_base[0])
@@ -226,6 +232,12 @@ static int __init stig125_suspend_setup(void)
 	clks_base[1] = ioremap_nocache(CLK_A1_BASE, 0x1000);
 	if (!clks_base[1])
 		goto err_1;
+
+	INIT_LIST_HEAD(&stig125_suspend.mem_tables);
+
+	 for (i = 0; i < ARRAY_SIZE(stig125_suspend_tables); ++i)
+		list_add_tail(&stig125_suspend_tables[i].node,
+			&stig125_suspend.mem_tables);
 
 	return stm_suspend_register(&stig125_suspend);
 err_1:
