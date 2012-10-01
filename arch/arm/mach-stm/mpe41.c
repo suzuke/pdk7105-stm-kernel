@@ -28,6 +28,16 @@
 #include <mach/hardware.h>
 #include <mach/irqs.h>
 
+#ifdef CONFIG_CPU_SUBTYPE_STIH415
+#include <linux/stm/stih415.h>
+#include <linux/stm/stih415-periphs.h>
+#endif
+
+#ifdef CONFIG_CPU_SUBTYPE_FLI7610
+#include <linux/stm/fli7610.h>
+#include <linux/stm/fli7610-periphs.h>
+#endif
+
 /* Setup th GIC */
 void __init mpe41_gic_init_irq(void)
 {
