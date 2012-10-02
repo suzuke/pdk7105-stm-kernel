@@ -358,7 +358,7 @@ static struct console asc_console = {
 static int __init asc_console_init(void)
 {
 	int id;
-	if (!stm_asc_console_device)
+	if (!stm_asc_console_device || console_set_on_cmdline)
 		return 0;
 
 	id = stm_asc_console_device->id;
