@@ -89,6 +89,10 @@ int __cpuinit __cpu_up(unsigned int cpu)
 	 * We need to tell the secondary core where to find
 	 * its stack and the page tables.
 	 */
+	if (!idmap_pgd) {
+		pr_err("CPU%d: Cannot boot, identity mapping invalid\n", cpu);
+		return -EINVAL;
+	}
 	secondary_data.stack = task_stack_page(idle) + THREAD_START_SP;
 	secondary_data.pgdir = virt_to_phys(idmap_pgd);
 	secondary_data.swapper_pg_dir = virt_to_phys(swapper_pg_dir);
@@ -117,6 +121,7 @@ int __cpuinit __cpu_up(unsigned int cpu)
 
 	secondary_data.stack = NULL;
 	secondary_data.pgdir = 0;
+	secondary_data.swapper_pg_dir = 0;
 
 	return ret;
 }
