@@ -1175,6 +1175,7 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
 	unsigned int ctrl;
+	unsigned long irqflags;
 
 	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
@@ -1226,10 +1227,6 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 	ctrl  = get__AUD_UNIPERIF_CTRL(player);
 	ctrl &= ~mask__AUD_UNIPERIF_CTRL__OPERATION(player);
 
-	/* Enable spdif formatting for hdmi and spdif only */
-	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM)
-		ctrl |= (1 << shift__AUD_UNIPERIF_CTRL__SPDIF_FMT(player));
-
 	/*
 	 * For compatibility with Player2, we do not use encoded mode when it
 	 * is selected. Instead we use normal linear PCM mode, but with the
@@ -1255,8 +1252,24 @@ static int snd_stm_uniperif_player_start(struct snd_pcm_substream *substream)
 			shift__AUD_UNIPERIF_CTRL__OPERATION(player));
 	}
 
+	/* Reset uniperipheral player */
+	set__AUD_UNIPERIF_SOFT_RST__SOFT_RST(player);
+	while (get__AUD_UNIPERIF_SOFT_RST__SOFT_RST(player))
+		udelay(5);
+
+	spin_lock_irqsave(&player->default_settings_lock, irqflags);
+
 	/* Launch the player */
 	set__AUD_UNIPERIF_CTRL(player, ctrl);
+
+	/* Enable spdif formatting for hdmi and spdif only */
+	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM) {
+		ctrl  = get__AUD_UNIPERIF_CTRL(player);
+		ctrl |= (1 << shift__AUD_UNIPERIF_CTRL__SPDIF_FMT(player));
+		set__AUD_UNIPERIF_CTRL(player, ctrl);
+	}
+
+	spin_unlock_irqrestore(&player->default_settings_lock, irqflags);
 
 	/* Wake up & unmute converter */
 	if (player->conv_group) {
@@ -1292,6 +1305,13 @@ static int snd_stm_uniperif_player_halt(struct snd_pcm_substream *substream)
 
 	/* Stop uniperipheral player */
 	set__AUD_UNIPERIF_CTRL__OPERATION_OFF(player);
+
+	/* Reset uniperipheral player */
+	set__AUD_UNIPERIF_SOFT_RST__SOFT_RST(player);
+	while (get__AUD_UNIPERIF_SOFT_RST__SOFT_RST(player))
+		udelay(5);
+
+	/* Disable the clock (for power reasons) */
 	snd_stm_clk_disable(player->clock);
 
 	/* Stop FDMA transfer */
@@ -1328,6 +1348,7 @@ static int snd_stm_uniperif_player_pause(struct snd_pcm_substream *substream)
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
 	unsigned int ctrl;
+	unsigned long irqflags;
 
 	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
@@ -1344,10 +1365,6 @@ static int snd_stm_uniperif_player_pause(struct snd_pcm_substream *substream)
 
 	ctrl  = get__AUD_UNIPERIF_CTRL(player);
 	ctrl &= ~mask__AUD_UNIPERIF_CTRL__OPERATION(player);
-
-	/* Enable spdif formatting for hdmi and spdif only */
-	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM)
-		ctrl |= (1 << shift__AUD_UNIPERIF_CTRL__SPDIF_FMT(player));
 
 	/* "Mute" player
 	 * Documentation describes this mode in a wrong way - data is _not_
@@ -1364,7 +1381,18 @@ static int snd_stm_uniperif_player_pause(struct snd_pcm_substream *substream)
 			shift__AUD_UNIPERIF_CTRL__OPERATION(player));
 	}
 
+	spin_lock_irqsave(&player->default_settings_lock, irqflags);
+
 	set__AUD_UNIPERIF_CTRL(player, ctrl);
+
+	/* Enable spdif formatting for hdmi and spdif only */
+	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM) {
+		ctrl  = get__AUD_UNIPERIF_CTRL(player);
+		ctrl |= (1 << shift__AUD_UNIPERIF_CTRL__SPDIF_FMT(player));
+		set__AUD_UNIPERIF_CTRL(player, ctrl);
+	}
+
+	spin_unlock_irqrestore(&player->default_settings_lock, irqflags);
 
 	return 0;
 }
@@ -1375,6 +1403,7 @@ static inline int snd_stm_uniperif_player_release(struct snd_pcm_substream
 	struct snd_stm_uniperif_player *player =
 		snd_pcm_substream_chip(substream);
 	unsigned int ctrl;
+	unsigned long irqflags;
 
 	dev_dbg(player->dev, "%s(substream=%p)", __func__, substream);
 
@@ -1391,10 +1420,6 @@ static inline int snd_stm_uniperif_player_release(struct snd_pcm_substream
 
 	ctrl  = get__AUD_UNIPERIF_CTRL(player);
 	ctrl &= ~mask__AUD_UNIPERIF_CTRL__OPERATION(player);
-
-	/* Enable spdif formatting for hdmi and spdif only */
-	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM)
-		ctrl |= (1 << shift__AUD_UNIPERIF_CTRL__SPDIF_FMT(player));
 
 	/* "Unmute" player */
 	if (player->stream_settings.encoding_mode ==
@@ -1416,7 +1441,18 @@ static inline int snd_stm_uniperif_player_release(struct snd_pcm_substream
 			shift__AUD_UNIPERIF_CTRL__OPERATION(player));
 	}
 
+	spin_lock_irqsave(&player->default_settings_lock, irqflags);
+
 	set__AUD_UNIPERIF_CTRL(player, ctrl);
+
+	/* Enable spdif formatting for hdmi and spdif only */
+	if (player->info->player_type != SND_STM_UNIPERIF_PLAYER_TYPE_PCM) {
+		ctrl  = get__AUD_UNIPERIF_CTRL(player);
+		ctrl |= (1 << shift__AUD_UNIPERIF_CTRL__SPDIF_FMT(player));
+		set__AUD_UNIPERIF_CTRL(player, ctrl);
+	}
+
+	spin_unlock_irqrestore(&player->default_settings_lock, irqflags);
 
 	return 0;
 }
