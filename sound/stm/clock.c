@@ -91,7 +91,7 @@ static int snd_stm_clk_adjustment_put(struct snd_kcontrol *kcontrol,
 	old_adjustement = snd_stm_clk->adjustment;
 	snd_stm_clk->adjustment = ucontrol->value.integer.value[0];
 
-	if (snd_stm_clk->enabled && clk_set_rate(snd_stm_clk->clk,
+	if (snd_stm_clk->enabled && snd_stm_clk_set_rate(snd_stm_clk,
 			snd_stm_clk->nominal_rate) < 0)
 		return -EINVAL;
 
