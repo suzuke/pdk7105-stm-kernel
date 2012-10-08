@@ -1070,7 +1070,7 @@ static void stm_fdma_issue_pending(struct dma_chan *chan)
  * Platform driver initialise.
  */
 
-static int __init stm_fdma_probe(struct platform_device *pdev)
+static int __devinit stm_fdma_probe(struct platform_device *pdev)
 {
 	struct stm_plat_fdma_data *pdata;
 	struct stm_fdma_device *fdev;
