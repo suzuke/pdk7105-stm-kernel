@@ -1,0 +1,50 @@
+
+===============================================================================
+			stm asc(Serial Port)
+===============================================================================
+
+Required properties:
+- compatible : "st,asc".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- st,hw-flow-ctrl	This is a condition node for some of the pads to allow
+			hw-flow control.
+- pad-config	is the standard way to pass pad config to the drivers.
+
+
+Optional properties:
+- st,force-m1		force asc to be in Mode-1 recommeded for high
+			bit rates (above 19.2K)
+- st,txfifo-bug	workaround to know bug.
+- st,clk-id		clk name to be used by the stm-asc driver instance.
+
+Example:
+
+asc0: stm-asc0 {
+    #interrupt-cells = <3>;
+    #address-cells = <1>;
+    #size-cells = <1>;
+    interrupt-parent = <&intc>;
+    compatible    = "st,asc", "simple-bus";
+    reg         = <0xfe440000 0x2c>;
+    interrupts     =  <0 209 0>;
+    pad-config = <&asc0_pad_config>;
+
+    st,txfifo-bug;
+    st,force-m1;
+    st,clk-id     = "sbc_comms_clk";
+    hw_flowctrl: st,hw-flow-ctrl {
+        enable    = <0>;
+    };
+    asc0_pad_config: asc0-pad-config {
+        #gpio-cells = <1>;
+        #stm-pad-cells = <6>;
+        gpios{
+            TX  = <&gpio_bank3 4 &dir_out &altfun_1 >;
+            RX  = <&gpio_bank3 5 &dir_in &altfun_1 >;
+            CTS = <&gpio_bank3 6 &dir_in &altfun_1 &hw_flowctrl>;
+            RTS = <&gpio_bank3 7 &dir_out &altfun_1 &hw_flowctrl>;
+        };
+    };
+};

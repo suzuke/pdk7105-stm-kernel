@@ -24,6 +24,8 @@
 #include <linux/spinlock.h>
 #include <linux/pm_runtime.h>
 #include <linux/platform_device.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/stm/platform.h>
 #include <linux/clk.h>
 
@@ -354,12 +356,74 @@ static struct console asc_console = {
 	.data		= &asc_uart_driver,
 };
 
+#ifdef CONFIG_OF
+void *stm_asc_of_get_pdata(struct platform_device *pdev)
+{
+
+	struct stm_plat_asc_data *data;
+	struct device_node *np = pdev->dev.of_node;
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	pdev->id = of_alias_get_id(np, "ttyAS");
+
+	data->hw_flow_control = of_property_read_bool(np, "st,hw-flow-control");
+
+	data->txfifo_bug = of_property_read_bool(np, "st,txfifo-bug");
+	data->force_m1 =  of_property_read_bool(np, "st,force_m1");
+
+	of_property_read_string(np, "st,clk-id", (const char **)&data->clk_id);
+
+	data->pad_config = stm_of_get_pad_config(&pdev->dev);
+
+	return data;
+}
+
+int stm_asc_of_get_early_pdata(struct device_node *np,
+				struct platform_device **ppdev)
+{
+	struct platform_device *pdev;
+
+	if (!of_device_is_available(np))
+		return -ENODATA;
+
+	pdev = of_device_alloc(np, NULL, NULL);
+	pdev->dev.platform_data = stm_asc_of_get_pdata(pdev);
+	*ppdev = pdev;
+	return 0;
+}
+#else
+void *stm_asc_of_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+int stm_asc_of_get_early_pdata(struct device_node *np,
+				struct platform_device **ppdev)
+{
+	return -ENODATA;
+}
+#endif
 /*
  * Early console initialization.
  */
 static int __init asc_console_init(void)
 {
 	int id;
+	struct stm_plat_asc_data *data;
+#ifdef CONFIG_OF
+	const char *name;
+	struct device_node *dn;
+	if (of_chosen) {
+		name = of_get_property(of_chosen, "linux,stdout-path", NULL);
+		if (name == NULL)
+			return -1;
+
+		dn = of_find_node_by_path(name);
+		if (!dn)
+			return -1;
+		stm_asc_of_get_early_pdata(dn, &stm_asc_console_device);
+	}
+#endif
+
 	if (!stm_asc_console_device)
 		return 0;
 
@@ -368,8 +432,9 @@ static int __init asc_console_init(void)
 		(!strstr(saved_command_line, "console=ttyAS")))
 		return 0;
 
+	data = stm_asc_console_device->dev.platform_data;
 	id = stm_asc_console_device->id;
-	add_preferred_console("ttyAS", stm_asc_console_device->id, NULL);
+	add_preferred_console("ttyAS", id, NULL);
 	asc_init_port(&asc_ports[id], stm_asc_console_device);
 	register_console(&asc_console);
 
@@ -393,9 +458,13 @@ core_initcall(asc_late_console_init);
 static int __devinit asc_serial_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct asc_port *ascport = &asc_ports[pdev->id];
+	struct asc_port *ascport;
 	int irq = platform_get_irq(pdev, 0);
 
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_asc_of_get_pdata(pdev);
+
+	ascport = &asc_ports[pdev->id];
 	asc_init_port(ascport, pdev);
 
 	ret = uart_add_one_port(&asc_uart_driver, &ascport->port);
@@ -529,6 +598,17 @@ static struct dev_pm_ops asc_serial_pm_ops = {
 static struct dev_pm_ops asc_serial_pm_ops;
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_asc_match[] = {
+	{
+		.compatible = "st,asc",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_asc_match);
+#endif
+
 static struct platform_driver asc_serial_driver = {
 	.probe		= asc_serial_probe,
 	.remove		= __devexit_p(asc_serial_remove),
@@ -536,6 +616,7 @@ static struct platform_driver asc_serial_driver = {
 		.name	= DRIVER_NAME,
 		.pm	= &asc_serial_pm_ops,
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(stm_asc_match),
 	},
 };
 
