@@ -1,0 +1,35 @@
+
+
+===============================================================================
+			stm cprocessor st200
+===============================================================================
+
+Required properties:
+- compatible : "st,coproc-st200"
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- st,proc-name		Processor Name.
+- st,boot-shift	boot shift in the sysconf.
+- st,not-reset		Should it reset the processor or Not.
+
+- st,dev-config	is the standard way to pass dev config to the drivers.
+
+
+Example:
+
+		st231@0{
+			compatible	= "st,coproc-st200", "simple-bus";
+			st,proc-name = "audio";
+			st,boot-shift = <6>;
+			st,not-reset;
+			st,dev-configs = <&st231_0_dev_config>;
+
+			st231_0_dev_config: dev-config-0 {
+				#stm-sysconf-cells = <4>;
+				sysconfs{
+					BOOT_ADDR = <&mpe_sysconf 650 6 31>;
+					RESET = <&mpe_sysconf 659 26  26>;
+				};
+			};
+		};

@@ -1,5 +1,6 @@
 #include <linux/device.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 
 #include "coprocessor.h"
@@ -115,14 +116,39 @@ struct coproc_fns coproc_st231_fns = {
 	.cpu_grant = coproc_st231_cpu_grant,
 	.mode = coproc_st231_mode,
 };
+#ifdef CONFIG_OF
+void *coproc_st231_get_pdata(struct platform_device *pdev)
+{
+	struct plat_stm_st231_coproc_data *data;
+	struct device_node *np = pdev->dev.of_node;
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	of_property_read_string(np, "proc-name", &data->name);
 
+	of_property_read_u32(np, "boot-shift", &data->boot_shift);
+	if (of_property_read_bool(np, "not-reset"))
+		data->not_reset = 1;
+	data->device_config = stm_of_get_dev_config(&pdev->dev);
+	data->id = of_alias_get_id(np, "coproc-st200");
+
+	return data;
+}
+#else
+
+void *coproc_st231_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 static int coproc_st231_driver_probe(struct platform_device *pdev)
 {
 	struct plat_stm_st231_coproc_data *cop_data;
 	struct coproc_st231 *cop_st231;
 	int result;
 
-	cop_data = dev_get_platdata(&pdev->dev);
+	if (pdev->dev.of_node)
+		cop_data = coproc_st231_get_pdata(pdev);
+	else
+		cop_data = dev_get_platdata(&pdev->dev);
 
 	cop_st231 = devm_kzalloc(&pdev->dev, sizeof(*cop_st231), GFP_KERNEL);
 	if (!cop_st231) {
@@ -166,9 +192,20 @@ static int coproc_st231_driver_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id coproc_st231_match[] = {
+	{
+		.compatible = "st,coproc-st200",
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(of, coproc_st231_match);
+#endif
+
 static struct platform_driver coproc_st231_driver = {
 	.driver.name = DRIVER_NAME,
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(coproc_st231_match),
 	.probe = coproc_st231_driver_probe,
 	.remove = coproc_st231_driver_remove,
 };
