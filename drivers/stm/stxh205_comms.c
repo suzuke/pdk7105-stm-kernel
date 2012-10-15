@@ -148,9 +148,6 @@ static struct platform_device stxh205_asc_devices[] = {
 	},
 };
 
-/* the serial console device */
-struct platform_device *stm_asc_console_device;
-
 /* Platform devices to register */
 unsigned int __initdata stm_asc_configured_devices_num;
 struct platform_device __initdata

@@ -102,6 +102,7 @@
 
 /*** ASC platform data ***/
 
+extern struct platform_device *stm_asc_console_device;
 struct stm_plat_asc_data {
 	int hw_flow_control:1;
 	int txfifo_bug:1;

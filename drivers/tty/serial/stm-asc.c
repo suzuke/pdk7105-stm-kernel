@@ -35,6 +35,8 @@
 static struct console asc_console;
 #endif
 
+struct platform_device *stm_asc_console_device;
+
 struct asc_port asc_ports[ASC_MAX_PORTS];
 
 /*---- Forward function declarations---------------------------*/
