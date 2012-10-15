@@ -26,6 +26,8 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/syscore_ops.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/pio.h>
@@ -72,6 +74,8 @@ struct stm_gpio_port {
 	unsigned long irq_level_mask;
 	struct stm_gpio_pin pins[STM_GPIO_PINS_PER_PORT];
 	struct platform_device *pdev;
+	struct device_node *of_node;
+	const char *bank_name;
 };
 
 struct stm_gpio_irqmux {
@@ -675,7 +679,97 @@ int stm_gpio_get_name(int gpio, char *buf, int len)
 
 #endif /* CONFIG_DEBUG_FS */
 
+#ifdef CONFIG_OF
+
+static int stm_gpio_xlate(struct gpio_chip *gc,
+			const struct of_phandle_args *gpiospec, u32 *flags)
+{
+	if (WARN_ON(gc->of_gpio_n_cells < 1))
+		return -EINVAL;
+
+	if (WARN_ON(gpiospec->args_count < gc->of_gpio_n_cells))
+		return -EINVAL;
+
+	if (gpiospec->args[0] > gc->ngpio)
+		return -EINVAL;
+	/* Ignore  alt func and name setup. */
+	return gpiospec->args[0];
+}
+
+static struct of_device_id stm_gpio_match[] = {
+	{
+		.compatible = "st,gpio",
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(of, stm_gpio_match);
+
 /*** Early initialization ***/
+
+int __init of_stm_gpio_early_init(int irq_base)
+{
+	int num = 0;
+
+	struct device_node *np, *child = NULL;
+	int port_no;
+
+	np = of_find_node_by_path("/gpio-controllers");
+	if (!np)
+		return 0;
+
+	for_each_child_of_node(np, child) {
+		if (of_match_node(stm_gpio_match, child))
+			num++;
+	}
+
+	stm_gpio_num = num * STM_GPIO_PINS_PER_PORT;
+	stm_gpio_irq_base = irq_base;
+
+	stm_gpio_ports = alloc_bootmem(sizeof(*stm_gpio_ports) * num);
+	stm_gpio_bases = alloc_bootmem(sizeof(*stm_gpio_bases) * num);
+	if (!stm_gpio_ports || !stm_gpio_bases)
+		panic("stm_gpio: Can't get bootmem!\n");
+
+	child = NULL;
+	port_no = 0;
+	for_each_child_of_node(np, child) {
+		struct stm_gpio_port *port = &stm_gpio_ports[port_no];
+		void __iomem *regs;
+
+		regs = of_iomap(child, 0);
+		if (!regs)
+			panic("stm_gpio: Can't get IO memory mapping!\n");
+		port->base = regs;
+		port->gpio_chip.request = stm_gpio_request;
+		port->gpio_chip.free = stm_gpio_free;
+		port->gpio_chip.get = stm_gpio_get;
+		port->gpio_chip.set = stm_gpio_set;
+		port->gpio_chip.direction_input = stm_gpio_direction_input;
+		port->gpio_chip.direction_output = stm_gpio_direction_output;
+		port->gpio_chip.to_irq = stm_gpio_to_irq;
+		port->gpio_chip.base = port_no * STM_GPIO_PINS_PER_PORT;
+		port->gpio_chip.ngpio = STM_GPIO_PINS_PER_PORT;
+		port->of_node = child;
+		of_property_read_string(child, "bank-name",
+						&port->bank_name);
+		port->gpio_chip.of_node = child;
+		port->gpio_chip.of_gpio_n_cells = 1;
+		port->gpio_chip.of_xlate = stm_gpio_xlate;
+
+		stm_gpio_bases[port_no] = port->base;
+
+		if (gpiochip_add(&port->gpio_chip) != 0)
+			panic("stm_gpio: Failed to add gpiolib chip!\n");
+		port_no++;
+	}
+	return num;
+}
+#else
+int __init of_stm_gpio_early_init(int irq_base)
+{
+	return 0;
+}
+#endif
 
 /* This is called early to allow board start up code to use PIO
  * (in particular console devices). */
@@ -733,16 +827,45 @@ void __init stm_gpio_early_init(struct platform_device pdevs[], int num,
 	}
 }
 
+static int of_stm_gpio_pin_name(char *name, int size, int port, int pin)
+{
+	return snprintf(name, size, "%s.%d",
+					stm_gpio_ports[port].bank_name, pin);
+}
+
+static int stm_gpio_get_port_num(struct platform_device *pdev)
+{
+	int nr_ports = stm_gpio_num/STM_GPIO_PINS_PER_PORT;
+	int i;
+	struct stm_plat_pio_data *data;
+	if (!pdev->dev.of_node)
+		return pdev->id;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	data->pin_name = of_stm_gpio_pin_name;
+	pdev->dev.platform_data = data;
+
+	for (i = 0; i < nr_ports; i++)
+		if (pdev->dev.of_node == stm_gpio_ports[i].of_node) {
+			pdev->id = i;
+			break;
+	}
+
+	return pdev->id;
+}
 
 
 /*** PIO bank platform device driver ***/
 
 static int __devinit stm_gpio_probe(struct platform_device *pdev)
 {
-	int port_no = pdev->id;
-	struct stm_gpio_port *port = &stm_gpio_ports[port_no];
+	int port_no;
+	struct stm_gpio_port *port;
 	struct resource *memory;
 	int irq;
+
+	port_no = stm_gpio_get_port_num(pdev);
+	port = &stm_gpio_ports[port_no];
 
 	BUG_ON(port_no < 0);
 	BUG_ON(port_no >= stm_gpio_num);
@@ -791,23 +914,39 @@ static struct platform_driver stm_gpio_driver = {
 	.driver	= {
 		.name = "stm-gpio",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(stm_gpio_match),
 	},
 	.probe = stm_gpio_probe,
 };
 
 
+static void *stm_gpio_irqmux_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_pio_irqmux_data *data;
+
+	if (!np)
+		return pdev->dev.platform_data;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	of_property_read_u32(np, "first-port", &data->port_first);
+	of_property_read_u32(np, "ports", &data->ports_num);
+	pdev->dev.platform_data = data;
+	return data;
+}
 
 /*** PIO IRQ status register platform device driver ***/
 
 static int __devinit stm_gpio_irqmux_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct stm_plat_pio_irqmux_data *plat_data = dev->platform_data;
+	struct stm_plat_pio_irqmux_data *plat_data;
 	struct stm_gpio_irqmux *irqmux;
 	struct resource *memory;
 	int irq;
 	int port_no;
 
+	plat_data = stm_gpio_irqmux_get_pdata(pdev);
 	BUG_ON(!plat_data);
 
 	irqmux = devm_kzalloc(dev, sizeof(*irqmux), GFP_KERNEL);
@@ -849,10 +988,22 @@ static int __devinit stm_gpio_irqmux_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_gpio_irqmux_match[] = {
+	{
+		.compatible = "st,gpio-irqmux",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_gpio_irqmux_match);
+#endif
+
 static struct platform_driver stm_gpio_irqmux_driver = {
 	.driver	= {
 		.name = "stm-gpio-irqmux",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(stm_gpio_irqmux_match),
 	},
 	.probe = stm_gpio_irqmux_probe,
 };
