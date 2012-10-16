@@ -78,6 +78,12 @@ static void __init b2044_init(void)
 	stig125_configure_ssc_i2c(STIG125_FE_SSC, 100);
 	stig125_configure_ssc_i2c(STIG125_BE_SSC, 100);
 
+	stig125_configure_audio(&(struct stig125_audio_config) {
+			.uni_player_1_pcm_mode =
+				stig125_uni_player_1_pcm_8_channels,
+			.uni_player_4_spdif_enabled = 1,
+			.uni_reader_0_pcm_mode =
+				stig125_uni_reader_0_pcm_2_channels });
 }
 
 static void __init b2044_init_early(void)

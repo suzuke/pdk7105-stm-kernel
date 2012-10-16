@@ -162,7 +162,7 @@ int snd_stm_irq_request(struct platform_device *pdev,
 		return -ENXIO;
 	}
 
-	result = devm_request_irq(&pdev->dev, *irq, handler, IRQF_DISABLED,
+	result = devm_request_irq(&pdev->dev, *irq, handler, IRQF_SHARED,
 			dev_name(&pdev->dev), dev_id);
 	if (result < 0) {
 		dev_err(&pdev->dev, "Failed to request IRQ");

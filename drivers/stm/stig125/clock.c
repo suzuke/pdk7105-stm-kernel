@@ -52,5 +52,18 @@ int __init plat_clk_alias_init(void)
 
 	/* AHCI */
 	clk_add_alias("ahci_clk", NULL, "CLK_S_A0_GLOBAL_SATAPCI", NULL);
+
+	/* Uniperipheral player clocks */
+	clk_add_alias("uni_player_clk", "snd_uni_player.0", "CLK_S_C_PCM0",
+			NULL);
+	clk_add_alias("uni_player_clk", "snd_uni_player.1", "CLK_S_C_PCM1",
+			NULL);
+	clk_add_alias("uni_player_clk", "snd_uni_player.2", "CLK_S_C_PCM2",
+			NULL);
+	clk_add_alias("uni_player_clk", "snd_uni_player.3", "CLK_S_C_PCM0",
+			NULL);
+	clk_add_alias("uni_player_clk", "snd_uni_player.4", "CLK_S_C_PCM3",
+			NULL);
+
 	return 0;
 }

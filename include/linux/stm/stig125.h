@@ -120,4 +120,26 @@ struct stig125_miphy_config {
 void stig125_configure_miphy(struct stig125_miphy_config *cfg);
 
 void sti125_configure_sata(unsigned int sata_port);
+
+struct stig125_audio_config {
+	enum {
+		stig125_uni_player_1_pcm_disabled,
+		stig125_uni_player_1_pcm_2_channels,
+		stig125_uni_player_1_pcm_4_channels,
+		stig125_uni_player_1_pcm_6_channels,
+		stig125_uni_player_1_pcm_8_channels,
+	} uni_player_1_pcm_mode;
+
+	int uni_player_4_spdif_enabled;
+
+	enum {
+		stig125_uni_reader_0_pcm_disabled,
+		stig125_uni_reader_0_pcm_2_channels,
+		stig125_uni_reader_0_pcm_4_channels,
+		stig125_uni_reader_0_pcm_6_channels,
+		stig125_uni_reader_0_pcm_8_channels,
+	} uni_reader_0_pcm_mode;
+};
+void stig125_configure_audio(struct stig125_audio_config *config);
+
 #endif
