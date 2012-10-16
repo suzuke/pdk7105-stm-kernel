@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
+#include <linux/of.h>
 #include <linux/stm/amba_bridge.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_clock.h>
@@ -118,10 +119,51 @@ error:
 	platform_device_put(pdev);
 	return ERR_PTR(retval);
 }
+#ifdef CONFIG_OF
+
+static u64 stm_hcd_dma_mask = DMA_BIT_MASK(32);
+static void *stm_hcd_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_usb_data *data;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	if (of_property_read_bool(np, "strap-8bit"))
+		data->flags = STM_PLAT_USB_FLAGS_STRAP_8BIT;
+	else if (of_property_read_bool(np, "strap-16bit"))
+		data->flags = STM_PLAT_USB_FLAGS_STRAP_16BIT;
+
+	if (of_property_read_bool(np, "strap-pll"))
+		data->flags |= STM_PLAT_USB_FLAGS_STRAP_PLL;
+	/*
+	* Right now device-tree probed devices don't get dma_mask set.
+	* Since shared usb code relies on it, set it here for now.
+	* Once we have dma capability bindings this can go away.
+	*/
+	if (!pdev->dev.dma_mask)
+		pdev->dev.dma_mask = &stm_hcd_dma_mask;
+
+	data->device_config = stm_of_get_dev_config(&pdev->dev);
+	data->amba_config = stm_of_get_amba_config(&pdev->dev);
+	pdev->id = of_alias_get_id(np, "usb");
+	/*
+	 * Some of the clock aliases are per device, so maintain
+	 * same names while using device trees aswell
+	 */
+	dev_set_name(&pdev->dev, "%s.%d", "stm-usb", pdev->id);
+	return data;
+}
+#else
+static void *stm_hcd_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 
 static int __devinit stm_usb_probe(struct platform_device *pdev)
 {
-	struct stm_plat_usb_data *plat_data = pdev->dev.platform_data;
+	struct stm_plat_usb_data *plat_data;
 	struct drv_usb_data *dr_data;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
@@ -134,6 +176,10 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 	resource_size_t len;
 	void __iomem *amba_base;
 
+
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_hcd_dt_get_pdata(pdev);
+	plat_data = pdev->dev.platform_data;
 	dgb_print("\n");
 	dr_data = devm_kzalloc(dev, sizeof(*dr_data), GFP_KERNEL);
 	if (!dr_data)
@@ -311,11 +357,23 @@ static struct dev_pm_ops stm_usb_pm = {
 	.runtime_resume = stm_usb_resume,
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_hcd_match[] = {
+	{
+		.compatible = "st,usb",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_hcd_match);
+#endif
+
 static struct platform_driver stm_usb_driver = {
 	.driver = {
 		.name = "stm-usb",
 		.owner = THIS_MODULE,
 		.pm = &stm_usb_pm,
+		.of_match_table = of_match_ptr(stm_hcd_match),
 	},
 	.probe = stm_usb_probe,
 	.shutdown = stm_usb_shutdown,

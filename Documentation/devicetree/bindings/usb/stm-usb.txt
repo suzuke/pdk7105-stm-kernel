@@ -1,0 +1,93 @@
+
+===============================================================================
+				stm usb
+===============================================================================
+
+Required properties:
+- compatible : "st,usb".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+			hcd driver expects these  resources to be named as follows
+			"wrapper", "ohci", "ehci", "protocol".
+
+- strap-8bit	Strap mode 8 Bit.
+- strap-16bit	Strap mode 16 Bit.
+- strap-pll		Start Strap PLL.
+- device-config	phandle to device config.
+- amba-config	phandle to ST-AMBA Bridge settings.
+
+
+Example:
+		stm_usb0: usb-0{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe100000 0x100>,
+						<0xfe1ffc00 0x100>,
+						<0xfe1ffe00 0x100>,
+						<0xfe1fff00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+
+			interrupts	=  <0 155 0>, <0 156 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb0_dev_config>;
+			usb0_dev_config: usb_dev_config-0 {
+				#stm-sysconf-cells = <4>;
+				padcfg-0 = <&padcfg_usb0>;
+				device-seqs = <&usb_dev_seqs>;
+				sysconfs{
+					USB_HOST_PWR = <&stih415_sysconf 336 0 0>;
+					USB_PWR_ACK = <&stih415_sysconf 384 0 0>;
+					USB_IN_DC_SHIFT = <&stih415_sysconf 332 0 0>;
+					USB_IN_EDGE_CTRL = <&stih415_sysconf 332 3 3>;
+				};
+			};
+
+		};
+		usb_dev_seqs: usb-dev-seqs{
+			init-seq{
+				step0 {
+					USB_IN_DC_SHIFT = <0>;
+					type = "sysconf";
+				};
+				step1 {
+					USB_IN_EDGE_CTRL = <1>;
+					type = "sysconf";
+				};
+			};
+			power-on-seq{
+				step0 {
+					USB_HOST_PWR = <0>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <0>;
+					type = "sysconf-feedback";
+				};
+			};
+			power-off-seq{
+				step0 {
+					USB_HOST_PWR = <1>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <1>;
+					type = "sysconf-feedback";
+				};
+			};
+		};
+
+		usb_amba_config: usbambaconfig {
+			bridge_type2;
+			sd_config_missing;
+			complete_on_error;
+			read_ahead;
+			max_opcode_LD32_ST32;
+
+			chunks_in_msg	=	<0>;
+			packets_in_chunk	=	<8>;
+			threshold		=	<128>;
+		};
+
