@@ -127,6 +127,7 @@ static int stm_fdma_fw_request(struct stm_fdma_device *fdev)
 	int result = 0;
 	int fw_major, fw_minor;
 	int hw_major, hw_minor;
+	uint8_t *fw_data;
 
 	BUG_ON(!fdev);
 
@@ -146,9 +147,22 @@ static int stm_fdma_fw_request(struct stm_fdma_device *fdev)
 		goto error_no_fw;
 	}
 
+#ifdef CONFIG_HIBERNATION
+	/* Save a copy of the firmware data for future reload */
+	fw_data = devm_kzalloc(fdev->dev, fw->size, GFP_KERNEL);
+	if (!fw_data) {
+		dev_err(fdev->dev, "Cannot allocate memory for firmware\n");
+		result = -ENOMEM;
+		goto error_elf_init;
+	}
+	memcpy(fw_data, fw->data, fw->size);
+#else
+	/* Set pointer to the firmware data */
+	fw_data = (uint8_t *) fw->data;
+#endif
+
 	/* Initialise firmware as an in-memory ELF file */
-	elfinfo = (struct ELF32_info *)ELF32_initFromMem((uint8_t *) fw->data,
-							fw->size, 0);
+	elfinfo = (struct ELF32_info *)ELF32_initFromMem(fw_data, fw->size, 0);
 	if (elfinfo == NULL) {
 		dev_err(fdev->dev, "Failed to initialise in-memory ELF file\n");
 		result = -ENOMEM;
@@ -168,8 +182,10 @@ static int stm_fdma_fw_request(struct stm_fdma_device *fdev)
 	dev_notice(fdev->dev, "SLIM hw %d.%d, FDMA fw %d.%d\n",
 			hw_major, hw_minor, fw_major, fw_minor);
 
-	/* Indicate firmware loaded and save pointer to ELF for future reload */
+	/* Indicate firmware loaded */
 	fdev->fw_state = STM_FDMA_FW_STATE_LOADED;
+
+	/* Save pointer to ELF (which points at fw_data) for future reload */
 	fdev->fw_elfinfo = elfinfo;
 
 	/* Wake up the wait queue */
@@ -183,6 +199,8 @@ static int stm_fdma_fw_request(struct stm_fdma_device *fdev)
 error_elf_load:
 	ELF32_free(elfinfo);
 error_elf_init:
+	if (fw_data && fw_data != fw->data)
+		devm_kfree(fdev->dev, fw_data);
 	release_firmware(fw);
 error_no_fw:
 	fdev->fw_state = STM_FDMA_FW_STATE_ERROR;

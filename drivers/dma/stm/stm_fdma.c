@@ -1317,7 +1317,7 @@ static int stm_fdma_pm_suspend(struct device *dev)
 
 	/* We can only suspend after firmware has been loaded */
 	if (fdev->fw_state != STM_FDMA_FW_STATE_LOADED) {
-		dev_err(fdev->dev, "Cannot freeze as firmware never loaded\n");
+		dev_err(fdev->dev, "Cannot suspend as firmware never loaded\n");
 		return 0;
 	}
 
@@ -1364,35 +1364,6 @@ static int stm_fdma_pm_resume(struct device *dev)
 }
 
 #ifdef CONFIG_HIBERNATION
-static int stm_fdma_pm_freeze(struct device *dev)
-{
-	struct stm_fdma_device *fdev = dev_get_drvdata(dev);
-	int result;
-
-	/* We can only freeze after firmware has been loaded */
-	if (fdev->fw_state != STM_FDMA_FW_STATE_LOADED) {
-		dev_err(fdev->dev, "Cannot freeze as firmware never loaded\n");
-		return 0;
-	}
-
-	/*
-	 * At this point the channel users are already suspended. This makes
-	 * safe the 'channel_disable_all' call.
-	 */
-
-	/* Disable all channels (prevents memory access in self-refresh) */
-	result = stm_fdma_hw_channel_disable_all(fdev);
-	if (result) {
-		dev_err(fdev->dev, "Failed to disable channels on freeze\n");
-		return -ENODEV;
-	}
-
-	/* Disable the FDMA clocks */
-	stm_fdma_clk_disable(fdev);
-
-	return 0;
-}
-
 static int stm_fdma_pm_restore(struct device *dev)
 {
 	struct stm_fdma_device *fdev = dev_get_drvdata(dev);
@@ -1414,17 +1385,25 @@ static int stm_fdma_pm_restore(struct device *dev)
 		return result;
 	}
 
+	/* Initialise the hardware */
+	stm_fdma_hw_initialise(fdev);
+
+	/* Initialise the hardware */
+	result = stm_fdma_hw_channel_enable_all(fdev);
+	if (!result) {
+		dev_err(fdev->dev, "Failed to enable all channels\n");
+		return -ENODEV;
+	}
 	return 0;
 }
 #else
-#define stm_fdma_pm_freeze NULL
 #define stm_fdma_pm_restore NULL
 #endif
 
 static const struct dev_pm_ops stm_fdma_pm_ops = {
 	.suspend	= stm_fdma_pm_suspend,
 	.resume		= stm_fdma_pm_resume,
-	.freeze		= stm_fdma_pm_freeze,
+	.freeze		= stm_fdma_pm_suspend,
 	.restore	= stm_fdma_pm_restore,
 };
 #endif
