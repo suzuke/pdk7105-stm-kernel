@@ -17,6 +17,7 @@
 #include <linux/err.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/stm/pio.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/miphy.h>
@@ -29,7 +30,8 @@ struct pcie_mp_device{
 	void __iomem *pcie_base; /* Base for uport connected to PCIE */
 	void __iomem *sata_base; /* Base for uport connected to SATA */
 	void __iomem *pipe_base; /* Pipe registers, standard for PCIe phy */ 
-	void (*mp_select)(int port);
+	void (*mp_select)(void *data, int port);
+	void *priv_data;
 };
 
 /*
@@ -157,9 +159,13 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 	struct pcie_mp_device *mp_dev;
 	struct resource *res;
 	struct stm_miphy_device *miphy_dev;
-	struct stm_plat_pcie_mp_data *data =
-			(struct stm_plat_pcie_mp_data *)pdev->dev.platform_data;
+	struct stm_plat_pcie_mp_data *data;
 	int result;
+
+	if (pdev->dev.of_node)
+		data = pcie_mp_of_get_pdata(pdev);
+	else
+		data = pdev->dev.platform_data;
 
 	mp_dev = devm_kzalloc(&pdev->dev,
 			sizeof(struct pcie_mp_device), GFP_KERNEL);
@@ -194,6 +200,9 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 
 	mp_dev->mp_select = data->mp_select;
 
+	if (data->init)
+		mp_dev->priv_data = data->init(pdev);
+
 	miphy_dev = &mp_dev->miphy_dev;
 	miphy_dev->type = UPORT_IF;
 	miphy_dev->miphy_first = data->miphy_first;
@@ -223,17 +232,29 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 static int pcie_mp_remove(struct platform_device *pdev)
 {
 	struct pcie_mp_device *mp_dev;
-
 	mp_dev = platform_get_drvdata(pdev);
-
+	struct stm_plat_pcie_mp_data *data = pdev->dev.platform_data;
+	if (!data->exit)
+		data->exit(pdev);
 	miphy_unregister_device(&mp_dev->miphy_dev);
-
 	return 0;
 }
+
+#ifdef CONFIG_OF
+static struct of_device_id miphy_mp_match[] = {
+	{
+		.compatible = "st,miphy-mp",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, miphy_mp_match);
+#endif
 
 static struct platform_driver pcie_mp_driver = {
 	.driver.name = NAME,
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(miphy_mp_match),
 	.probe = pcie_mp_probe,
 	.remove = pcie_mp_remove,
 };

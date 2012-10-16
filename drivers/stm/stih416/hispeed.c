@@ -1352,7 +1352,7 @@ void __init stih416_configure_mmc(int port, int is_emmc)
 /*
  * AHCI support
  */
-static void stih416_sata_mp_select(int port)
+static void stih416_sata_mp_select(void *data, int port)
 {
 }
 

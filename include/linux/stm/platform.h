@@ -283,12 +283,15 @@ struct stm_plat_tap_data {
 struct stm_plat_pcie_mp_data {
 	int miphy_first, miphy_count;
 	enum miphy_mode *miphy_modes;
-	void (*mp_select)(int port);
-	unsigned int tx_pol_inv:1; /* invert polarity of TXN/TXP differential outputs */
-	unsigned int rx_pol_inv:1; /* invert polarity of RXN/RXP differential inputs */
-	unsigned int ten_bit_symbols:1; /* Change to 10 bit symbols for PCIE */
+	void (*mp_select)(void *data, int port);
+	void * (*init)(struct platform_device *pdev);
+	void (*exit)(struct platform_device *pdev);
+	int tx_pol_inv:1; /* invert polarity of TXN/TXP differential outputs */
+	int rx_pol_inv:1; /* invert polarity of RXN/RXP differential inputs */
+	int ten_bit_symbols:1; /* Change to 10 bit symbols for PCIE */
 	enum miphy_sata_gen sata_gen; /* What generation of sata we want */
 	char *style_id;
+	void *priv_data;
 };
 
 
