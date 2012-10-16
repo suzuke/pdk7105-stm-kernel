@@ -1017,7 +1017,7 @@ static struct platform_device stig125_fdma_devices[] = {
 /* FDMA_MUX */
 static struct platform_device stig125_fdma_xbar_device = {
 	.name = "stm-fdma-xbar",
-	.id = 1,
+	.id = 0,
 	.num_resources = 1,
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfe96a000, 0x1000),
