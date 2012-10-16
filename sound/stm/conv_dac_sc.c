@@ -64,12 +64,18 @@ struct snd_stm_conv_dac_sc {
 	struct sysconf_field *nrst;
 	struct sysconf_field *mode;
 	struct sysconf_field *nsb;
+	struct sysconf_field *sb;
 	struct sysconf_field *softmute;
+	struct sysconf_field *mute_l;
+	struct sysconf_field *mute_r;
 	struct sysconf_field *pdana;
 	struct sysconf_field *pndbg;
 
 	snd_stm_magic_field;
 };
+
+#define FIELD_EMPTY(f) \
+	((f.group == 0) && (f.num == 0) && (f.lsb == 0) && (f.msb == 0))
 
 
 
@@ -79,15 +85,14 @@ struct snd_stm_conv_dac_sc {
 
 static unsigned int snd_stm_conv_dac_sc_get_format(void *priv)
 {
-	snd_stm_printd(1, "snd_stm_conv_dac_sc_get_format(priv=%p)\n", priv);
+	snd_stm_printd(1, "%s(priv=%p)\n", __func__, priv);
 
 	return FORMAT;
 }
 
 static int snd_stm_conv_dac_sc_get_oversampling(void *priv)
 {
-	snd_stm_printd(1, "snd_stm_conv_dac_sc_get_oversampling(priv=%p)\n",
-			priv);
+	snd_stm_printd(1, "%s(priv=%p)\n", __func__, priv);
 
 	return OVERSAMPLING;
 }
@@ -96,8 +101,7 @@ static int snd_stm_conv_dac_sc_set_enabled(int enabled, void *priv)
 {
 	struct snd_stm_conv_dac_sc *conv_dac_sc = priv;
 
-	snd_stm_printd(1, "snd_stm_conv_dac_sc_set_enabled(enabled=%d, "
-			"priv=%p)\n", enabled, priv);
+	snd_stm_printd(1, "%s(enabled=%d, priv=%p)\n", __func__, enabled, priv);
 
 	BUG_ON(!conv_dac_sc);
 	BUG_ON(!snd_stm_magic_valid(conv_dac_sc));
@@ -106,11 +110,23 @@ static int snd_stm_conv_dac_sc_set_enabled(int enabled, void *priv)
 			enabled ? "En" : "Dis", conv_dac_sc->bus_id);
 
 	if (enabled) {
-		sysconf_write(conv_dac_sc->nsb, 1); /* NORMAL */
-		sysconf_write(conv_dac_sc->nrst, 1); /* NORMAL */
+		/* Take the DAC out of standby */
+		if (conv_dac_sc->nsb)
+			sysconf_write(conv_dac_sc->nsb, 1);
+		if (conv_dac_sc->sb)
+			sysconf_write(conv_dac_sc->sb, 0);
+
+		/* Take the DAC out of reset */
+		sysconf_write(conv_dac_sc->nrst, 1);
 	} else {
-		sysconf_write(conv_dac_sc->nrst, 0); /* RESET */
-		sysconf_write(conv_dac_sc->nsb, 0); /* POWER_DOWN */
+		/* Put the DAC into reset */
+		sysconf_write(conv_dac_sc->nrst, 0);
+
+		/* Put the DAC into standby */
+		if (conv_dac_sc->nsb)
+			sysconf_write(conv_dac_sc->nsb, 0);
+		if (conv_dac_sc->sb)
+			sysconf_write(conv_dac_sc->sb, 1);
 	}
 
 	return 0;
@@ -120,8 +136,7 @@ static int snd_stm_conv_dac_sc_set_muted(int muted, void *priv)
 {
 	struct snd_stm_conv_dac_sc *conv_dac_sc = priv;
 
-	snd_stm_printd(1, "snd_stm_conv_dac_sc_set_muted(muted=%d, priv=%p)\n",
-		       muted, priv);
+	snd_stm_printd(1, "%s(muted=%d, priv=%p)\n", __func__, muted, priv);
 
 	BUG_ON(!conv_dac_sc);
 	BUG_ON(!snd_stm_magic_valid(conv_dac_sc));
@@ -129,10 +144,12 @@ static int snd_stm_conv_dac_sc_set_muted(int muted, void *priv)
 	snd_stm_printd(1, "%suting DAC %s.\n", muted ? "M" : "Unm",
 			conv_dac_sc->bus_id);
 
-	if (muted)
-		sysconf_write(conv_dac_sc->softmute, 1); /* MUTE */
-	else
-		sysconf_write(conv_dac_sc->softmute, 0); /* NORMAL */
+	if (conv_dac_sc->softmute)
+		sysconf_write(conv_dac_sc->softmute, muted ? 1 : 0);
+	if (conv_dac_sc->mute_l)
+		sysconf_write(conv_dac_sc->mute_l, muted ? 1 : 0);
+	if (conv_dac_sc->mute_r)
+		sysconf_write(conv_dac_sc->mute_r, muted ? 1 : 0);
 
 	return 0;
 }
@@ -158,14 +175,30 @@ static int snd_stm_conv_dac_sc_register(struct snd_device *snd_device)
 	BUG_ON(!conv_dac_sc);
 	BUG_ON(!snd_stm_magic_valid(conv_dac_sc));
 
-	/* Initialize DAC with digital part down, analog up and muted */
+	/* Put the DAC into reset */
+	sysconf_write(conv_dac_sc->nrst, 0);
 
-	sysconf_write(conv_dac_sc->nrst, 0); /* RESET */
-	sysconf_write(conv_dac_sc->mode, 0); /* DEFAULT */
-	sysconf_write(conv_dac_sc->nsb, 0); /* POWER_DOWN */
-	sysconf_write(conv_dac_sc->softmute, 1); /* MUTE */
-	sysconf_write(conv_dac_sc->pdana, 1); /* NORMAL */
-	sysconf_write(conv_dac_sc->pndbg, 1); /* NORMAL */
+	/* Put the DAC into standby */
+	if (conv_dac_sc->nsb)
+		sysconf_write(conv_dac_sc->nsb, 0);
+	if (conv_dac_sc->sb)
+		sysconf_write(conv_dac_sc->sb, 1);
+
+	/* Mute the DAC */
+	if (conv_dac_sc->softmute)
+		sysconf_write(conv_dac_sc->softmute, 1);
+	if (conv_dac_sc->mute_l)
+		sysconf_write(conv_dac_sc->mute_l, 1);
+	if (conv_dac_sc->mute_r)
+		sysconf_write(conv_dac_sc->mute_r, 1);
+
+	/* Take the DAC analog bits out of standby */
+	if (conv_dac_sc->mode)
+		sysconf_write(conv_dac_sc->mode, 0);
+	if (conv_dac_sc->pdana)
+		sysconf_write(conv_dac_sc->pdana, 1);
+	if (conv_dac_sc->pndbg)
+		sysconf_write(conv_dac_sc->pndbg, 1);
 
 	return 0;
 }
@@ -178,14 +211,30 @@ static int snd_stm_conv_dac_sc_disconnect(struct snd_device *snd_device)
 	BUG_ON(!conv_dac_sc);
 	BUG_ON(!snd_stm_magic_valid(conv_dac_sc));
 
-	/* Global power done & mute mode */
+	/* Put the DAC into reset */
+	sysconf_write(conv_dac_sc->nrst, 0);
 
-	sysconf_write(conv_dac_sc->nrst, 0); /* RESET */
-	sysconf_write(conv_dac_sc->mode, 0); /* DEFAULT */
-	sysconf_write(conv_dac_sc->nsb, 0); /* POWER_DOWN */
-	sysconf_write(conv_dac_sc->softmute, 1); /* MUTE */
-	sysconf_write(conv_dac_sc->pdana, 0); /* POWER_DOWN */
-	sysconf_write(conv_dac_sc->pndbg, 0); /* POWER_DOWN */
+	/* Put the DAC into standby */
+	if (conv_dac_sc->nsb)
+		sysconf_write(conv_dac_sc->nsb, 0);
+	if (conv_dac_sc->sb)
+		sysconf_write(conv_dac_sc->sb, 1);
+
+	/* Mute the DAC */
+	if (conv_dac_sc->softmute)
+		sysconf_write(conv_dac_sc->softmute, 1);
+	if (conv_dac_sc->mute_l)
+		sysconf_write(conv_dac_sc->mute_l, 1);
+	if (conv_dac_sc->mute_r)
+		sysconf_write(conv_dac_sc->mute_r, 1);
+
+	/* Put the DAC analog bits into standby */
+	if (conv_dac_sc->mode)
+		sysconf_write(conv_dac_sc->mode, 0);
+	if (conv_dac_sc->pdana)
+		sysconf_write(conv_dac_sc->pdana, 0);
+	if (conv_dac_sc->pndbg)
+		sysconf_write(conv_dac_sc->pndbg, 0);
 
 	return 0;
 }
@@ -229,22 +278,69 @@ static int snd_stm_conv_dac_sc_probe(struct platform_device *pdev)
 	conv_dac_sc->nrst = sysconf_claim(info->nrst.group, info->nrst.num,
 			info->nrst.lsb, info->nrst.msb, "NRST");
 	BUG_ON(!conv_dac_sc->nrst);
-	conv_dac_sc->mode = sysconf_claim(info->mode.group, info->mode.num,
-			info->mode.lsb, info->mode.msb, "MODE");
-	BUG_ON(!conv_dac_sc->mode);
-	conv_dac_sc->nsb = sysconf_claim(info->nsb.group, info->nsb.num,
-			info->nsb.lsb, info->nsb.msb, "NSB");
-	BUG_ON(!conv_dac_sc->nsb);
-	conv_dac_sc->softmute = sysconf_claim(info->softmute.group,
-			info->softmute.num, info->softmute.lsb,
-			info->softmute.msb, "SOFTMUTE");
-	BUG_ON(!conv_dac_sc->softmute);
-	conv_dac_sc->pdana = sysconf_claim(info->pdana.group, info->pdana.num,
-			info->pdana.lsb, info->pdana.msb, "PDANA");
-	BUG_ON(!conv_dac_sc->pdana);
-	conv_dac_sc->pndbg = sysconf_claim(info->pndbg.group, info->pndbg.num,
-			info->pndbg.lsb, info->pndbg.msb, "PNDBG");
-	BUG_ON(!conv_dac_sc->pndbg);
+
+	/*
+	 * Depending on SoC we will have a 'notstandby' or a 'standby' sysconf
+	 * bit. Here we try to claim both, although in reality we will normally
+	 * only use one or the other.
+	 */
+
+	if (!FIELD_EMPTY(info->nsb))
+		conv_dac_sc->nsb = sysconf_claim(info->nsb.group, info->nsb.num,
+				info->nsb.lsb, info->nsb.msb, "NSB");
+	if (!FIELD_EMPTY(info->sb))
+		conv_dac_sc->sb = sysconf_claim(info->sb.group, info->sb.num,
+				info->sb.lsb, info->sb.msb, "SB");
+
+	BUG_ON(!conv_dac_sc->nsb && !conv_dac_sc->sb);
+
+	/*
+	 * Depending on SoC we will have a 'softmute' or 'mute_l' and 'mute_r'
+	 * sysconf bits. Here we try to claim all of bits, although in reality
+	 * we will normally only use 'softmute' or 'mute_l' and 'mute_r'.
+	 */
+
+	if (!FIELD_EMPTY(info->softmute))
+		conv_dac_sc->softmute = sysconf_claim(info->softmute.group,
+				info->softmute.num, info->softmute.lsb,
+				info->softmute.msb, "SOFTMUTE");
+	if (!FIELD_EMPTY(info->mute_l))
+		conv_dac_sc->mute_l = sysconf_claim(info->mute_l.group,
+				info->mute_l.num, info->mute_l.lsb,
+				info->mute_l.msb, "MUTE_L");
+	if (!FIELD_EMPTY(info->mute_r))
+		conv_dac_sc->mute_r = sysconf_claim(info->mute_r.group,
+				info->mute_r.num, info->mute_r.lsb,
+				info->mute_r.msb, "MUTE_R");
+
+	BUG_ON(!conv_dac_sc->softmute &&
+			!conv_dac_sc->mute_l && !conv_dac_sc->mute_r);
+
+	/*
+	 * Depending on SoC, the following 'mode', 'pdana' and 'pndbg' sysconf
+	 * bits may or may not be supported.
+	 */
+
+	if (!FIELD_EMPTY(info->mode)) {
+		conv_dac_sc->mode = sysconf_claim(info->mode.group,
+				info->mode.num, info->mode.lsb,
+				info->mode.msb, "MODE");
+		BUG_ON(!conv_dac_sc->mode);
+	}
+
+	if (!FIELD_EMPTY(info->pdana)) {
+		conv_dac_sc->pdana = sysconf_claim(info->pdana.group,
+				info->pdana.num, info->pdana.lsb,
+				info->pdana.msb, "PDANA");
+		BUG_ON(!conv_dac_sc->pdana);
+	}
+
+	if (!FIELD_EMPTY(info->pndbg)) {
+		conv_dac_sc->pndbg = sysconf_claim(info->pndbg.group,
+				info->pndbg.num, info->pndbg.lsb,
+				info->pndbg.msb, "PNDBG");
+		BUG_ON(!conv_dac_sc->pndbg);
+	}
 
 	/* Get connections */
 
@@ -293,11 +389,23 @@ static int snd_stm_conv_dac_sc_remove(struct platform_device *pdev)
 	snd_stm_conv_unregister_converter(conv_dac_sc->converter);
 
 	sysconf_release(conv_dac_sc->nrst);
-	sysconf_release(conv_dac_sc->mode);
-	sysconf_release(conv_dac_sc->nsb);
-	sysconf_release(conv_dac_sc->softmute);
-	sysconf_release(conv_dac_sc->pdana);
-	sysconf_release(conv_dac_sc->pndbg);
+
+	if (conv_dac_sc->nsb)
+		sysconf_release(conv_dac_sc->nsb);
+	if (conv_dac_sc->sb)
+		sysconf_release(conv_dac_sc->sb);
+	if (conv_dac_sc->softmute)
+		sysconf_release(conv_dac_sc->softmute);
+	if (conv_dac_sc->mute_l)
+		sysconf_release(conv_dac_sc->mute_l);
+	if (conv_dac_sc->mute_r)
+		sysconf_release(conv_dac_sc->mute_r);
+	if (conv_dac_sc->mode)
+		sysconf_release(conv_dac_sc->mode);
+	if (conv_dac_sc->pdana)
+		sysconf_release(conv_dac_sc->pdana);
+	if (conv_dac_sc->pndbg)
+		sysconf_release(conv_dac_sc->pndbg);
 
 	snd_stm_magic_clear(conv_dac_sc);
 	kfree(conv_dac_sc);

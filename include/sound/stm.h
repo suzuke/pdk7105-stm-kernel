@@ -205,7 +205,7 @@ struct snd_stm_conv_dac_sc_info {
 		int num;
 		int lsb;
 		int msb;
-	} nrst, mode, nsb, softmute, pdana, pndbg;
+	} nrst, mode, nsb, sb, softmute, mute_l, mute_r, pdana, pndbg;
 };
 
 
