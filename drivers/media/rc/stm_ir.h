@@ -8,7 +8,7 @@ struct stm_ir_device {
 	void 				*base;	/* Register base address */
 	void 				*rx_base;	/* RX Register base address */
 
-	struct stm_pad_state		*pad_state;
+	struct stm_device_state		*dev_state;
 
 	int 				enabled; /* State of the device */
 	int 				insert_scd_timing;

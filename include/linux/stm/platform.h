@@ -157,7 +157,7 @@ struct stm_plat_lirc_data {
 					 * waveform square after passing
 					 * through the 555-based threshold
 					 * detector on ST boards */
-	struct stm_pad_config *pads;	/* pads to be claimed */
+	struct stm_device_config *dev_config;	/* pads to be claimed */
 	unsigned int rxuhfmode:1;	/* RX UHF mode enabled */
 	unsigned int txenabled:1;	/* TX operation is possible */
 };
