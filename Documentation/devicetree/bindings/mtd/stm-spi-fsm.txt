@@ -1,0 +1,47 @@
+===============================================================================
+		* stm spi fsm controller
+===============================================================================
+
+Required properties:
+- compatible	should be "st,spi-fsm"
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- flash-name	Flash name to match JEDEC ID.
+- max-freq		Should be max operating frequency of the hw.
+- padcfg		stm pad configuration phandle.
+- partitions	phandle to partitions which will be parsed by
+			generic OF code.
+
+- caps-handle		phandle to capabilites. (more details below)
+	-dual-mode		DUAL mode
+	-quad-mode		QUAD mode
+	-addr-32bit		 32bit addressing supported
+	-no-poll-mode-change	 Polling MODE-CHANGE broken
+	-no-clk-div-4		 Bug prevents ClK-DIV=4
+	-no-sw-reset		 S/W reset not possible
+	-dummy-on-write		 Bug requires "dummy" sequence on WRITE
+	-no-read-repeat		 READ repeat sequence broken
+	-no-write-repeat	 WRITE repeat sequence broken
+	-no_read-status		 READ_STA broken.
+	-read-status_clkdiv4	 READ_STA only at clk_div=4
+
+Example :
+		spifsm:	fsm-spi{
+	                #stm-pad-cells = <1>;
+			compatible	= "st,spi-fsm", "simple-bus";
+			status		= "disabled";
+			reg =	<0xfe902000 0x1000>;
+			reg-names = "spi-fsm";
+			padcfg-0 = <&padcfg_fsm>;
+			caps-handle = <&fsm_caps>;
+
+			fsm_caps: fsm-caps {
+				no-read-repeat;
+				no-write-repeat;
+				read-status-bug;
+				dual-mode;		/* DUAL mode */
+				quad-mode;		/* QUAD mode */
+			};
+		};
+
