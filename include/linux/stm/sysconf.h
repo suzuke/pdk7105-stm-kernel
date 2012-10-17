@@ -66,6 +66,8 @@ unsigned long sysconf_read(struct sysconf_field *field);
  */
 void sysconf_early_init(struct platform_device *pdevs, int pdevs_num);
 
+void of_sysconf_early_init(void);
+
 /**
  * sysconf_reg_name - Return register name
  * @name: buffer into which to write the name
@@ -74,5 +76,14 @@ void sysconf_early_init(struct platform_device *pdevs, int pdevs_num);
  * @num: register number
  */
 int sysconf_reg_name(char *name, int size, int group, int num);
+#ifdef CONFIG_OF
+struct sysconf_field *stm_of_sysconf_claim(struct device_node *np,
+			const char *prop);
+#else
+static inline struct sysconf_field *stm_of_sysconf_claim(struct device_node *np,
+			const char *prop){
+	return NULL;
+}
+#endif
 
 #endif
