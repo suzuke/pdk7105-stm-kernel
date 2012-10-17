@@ -266,8 +266,8 @@ struct stm_pad_state *stm_pad_claim(struct stm_pad_config *config,
 	BUG_ON(!owner);
 
 	if (state && __stm_pad_claim(config, state, owner) != 0) {
-		state = NULL;
 		kfree(state);
+		state = NULL;
 	}
 
 	return state;
