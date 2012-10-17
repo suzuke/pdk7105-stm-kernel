@@ -237,7 +237,8 @@ int stm_fdma_dreq_config(struct stm_fdma_chan *fchan,
 int stm_fdma_fw_check(struct stm_fdma_device *fdev);
 int stm_fdma_fw_load(struct stm_fdma_device *fdev, struct ELF32_info *elfinfo);
 
-int stm_fdma_hw_initialise(struct stm_fdma_device *fdev);
+void stm_fdma_hw_enable(struct stm_fdma_device *fdev);
+void stm_fdma_hw_disable(struct stm_fdma_device *fdev);
 void stm_fdma_hw_get_revisions(struct stm_fdma_device *fdev,
 		int *hw_major, int *hw_minor, int *fw_major, int *fw_minor);
 void stm_fdma_hw_channel_reset(struct stm_fdma_chan *fchan);

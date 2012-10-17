@@ -38,12 +38,32 @@ static int stm_fdma_debugfs_regs_show(struct seq_file *m, void *v)
 	seq_printf(m, "EN\t\t0x%08x\n", readl(fdev->io_base + fdev->regs.en));
 	seq_printf(m, "CLK_GATE\t0x%08x\n",
 			readl(fdev->io_base + fdev->regs.clk_gate));
+	seq_printf(m, "STBUS_SYNC\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.sync_reg));
 	seq_printf(m, "REV_ID\t\t0x%08x\n",
 			readl(fdev->io_base + fdev->regs.rev_id));
 
 	for (i = 1; i < 31; ++i)
 		seq_printf(m, "REQ_CONTROL[%d]\t0x%08x\n", i,
 			   readl(REQ_CONTROLn_REG(fdev, i)));
+
+	seq_printf(m, "CMD_STA\t\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.cmd_sta));
+	seq_printf(m, "CMD_SET\t\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.cmd_set));
+	seq_printf(m, "CMD_CLR\t\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.cmd_clr));
+	seq_printf(m, "CMD_MASK\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.cmd_mask));
+
+	seq_printf(m, "INT_STA\t\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.int_sta));
+	seq_printf(m, "INT_SET\t\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.int_set));
+	seq_printf(m, "INT_CLR\t\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.int_clr));
+	seq_printf(m, "INT_MASK\t0x%08x\n",
+			readl(fdev->io_base + fdev->regs.int_mask));
 
 	return 0;
 }

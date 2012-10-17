@@ -101,6 +101,9 @@ int stm_fdma_fw_load(struct stm_fdma_device *fdev, struct ELF32_info *elfinfo)
 		return result;
 	}
 
+	/* First ensure that the FDMA is disabled */
+	stm_fdma_hw_disable(fdev);
+
 	/* Copy the firmware segments to the FDMA */
 	for (i = 0; i < elfinfo->header->e_phnum; i++) {
 		result = stm_fdma_fw_copy_segment(fdev, elfinfo, i);
@@ -110,11 +113,14 @@ int stm_fdma_fw_load(struct stm_fdma_device *fdev, struct ELF32_info *elfinfo)
 		}
 	}
 
-	/* Initialise the FDMA */
-	result = stm_fdma_hw_initialise(fdev);
-	if (result) {
-		dev_err(fdev->dev, "Failed to initialise FDMA\n");
-		return result;
+	/* Now enable the FDMA */
+	stm_fdma_hw_enable(fdev);
+
+	/* Enable all channels */
+	result = stm_fdma_hw_channel_enable_all(fdev);
+	if (!result) {
+		dev_err(fdev->dev, "Failed to enable all channels\n");
+		return -ENODEV;
 	}
 
 	return 0;

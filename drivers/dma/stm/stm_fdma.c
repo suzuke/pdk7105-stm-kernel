@@ -1075,8 +1075,8 @@ static int __init stm_fdma_probe(struct platform_device *pdev)
 	struct stm_plat_fdma_data *pdata;
 	struct stm_fdma_device *fdev;
 	struct resource *iores;
-	int irq;
 	int result;
+	int irq;
 	int i;
 
 	pdata = pdev->dev.platform_data;
@@ -1103,12 +1103,13 @@ static int __init stm_fdma_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	/* Retrieve the FDMA platfrom interrupt handler */
+	/* Retrieve the FDMA platform interrupt handler */
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		dev_err(&pdev->dev, "Failed to get irq resource\n");
 		return -ENXIO;
 	}
+	dev_notice(&pdev->dev, "IRQ: %d\n", irq);
 
 	/* Request the FDMA memory region */
 	fdev->io_res = devm_request_mem_region(&pdev->dev, iores->start,
@@ -1204,7 +1205,7 @@ static int __init stm_fdma_probe(struct platform_device *pdev)
 	fdev->regs.int_clr = fdev->hw->periph_regs.int_clr;
 	fdev->regs.int_mask = fdev->hw->periph_regs.int_mask;
 
-	/* Install the FDMA interrupt handler */
+	/* Install the FDMA interrupt handler (and enabled the irq) */
 	result = devm_request_irq(&pdev->dev, irq, stm_fdma_irq_handler,
 			IRQF_DISABLED|IRQF_SHARED, dev_name(&pdev->dev), fdev);
 	if (result < 0) {
@@ -1385,15 +1386,6 @@ static int stm_fdma_pm_restore(struct device *dev)
 		return result;
 	}
 
-	/* Initialise the hardware */
-	stm_fdma_hw_initialise(fdev);
-
-	/* Initialise the hardware */
-	result = stm_fdma_hw_channel_enable_all(fdev);
-	if (!result) {
-		dev_err(fdev->dev, "Failed to enable all channels\n");
-		return -ENODEV;
-	}
 	return 0;
 }
 #else

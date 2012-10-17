@@ -15,42 +15,55 @@
 #include "stm_fdma.h"
 
 
-static void stm_fdma_hw_enable(struct stm_fdma_device *fdev)
-{
-	unsigned long irqflags = 0;
-
-	spin_lock_irqsave(&fdev->lock, irqflags);
-
-	/*
-	 * These pokes come from the current STAPI tree.
-	 * The three magic vals are pokes to undocumented regs so
-	 * we don't know what they mean.
-	 *
-	 * The effect is to turn on and initialise the clocks
-	 * and set all channels off
-	 */
-
-	/* Clear the status regs MBOX & IRQ */
-	writel(0xffffffff, fdev->io_base + fdev->regs.int_clr);
-	writel(0xffffffff, fdev->io_base + fdev->regs.cmd_clr);
-
-	/* Enable the FDMA block */
-	writel(1, fdev->io_base + fdev->regs.sync_reg);
-	writel(5, fdev->io_base + fdev->regs.clk_gate);
-	writel(0, fdev->io_base + fdev->regs.clk_gate);
-
-	spin_unlock_irqrestore(&fdev->lock, irqflags);
-}
-
-static void stm_fdma_hw_reset(struct stm_fdma_device *fdev)
+void stm_fdma_hw_enable(struct stm_fdma_device *fdev)
 {
 	unsigned long irqflags = 0;
 	int i;
 
 	spin_lock_irqsave(&fdev->lock, irqflags);
 
+	/*
+	 * This sequence comes from the FDMA Fuctional Specification.
+	 */
+
+	/* Disable SLIM core STBus sync */
+	writel(1, fdev->io_base + fdev->regs.sync_reg);
+	/* Reset cpu pipeline keeping cpu pipeline clock disabled */
+	writel(5, fdev->io_base + fdev->regs.clk_gate);
+	/* Enable cpu pipeline clock */
+	writel(0, fdev->io_base + fdev->regs.clk_gate);
+	/* Enable cpu */
+	writel(1, fdev->io_base + fdev->regs.en);
+
+	/*
+	 * Clear certain registers
+	 */
+
+	/* Clear the command mailbox */
+	writel(0xffffffff, fdev->io_base + fdev->regs.int_clr);
+	/* Clear the interrupt mailbox */
+	writel(0xffffffff, fdev->io_base + fdev->regs.cmd_clr);
+	/* Clear the command status registers */
 	for (i = STM_FDMA_MIN_CHANNEL; i <= STM_FDMA_MAX_CHANNEL; ++i)
 		writel(0, CMD_STAT_REG(&fdev->ch_list[i]));
+
+	spin_unlock_irqrestore(&fdev->lock, irqflags);
+}
+
+void stm_fdma_hw_disable(struct stm_fdma_device *fdev)
+{
+	unsigned long irqflags = 0;
+
+	/*
+	 * This sequence comes from the FDMA Fuctional Specification.
+	 */
+
+	spin_lock_irqsave(&fdev->lock, irqflags);
+
+	/* Disable the cpu pipeline clock */
+	writel(1, fdev->io_base + fdev->regs.clk_gate);
+	/* Disable the cpu */
+	writel(0, fdev->io_base + fdev->regs.en);
 
 	spin_unlock_irqrestore(&fdev->lock, irqflags);
 }
@@ -77,26 +90,6 @@ void stm_fdma_hw_get_revisions(struct stm_fdma_device *fdev,
 		*fw_minor = (reg & REV_ID_MINOR_MASK) >> REV_ID_MINOR_SHIFT;
 
 	spin_unlock_irqrestore(&fdev->lock, irqflags);
-}
-
-int stm_fdma_hw_initialise(struct stm_fdma_device *fdev)
-{
-	int result;
-
-	BUG_ON(!fdev);
-
-	/* Enable the FDMA and reset all channels */
-	stm_fdma_hw_enable(fdev);
-	stm_fdma_hw_reset(fdev);
-
-	/* Enable all channels */
-	result = stm_fdma_hw_channel_enable_all(fdev);
-	if (!result) {
-		dev_err(fdev->dev, "Failed to enable all channels\n");
-		return -ENODEV;
-	}
-
-	return 0;
 }
 
 void stm_fdma_hw_channel_reset(struct stm_fdma_chan *fchan)
