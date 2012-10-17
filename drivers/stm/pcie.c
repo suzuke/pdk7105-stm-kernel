@@ -586,15 +586,16 @@ static void stm_pcie_board_reset(struct device *dev)
 
 
 /* Sets up any clocking, resets the controller and disables link training */
-static int __devinit stm_pcie_hw_init(struct device *dev)
+static int __devinit stm_pcie_hw_init(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct stm_plat_pcie_config *config = dev_get_platdata(dev);
 	struct stm_plat_pcie_ops *ops = config->ops;
 
 	if (!ops)
 		return -EINVAL;
 
-	ops->init(config->ops_handle);
+	config->ops_handle = ops->init(pdev);
 
 	ops->disable_ltssm(config->ops_handle);
 
@@ -748,7 +749,7 @@ static int __devinit stm_pcie_probe(struct platform_device *pdev)
 	/* We have to initialise the PCIe cell on some hardware before we can
 	 * talk to the phy
 	 */
-	err = stm_pcie_hw_init(&pdev->dev);
+	err = stm_pcie_hw_init(pdev);
 	if (err)
 		return err;
 

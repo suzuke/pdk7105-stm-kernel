@@ -25,9 +25,25 @@
 #define PCIE_APP_INIT_RST	(1<<1)
 #define PCIE_DEVICE_TYPE	(1<<0)
 #define PCIE_DEFAULT_VAL        (PCIE_DEVICE_TYPE)
-static void stih416_pcie_init(void *handle)
+
+static void *stih416_pcie_init(struct platform_device *pdev)
 {
-	struct sysconf_field *sc = (struct sysconf_field *)handle;
+	struct stm_plat_pcie_config *config = pdev->dev.platform_data;
+	int port = config->miphy_num;
+	struct sysconf_field *sc;
+
+	switch (port) {
+	case 0:
+		sc = sysconf_claim(SYSCONF(2524), 0, 5, "pcie");
+		BUG_ON(!sc);
+		break;
+	case 1:
+		sc = sysconf_claim(SYSCONF(2523), 0, 5, "pcie");
+		BUG_ON(!sc);
+		break;
+	default:
+		BUG();
+	}
 
 	/* Drive RST_N low, set device type */
 	sysconf_write(sc, PCIE_DEVICE_TYPE);
@@ -35,6 +51,7 @@ static void stih416_pcie_init(void *handle)
 	sysconf_write(sc, PCIE_DEFAULT_VAL);
 
 	mdelay(1);
+	return sc;
 }
 
 static void stih416_pcie_enable_ltssm(void *handle)
@@ -120,18 +137,14 @@ static struct platform_device stih416_pcie_devices[] = {
 
 void __init stih416_configure_pcie(struct stih416_pcie_config *config)
 {
-	struct sysconf_field *sc, *sc_pcie1_powerdown,
+	struct sysconf_field *sc_pcie1_powerdown,
 	    *sc_satapcie_hreset, *sc_miphy1_hreset;
 	int port = config->port;
 
 	switch (port) {
 	case 0:
-		sc = sysconf_claim(SYSCONF(2524), 0, 5, "pcie");
-		BUG_ON(!sc);
 		break;
 	case 1:
-		sc = sysconf_claim(SYSCONF(2523), 0, 5, "pcie");
-		BUG_ON(!sc);
 		/* Deassert Hard reset to MiPHY1 */
 		sc_miphy1_hreset = sysconf_claim(SYSCONF(2552), 19, 19, "pcie");
 		BUG_ON(!sc_miphy1_hreset);
@@ -149,7 +162,6 @@ void __init stih416_configure_pcie(struct stih416_pcie_config *config)
 		BUG();
 	}
 
-	stih416_plat_pcie_config[port].ops_handle = sc;
 	stih416_plat_pcie_config[port].ops = &stih416_pcie_ops;
 	stih416_plat_pcie_config[port].ahb_val = 0x26C208,
 	    stih416_plat_pcie_config[port].reset_gpio = config->reset_gpio;

@@ -31,9 +31,14 @@
 
 #define PCIE_DEFAULT_VAL	(PCIE_SOFT_RST_N_PCIE | PCIE_DEVICE_TYPE)
 
-static void stx7108_pcie_init(void *handle)
+static void *stx7108_pcie_init(struct platfrom_device *pdev)
 {
-	struct sysconf_field *sc = (struct sysconf_field *) handle;
+	static struct sysconf_field *sc;
+
+	if (!sc)
+		sc = sysconf_claim(SYS_CFG_BANK4, 69, 0, 6, "pcie");
+
+	BUG_ON(!sc);
 
 	/* Drive RST_N low, set device type */
 	sysconf_write(sc, PCIE_DEVICE_TYPE);
@@ -41,6 +46,8 @@ static void stx7108_pcie_init(void *handle)
 	sysconf_write(sc, PCIE_DEFAULT_VAL);
 
 	mdelay(1);
+
+	return sc;
 }
 
 static void stx7108_pcie_enable_ltssm(void *handle)
@@ -110,13 +117,6 @@ static struct platform_device stx7108_pcie_device = {
 
 void __init stx7108_configure_pcie(struct stx7108_pcie_config *config)
 {
-	struct sysconf_field *sc;
-
-	sc = sysconf_claim(SYS_CFG_BANK4, 69, 0, 6, "pcie");
-
-	BUG_ON(!sc);
-
-	stx7108_plat_pcie_config.ops_handle = sc;
 	stx7108_plat_pcie_config.reset_gpio = config->reset_gpio;
 	stx7108_plat_pcie_config.reset = config->reset;
 	/* There is only one PCIe controller on the 7108c2 and it is hardwired

@@ -583,7 +583,7 @@ struct stm_plat_pci_config {
  */
 
 struct stm_plat_pcie_ops {
-	void (*init)(void *handle);
+	void  *(*init)(struct platform_device *pdev);
 	void (*enable_ltssm)(void *handle);
 	void (*disable_ltssm)(void *handle);
 };
