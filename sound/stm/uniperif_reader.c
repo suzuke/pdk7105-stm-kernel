@@ -96,8 +96,7 @@ static struct snd_pcm_hardware snd_stm_uniperif_reader_hw = {
 	.info		= (SNDRV_PCM_INFO_MMAP |
 				SNDRV_PCM_INFO_MMAP_VALID |
 				SNDRV_PCM_INFO_INTERLEAVED |
-				SNDRV_PCM_INFO_BLOCK_TRANSFER |
-				SNDRV_PCM_INFO_RESUME),
+				SNDRV_PCM_INFO_BLOCK_TRANSFER),
 	.formats	= (SNDRV_PCM_FMTBIT_S32_LE),
 
 	.rates		= SNDRV_PCM_RATE_CONTINUOUS,
@@ -950,10 +949,6 @@ static int snd_stm_uniperif_reader_suspend(struct device *dev)
 
 	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
-	/* Check if this device is already suspended */
-	if (dev->power.runtime_status == RPM_SUSPENDED)
-		return 0;
-
 	/* Abort if the player is still running */
 	if (get__AUD_UNIPERIF_CTRL__OPERATION(reader)) {
 		dev_err(reader->dev, "Cannot suspend as running");
@@ -972,10 +967,6 @@ static int snd_stm_uniperif_reader_resume(struct device *dev)
 	struct snd_card *card = snd_stm_card_get();
 
 	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
-
-	/* Check if this device is already active */
-	if (dev->power.runtime_status == RPM_ACTIVE)
-		return 0;
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
 

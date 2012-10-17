@@ -147,8 +147,7 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_pcm_hw = {
 				SNDRV_PCM_INFO_MMAP_VALID |
 				SNDRV_PCM_INFO_INTERLEAVED |
 				SNDRV_PCM_INFO_BLOCK_TRANSFER |
-				SNDRV_PCM_INFO_PAUSE |
-				SNDRV_PCM_INFO_RESUME),
+				SNDRV_PCM_INFO_PAUSE),
 	.formats	= (SNDRV_PCM_FMTBIT_S32_LE |
 				SNDRV_PCM_FMTBIT_S16_LE),
 
@@ -181,8 +180,7 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_raw_hw = {
 				SNDRV_PCM_INFO_MMAP_VALID |
 				SNDRV_PCM_INFO_INTERLEAVED |
 				SNDRV_PCM_INFO_BLOCK_TRANSFER |
-				SNDRV_PCM_INFO_PAUSE |
-				SNDRV_PCM_INFO_RESUME),
+				SNDRV_PCM_INFO_PAUSE),
 	.formats	= (SNDRV_PCM_FMTBIT_S32_LE),
 
 	.rates		= SNDRV_PCM_RATE_CONTINUOUS,
@@ -2292,26 +2290,6 @@ static int snd_stm_uniperif_player_suspend(struct device *dev)
 
 	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
-	/* Check if this device is already suspended */
-	if (dev->power.runtime_status == RPM_SUSPENDED)
-		return 0;
-
-	/* Halt the player if parking currently active */
-	if (dma_audio_is_parking_active(player->dma_channel)) {
-		/* Halt the player */
-		snd_stm_uniperif_player_halt(player->substream);
-
-		/* Release the dma channel */
-		dma_release_channel(player->dma_channel);
-		player->dma_channel = NULL;
-
-		/* Release any converter */
-		if (player->conv_group) {
-			snd_stm_conv_release_group(player->conv_group);
-			player->conv_group = NULL;
-		}
-	}
-
 	/* Abort if the player is still running */
 	if (get__AUD_UNIPERIF_CTRL__OPERATION(player)) {
 		dev_err(player->dev, "Cannot suspend as running");
@@ -2330,10 +2308,6 @@ static int snd_stm_uniperif_player_resume(struct device *dev)
 	struct snd_card *card = snd_stm_card_get();
 
 	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
-
-	/* Check if this device is already active */
-	if (dev->power.runtime_status == RPM_ACTIVE)
-		return 0;
 
 	snd_power_change_state(card, SNDRV_CTL_POWER_D0);
 
