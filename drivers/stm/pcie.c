@@ -28,6 +28,8 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/irq.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include "pcie-regs.h"
 
 #ifdef CONFIG_ARM
@@ -698,6 +700,42 @@ static int __devinit stm_msi_probe(struct platform_device *pdev);
 static int __devinit stm_msi_probe(struct platform_device *pdev) { return 0; }
 #endif
 
+static void  stm_of_get_window(struct device_node *np, const char *name,
+				phys_addr_t *start, unsigned long *size)
+{
+	int len;
+	const __be32 *prop;
+
+	prop = of_get_property(np, name, &len);
+	if (!prop)
+		return;
+	len /= 4;
+	*start = be32_to_cpup(prop++);
+	*size = be32_to_cpup(prop++);
+	return;
+}
+static void *stm_pcie_get_pdata(struct platform_device *pdev)
+{
+	struct stm_plat_pcie_config *data = dev_get_platdata(&pdev->dev);
+	struct device_node *np = pdev->dev.of_node;
+	if (!np)
+		return data;
+
+	if (!data)
+		data  = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	stm_of_get_window(np, "st,pcie-window",
+			&data->pcie_window.start, &data->pcie_window.size);
+	stm_of_get_window(np, "st,io-window",
+		&data->pcie_window.io_start, &data->pcie_window.io_size);
+	stm_of_get_window(np, "st,mem-window",
+		&data->pcie_window.lmi_start, &data->pcie_window.lmi_size);
+
+	data->reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
+	of_property_read_u32(np, "st,ahb-fixup", (u32 *)&data->ahb_val);
+	of_property_read_u32(np, "st,miphy-num", &data->miphy_num);
+	return data;
+}
 /* Probe function for PCI data When we get here, we can assume that the PCI
  * block is powered up and ready to rock, and that all sysconfigs have been
  * set correctly.
@@ -705,11 +743,12 @@ static int __devinit stm_msi_probe(struct platform_device *pdev) { return 0; }
 static int __devinit stm_pcie_probe(struct platform_device *pdev)
 {
 	struct resource *res;
-	struct stm_plat_pcie_config *config = dev_get_platdata(&pdev->dev);
+	struct stm_plat_pcie_config *config;
 	unsigned long config_window_start;
 	struct stm_pcie_dev_data *priv;
 	int err, serr_irq;
 
+	config = stm_pcie_get_pdata(pdev);
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -798,9 +837,19 @@ static int __devinit stm_pcie_probe(struct platform_device *pdev)
 	return err;
 }
 
+static struct of_device_id stm_pcie_match[] = {
+	{
+		.compatible = "st,pcie",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_pcie_match);
+
 static struct platform_driver stm_pcie_driver = {
 	.driver.name = "pcie_stm",
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(stm_pcie_match),
 	.probe = stm_pcie_probe,
 };
 

@@ -1,0 +1,53 @@
+==============================================================================
+				st,pcie
+==============================================================================
+
+Required properties:
+- compatible : "st,pcie".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+
+- st,pcie_window	pcie window start and size
+- st,io-window		where IO address start and size
+- st,mem-window	Main memory physical start and size
+- st,reset-pio		Which PIO the PERST# signal is on.
+- st,ahb-fixup		Magic number to shove into the amba bus bridge.
+- st,miphy-num		Which miphy this pcie is using
+
+Example:
+
+	pcie0: pcie@fe800000{
+		#interrupt-cells = <3>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+		interrupt-parent = <&intc>;
+		compatible	= "st,pcie", "simple-bus";
+		reg		= <0xfe800000 0x1000>,
+				 <0xfe808000 0x8>, <0x3FFF0000 0x10000>;
+		reg-names	= "pcie cntrl", "pcie ahb","pcie config";
+
+		interrupts	=  <0 166 0>, <0 171 0>, <0 167 0>;
+		interrupt-names = "pcie inta", "pcie syserr", "msi mux";
+		device-config = <&pcie_dev_config>;
+		st,pcie_window = <0x20000000  0x1FFF0000>;
+		st,mem-window	= <0x40000000  0x80000000>;
+
+		st,reset-gpio = <&gpio_bank25 5>;
+		st,ahb-fixup	= <0x264207>;
+		st,miphy-num	= <1>;
+	};
+
+
+	pcie_dev_config: pcie-dev-config {
+		#stm-sysconf-cells = <4>;
+		sysconfs {
+			PCIE_SOFT_RST	=	<&stih415_sysconf 377 34 34>;
+			PCIE_SYS_INT	=	<&stih415_sysconf 334 5 5>;
+			PCIE_P1_SSC_EN	=	<&stih415_sysconf 334 4 4>;
+			PCIE_APP_REQ_RETRY_EN	= <&stih415_sysconf 334 3 3>;
+			PCIE_APP_LTSSM_ENABLE	= <&stih415_sysconf 334 2 2>;
+			PCIE_APP_INIT_RST =	<&stih415_sysconf 334 1 1>;
+			PCIE_DEVICE_TYPE =	<&stih415_sysconf 334 0 0>;
+		};
+	};
