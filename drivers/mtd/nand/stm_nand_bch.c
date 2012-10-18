@@ -31,6 +31,7 @@
 #include <generated/utsrelease.h>
 
 #include "stm_nand_regs.h"
+#include "stm_nand_bbt.h"
 
 #define NAME	"stm-nand-bch"
 
@@ -959,6 +960,7 @@ static int nandi_scan_bad_block_markers_page(struct nandi_controller *nandi,
 	struct mtd_info *mtd = &nandi->info.mtd;
 	uint8_t *oob_buf = nandi->oob_buf;
 	int i;
+	int e;
 	int ret = 0;
 
 	/* Read the OOB area */
@@ -978,29 +980,26 @@ static int nandi_scan_bad_block_markers_page(struct nandi_controller *nandi,
 		ret = 1;
 	}
 
-#ifdef NANDI_BBM_TOLERATE_BCH_DATA
-	/* Check for valid BCH ECC data by performing a page read */
+	/* Tolerate 'alien' Hamming Boot Mode ECC */
 	if (ret == 1) {
-		loff_t offs = (loff_t)page << nandi->page_shift;
-		uint8_t *page_buf = nandi->page_buf;
-		if (bch_read_page(nandi, offs, page_buf) >= 0) {
-			/* All 0x00s leads to valid BCH ECC, but likely to be
-			 * bad-block marker */
+		e = 0;
+		for (i = 0; i < mtd->oobsize; i += 16)
+			e += hweight8(oob_buf[i + 3] ^ 'B');
+		if (e <= 1)
 			ret = 0;
-			for (i = 0; i < mtd->writesize; i++) {
-				if (page_buf[i] != 0x00) {
-					ret = 1;
-					break;
-				}
-			}
-
-			/* No uncorrectable errors, assume valid BCH ECC data */
-			if (ret == 0)
-				dev_info(nandi->dev, "BBM @ 0x%012llx: valid "
-					 "BCH ECC data, treat as good\n", offs);
-		}
 	}
-#endif
+
+	/* Tolerate 'alien' Hamming AFM ECC */
+	if (ret == 1) {
+		e = 0;
+		for (i = 0; i < mtd->oobsize; i += 16) {
+			e += hweight8(oob_buf[i + 3] ^ 'A');
+			e += hweight8(oob_buf[i + 4] ^ 'F');
+			e += hweight8(oob_buf[i + 5] ^ 'M');
+		}
+		if (e <= 1)
+			ret = 0;
+	}
 
 	return ret;
 }
@@ -2176,6 +2175,7 @@ static void nandi_set_mtd_defaults(struct nandi_controller *nandi,
 	chip->block_bad = flex_block_bad_BUG;
 	chip->block_markbad = flex_block_markbad_BUG;
 	chip->verify_buf = flex_verify_buf_BUG;
+	chip->bbt_options |= NAND_BBT_USE_FLASH;
 	chip->scan_bbt = flex_scan_bbt_BUG;
 
 	/* mtd_info */
@@ -2202,6 +2202,25 @@ static void nandi_set_mtd_defaults(struct nandi_controller *nandi,
 	mtd->_sync = nand_sync;
 	mtd->_suspend = nand_suspend;
 	mtd->_resume = nand_resume;
+}
+
+static int nandi_examine_bbts(struct nandi_controller *nandi,
+			      struct mtd_info *mtd)
+{
+	int bch_remap;
+
+	switch (nandi->bch_ecc_mode) {
+	case BCH_18BIT_ECC:
+		bch_remap = BCH_REMAP_18BIT;
+		break;
+	case BCH_30BIT_ECC:
+		bch_remap = BCH_REMAP_30BIT;
+		break;
+	default:
+		bch_remap = BCH_REMAP_NONE;
+	}
+
+	return stmnand_examine_bbts(mtd, bch_remap);
 }
 
 static void nandi_init_hamming(struct nandi_controller *nandi, int emi_bank)
@@ -2442,6 +2461,9 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 
 	mtd->writebufsize = mtd->writesize;
 
+	info->ecclayout.eccbytes = nandi->sectors_per_page *
+		bch_ecc_sizes[nandi->bch_ecc_mode];
+
 	/* Check compatibility */
 	if (bch_check_compatibility(nandi, mtd, chip) != 0) {
 		dev_err(nandi->dev, "NAND device incompatible with NANDi/BCH "
@@ -2481,6 +2503,13 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 				  NANDI_BCH_DMA_ALIGNMENT);
 	nandi->buf_list = (uint32_t *) PTR_ALIGN(bbt_info->bbt + bbt_buf_size,
 						 NANDI_BCH_DMA_ALIGNMENT);
+
+	if (nandi_examine_bbts(nandi, mtd) != 0) {
+		dev_err(nandi->dev, "incompatible BBTs detected\n");
+		dev_err(nandi->dev, "initiating NAND Recovery Mode\n");
+		mtd->name = "NAND RECOVERY MODE";
+		return mtd_device_register(mtd, NULL, 0);
+	}
 
 	/* Load Flash-resident BBT */
 	err = bch_load_bbt(nandi, bbt_info);

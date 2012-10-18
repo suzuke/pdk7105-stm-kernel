@@ -1464,3 +1464,5 @@ EXPORT_SYMBOL_GPL(nand_isbad_bbt);
 
 EXPORT_SYMBOL(nand_scan_bbt);
 EXPORT_SYMBOL(nand_default_bbt);
+
+#include "stm_nand_bbt.c"
