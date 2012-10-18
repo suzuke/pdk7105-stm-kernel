@@ -1109,10 +1109,10 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	/* Setup ECC params, for NORMAL and BOOT operation */
 	flex_setup_eccparams(&data->mtd);
 	/* Override MTD NAND interface, to allow us to provide BOOT SUPPORT */
-	data->mtd.read = nand_read;
-	data->mtd.write = nand_write;
-	data->mtd.read_oob = nand_read_oob;
-	data->mtd.write_oob = nand_write_oob;
+	data->mtd._read = nand_read;
+	data->mtd._write = nand_write;
+	data->mtd._read_oob = nand_read_oob;
+	data->mtd._write_oob = nand_write_oob;
 
 	/* Set name of boot partition */
 	boot_part_name = nbootpart ? nbootpart :
