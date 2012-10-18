@@ -217,7 +217,8 @@ typedef enum {
 #define NAND_MULTIPLANE_PROG_ERASE	0x00004000
 /* Deivce supports multi-LUN operations */
 #define NAND_MULTILUN		0x00008000
-
+/* Micron '4-bit On-die ECC' device */
+#define NAND_MICRON_4BITONDIEECC	0x00080000
 
 /* Options valid for Samsung large page devices */
 #define NAND_SAMSUNG_LP_OPTIONS \
@@ -233,7 +234,8 @@ typedef enum {
 					&& (chip->page_shift > 9))
 
 /* Mask to zero out the chip options, which come from the id table */
-#define NAND_CHIPOPTIONS_MSK	(0x0000ffff & ~NAND_NO_AUTOINCR)
+#define NAND_CHIPOPTIONS_MSK	(0x0000ffff & ~NAND_NO_AUTOINCR & \
+				 NAND_MICRON_4BITONDIEECC)
 
 /* Non chip related options */
 /* This option skips the bbt scan during initialization. */
