@@ -26,6 +26,7 @@
 #include <linux/stm/sysconf.h>
 #include <asm/irq-ilc.h>
 
+#define B2057_GPIO_FLASH_WP		stm_gpio(6, 2)
 #define B2057_GPIO_POWER_ON_ETH		stm_gpio(2, 5)
 #define B2057_MII1_TXER			stm_gpio(0, 4)
 
@@ -143,7 +144,7 @@ static struct stm_plat_spifsm_data b2057_serial_flash =  {
 
 /* NAND Flash */
 static struct stm_nand_bank_data b2057_nand_flash = {
-	.csn		= 1,	/* Controlled by JF3 */
+	.csn		= 0,	/* Rev A/B : set JF3 2-3 (EMI_CS0 -> NAND_CS) */
 	.options        = NAND_NO_AUTOINCR,
 	.bbt_options	= NAND_BBT_USE_FLASH,
 	.nr_partitions	= 2,
@@ -277,6 +278,12 @@ static int __init device_init(void)
 			.out10_enabled = 0 });
 
 	stxh205_configure_mmc(0);
+
+	/*
+	 * NAND MTD has no concept of write-protect, so permanently disable WP
+	 */
+	gpio_request(B2057_GPIO_FLASH_WP, "FLASH_WP");
+	gpio_direction_output(B2057_GPIO_FLASH_WP, 1);
 
 	stxh205_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_bch,
