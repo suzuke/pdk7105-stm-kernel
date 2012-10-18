@@ -1008,7 +1008,7 @@ static void flex_exit_controller(struct platform_device *pdev)
 static struct stm_nand_flex_device * __devinit
 flex_init_bank(struct stm_nand_flex_controller *flex,
 	       struct stm_nand_bank_data *bank,
-	       int rbn_connected, const char *name)
+	       int rbn_connected, struct platform_device *pdev)
 {
 	struct stm_nand_flex_device *data;
 	int res;
@@ -1032,9 +1032,10 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	data->chip.priv = data;
 	data->mtd.priv = &data->chip;
 	data->mtd.owner = THIS_MODULE;
+	data->mtd.dev.parent = &pdev->dev;
 
 	/* Assign more sensible name (default is string from nand_ids.c!) */
-	data->mtd.name = name;
+	data->mtd.name = dev_name(&pdev->dev);
 	data->csn = bank->csn;
 
 	/* Use hwcontrol structure to manage access to FLEX Controller */
@@ -1180,7 +1181,7 @@ static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 	bank = pdata->banks;
 	for (n=0; n<pdata->nr_banks; n++) {
 		data = flex_init_bank(flex, bank, pdata->flex_rbn_connected,
-				      dev_name(&pdev->dev));
+				      pdev);
 
 		if (IS_ERR(data)) {
 			err = PTR_ERR(data);
