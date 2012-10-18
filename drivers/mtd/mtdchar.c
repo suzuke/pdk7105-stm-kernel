@@ -531,6 +531,7 @@ static int shrink_ecclayout(const struct nand_ecclayout *from,
 		to->oobavail += from->oobfree[i].length;
 		to->oobfree[i] = from->oobfree[i];
 	}
+	to->eccbytes = from->eccbytes;
 
 	return 0;
 }
