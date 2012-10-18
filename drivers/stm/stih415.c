@@ -157,15 +157,21 @@ static struct platform_device stih415_spifsm_device = {
 
 void __init stih415_configure_spifsm(struct stm_plat_spifsm_data *data)
 {
+	struct sysconf_field *sc;
+
 	stih415_spifsm_device.dev.platform_data = data;
 
 	data->pads = &stih415_spifsm_pad_config;
+
+	sc = sysconf_claim(SYSCONF(398), 0, 4, "mode-pins");
 
 	/* SoC/IP Capabilities */
 	data->capabilities.no_read_repeat = 1;
 	data->capabilities.no_write_repeat = 1;
 	data->capabilities.read_status_bug = spifsm_read_status_clkdiv4;
+	data->capabilities.boot_from_spi = (sysconf_read(sc) == 0x1a) ? 1 : 0;
 
+	sysconf_release(sc);
 	platform_device_register(&stih415_spifsm_device);
 }
 
