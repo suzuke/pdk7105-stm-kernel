@@ -15,6 +15,7 @@
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/thermal.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
 
@@ -58,11 +59,28 @@ static int stm_thermal_get_temp(struct thermal_zone_device *th,
 static struct thermal_zone_device_ops stm_thermal_ops = {
 	.get_temp = stm_thermal_get_temp,
 };
+static void *stm_temp_get_pdata(struct platform_device *pdev)
+{
+	struct plat_stm_temp_data *data;
+	struct device_node *np = pdev->dev.of_node;
+	if (!np)
+		return pdev->dev.platform_data;
 
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	data->device_config = stm_of_get_dev_config(&pdev->dev);
+	if (of_property_read_bool(np, "st,calibrated"))
+		data->calibrated = 1;
+	of_property_read_u32(np, "st,calibration-value",
+					&data->calibration_value);
+
+	return data;
+}
 static int __devinit stm_temp_probe(struct platform_device *pdev)
 {
 	struct stm_temp_sensor *sensor = platform_get_drvdata(pdev);
-	struct plat_stm_temp_data *plat_data = pdev->dev.platform_data;
+	struct plat_stm_temp_data *plat_data;
+
+	plat_data = stm_temp_get_pdata(pdev);
 
 	sensor = devm_kzalloc(&pdev->dev, sizeof(*sensor), GFP_KERNEL);
 	if (!sensor) {
@@ -160,9 +178,21 @@ static struct dev_pm_ops stm_temp_pm = {
 static struct dev_pm_ops stm_temp_pm;
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_temp_match[] = {
+	{
+		.compatible = "st,temp",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_temp_match);
+#endif
+
 static struct platform_driver stm_temp_driver = {
 	.driver = {
 		.name	= "stm-temp",
+		.of_match_table = of_match_ptr(stm_temp_match),
 		.pm = &stm_temp_pm,
 	},
 	.probe		= stm_temp_probe,
