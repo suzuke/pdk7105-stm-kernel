@@ -52,11 +52,12 @@ static int __init stm_l2x0_init(void)
 	* bit[6:4]     - 3 cycles of read accesses latency
 	* bit[2:0]     - 2 cycle of setup latency
 	*
-	* 1 cycle of latency for setup, read and write accesses
+	* 2, 3, 3 cycle of latency for setup, read and write accesses
+	* respectively.
 	*/
 	val = readl(base + L2X0_DATA_LATENCY_CTRL);
 	val &= 0xfffff888;
-	val |= 0xfffff9a9;
+	val |= 0x121;
 	writel(val, base + L2X0_DATA_LATENCY_CTRL);
 
 	/* We have to ensure that bit 22 is set. This bit controls if
