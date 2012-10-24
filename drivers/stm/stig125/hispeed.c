@@ -21,6 +21,8 @@
 #include <linux/clk.h>
 #include <linux/ahci_platform.h>
 #include <linux/stm/isve.h>
+#include <linux/stmfp.h>
+#include <linux/phy.h>
 
 #ifdef CONFIG_ARM
 #include <asm/mach/map.h>
@@ -706,3 +708,208 @@ static int __init stig125_isve_devices_setup(void)
 				    ARRAY_SIZE(stig125_isve_configured_device));
 }
 device_initcall(stig125_isve_devices_setup);
+
+/* Fast Path Pad configuration */
+
+#define DATA_IN(_port, _pin, _func, _retiming) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_in, \
+		.function = _func, \
+		.priv = &(struct stm_pio_control_pad_config) { \
+			.retime = _retiming, \
+		}, \
+	}
+
+#define DATA_OUT(_port, _pin, _func, _retiming) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_out, \
+		.function = _func, \
+		.priv = &(struct stm_pio_control_pad_config) { \
+			.retime = _retiming, \
+		}, \
+	}
+
+#define CLOCK_IN(_port, _pin, _func, _retiming) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_in, \
+		.function = _func, \
+		.priv = &(struct stm_pio_control_pad_config) { \
+			.retime = _retiming, \
+		}, \
+	}
+
+#define CLOCK_OUT(_port, _pin, _func, _retiming) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_out, \
+		.function = _func, \
+		.priv = &(struct stm_pio_control_pad_config) { \
+			.retime = _retiming, \
+		}, \
+	}
+
+static struct stm_pad_config stig125_fastpath_byoi_pad_config = {
+	.gpios_num = 14,
+	.gpios = (struct stm_pad_gpio[]){
+		 /* BYOI port
+		  * TX
+		  *
+		  * For RET_DE_IO, Parameter 1 is delay, Parameter 2
+		  * is clk1notclk0
+		  */
+		 DATA_OUT(11, 4, 2, RET_DE_IO(0, 1)),/* WAN_TXD0 */
+		 DATA_OUT(11, 5, 2, RET_DE_IO(0, 1)),/* WAN_TXD1  */
+		 DATA_OUT(11, 6, 2, RET_DE_IO(0, 1)),/* WAN_TXD2  */
+		 DATA_OUT(11, 7, 2, RET_DE_IO(0, 1)),/* WAN_TXD3  */
+		 DATA_OUT(12, 0, 2, RET_DE_IO(0, 1)),/* WAN_TXCTL */
+		 CLOCK_OUT(12, 1, 2, RET_NICLK(3250, 1)),/* WAN_TXCLK */
+		 /* RX */
+		 DATA_IN(12, 2, 2, RET_DE_IO(0, 0)),/* WAN_RXD0 */
+		 DATA_IN(12, 3, 2, RET_DE_IO(0, 0)),/* WAN_RXD1 */
+		 DATA_IN(12, 4, 2, RET_DE_IO(0, 0)),/* WAN_RXD2 */
+		 DATA_IN(12, 5, 2, RET_DE_IO(0, 0)),/* WAN_RXD3 */
+		 DATA_IN(12, 6, 2, RET_DE_IO(0, 0)),/* WAN_RXCTL */
+
+		 CLOCK_IN(12, 7, 2, RET_NICLK(1250, 0)),/* WAN_RXCLK */
+
+		 /* Select PIO Alternate Function for MDIO and MDC Intf */
+		 STM_PAD_PIO_IN(14, 4, 1),	/* MDIO */
+		 STM_PAD_PIO_OUT(14, 5, 1),	/* MDC */
+	},
+};
+
+/* ISIS ports 0 and 2 Pad configuration */
+static struct stm_pad_config stig125_isis_port_2_pad_config = {
+
+	.gpios_num = 24,
+	.gpios = (struct stm_pad_gpio[]){
+
+		 /*
+		  * ISIS Port 0
+		  * TX
+		  * For RET_DE_IO, Parameter 1 is delay,
+		  * Parameter 2 is clk1notclk0
+		  */
+		 DATA_OUT(10, 0, 1, RET_DE_IO(0, 0)),/* LAN2_TXD0  */
+		 DATA_OUT(10, 1, 1, RET_DE_IO(0, 0)),/* LAN2_TXD1  */
+		 DATA_OUT(10, 2, 1, RET_DE_IO(0, 0)),/* LAN2_TXD2  */
+		 DATA_OUT(10, 3, 1, RET_DE_IO(0, 0)),/* LAN2_TXD3  */
+		 DATA_OUT(10, 4, 1, RET_DE_IO(0, 0)),/* LAN2_TXCTL */
+
+		 CLOCK_OUT(10, 5, 1, RET_NICLK(3250, 0)),/* LAN2_TXCLK*/
+		 /* RX */
+		 DATA_IN(10, 6, 1, RET_DE_IO(0, 0)),/* LAN2_RXD0 */
+		 DATA_IN(10, 7, 1, RET_DE_IO(0, 0)),/* LAN2_RXD1 */
+		 DATA_IN(11, 0, 1, RET_DE_IO(0, 0)),/* LAN2_RXD2 */
+		 DATA_IN(11, 1, 1, RET_DE_IO(0, 0)),/* LAN2_RXD3 */
+		 DATA_IN(11, 2, 1, RET_DE_IO(0, 0)),/* LAN2_RXCTL */
+
+		 CLOCK_IN(11, 3, 1, RET_NICLK(3000, 0)),/* LAN2_RXCLK */
+
+		 /*  ISIS Port 2 */
+		 /*    TX      */
+		 DATA_OUT(13, 0, 1, RET_DE_IO(0, 0)),/* LAN2_TXD0  */
+		 DATA_OUT(13, 1, 1, RET_DE_IO(0, 0)),/* LAN2_TXD1  */
+		 DATA_OUT(13, 2, 1, RET_DE_IO(0, 0)),/* LAN2_TXD2  */
+		 DATA_OUT(13, 3, 1, RET_DE_IO(0, 0)),/* LAN2_TXD3  */
+		 DATA_OUT(13, 4, 1, RET_DE_IO(0, 0)),/* LAN2_TXCTL */
+
+		 CLOCK_OUT(13, 5, 1, RET_NICLK(1250, 0)),/* LAN2_TXCLK */
+
+		 /* RX */
+		 DATA_IN(13, 6, 1, RET_DE_IO(0, 0)),/* LAN2_RXD0 */
+		 DATA_IN(13, 7, 1, RET_DE_IO(0, 0)),/* LAN2_RXD1 */
+		 DATA_IN(14, 0, 1, RET_DE_IO(0, 0)),/* LAN2_RXD2 */
+		 DATA_IN(14, 1, 1, RET_DE_IO(0, 0)),/* LAN2_RXD3 */
+		 DATA_IN(14, 2, 1, RET_DE_IO(0, 0)),/* LAN2_RXCTL */
+
+		 CLOCK_IN(14, 3, 1, RET_NICLK(1250, 0)),/* LAN2_RXCLK */
+	},
+};
+
+static struct plat_fpif_data fpif_docsis_data = {
+	.id = 2,
+	.iftype = DEVID_DOCSIS,
+	.ifname = "fpdocsis",
+	.tx_dma_ch = 2,
+	.rx_dma_ch = 2,
+};
+
+static struct plat_fpif_data fpif_gige_data = {
+	.mdio_enabled = 1,
+	.ethtool_enabled = 1,
+	.id = 0,
+	.iftype = DEVID_GIGE,
+	.ifname = "fpgige",
+	.interface = PHY_INTERFACE_MODE_RGMII_ID,
+	.phy_addr = 0x1,
+	.bus_id = 1,
+	.pad_config = &stig125_fastpath_byoi_pad_config,
+	.init = &stmfp_claim_resources,
+	.exit = &stmfp_release_resources,
+	.tx_dma_ch = 0,
+	.rx_dma_ch = 0,
+};
+static struct plat_fpif_data fpif_isis_data = {
+	.mdio_enabled = 0,
+	.ethtool_enabled = 0,
+	.id = 1,
+	.iftype = DEVID_ISIS,
+	.ifname = "fplan",
+	.interface = PHY_INTERFACE_MODE_RGMII_ID,
+	.phy_addr = 0x1,
+	.bus_id = 1,
+	.pad_config = &stig125_isis_port_2_pad_config,
+	.init = &stmfp_claim_resources,
+	.exit = &stmfp_release_resources,
+	.tx_dma_ch = 1,
+	.rx_dma_ch = 1,
+};
+static struct plat_stmfp_data fp_data = {
+	.available_l2cam = 128,
+	.if_data[0] = &fpif_gige_data,
+	.if_data[1] = &fpif_isis_data,
+	.if_data[2] = &fpif_docsis_data,
+};
+static struct platform_device stig125_fp_device = {
+	.name = "fpif",
+	.id = 0,
+	.num_resources = 17,
+	.dev = {
+		.dma_mask = (void *)DMA_BIT_MASK(32),
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+		.platform_data = &fp_data,
+		},
+	.resource = (struct resource[]){
+		STM_PLAT_RESOURCE_MEM_NAMED("fp_mem",
+					    0xfee80000,
+					    0x40000),
+		/* STIG125_IRQ macro increases these interrupt numbers
+		 * by 32.
+		 */
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_0", 55),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_1", 56),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_2", 57),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_3", 58),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_4", 59),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_5", 60),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_6", 61),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_7", 62),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_8", 63),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_9", 64),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_10", 65),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_11", 66),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_12", 67),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_13", 68),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_14", 69),
+		STIG125_RESOURCE_IRQ_NAMED("FastPath_15", 70),
+	}
+};/* end STIG125_fp_device */
+
+void __init stig125_configure_fp(void)
+{
+	platform_device_register(&stig125_fp_device);
+}

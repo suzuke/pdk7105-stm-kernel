@@ -48,6 +48,7 @@ static void __init b2044_init(void)
 	stig125_configure_usb(0);
 	stig125_configure_usb(1);
 	stig125_configure_usb(2);
+	stig125_configure_fp();
 
 #ifdef CONFIG_MACH_STM_B2044_B2048_EMMC
 	stig125_configure_mmc(1);

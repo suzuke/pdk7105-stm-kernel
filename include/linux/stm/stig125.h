@@ -95,7 +95,7 @@ struct stig125_lirc_config {
 };
 
 void stig125_configure_lirc(struct stig125_lirc_config *config);
-
+void stig125_configure_fp(void);
 void stig125_configure_usb(int port);
 
 struct stig125_pwm_config {

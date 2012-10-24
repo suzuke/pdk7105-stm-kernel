@@ -1,0 +1,25 @@
+#
+# STMFP network device configuration
+#
+
+config STM_FASTPATH
+	tristate "STM FastPath Driver"
+	select NET_CORE
+	select MII
+	select PHYLIB
+	---help---
+	  Driver for STM FastPath Ethernet device. This hardware is used
+	  on some STM embedded platforms to route packets from multiple on
+	  chip devices to external Ethernet ports. This driver implements a
+	  simple Ethernet interface on each of the hardware ports.
+	  If you have a controller with this interface, say Y or M here.
+	  If unsure, say N.
+
+config FP_FPGA
+	tristate "STM FastPath for FPGA Platform(EXPERIMENTAL)"
+	depends on PCI && EXPERIMENTAL && STM_FASTPATH
+	default n
+	---help---
+	  Support for STM FastPath FPGA Platform.
+	  If you have a FPGA platform with this interface, say Y or M here.
+	  If unsure, say N.

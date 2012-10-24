@@ -19,6 +19,7 @@ config NET_VENDOR_STMICRO
 if NET_VENDOR_STMICRO
 
 source "drivers/net/ethernet/stmicro/stmmac/Kconfig"
+source "drivers/net/ethernet/stmicro/stmfp/Kconfig"
 
 source "drivers/net/ethernet/stmicro/isve/Kconfig"
 
