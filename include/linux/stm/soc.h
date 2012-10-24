@@ -8,12 +8,12 @@ extern long stm_soc_version_minor_id;
 void stm_soc_set(unsigned long devid, long major, long minor);
 const char *stm_soc(void);
 
-static inline unsigned long stm_soc_version_major(void)
+static inline long stm_soc_version_major(void)
 {
 	return stm_soc_version_major_id;
 }
 
-static inline unsigned long stm_soc_version_minor(void)
+static inline long stm_soc_version_minor(void)
 {
 	return stm_soc_version_minor_id;
 }
