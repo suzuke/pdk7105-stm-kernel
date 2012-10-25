@@ -476,24 +476,13 @@ static struct platform_device stx7108_st40_coproc_device = {
 /* Hardware RNG resources ------------------------------------------------- */
 
 static struct platform_device stx7108_devhwrandom_device = {
-	.name		= "stm_hwrandom",
+	.name		= "stm-hwrandom",
 	.id		= -1,
 	.num_resources	= 1,
 	.resource	= (struct resource []) {
 		STM_PLAT_RESOURCE_MEM(0xfdabd000, 0x1000),
 	}
 };
-
-static struct platform_device stx7108_devrandom_device = {
-	.name		= "stm_rng",
-	.id		= 0,
-	.num_resources	= 1,
-	.resource	= (struct resource []) {
-		STM_PLAT_RESOURCE_MEM(0xfdabd000, 0x1000),
-	}
-};
-
-
 
 /* PIO ports resources ---------------------------------------------------- */
 
@@ -1079,7 +1068,6 @@ static struct platform_device *stx7108_devices[] __initdata = {
 	&stx7108_sysconf_devices[3],
 	&stx7108_sysconf_devices[4],
 	&stx7108_devhwrandom_device,
-	&stx7108_devrandom_device,
 	&stx7108_temp_device,
 };
 
