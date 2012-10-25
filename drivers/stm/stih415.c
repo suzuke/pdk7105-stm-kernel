@@ -1100,6 +1100,17 @@ static struct platform_device stih415_temp_device[] = {
 
 };
 
+/* Hardware RNG driver */
+
+static struct platform_device stih415_devhwrandom_device = {
+	.name           = "stm-hwrandom",
+	.id             = -1,
+	.num_resources  = 1,
+	.resource       = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfd6d8000, 0x1000),
+	}
+};
+
 /* Low Power Controller ---------------------------------------------------- */
 
 static struct platform_device stih415_lpc_device = {
@@ -1136,6 +1147,7 @@ static struct platform_device *stih415_devices[] __initdata = {
 	&stih415_sas_fdma_xbar_device,
 	&stih415_temp_device[0],
 	&stih415_temp_device[1],
+	&stih415_devhwrandom_device,
 	&stih415_lpc_device,
 };
 
