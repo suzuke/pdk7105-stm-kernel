@@ -57,15 +57,10 @@
 #define DATA_OUT_PU(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_bidir, \
+		.direction = stm_pad_gpio_direction_in_pull_up, \
 		.function = _func, \
 		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 0, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
 		}, \
 	}
 
@@ -1117,15 +1112,10 @@ void __init stih415_configure_sata(int port, struct stih415_sata_config *config)
 #define STIH415_PIO_MMC_CLK_OUT(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = 4, \
 		.name = "MMCCLK", \
 		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
 			.retime = RET_NICLK(0, 1), \
 		}, \
 	}
@@ -1133,30 +1123,20 @@ void __init stih415_configure_sata(int port, struct stih415_sata_config *config)
 #define STIH415_PIO_MMC_OUT(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_out, \
 		.function = 4, \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 0, \
-				.od = 0, \
-			}, \
-		}, \
 	}
+
 #define STIH415_PIO_MMC_BIDIR(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = 4, \
 		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
 			.retime = RET_BYPASS(3000), \
 		}, \
 	}
+
 #define STIH415_PIO_MMC_IN(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \

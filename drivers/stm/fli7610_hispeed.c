@@ -30,43 +30,22 @@
 #define FLI7610_PIO_MMC_CLK_OUT(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = 1, \
 		.name = "MMCCLK", \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
-		}, \
 	}
 
 #define FLI7610_PIO_MMC_OUT(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_out, \
 		.function = 1, \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 0, \
-				.od = 0, \
-			}, \
-		}, \
 	}
 #define FLI7610_PIO_MMC_BIDIR(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = 1, \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
-		}, \
 	}
 #define FLI7610_PIO_MMC_IN(_port, _pin) \
 	{ \

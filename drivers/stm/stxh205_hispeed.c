@@ -43,14 +43,10 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 #define DATA_IN_PU(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_in_pull_up, \
 		.function = _func, \
 		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 0, \
-				.pu = 1, \
-				.od = 0, \
 		}, \
 	}, \
 	}
@@ -84,15 +80,10 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 #define DATA_OUT_PU(_port, _pin, _func, _retiming)	\
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = _func, \
 		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
 		}, \
 	}
 
@@ -578,44 +569,28 @@ void __init stxh205_configure_usb(int port)
 #define STXH205_PIO_MMC_CLK_OUT(_port, _pin, funct) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_out, \
 		.function = funct, \
 		.name = "MMCCLK", \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 0, \
-				.od = 0, \
-			}, \
-		}, \
 	}
+
 #define STXH205_PIO_MMC_OUT(_port, _pin, funct) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_out, \
 		.function = funct, \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 0, \
-				.od = 0, \
-			}, \
-		}, \
 	}
+
 #define STXH205_PIO_MMC_BIDIR(_port, _pin, funct) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidr_pull_up, \
 		.function = funct, \
 		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
 			.retime = RET_BYPASS(3000), \
 		}, \
 	}
+
 #define STXH205_PIO_MMC_IN(_port, _pin, funct) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \

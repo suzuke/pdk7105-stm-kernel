@@ -21,8 +21,7 @@
 
 static void stm_pio_control_config_direction(
 		struct stm_pio_control *pio_control,
-		int pin, enum stm_pad_gpio_direction direction,
-		struct stm_pio_control_mode_config *custom_mode)
+		int pin, enum stm_pad_gpio_direction direction)
 {
 	struct sysconf_field *output_enable;
 	struct sysconf_field *pull_up;
@@ -50,6 +49,12 @@ static void stm_pio_control_config_direction(
 		pu_value &= ~mask;
 		od_value &= ~mask;
 		break;
+	case stm_pad_gpio_direction_in_pull_up:
+		/* oe = 0, pu = 1, od = 0 */
+		oe_value &= ~mask;
+		pu_value |= mask;
+		od_value &= ~mask;
+		break;
 	case stm_pad_gpio_direction_out:
 		/* oe = 1, pu = 0, od = 0 */
 		oe_value |= mask;
@@ -62,21 +67,14 @@ static void stm_pio_control_config_direction(
 		pu_value &= ~mask;
 		od_value |= mask;
 		break;
-	case stm_pad_gpio_direction_custom:
-		BUG_ON(!custom_mode);
-		if (custom_mode->oe)
-			oe_value |= mask;
-		else
-			oe_value &= ~mask;
-		if (custom_mode->pu)
-			pu_value |= mask;
-		else
-			pu_value &= ~mask;
-		if (custom_mode->od)
-			od_value |= mask;
-		else
-			od_value &= ~mask;
+	case stm_pad_gpio_direction_bidir_pull_up:
+		/* oe = 1, pu = 1, od = 1 */
+		oe_value |= mask;
+		pu_value |= mask;
+		od_value |= mask;
 		break;
+	case stm_pad_gpio_direction_ignored:
+		return;
 	default:
 		BUG();
 		break;
@@ -422,8 +420,7 @@ int stm_pio_control_config_all(unsigned gpio,
 			break;
 		}
 	} else {
-		stm_pio_control_config_direction(pio_control, pin,
-				direction, config ? config->mode : NULL);
+		stm_pio_control_config_direction(pio_control, pin, direction);
 	}
 
 	stm_pio_control_config_function(pio_control, pin, function);

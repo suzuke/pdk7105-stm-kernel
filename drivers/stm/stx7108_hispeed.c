@@ -55,15 +55,10 @@
 #define DATA_OUT_PU(_gmac, _port, _pin, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_out, \
+		.direction = stm_pad_gpio_direction_in_pull_up, \
 		.function = _gmac + 1, \
 		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 0, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
 		}, \
 	}
 
@@ -1256,15 +1251,10 @@ void __init stx7108_configure_sata(int port, struct stx7108_sata_config *config)
 #define STX7108_PIO_MMC_CLK_OUT(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = 1, \
 		.name = "MMCCLK", \
 		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 1, \
-			}, \
 			.retime = RET_NICLK(0, 0), \
 		}, \
 	}
@@ -1272,28 +1262,14 @@ void __init stx7108_configure_sata(int port, struct stx7108_sata_config *config)
 #define STX7108_PIO_MMC_OUT(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = 1, \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 1, \
-				.od = 1, \
-			}, \
-		}, \
 	}
 #define STX7108_PIO_MMC_BIDIR(_port, _pin) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_custom, \
+		.direction = stm_pad_gpio_direction_out, \
 		.function = 1, \
-		.priv = &(struct stm_pio_control_pad_config) {	\
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 1, \
-				.pu = 0, \
-				.od = 0, \
-			}, \
-		}, \
 	}
 #define STX7108_PIO_MMC_IN(_port, _pin) \
 	{ \

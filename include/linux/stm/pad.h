@@ -37,9 +37,10 @@
 enum stm_pad_gpio_direction {
 	stm_pad_gpio_direction_unknown,
 	stm_pad_gpio_direction_in,
+	stm_pad_gpio_direction_in_pull_up,
 	stm_pad_gpio_direction_out,
 	stm_pad_gpio_direction_bidir,
-	stm_pad_gpio_direction_custom,
+	stm_pad_gpio_direction_bidir_pull_up,
 	stm_pad_gpio_direction_ignored
 };
 

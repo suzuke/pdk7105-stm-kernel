@@ -13,12 +13,6 @@
 #ifndef __LINUX_STM_PIO_CONTROL_H
 #define __LINUX_STM_PIO_CONTROL_H
 
-struct stm_pio_control_mode_config {
-	int oe:1;
-	int pu:1;
-	int od:1;
-};
-
 struct stm_pio_control_retime_config {
 	unsigned int retime:1;
 	unsigned int clk:2;
@@ -29,7 +23,6 @@ struct stm_pio_control_retime_config {
 };
 
 struct stm_pio_control_pad_config {
-	struct stm_pio_control_mode_config *mode;
 	struct stm_pio_control_retime_config *retime;
 };
 
