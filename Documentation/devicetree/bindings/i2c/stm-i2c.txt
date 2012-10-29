@@ -1,0 +1,31 @@
+
+===============================================================================
+				stm i2c
+===============================================================================
+
+Required properties:
+- compatible : "st,i2c".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- i2c-fastmode      takes value of 0 or 1 to disable or enable i2c fastmode
+			respectively.
+- padcfg-0	is the standard way to pass pad config to the drivers.
+
+Optional properties:
+- dev-clk		specify device clk or alias clk.
+
+Example:
+
+	i2c0: i2c-stm0{
+		#interrupt-cells = <3>;
+        #address-cells = <1>;
+        #size-cells = <1>;
+		interrupt-parent = <&intc>;
+		compatible	= "st,i2c", "simple-bus";
+		reg		= <0xfed40000 0x110>;
+		interrupts	=  <0 187 0>;
+		status = "disabled";
+		st,i2c-fastmode;
+		padcfg-0 = <&ssc0_pad_config>;
+	};
