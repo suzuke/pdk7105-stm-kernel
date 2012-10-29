@@ -1133,7 +1133,7 @@ void __init stih415_configure_sata(int port, struct stih415_sata_config *config)
 		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = 4, \
 		.priv = &(struct stm_pio_control_pad_config) {	\
-			.retime = RET_BYPASS(3000), \
+			.retime = RET_BYPASS(0), \
 		}, \
 	}
 

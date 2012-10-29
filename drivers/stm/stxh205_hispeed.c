@@ -587,7 +587,7 @@ void __init stxh205_configure_usb(int port)
 		.direction = stm_pad_gpio_direction_bidr_pull_up, \
 		.function = funct, \
 		.priv = &(struct stm_pio_control_pad_config) {	\
-			.retime = RET_BYPASS(3000), \
+			.retime = RET_BYPASS(0), \
 		}, \
 	}
 
