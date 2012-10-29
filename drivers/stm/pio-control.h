@@ -133,6 +133,8 @@ struct stm_pio_control_retime_offset {
 void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 		struct stm_pio_control *pio_control, int num);
 
+struct stm_pio_control *of_stm_pio_control_init(void);
+
 int stm_pio_control_config_all(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function,
 		struct stm_pio_control_pad_config *config,
