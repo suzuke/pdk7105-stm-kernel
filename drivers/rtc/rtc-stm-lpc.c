@@ -22,6 +22,7 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 
 #define DRV_NAME "stm-rtc"
@@ -290,6 +291,27 @@ static struct dev_pm_ops stm_rtc_pm_ops = {
 static struct dev_pm_ops stm_rtc_pm_ops;
 #endif
 
+static void *stm_rtc_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_rtc_lpc *data;
+	if (!np)
+		return pdev->dev.platform_data;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	of_property_read_string(np, "clk-id", &data->clk_id);
+	of_property_read_u32(np, "clk-rate", &data->force_clk_rate);
+
+	data->no_hw_req = of_property_read_bool(np, "no-hw-req");
+	data->need_wdt_reset = of_property_read_bool(np, "need-wdt-reset");
+	if (of_property_read_bool(np, "irq-edge-rising"))
+		data->irq_edge_level = IRQ_TYPE_EDGE_RISING;
+	if (of_property_read_bool(np, "irq-edge-falling"))
+		data->irq_edge_level = IRQ_TYPE_EDGE_FALLING;
+
+	return data;
+}
+
 static int __devinit stm_rtc_probe(struct platform_device *pdev)
 {
 	struct stm_plat_rtc_lpc *plat_data;
@@ -304,7 +326,7 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	spin_lock_init(&rtc->lock);
-	plat_data = pdev->dev.platform_data;
+	plat_data = stm_rtc_get_pdata(pdev);
 	if (unlikely(plat_data == NULL)) {
 		dev_err(&pdev->dev, "No platform data\n");
 		ret = -ENOENT;
@@ -424,11 +446,23 @@ static int __devexit stm_rtc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_rtc_match[] = {
+	{
+		.compatible = "st,rtc",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_rtc_match);
+#endif
+
 static struct platform_driver stm_rtc_platform_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.pm = &stm_rtc_pm_ops,
+		.of_match_table = of_match_ptr(stm_rtc_match),
 	},
 	.probe = stm_rtc_probe,
 	.remove = __devexit_p(stm_rtc_remove),
