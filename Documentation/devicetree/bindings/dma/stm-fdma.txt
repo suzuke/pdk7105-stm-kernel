@@ -1,0 +1,95 @@
+===============================================================================
+			stm fdma
+===============================================================================
+
+Required properties:
+- compatible : Should be "st,fdma".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+
+- fw-regs	phandle to firmware register offsets.
+		Below are the possible offsets descriptions of fw registers.
+	- fw-rev-id    : Should be firmware revision id register offset.
+	- fw-cmd-statn : is offset to cmd statn register.
+	- fw-req-ctln  : is offset to request contrl register.
+	- fw-ptrn      : is offset to ptrn register
+	- fw-cntn      : is offset to cntn register.
+	- fw-saddrn    : is offset to saddr register.
+	- fw-daddrn    : is offset to daddr register.
+	- fw-node-size : is offset to node-size register.
+
+- hw-conf	phandle to hw register offsets.
+		Below are the possible offsets descriptions of hw registers.
+	- slim-reg-id		: offset of id slim core register.
+	- slim-reg-ver		: offset of ver slim core register.
+	- slim-reg-en		: offset of enable slim core register.
+	- slim-reg-clk-gate	: offset of clk gate slim core register
+
+	- dmem-offset		: dmem offset
+	- dmem-size		: dmem size
+
+	- periph-reg-sync-reg : offset of periph sync register.
+	- periph-reg-cmd-sta  : offset of periph cmd register.
+	- periph-reg-cmd-set  : offset of periph cmd set register.
+	- periph-reg-cmd-clr  : offset of periph cmd clr register.
+	- periph-reg-cmd-mask : offset of periph cmd mask register.
+	- periph-reg-int-sta  : offset of periph int stat register.
+	- periph-reg-int-set  : offset of periph int set register.
+	- periph-reg-int-clr  : offset of periph int clr register.
+	- periph-reg-int-mask : offset of periph int mask register.
+
+	- imem-offset		: offset of imem
+	- imem-size		: size of imem.
+- xbar		Xbar number to use.
+
+Example:
+fdma0_mpe:fdma-mpe@0{
+	compatible	= "st,fdma", "simple-bus";
+	reg		= <0xfd600000 0x20000>;
+	interrupts	=  <0 10 0>;
+	hw-conf = <&fdma_hw_config>;
+	fw-regs = <&fdma_fw_regs>;
+	x-bar	= <0>;
+
+};
+fdma_xbar_mpe: fdma-xbar-mpe {
+	compatible	= "st,fdma-xbar", "simple-bus";
+	reg		= <0xfd6df000 0x1000>;
+	st,first_fdma	= <0>;
+	st,last_fdma	= <2>;
+};
+
+fdma_fw_regs: fdma-fw-regs{
+	fw-rev-id    = <0x10000>;
+	fw-cmd-statn = <0x10200>;
+	fw-req-ctln  = <0x10240>;
+	fw-ptrn      = <0x10800>;
+	fw-cntn      = <0x10808>;
+	fw-saddrn    = <0x1080c>;
+	fw-daddrn    = <0x10810>;
+	fw-node-size = <128>;
+};
+
+fdma_hw_config: fdma-hw-config {
+	slim-reg-id       = <0x0>;
+	slim-reg-ver      = <0x4>;
+	slim-reg-en       = <0x8>;
+	slim-reg-clk-gate = <0xc>;
+
+	dmem-offset = <0x10000>;
+	dmem-size   = <0x3000>;
+
+	periph-reg-sync-reg = <0x17f88>;
+	periph-reg-cmd-sta  = <0x17fc0>;
+	periph-reg-cmd-set  = <0x17fc4>;
+	periph-reg-cmd-clr  = <0x17fc8>;
+	periph-reg-cmd-mask = <0x17fcc>;
+	periph-reg-int-sta  = <0x17fd0>;
+	periph-reg-int-set  = <0x17fd4>;
+	periph-reg-int-clr  = <0x17fd8>;
+	periph-reg-int-mask = <0x17fdc>;
+
+	imem-offset = <0x18000>;
+	imem-size   = <0x6000>;
+};

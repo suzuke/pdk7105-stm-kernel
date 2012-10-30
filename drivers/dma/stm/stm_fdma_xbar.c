@@ -93,6 +93,9 @@ static int __devinit stm_fdma_xbar_probe(struct platform_device *pdev)
 
 	xbar->router.route = stm_fdma_xbar_route;
 	xbar->router.xbar_id = pdev->id;
+	if (pdev->dev.of_node)
+		xbar->router.xbar_id = of_alias_get_id(pdev->dev.of_node,
+								"fdmaxbar");
 
 	/* Does config specify first and last fdma id that uses this xbar? */
 	if (pdev->dev.platform_data) {
@@ -102,6 +105,11 @@ static int __devinit stm_fdma_xbar_probe(struct platform_device *pdev)
 
 		xbar->first_fdma_id = plat_data->first_fdma_id;
 		xbar->last_fdma_id = plat_data->last_fdma_id;
+	} else if (pdev->dev.of_node) {
+		of_property_read_u32(pdev->dev.of_node, "first-fdma",
+					 &xbar->first_fdma_id);
+		of_property_read_u32(pdev->dev.of_node, "last-fdma",
+					 &xbar->last_fdma_id);
 	}
 
 	/* An ID of -1 means there is only one xbar, designate it as 0 */
@@ -135,12 +143,23 @@ static int __devexit stm_fdma_xbar_remove(struct platform_device *pdev)
 }
 
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_fdma_xbar_match[] = {
+	{
+		.compatible = "st,fdma-xbar",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_fdma_xbar_match);
+#endif
 /*
  * Module initialisation
  */
 
 static struct platform_driver stm_fdma_xbar_platform_driver = {
 	.driver.name	= "stm-fdma-xbar",
+	.driver.of_match_table = of_match_ptr(stm_fdma_xbar_match),
 	.probe		= stm_fdma_xbar_probe,
 	.remove		= stm_fdma_xbar_remove,
 };

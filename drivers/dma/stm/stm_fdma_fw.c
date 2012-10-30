@@ -145,7 +145,12 @@ static int stm_fdma_fw_request(struct stm_fdma_device *fdev)
 	BUG_ON(!fdev);
 
 	/* Generate FDMA firmware file name */
-	result = snprintf(fdev->fw_name, sizeof(fdev->fw_name),
+	if (fdev->pdev->dev.of_node)
+		result = snprintf(fdev->fw_name, sizeof(fdev->fw_name),
+			"fdma_%s_%d.elf", stm_soc(),
+			of_alias_get_id(fdev->pdev->dev.of_node, "fdma"));
+	else
+		result = snprintf(fdev->fw_name, sizeof(fdev->fw_name),
 			"fdma_%s_%d.elf", stm_soc(),
 			(fdev->pdev->id == -1) ? 0 : fdev->pdev->id);
 	BUG_ON(result >= sizeof(fdev->fw_name));
