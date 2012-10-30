@@ -1,0 +1,43 @@
+
+
+===============================================================================
+			stm irqmux
+===============================================================================
+
+Required properties:
+- compatible : "st,irqmux".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- irqmux-name	: Should be name of the irqmux.
+- irqmux-inputs : Should be number of inputs to irqmux.
+- irqmux-outputs: Should be number of outputs to irqmux.
+- interrupts-enable: Binary flag to enable or disable all interrupts in irqmux.
+
+Example:
+	irqmuxs{
+		#interrupt-cells = <3>;
+        #address-cells = <1>;
+        #size-cells = <1>;
+		ranges;
+		irqmux@fea28800{
+			compatible      = "st,irqmux";
+			interrupt-parent = <&intc>;
+			reg = <0xfea28800 0x800>;
+			irqmux-name = "A9 IRQ-MUX";
+			irqmux-inputs = <173>;
+			irqmux-outputs = <51>;
+			interrupts-enable;
+		};
+		irqmux@fea28000{
+			compatible      = "st,irqmux";
+			interrupt-parent = <&intc>;
+			reg = <0xfea28000 0x800>;
+			irqmux-name = "PIO IRQ-MUX";
+			irqmux-inputs = <27>;
+			irqmux-outputs = <10>;
+			interrupts-enable;
+		 };
+		...
+		...
+	};

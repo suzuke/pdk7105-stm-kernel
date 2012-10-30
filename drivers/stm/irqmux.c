@@ -9,10 +9,12 @@
  */
 
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/export.h>
 #include <linux/platform_device.h>
 #include <linux/stm/platform.h>
 #include <linux/syscore_ops.h>
+#include <linux/of.h>
 #include <asm/irq-ilc.h>
 #ifdef CONFIG_ARM
 #include <mach/hardware.h>
@@ -43,7 +45,7 @@ static int apply_irqmux_mapping(struct device *dev)
 		for (input = 0; input < pdata->num_input; ++input) {
 			long mapping_value;
 			output = invert = enable = 0;
-			ret = pdata->custom_mapping(pdata,
+			ret = pdata->custom_mapping(dev,
 					input, &enable, &output, &invert);
 			if (ret) {
 				dev_err(dev, "Mapping failed for input %ld\n",
@@ -60,12 +62,50 @@ static int apply_irqmux_mapping(struct device *dev)
 	return 0;
 }
 
+static int of_irqmux_mapping(struct device *dev,
+		long input, long *enable, long *output, long *inv)
+{
+	struct stm_plat_irq_mux_data *pdata = dev_get_platdata(dev);
+	struct device_node *np;
+	np = dev->of_node;
+	if (of_property_read_bool(np, "interrupts-enable"))
+		*enable = 1;
+	else
+		*enable = 0;
+	if (of_property_read_bool(np, "interrupts-invert"))
+		*inv = 1;
+	else
+		*inv = 0;
+	*output = input % pdata->num_output;
+	return 0;
+}
+static void *irq_mux_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_irq_mux_data *data;
+	u32 num_inputs, num_outputs;
+	if (!np)
+		return dev_get_platdata(&pdev->dev);
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	of_property_read_string(np, "irqmux-name", (const char **)&data->name);
+	of_property_read_u32(np, "irqmux-inputs", &num_inputs);
+	of_property_read_u32(np, "irqmux-outputs", &num_outputs);
+	data->num_output = num_outputs;
+	data->num_input = num_inputs;
+	pdev->dev.platform_data = data;
+
+	data->custom_mapping = of_irqmux_mapping;
+	return data;
+}
 static int __devinit irq_mux_driver_probe(struct platform_device *pdev)
 {
-	struct stm_plat_irq_mux_data *pdata = dev_get_platdata(&pdev->dev);
+	struct stm_plat_irq_mux_data *pdata;
 	struct irq_mux_drv_data *drv_data;
 	struct resource *res;
 	int ret;
+
+	pdata = irq_mux_get_pdata(pdev);
 
 	drv_data = devm_kzalloc(&pdev->dev, sizeof(*drv_data), GFP_KERNEL);
 	if (!drv_data)
@@ -93,9 +133,21 @@ static int __devinit irq_mux_driver_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_irqmux_match[] = {
+	{
+		.compatible = "st,irqmux",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_irqmux_match);
+#endif
+
 static struct platform_driver irq_mux_driver = {
 	.driver.name = "irq_mux",
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(stm_irqmux_match),
 	.probe = irq_mux_driver_probe,
 };
 

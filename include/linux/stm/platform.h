@@ -631,7 +631,7 @@ struct stm_plat_irq_mux_data {
 	char *name;
 	unsigned short num_input;
 	unsigned char num_output;
-	int (*custom_mapping)(struct stm_plat_irq_mux_data const *pdata,
+	int (*custom_mapping)(struct device *dev,
 			      long input, long *enable,
 			      long *output, long *inv);
 };
