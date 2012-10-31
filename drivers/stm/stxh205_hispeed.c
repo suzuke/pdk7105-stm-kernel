@@ -48,7 +48,6 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
 		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
-	}, \
 	}
 
 #define DATA_OUT(_port, _pin, _func, _retiming) \
@@ -584,7 +583,7 @@ void __init stxh205_configure_usb(int port)
 #define STXH205_PIO_MMC_BIDIR(_port, _pin, funct) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_bidr_pull_up, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = funct, \
 		.priv = &(struct stm_pio_control_pad_config) {	\
 			.retime = RET_BYPASS(0), \
