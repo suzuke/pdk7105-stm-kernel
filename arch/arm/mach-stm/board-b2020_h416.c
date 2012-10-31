@@ -125,12 +125,15 @@ static struct platform_device b2020_leds = {
 	.name = "leds-gpio",
 	.id = -1,
 	.dev.platform_data = &(struct gpio_led_platform_data) {
-		.num_leds = 1,
+		.num_leds = 2,
 		.leds = (struct gpio_led[]) {
 			{
-				.name = "FP_LED",
+				.name = "RED",
 				.default_trigger = "heartbeat",
 				.gpio = stih416_gpio(4, 1),
+			}, {
+				.name = "GREEN",
+				.gpio = stih416_gpio(4, 7),
 			}
 		},
 	},
