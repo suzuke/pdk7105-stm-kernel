@@ -19,6 +19,8 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/io.h>
+#include <linux/interrupt.h>
+#include <linux/of.h>
 #include <linux/device.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
@@ -33,6 +35,7 @@
 
 #include "stm_nand_regs.h"
 #include "stm_nand_bbt.h"
+#include "stm_nand_dt.h"
 
 #define NAME	"stm-nand-bch"
 
@@ -2738,13 +2741,41 @@ static void __devinit nandi_init_controller(struct nandi_controller *nandi,
 	nandi_init_hamming(nandi, emi_bank);
 }
 
+#ifdef CONFIG_OF
+
+static void *stm_bch_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_nand_bch_data *data;
+	const char *ecc_config;
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+
+	of_property_read_string(np, "st,bch-ecc-mode", &ecc_config);
+	if (strcmp("noecc", ecc_config) == 0)
+		data->bch_ecc_cfg =  BCH_ECC_CFG_NOECC;
+	else if (strcmp("18bit", ecc_config) == 0)
+		data->bch_ecc_cfg =  BCH_ECC_CFG_18BIT;
+	else if (strcmp("30bit", ecc_config) == 0)
+		data->bch_ecc_cfg =  BCH_ECC_CFG_30BIT;
+	else
+		data->bch_ecc_cfg =  BCH_ECC_CFG_AUTO;
+	stm_of_get_nand_banks(&pdev->dev, np, &data->bank);
+	return data;
+}
+#else
+static void *stm_bch_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 
 static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 {
-	const char *part_probes[] = { "cmdlinepart", NULL, };
-	struct stm_plat_nand_bch_data *pdata = pdev->dev.platform_data;
+	const char *part_probes[] = { "cmdlinepart", "ofpart", NULL, };
+	struct stm_plat_nand_bch_data *pdata;
 	struct stm_nand_bank_data *bank;
-
+	struct mtd_part_parser_data ppdata;
 	struct nandi_controller *nandi;
 	struct nandi_info *info;
 	struct nandi_bbt_info *bbt_info;
@@ -2754,6 +2785,13 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 	uint32_t bbt_buf_size;
 	int err;
 
+	if (pdev->dev.of_node) {
+		pdev->dev.platform_data = stm_bch_dt_get_pdata(pdev);
+		ppdata.of_node = stm_of_get_partitions_node(
+							pdev->dev.of_node, 0);
+	}
+
+	pdata = pdev->dev.platform_data;
 	nandi = nandi_init_resources(pdev);
 	if (IS_ERR(nandi)) {
 		dev_err(&pdev->dev, "failed to initialise NANDi resources\n");
@@ -2901,8 +2939,8 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 	/*
 	 * Add partitions
 	 */
-	err = mtd_device_parse_register(mtd, part_probes, 0, bank->partitions,
-					bank->nr_partitions);
+	err = mtd_device_parse_register(mtd, part_probes, &ppdata,
+				bank->partitions, bank->nr_partitions);
 	return err;
 }
 
@@ -2935,12 +2973,24 @@ static const struct dev_pm_ops stm_nand_bch_pm_ops = {
 static const struct dev_pm_ops stm_nand_bch_pm_ops;
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id nand_bch_match[] = {
+	{
+		.compatible = "st,nand-bch",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, nand_bch_match);
+#endif
+
 static struct platform_driver stm_nand_bch_driver = {
 	.probe		= stm_nand_bch_probe,
 	.remove		= stm_nand_bch_remove,
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(nand_bch_match),
 		.pm	= &stm_nand_bch_pm_ops,
 	},
 };

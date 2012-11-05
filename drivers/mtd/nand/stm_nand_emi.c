@@ -33,6 +33,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/clk.h>
 #include <linux/gpio.h>
+#include <linux/of.h>
 #include <linux/semaphore.h>
 #include <linux/stm/dma.h>
 #include <linux/stm/emi.h>
@@ -87,8 +88,6 @@ struct stm_nand_emi_group {
 	int nr_banks;
 	struct stm_nand_emi *banks[0];
 };
-
-static const char *part_probes[] = { "cmdlinepart", NULL };
 
 /*
  * Routines for FDMA transfers.
@@ -615,12 +614,14 @@ static void nand_config_emi(int bank, struct nand_timing_spec *spec, int relax)
 /*
  * Probe for the NAND device.
  */
-static struct stm_nand_emi * __devinit nand_probe_bank(
-	struct stm_nand_bank_data *bank, int rbn_gpio,
-	struct platform_device *pdev)
+static struct stm_nand_emi * __init nand_probe_bank(
+	struct stm_nand_bank_data *bank, int bank_nr, int rbn_gpio,
+	struct device *dev)
 {
+	const char *name = dev_name(dev);
 	struct stm_nand_emi *data;
-
+	struct stm_nand_timing_data *tm;
+	struct mtd_part_parser_data ppdata;
 	/* Default EMI config data, for device probing */
 	unsigned long emi_cfg_probe[] = {
 		0x04402e99,
@@ -628,6 +629,10 @@ static struct stm_nand_emi * __devinit nand_probe_bank(
 		0x0a000400,
 		0x00000000};
 	int res = 0;
+
+	if (dev->of_node)
+		ppdata.of_node = stm_of_get_partitions_node(
+						dev->of_node, bank_nr);
 
 	/* Allocate memory for the driver structure (and zero it) */
 	data = kzalloc(sizeof(struct stm_nand_emi), GFP_KERNEL);
@@ -797,7 +802,7 @@ static struct stm_nand_emi * __devinit nand_probe_bank(
 	}
 
 	res = mtd_device_parse_register(&data->mtd,
-			part_probes, 0,
+			NULL, &ppdata,
 			bank->partitions, bank->nr_partitions);
 	if (!res)
 		return data;
@@ -839,15 +844,41 @@ static void nand_remove_bank(struct stm_nand_emi *emi)
 	kfree(emi);
 }
 
+#ifdef CONFIG_OF
+static void *stm_emi_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_nand_emi_data *data;
+	if (!np)
+		return -ENODEV;
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+
+	data->emi_rbn_gpio = of_get_named_gpio(phy_bus, "st,emi-rbn-gpio", 0);
+	data->nr_banks = stm_of_get_nand_banks(&pdev->dev, np, &data->banks);
+	return data;
+}
+#else
+static void *stm_emi_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int __devinit stm_nand_emi_probe(struct platform_device *pdev)
 {
-	struct stm_plat_nand_emi_data *pdata = pdev->dev.platform_data;
+	struct stm_plat_nand_emi_data *pdata ;
+	int res;
 	struct stm_nand_emi_group *group;
 	struct stm_nand_emi *emi;
 	int err;
 	int n;
 	int rbn_gpio;
 
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_emi_dt_get_pdata(pdev);
+
+	pdata = pdev->dev.platform_data;
 	group = kzalloc(sizeof(struct stm_nand_emi_group) +
 			(sizeof(struct stm_nand_emi *) * pdata->nr_banks),
 			GFP_KERNEL);
@@ -917,12 +948,24 @@ static int __devexit stm_nand_emi_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id nand_emi_match[] = {
+	{
+		.compatible = "st,nand-emi",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, nand_emi_match);
+#endif
+
 static struct platform_driver plat_nand_driver = {
 	.probe		= stm_nand_emi_probe,
 	.remove		= stm_nand_emi_remove,
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(nand_emi_match),
 	},
 };
 

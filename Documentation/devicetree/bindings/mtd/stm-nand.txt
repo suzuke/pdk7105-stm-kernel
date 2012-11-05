@@ -1,0 +1,93 @@
+
+===============================================================================
+		STM BCH, Flex, AFM, EMI Nand Controller.
+===============================================================================
+
+Required properties:
+- compatible		: "st,nand-afm",
+			"st,nand-bch", "st,nand-emi".
+			This define which driver to be used.
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- st,nand-banks	: An array of nand banks with timing data.
+- st,nand-csn		: Chip select associated with the Bank.
+- st,nand-timing-data	: Timing parameters in ns for nand controller
+			See ADCS #7864584.
+
+- partitions		: a child node with mtd partitions associated
+			with the bank.
+
+Depending on the driver selection in compatible field some properties become
+optional.
+
+For "st,nand-afm"
+- st,rbn-flex-connected is must, and it boolean property.
+
+For "st,nand-bch"
+-st,bch-ecc-mode is must and it takes one of the below strings.
+        "auto"
+	"noecc"
+	"18bit"
+	"30bit"
+
+-named resource "nand_dma" is must for bch controller.
+
+
+For "st,nand-emi"
+- emi-rbn-gpio gpio number
+
+
+Optional properties:
+- Subnode partition map from mtd flash binding
+
+Example afm configuration:
+
+	nandafm: nand-afm{
+		#interrupt-cells = <3>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+		interrupt-parent = <&intc>;
+		compatible	= "st,nand-afm", "simple-bus";
+		reg =	<0xFE901000 0x1000>;
+		reg-names = "nand_mem";
+		interrupts = <0 146 0x0>;
+		interrupt-names = "nand_irq";
+		status = "disabled";
+		st,nand-banks = <&nand_banks>;
+	};
+
+	nand_banks: nand-banks {
+		bank0 {
+			/* NAND_BBT_USE_FLASH */
+			nand-on-flash-bbt;
+			nand-no-autoincr;
+			st,nand-csn		= <0>;
+			st,nand-timing-data	= <&nand_timing0>;
+			partitions {
+				#address-cells = <1>;
+		                #size-cells = <1>;
+				partition@0{
+					label = "NAND Flash 1";
+					reg = <0x00000000 0x00800000>;
+				};
+				partition@800000{
+					label = "NAND Flash 2";
+					reg = <0x00800000 0x0F800000>;
+				};
+			};
+		};
+	};
+
+
+	nand_timing0: nand-timing {
+		sig-setup	= <10>;
+		sig-hold	= <10>;
+		CE-deassert	= <0>;
+		WE-to-RBn	= <100>;
+		wr-on		= <10>;
+		wr-off		= <30>;
+		rd-on		= <10>;
+		rd-off		= <30>;
+		chip-delay	= <30>;		/* delay in us */
+	};

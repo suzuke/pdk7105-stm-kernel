@@ -25,22 +25,24 @@
 #include <linux/err.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
 #include <linux/completion.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <asm/cacheflush.h>
+#include <linux/stm/emi.h>
 
 #include "stm_nand_ecc.h"
 #include "stm_nand_regs.h"
 #include "stm_nand_bbt.h"
+#include "stm_nand_dt.h"
 
 #define NAME	"stm-nand-afm"
 
 
 #include <linux/mtd/partitions.h>
-static const char *part_probes[] = { "cmdlinepart", NULL };
 
 #ifdef CONFIG_STM_NAND_AFM_BOOTMODESUPPORT
 /*
@@ -2729,7 +2731,7 @@ static int check_block_zero_pattern(uint8_t *buf)
 
 	return 0;
 }
-
+/workspace/repos/linux-3.x-srini/
 static int find_block_zero(struct mtd_info *mtd)
 {
 	struct stm_nand_afm_controller *afm = mtd_to_afm(mtd);
@@ -2892,12 +2894,13 @@ static int pbl_boot_boundary(struct mtd_info *mtd, uint32_t *boundary)
 
 
 static struct stm_nand_afm_device * __devinit
-afm_init_bank(struct stm_nand_afm_controller *afm,
-	      struct stm_nand_bank_data *bank,
-	      struct platform_device *pdev)
+afm_init_bank(struct stm_nand_afm_controller *afm, int bank_nr,
+		struct stm_nand_bank_data *bank, struct device *dev)
 {
+	const char *name = dev_name(dev);
 	struct stm_nand_afm_device *data;
 	int err;
+	struct mtd_part_parser_data ppdata;
 
 #ifdef CONFIG_STM_NAND_AFM_BOOTMODESUPPORT
 	struct mtd_info *slave;
@@ -2907,6 +2910,9 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	uint32_t boundary;
 #endif
 #endif
+	if (dev->of_node)
+		ppdata.of_node = stm_of_get_partitions_node(
+						dev->of_node, bank_nr);
 
 	/* Allocate memory for the driver structure (and zero it) */
 	data = kzalloc(sizeof(struct stm_nand_afm_device), GFP_KERNEL);
@@ -2919,7 +2925,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	data->chip.priv = data;
 	data->mtd.priv = &data->chip;
 	data->mtd.owner = THIS_MODULE;
-	data->mtd.dev.parent = &pdev->dev;
+	data->mtd.dev.parent = dev;
 	data->dev = afm->dev;
 
 	/* Use hwcontrol structure to manage access to AFM Controller */
@@ -2927,7 +2933,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	data->chip.state = FL_READY;
 
 	/* Assign more sensible name (default is string from nand_ids.c!) */
-	data->mtd.name = dev_name(&pdev->dev);
+	data->mtd.name = dev_name(dev);
 	data->csn = bank->csn;
 
 	data->chip.options = bank->options;
@@ -3007,7 +3013,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	}
 
 	err = mtd_device_parse_register(&data->mtd,
-			part_probes, 0,
+			NULL, &ppdata,
 			bank->partitions, bank->nr_partitions);
 	if (err)
 		goto err3;
@@ -3066,17 +3072,39 @@ afm_init_bank(struct stm_nand_afm_controller *afm,
 	return ERR_PTR(err);
 }
 
+static void *stm_afm_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_nand_flex_data *data;
+
+	if (!np)
+		return pdev->dev.platform_data;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	emiss_nandi_select(STM_NANDI_HAMMING);
+
+	data->flex_rbn_connected = of_property_read_bool(np,
+					"st,rbn-flex-connected");
+	data->nr_banks = stm_of_get_nand_banks(&pdev->dev, np, &data->banks);
+	pdev->dev.platform_data = data;
+	return data;
+}
+
 /*
  * stm-nand-afm device probe
  */
 static int __devinit stm_afm_probe(struct platform_device *pdev)
 {
-	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
+	struct stm_plat_nand_flex_data *pdata;
 	struct stm_nand_bank_data *bank;
 	struct stm_nand_afm_controller *afm;
 	struct stm_nand_afm_device *data;
 	int n;
 	int err = 0;
+
+
+	pdata = stm_afm_dt_get_pdata(pdev);
 
 	afm = afm_init_controller(pdev);
 	if (IS_ERR(afm)) {
@@ -3087,7 +3115,7 @@ static int __devinit stm_afm_probe(struct platform_device *pdev)
 
 	bank = pdata->banks;
 	for (n = 0; n < pdata->nr_banks; n++) {
-		data = afm_init_bank(afm, bank, pdev);
+		data = afm_init_bank(afm, n, bank, &pdev->dev);
 
 		if (IS_ERR(data)) {
 			err = PTR_ERR(data);
@@ -3147,6 +3175,17 @@ static struct dev_pm_ops stm_afm_nand_on_ops = {
 static struct dev_pm_ops stm_afm_nand_on_ops;
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id nand_afm_match[] = {
+	{
+		.compatible = "st,nand-afm",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, nand_afm_match);
+#endif
+
 static struct platform_driver stm_afm_nand_driver = {
 	.probe		= stm_afm_probe,
 	.remove		= stm_afm_remove,
@@ -3154,6 +3193,7 @@ static struct platform_driver stm_afm_nand_driver = {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
 		.pm	= &stm_afm_nand_on_ops,
+		.of_match_table = of_match_ptr(nand_afm_match),
 	},
 };
 
