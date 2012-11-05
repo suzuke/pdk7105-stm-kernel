@@ -1014,15 +1014,18 @@ static struct platform_device stig125_temp_device = {
 	.name = "stm-temp",
 	.id = 0,
 	.dev.platform_data = &(struct plat_stm_temp_data) {
-		.dcorrect = { SYSCONF(743), 2, 6 },
-		.overflow = { SYSCONF(767), 9, 9 },
-		.data = { SYSCONF(767), 11, 18 },
 		.device_config = &(struct stm_device_config) {
-			.sysconfs_num = 1,
+			.sysconfs_num = 4,
 			.power = stig125_temp_power,
 			.sysconfs = (struct stm_device_sysconf []){
 				STM_DEVICE_SYSCONF(SYSCONF(743),
 					7, 7, "TEMP_PWR"),
+				STM_DEVICE_SYSCONF(SYSCONF(743),
+					2, 6, "DCORRECT"),
+				STM_DEVICE_SYSCONF(SYSCONF(767),
+					9, 9, "OVERFLOW"),
+				STM_DEVICE_SYSCONF(SYSCONF(767),
+					11, 18, "DATA"),
 			},
 		}
 	},

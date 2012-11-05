@@ -226,9 +226,6 @@ struct plat_stm_st40_coproc_data {
 /*** Temperature sensor data ***/
 
 struct plat_stm_temp_data {
-	struct {
-		int group, num, lsb, msb;
-	} dcorrect, overflow, data;
 	struct stm_device_config *device_config;
 	int calibrated:1;
 	int calibration_value;

@@ -1067,14 +1067,18 @@ static struct platform_device stx7108_temp_device = {
 	.name		   = "stm-temp",
 	.id		     = -1,
 	.dev.platform_data      = &(struct plat_stm_temp_data) {
-		.dcorrect = { SYS_CFG_BANK1, 8, 4, 8 },
-		.overflow = { SYS_STA_BANK1, 7, 8, 8 },
-		.data = { SYS_STA_BANK1, 7, 10, 16 },
 		.device_config = &(struct stm_device_config) {
-			.sysconfs_num = 1,
+			.sysconfs_num = 4,
 			.power = stx7108_temp_power,
-			.sysconfs = (struct stm_device_sysconf []){
-				STM_DEVICE_SYS_CFG_BANK(1, 8, 9, 9, "TEMP_PWR"),
+			.sysconfs = (struct stm_device_sysconf []) {
+				STM_DEVICE_SYS_CFG_BANK(1,
+							8, 9, 9, "TEMP_PWR"),
+				STM_DEVICE_SYS_CFG_BANK(3,
+							8, 4, 8, "DCORRECT"),
+				STM_DEVICE_SYS_CFG_BANK(2,
+							7, 8, 8, "OVERFLOW"),
+				STM_DEVICE_SYS_CFG_BANK(2,
+							7, 10, 16, "DATA"),
 			},
 		}
 	},

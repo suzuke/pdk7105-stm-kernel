@@ -1094,15 +1094,18 @@ static struct platform_device stih415_temp_device[] = {
 		.name = "stm-temp",
 		.id = 0,
 		.dev.platform_data = &(struct plat_stm_temp_data) {
-			.dcorrect = { SYSCONF(178), 4, 8 },
-			.overflow = { SYSCONF(198), 8, 8 },
-			.data = { SYSCONF(198), 10, 16 },
 			.device_config = &(struct stm_device_config) {
-				.sysconfs_num = 1,
+				.sysconfs_num = 4,
 				.power = stih415_temp_power,
 				.sysconfs = (struct stm_device_sysconf []){
 					STM_DEVICE_SYSCONF(SYSCONF(178),
 						9, 9, "TEMP_PWR"),
+					STM_DEVICE_SYSCONF(SYSCONF(178),
+						4, 8, "DCORRECT"),
+					STM_DEVICE_SYSCONF(SYSCONF(198),
+						8, 8, "OVERFLOW"),
+					STM_DEVICE_SYSCONF(SYSCONF(198),
+						10, 16, "DATA"),
 				},
 			}
 		},
@@ -1112,20 +1115,22 @@ static struct platform_device stih415_temp_device[] = {
 		.name = "stm-temp",
 		.id = 1,
 		.dev.platform_data = &(struct plat_stm_temp_data) {
-			.dcorrect = { SYSCONF(607), 3, 7 },
-			.overflow = { SYSCONF(667), 9, 9 },
-			.data = { SYSCONF(667), 11, 18 },
 			.device_config = &(struct stm_device_config) {
-				.sysconfs_num = 1,
+				.sysconfs_num = 4,
 				.power = stih415_temp_power,
 				.sysconfs = (struct stm_device_sysconf []){
 					STM_DEVICE_SYSCONF(SYSCONF(607),
 						8, 8, "TEMP_PWR"),
+					STM_DEVICE_SYSCONF(SYSCONF(607),
+						3, 7, "DCORRECT"),
+					STM_DEVICE_SYSCONF(SYSCONF(667),
+						9, 9, "OVERFLOW"),
+					STM_DEVICE_SYSCONF(SYSCONF(667),
+						11, 18, "DATA"),
 				},
 			}
 		},
 	}
-
 };
 
 /* Hardware RNG driver */

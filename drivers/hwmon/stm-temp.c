@@ -15,7 +15,6 @@
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/thermal.h>
-#include <linux/stm/sysconf.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
 
@@ -24,11 +23,6 @@ struct stm_temp_sensor {
 	struct stm_device_state *device_state;
 	struct thermal_zone_device *th_dev;
 	struct plat_stm_temp_data *plat_data;
-
-	struct sysconf_field *dcorrect;
-	struct sysconf_field *overflow;
-	struct sysconf_field *data;
-
 	unsigned long (*custom_get_data)(void *priv);
 };
 
@@ -42,15 +36,15 @@ static int stm_thermal_get_temp(struct thermal_zone_device *th,
 
 	pm_runtime_get_sync(&sensor->pdev->dev);
 
-	overflow = sysconf_read(sensor->overflow);
+	overflow = stm_device_sysconf_read(sensor->device_state, "OVERFLOW");
 
 	if (sensor->plat_data->custom_get_data)
 		data = sensor->plat_data->custom_get_data(
 				sensor->plat_data->custom_priv);
 	else
-		data = sysconf_read(sensor->data);
+		data = stm_device_sysconf_read(sensor->device_state, "DATA");
 
-	overflow |= sysconf_read(sensor->overflow);
+	overflow |= stm_device_sysconf_read(sensor->device_state, "OVERFLOW");
 
 	data = (data + 20) * 1000;
 
@@ -69,58 +63,21 @@ static int __devinit stm_temp_probe(struct platform_device *pdev)
 {
 	struct stm_temp_sensor *sensor = platform_get_drvdata(pdev);
 	struct plat_stm_temp_data *plat_data = pdev->dev.platform_data;
-	const char *name = dev_name(&pdev->dev);
-	int err;
 
-	sensor = kzalloc(sizeof(*sensor), GFP_KERNEL);
+	sensor = devm_kzalloc(&pdev->dev, sizeof(*sensor), GFP_KERNEL);
 	if (!sensor) {
 		dev_err(&pdev->dev, "Out of memory!\n");
-		err = -ENOMEM;
-		goto error_kzalloc;
+		return -ENOMEM;
 	}
 
 	sensor->pdev = pdev;
 	sensor->plat_data = plat_data;
 
-	err = -EBUSY;
-
 	sensor->device_state = devm_stm_device_init(&pdev->dev,
 		plat_data->device_config);
 
-	if (!sensor->device_state) {
-		err = -EBUSY;
-		goto error_device_init;
-	}
-
-	if (!plat_data->custom_set_dcorrect) {
-		sensor->dcorrect = sysconf_claim(plat_data->dcorrect.group,
-				plat_data->dcorrect.num,
-				plat_data->dcorrect.lsb,
-				plat_data->dcorrect.msb, name);
-		if (!sensor->dcorrect) {
-			dev_err(&pdev->dev, "Can't claim DCORRECT sysconf "
-					"bits!\n");
-			goto error_device_init;
-		}
-	}
-
-	sensor->overflow = sysconf_claim(plat_data->overflow.group,
-			plat_data->overflow.num, plat_data->overflow.lsb,
-			plat_data->overflow.msb, name);
-	if (!sensor->overflow) {
-		dev_err(&pdev->dev, "Can't claim OVERFLOW sysconf bit!\n");
-		goto error_overflow;
-	}
-
-	if (!plat_data->custom_get_data) {
-		sensor->data = sysconf_claim(plat_data->data.group,
-				plat_data->data.num, plat_data->data.lsb,
-				plat_data->data.msb, name);
-		if (!sensor->data) {
-			dev_err(&pdev->dev, "Can't claim DATA sysconf bits!\n");
-			goto error_data;
-		}
-	}
+	if (!sensor->device_state)
+		return  -EBUSY;
 
 	if (plat_data->custom_set_dcorrect) {
 		plat_data->custom_set_dcorrect(plat_data->custom_priv);
@@ -128,7 +85,8 @@ static int __devinit stm_temp_probe(struct platform_device *pdev)
 		if (!plat_data->calibrated)
 			plat_data->calibration_value = 16;
 
-		sysconf_write(sensor->dcorrect, plat_data->calibration_value);
+		stm_device_sysconf_write(sensor->device_state, "DCORRECT",
+						plat_data->calibration_value);
 	}
 
 	platform_set_drvdata(pdev, sensor);
@@ -138,7 +96,7 @@ static int __devinit stm_temp_probe(struct platform_device *pdev)
 		&stm_thermal_ops, 0, 0, 10000, 10000);
 
 	if (IS_ERR(sensor->th_dev))
-		goto error_class_dev;
+		return -EBUSY;
 
 	/* Initialize the pm_runtime fields */
 	pm_runtime_set_active(&pdev->dev);
@@ -146,36 +104,13 @@ static int __devinit stm_temp_probe(struct platform_device *pdev)
 
 	return 0;
 
-error_class_dev:
-	if (sensor->data)
-		sysconf_release(sensor->data);
-error_data:
-	sysconf_release(sensor->overflow);
-error_overflow:
-	if (sensor->dcorrect)
-		sysconf_release(sensor->dcorrect);
-error_device_init:
-	kfree(sensor);
-error_kzalloc:
-	return err;
 }
 
 static int __devexit stm_temp_remove(struct platform_device *pdev)
 {
 	struct stm_temp_sensor *sensor = platform_get_drvdata(pdev);
-
 	stm_device_power(sensor->device_state, stm_device_power_off);
-
 	thermal_zone_device_unregister(sensor->th_dev);
-
-	if (sensor->dcorrect)
-		sysconf_release(sensor->dcorrect);
-	sysconf_release(sensor->overflow);
-	if (sensor->data)
-		sysconf_release(sensor->data);
-
-	kfree(sensor);
-
 	return 0;
 }
 
