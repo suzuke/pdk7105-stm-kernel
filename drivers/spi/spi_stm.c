@@ -368,6 +368,7 @@ static int spi_stm_probe(struct platform_device *pdev)
 	spi_stm->bitbang.txrx_bufs = spi_stm_txrx_bufs;
 	spi_stm->bitbang.master->setup = spi_stm_setup;
 	spi_stm->bitbang.master->cleanup = spi_stm_cleanup;
+	spi_stm->pdev = pdev;
 
 	if (plat_data->spi_chipselect)
 		spi_stm->bitbang.chipselect = plat_data->spi_chipselect;
