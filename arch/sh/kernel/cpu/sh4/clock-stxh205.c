@@ -9,6 +9,7 @@
 
 #include <linux/init.h>
 #include <linux/stm/clk.h>
+#include <linux/stm/stxh205.h>
 
 static char __initdata *sys_clks_on[] = {
 	"CLK_A0_SH4_ICK",
@@ -24,11 +25,11 @@ int __init arch_clk_init(void)
 {
 	int ret, i;
 
-	ret = plat_clk_init();
+	ret = stxh205_plat_clk_init();
 	if (ret)
 		return ret;
 
-	ret = plat_clk_alias_init();
+	ret = stxh205_plat_clk_alias_init();
 	if (ret)
 		return ret;
 

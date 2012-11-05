@@ -142,4 +142,8 @@ void fli7610_configure_spifsm(struct stm_plat_spifsm_data *data);
 
 void fli7610_configure_mmc(int emmc);
 
+/* Clk Stuff */
+int fli7610_plat_clk_init(void);
+int fli7610_plat_clk_alias_init(void);
+
 #endif

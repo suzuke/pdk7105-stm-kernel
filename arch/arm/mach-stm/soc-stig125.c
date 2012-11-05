@@ -15,6 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/err.h>
 #include <linux/stm/clk.h>
+#include <linux/stm/stig125.h>
 
 #include <asm/smp_twd.h>
 #include <asm/smp_gt.h>
@@ -171,8 +172,8 @@ static void __init stig125_twd_init(void)
 static void __init stig125_timer_init(void)
 {
 
-	plat_clk_init();
-	plat_clk_alias_init();
+	stig125_plat_clk_init();
+	stig125_plat_clk_alias_init();
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(STIG125_GLOBAL_TIMER_BASE),

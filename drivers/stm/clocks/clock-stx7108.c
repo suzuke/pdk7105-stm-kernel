@@ -325,7 +325,7 @@ SYSCONF(SYS_CFG_BANK3, 2, 8, 13);/* [c_out_4_7][c_out_0_3][grp_sel][c_selt] */
 SYSCONF(SYS_CFG_BANK4, 8, 20, 21);
 SYSCONF(SYS_CFG_BANK4, 14, 5, 5);
 
-int __init plat_clk_init(void)
+int __init stx7108_plat_clk_init(void)
 {
 	int ret = 0;
 

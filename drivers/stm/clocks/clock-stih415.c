@@ -34,7 +34,7 @@
  * and in the clock-SAS file to be able to compile
  * both the file __without__ any include chip_based
  */
-struct sysconf_field *platform_sys_claim(int _nr, int _lsb, int _msb)
+struct sysconf_field *stih415_platform_sys_claim(int _nr, int _lsb, int _msb)
 {
 	return sysconf_claim(SYSCONFG_GROUP(_nr), 
 		SYSCONF_OFFSET(_nr), _lsb, _msb, "Clk lla");
@@ -64,17 +64,17 @@ static clk_t clk_clocks[] = {
 };
 
 /* ========================================================================
-   Name:        plat_clk_init()
+   Name:        stih415_plat_clk_init()
    Description: SOC specific LLA initialization
    Returns:     'clk_err_t' error code.
    ======================================================================== */
 
-int __init plat_clk_init(void)
+int __init stih415_plat_clk_init(void)
 {
 	clk_t *clk_main, *clk_aux;
-
 	clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
 
+	platform_sys_claim = stih415_platform_sys_claim;
 	/* SASG1 clocks */
 	sasg1_clk_init(&clk_clocks[0]);
 

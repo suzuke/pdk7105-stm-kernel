@@ -11,7 +11,7 @@
 #include <linux/init.h>
 #include <linux/clk.h>
 
-int __init plat_clk_alias_init(void)
+int __init stih416_plat_clk_alias_init(void)
 {
 	clk_add_alias("cpu_clk", NULL, "CLK_M_A9", NULL);
 	clk_add_alias(NULL, "smp_twd", "CLK_M_A9_PERIPHS", NULL);
@@ -56,6 +56,9 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("usb_ic_clk", NULL, "CLK_S_ICN_IF_2",  NULL);
 	clk_add_alias("usb_48_clk", NULL, "CLK_S_USB48", NULL);
 	/* ETH */
+#ifdef CONFIG_OF
+	clk_add_alias("stmmaceth", NULL, "CLK_S_ICN_REG_0", NULL);
+#endif
 	clk_add_alias(NULL, "stmmaceth.0", "CLK_S_ICN_REG_0", NULL);
 	clk_add_alias(NULL, "stmmaceth.1", "CLK_S_ICN_REG_0", NULL);
 

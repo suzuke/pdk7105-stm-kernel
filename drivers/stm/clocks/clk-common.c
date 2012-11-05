@@ -120,6 +120,7 @@ static inline uint64_t div64_u64(uint64_t dividend, uint64_t divisor)
 #include <linux/clkdev.h>
 #include "clock-oslayer.h"
 
+struct sysconf_field *(*platform_sys_claim)(int nr, int lsb, int msb);
 int __init clk_register_table(struct clk *clks, int num, int enable)
 {
 	int i;

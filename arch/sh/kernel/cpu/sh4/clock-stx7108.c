@@ -9,16 +9,17 @@
 
 #include <linux/init.h>
 #include <linux/stm/clk.h>
+#include <linux/stm/stx7108.h>
 
 int __init arch_clk_init(void)
 {
 	int ret;
 
-	ret = plat_clk_init();
+	ret = stx7108_plat_clk_init();
 	if (ret)
 		return ret;
 
-	ret = plat_clk_alias_init();
+	ret = stx7108_plat_clk_alias_init();
 	if (ret)
 		return ret;
 

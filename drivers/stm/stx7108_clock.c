@@ -10,7 +10,7 @@
 #include <linux/init.h>
 #include <linux/stm/clk.h>
 
-int __init plat_clk_alias_init(void)
+int __init stx7108_plat_clk_alias_init(void)
 {
 	/* core clocks */
 	clk_add_alias("cpu_clk", NULL, "CLKA_SH4L2_ICK", NULL);

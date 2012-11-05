@@ -64,6 +64,8 @@
 
 void stih415_early_device_init(void);
 
+void stih415_dt_init(void);
+
 void stih415_configure_nand(struct stm_nand_config *config);
 
 void stih415_configure_spifsm(struct stm_plat_spifsm_data *data);
@@ -161,5 +163,8 @@ struct stih415_pcie_config {
 
 void stih415_configure_pcie(struct stih415_pcie_config *config);
 
+/* Clk */
+int stih415_plat_clk_init(void);
+int stih415_plat_clk_alias_init(void);
 
 #endif

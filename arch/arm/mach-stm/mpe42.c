@@ -115,8 +115,8 @@ static void __init mpe42_twd_init(void)
 /* Setup the Global Timer */
 static void __init mpe42_timer_init(void)
 {
-	plat_clk_init();
-	plat_clk_alias_init();
+	stih416_plat_clk_init();
+	stih416_plat_clk_alias_init();
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(MPE42_GLOBAL_TIMER_BASE),

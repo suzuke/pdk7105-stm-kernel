@@ -153,4 +153,8 @@ struct stxh205_audio_config {
 };
 void stxh205_configure_audio(struct stxh205_audio_config *config);
 
+/* Clk Stuff */
+int stxh205_plat_clk_init(void);
+int stxh205_plat_clk_alias_init(void);
+
 #endif

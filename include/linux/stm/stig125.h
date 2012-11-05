@@ -150,4 +150,7 @@ struct stig125_audio_config {
 };
 void stig125_configure_audio(struct stig125_audio_config *config);
 
+/* Clk Stuff */
+int stig125_plat_clk_init(void);
+int stig125_plat_clk_alias_init(void);
 #endif

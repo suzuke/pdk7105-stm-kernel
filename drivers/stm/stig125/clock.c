@@ -12,7 +12,7 @@
 #include <linux/init.h>
 #include <linux/clk.h>
 
-int __init plat_clk_alias_init(void)
+int __init stig125_plat_clk_alias_init(void)
 {
 	/* CA9 clock */
 	clk_add_alias("cpu_clk", NULL, "CLK_S_A9", NULL);

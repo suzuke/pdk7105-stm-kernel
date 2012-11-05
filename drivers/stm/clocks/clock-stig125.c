@@ -37,7 +37,7 @@
 #include <linux/io.h>
 #include <linux/delay.h>
 
-struct sysconf_field *platform_sys_claim(int _nr, int _lsb, int _msb)
+struct sysconf_field *stig125_platform_sys_claim(int _nr, int _lsb, int _msb)
 {
 	return sysconf_claim(SYSCONFG_GROUP(_nr),
 		SYSCONF_OFFSET(_nr), _lsb, _msb, "Clk lla");
@@ -70,15 +70,16 @@ static struct clk clk_clocks[] = {
 };
 
 /* ========================================================================
-   Name:        plat_clk_init()
+   Name:        stig125_plat_clk_init()
    Description: SOC specific LLA initialization
    Returns:     'clk_err_t' error code.
    ======================================================================== */
 
-int __init plat_clk_init(void)
+int __init stig125_plat_clk_init(void)
 {
 	clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 1);
 
+	platform_sys_claim = stig125_platform_sys_claim;
 	/* SASC1 clocks */
 	sasc1_clk_init(&clk_clocks[0], &clk_clocks[1],
 		&clk_clocks[2], &clk_clocks[3], &clk_clocks[4]);

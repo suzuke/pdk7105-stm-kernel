@@ -55,7 +55,7 @@
  * the platform_sys_claim has to be implemented
  * in a chip-oriented file
  */
-struct sysconf_field *platform_sys_claim(int nr, int lsb, int msb);
+extern struct sysconf_field *(*platform_sys_claim)(int nr, int lsb, int msb);
 
 #define call_platform_sys_claim(_nr, _lsb, _msb)		\
 	sys_0_##_nr##_##_lsb##_##_msb =				\

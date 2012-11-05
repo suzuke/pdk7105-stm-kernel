@@ -52,6 +52,8 @@
 #include <linux/stm/clk.h>
 #include <linux/clkdev.h>
 
+struct sysconf_field *(*platform_sys_claim)(int nr, int lsb, int msb);
+
 int __init clk_register_table(struct clk *clks, int num, int enable)
 {
 	int i;
