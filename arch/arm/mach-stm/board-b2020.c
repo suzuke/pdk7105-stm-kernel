@@ -172,16 +172,23 @@ static void __init b2020_init(void)
 	stih415_configure_usb(1);
 	stih415_configure_usb(2);
 
-	/* HDMI */
+	/*
+	 * SSC0 to STV6440 (AV Buffer), PCIe connector (SMB) and
+	 * NIM (SCL1/SDA1)
+	 */
+	stih415_configure_ssc_i2c(STIH415_SSC(0),
+			&(struct stih415_ssc_config) {.i2c_speed = 100,});
+
+	/* SSC1 to HDMI (via HDMI2C1_5DIJ) */
 	stih415_configure_ssc_i2c(STIH415_SSC(1),
 			&(struct stih415_ssc_config) {.i2c_speed = 100,});
 
-	/* Frontend I2C, make sure J17-J20 are configured accordingly */
-	stih415_configure_ssc_i2c(STIH415_SSC(3),
+	/* SSC10 to M24256-BWMN6 eeprom and NIM SCL2/SDA2 */
+	stih415_configure_ssc_i2c(STIH415_SBC_SSC(0),
 			&(struct stih415_ssc_config) {.i2c_speed = 100,});
 
-	/* Backend I2C, make sure J50, J51 are configured accordingly */
-	stih415_configure_ssc_i2c(STIH415_SBC_SSC(0),
+	/* SSC11 to J36 TFT interface */
+	stih415_configure_ssc_i2c(STIH415_SBC_SSC(1),
 			&(struct stih415_ssc_config) {.i2c_speed = 100,});
 
 	/* IR_IN */
