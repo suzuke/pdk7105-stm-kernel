@@ -48,6 +48,10 @@
 #define CHIP_DBG(fmt, args...)  do { } while (0)
 #endif
 
+/* Synopsys Core versions */
+#define	DWMAC_CORE_3_40	0x34
+#define	DWMAC_CORE_3_50	0x35
+
 #undef FRAME_FILTER_DEBUG
 /* #define FRAME_FILTER_DEBUG */
 
@@ -164,6 +168,7 @@ struct stmmac_extra_stats {
 #define DMA_HW_FEAT_SAVLANINS	0x08000000 /* Source Addr or VLAN Insertion */
 #define DMA_HW_FEAT_ACTPHYIF	0x70000000 /* Active/selected PHY interface */
 #define DEFAULT_DMA_PBL		8
+#define DEFAULT_DMA_RIWT	0xff
 
 enum rx_frame_status { /* IPC status */
 	good_frame = 0,
@@ -300,6 +305,8 @@ struct stmmac_dma_ops {
 			      struct stmmac_extra_stats *x);
 	/* If supported then get the optional core features */
 	unsigned int (*get_hw_feature) (void __iomem *ioaddr);
+	/* Program the HW RX Watchdog */
+	void (*rx_watchdog) (void __iomem *ioaddr, u32 riwt);
 };
 
 struct stmmac_ops {

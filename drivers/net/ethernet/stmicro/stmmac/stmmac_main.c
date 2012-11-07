@@ -133,6 +133,7 @@ MODULE_PARM_DESC(eee_timer, "LPI tx expiration time in msec");
 #define STMMAC_LPI_TIMER(x) (jiffies + msecs_to_jiffies(x))
 
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id);
+static int stmmac_rx(struct stmmac_priv *priv, int limit);
 
 #ifdef CONFIG_STMMAC_DEBUG_FS
 static int stmmac_init_fs(struct net_device *dev);
@@ -603,6 +604,8 @@ static void init_dma_desc_rings(struct net_device *dev)
 	priv->dirty_tx = 0;
 	priv->cur_tx = 0;
 
+	if (priv->use_riwt)
+		dis_ic = 1;
 	/* Clear the Rx/Tx descriptors */
 	priv->hw->desc->init_rx_desc(priv->dma_rx, rxsize, dis_ic);
 	priv->hw->desc->init_tx_desc(priv->dma_tx, txsize);
@@ -773,12 +776,12 @@ static void stmmac_tx_clean(unsigned long data)
 	spin_unlock(&priv->tx_lock);
 }
 
-static inline void stmmac_enable_irq(struct stmmac_priv *priv)
+static inline void stmmac_enable_dma_rx_irq(struct stmmac_priv *priv)
 {
 	priv->hw->dma->enable_dma_irq(priv->ioaddr);
 }
 
-static inline void stmmac_disable_irq(struct stmmac_priv *priv)
+static inline void stmmac_disable_dma_rx_irq(struct stmmac_priv *priv)
 {
 	priv->hw->dma->disable_dma_irq(priv->ioaddr);
 }
@@ -807,10 +810,10 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 	netif_wake_queue(priv->dev);
 }
 
-static void stmmac_rx_schedule(struct stmmac_priv *priv)
+static void stmmac_rx_work(struct stmmac_priv *priv)
 {
 	if (likely(napi_schedule_prep(&priv->napi))) {
-		stmmac_disable_irq(priv);
+		stmmac_disable_dma_rx_irq(priv);
 		__napi_schedule(&priv->napi);
 	}
 }
@@ -822,7 +825,7 @@ static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 	status = priv->hw->dma->dma_interrupt(priv->ioaddr, &priv->xstats);
 	if (likely(status & handle_rx)) {
 		priv->xstats.rx_normal_irq_n++;
-		stmmac_rx_schedule(priv);
+		stmmac_rx_work(priv);
 	}
 	if (likely(status & handle_tx)) {
 		priv->xstats.tx_normal_irq_n++;
@@ -1107,6 +1110,12 @@ static int stmmac_open(struct net_device *dev)
 	tasklet_init(&priv->tx_work, stmmac_tx_clean, (unsigned long) priv);
 
 	stmmac_init_tx_coalesce(priv);
+
+	if ((priv->use_riwt) && (priv->hw->dma->rx_watchdog))
+		/* Program RX Watchdog register to the default values
+		 * FIXME: provide user value for RIWT
+		 */
+		priv->hw->dma->rx_watchdog(priv->ioaddr, DEFAULT_DMA_RIWT);
 
 	napi_enable(&priv->napi);
 	skb_queue_head_init(&priv->rx_recycle);
@@ -1431,14 +1440,12 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit)
 #endif
 			skb->protocol = eth_type_trans(skb, priv->dev);
 
-			if (unlikely(!priv->plat->rx_coe)) {
-				/* No RX COE for old mac10/100 devices */
+			if (unlikely(!priv->plat->rx_coe))
 				skb_checksum_none_assert(skb);
-				netif_receive_skb(skb);
-			} else {
+			else
 				skb->ip_summed = CHECKSUM_UNNECESSARY;
-				napi_gro_receive(&priv->napi, skb);
-			}
+
+			napi_gro_receive(&priv->napi, skb);
 
 			priv->dev->stats.rx_packets++;
 			priv->dev->stats.rx_bytes += frame_len;
@@ -1472,7 +1479,7 @@ static int stmmac_poll(struct napi_struct *napi, int budget)
 
 	if (work_done < budget) {
 		napi_complete(napi);
-		stmmac_enable_irq(priv);
+		stmmac_enable_dma_rx_irq(priv);
 	}
 	return work_done;
 }
@@ -2008,6 +2015,16 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 	if (flow_ctrl)
 		priv->flow_ctrl = FLOW_AUTO;	/* RX/TX pause on */
 
+	/* Rx Watchdog is available in the COREs newer than the 3.40.
+	 * In some case, for example on bugged HW this feature
+	 * has to be disable and this can be done by passing the
+	 * riwt_off field from the platform.
+	 */
+	if ((priv->synopsys_id >= DWMAC_CORE_3_50) && (!priv->plat->riwt_off)) {
+		priv->use_riwt = 1;
+		pr_info(" Enable RX Mitigation via HW Watchdog Timer\n");
+	}
+
 	netif_napi_add(ndev, &priv->napi, stmmac_poll, 64);
 
 	spin_lock_init(&priv->lock);
@@ -2107,6 +2124,9 @@ int stmmac_suspend(struct net_device *ndev)
 
 	netif_device_detach(ndev);
 	netif_stop_queue(ndev);
+
+	if (priv->use_riwt)
+		dis_ic = 1;
 
 	napi_disable(&priv->napi);
 

@@ -91,6 +91,7 @@ struct stmmac_priv {
 	int tx_lpi_timer;
 	struct timer_list txtimer;
 	struct tasklet_struct tx_work;
+	int use_riwt;
 	u32 tx_count_frames;
 	u32 tx_coal_frames;
 	u32 tx_coal_timer;
