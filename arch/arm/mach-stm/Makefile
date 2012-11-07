@@ -7,6 +7,7 @@ obj-$(CONFIG_MACH_STM_FLI76XXHDK01)	+= board-fli76xxhdk01.o
 obj-$(CONFIG_MACH_STM_B2000)	+= board-b2000.o
 obj-$(CONFIG_MACH_STM_B2020)	+= board-b2020.o
 obj-$(CONFIG_MACH_STM_B2044)	+= board-b2044.o
+obj-$(CONFIG_MACH_STM_B2078)	+= board-b2078.o
 obj-$(CONFIG_CACHE_L2X0)	+= l2x0.o
 obj-$(CONFIG_PCI)		+= pci-glue.o
 
