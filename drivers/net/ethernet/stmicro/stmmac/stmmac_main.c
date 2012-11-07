@@ -77,8 +77,6 @@
 
 #define STMMAC_ALIGN(x)	L1_CACHE_ALIGN(x)
 #define JUMBO_LEN	9000
-#define STMMAC_TX_TM	40000
-#define STMMAC_TX_MAX_FRAMES	128
 
 /* Module parameters */
 #define TX_TIMEO 5000 /* default 5 seconds */
@@ -139,6 +137,8 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit);
 static int stmmac_init_fs(struct net_device *dev);
 static void stmmac_exit_fs(void);
 #endif
+
+#define STMMAC_COAL_TIMER(x) (jiffies + usecs_to_jiffies(x))
 
 /**
  * stmmac_verify_args - verify the driver parameters.
@@ -991,9 +991,9 @@ static void stmmac_init_tx_coalesce(struct stmmac_priv *priv)
 {
 	/* Set Tx coalesce parameters and timers */
 	priv->tx_coal_frames = STMMAC_TX_MAX_FRAMES / 4;
-	priv->tx_coal_timer = jiffies + usecs_to_jiffies(STMMAC_TX_TM);
+	priv->tx_coal_timer = STMMAC_COAL_TX_TIMER;
 	init_timer(&priv->txtimer);
-	priv->txtimer.expires = priv->tx_coal_timer;
+	priv->txtimer.expires = STMMAC_COAL_TIMER(priv->tx_coal_timer);
 	priv->txtimer.data = (unsigned long)priv;
 	priv->txtimer.function = stmmac_tx_clean;
 	add_timer(&priv->txtimer);
@@ -1111,11 +1111,10 @@ static int stmmac_open(struct net_device *dev)
 
 	stmmac_init_tx_coalesce(priv);
 
-	if ((priv->use_riwt) && (priv->hw->dma->rx_watchdog))
-		/* Program RX Watchdog register to the default values
-		 * FIXME: provide user value for RIWT
-		 */
-		priv->hw->dma->rx_watchdog(priv->ioaddr, DEFAULT_DMA_RIWT);
+	if ((priv->use_riwt) && (priv->hw->dma->rx_watchdog)) {
+		priv->rx_riwt = MAX_DMA_RIWT;
+		priv->hw->dma->rx_watchdog(priv->ioaddr, MAX_DMA_RIWT);
+	}
 
 	napi_enable(&priv->napi);
 	skb_queue_head_init(&priv->rx_recycle);
@@ -1293,7 +1292,8 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		priv->xstats.tx_reset_ic_bit++;
 		TX_DBG("\t[entry %d]: tx_count_frames %d\n", entry,
 		       priv->tx_count_frames);
-		mod_timer(&priv->txtimer, priv->tx_coal_timer);
+		mod_timer(&priv->txtimer,
+			  STMMAC_COAL_TIMER(priv->tx_coal_timer));
 	} else
 		priv->tx_count_frames = 0;
 

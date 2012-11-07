@@ -168,7 +168,14 @@ struct stmmac_extra_stats {
 #define DMA_HW_FEAT_SAVLANINS	0x08000000 /* Source Addr or VLAN Insertion */
 #define DMA_HW_FEAT_ACTPHYIF	0x70000000 /* Active/selected PHY interface */
 #define DEFAULT_DMA_PBL		8
-#define DEFAULT_DMA_RIWT	0xff
+
+/* Coalesce defines */
+#define MAX_DMA_RIWT		0xff	/* Max RI Watchdog Timer count */
+#define MIN_DMA_RIWT		0x20
+#define STMMAC_COAL_TX_TIMER	40000
+#define STMMAC_MAX_COAL_TX_TICK	100000
+#define STMMAC_TX_MAX_FRAMES	128
+
 
 enum rx_frame_status { /* IPC status */
 	good_frame = 0,

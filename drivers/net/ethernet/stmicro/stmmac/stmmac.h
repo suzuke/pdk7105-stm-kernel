@@ -95,6 +95,7 @@ struct stmmac_priv {
 	u32 tx_count_frames;
 	u32 tx_coal_frames;
 	u32 tx_coal_timer;
+	u32 rx_riwt;
 };
 
 extern int phyaddr;
