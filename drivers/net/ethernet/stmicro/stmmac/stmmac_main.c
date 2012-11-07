@@ -77,6 +77,8 @@
 
 #define STMMAC_ALIGN(x)	L1_CACHE_ALIGN(x)
 #define JUMBO_LEN	9000
+#define STMMAC_TX_TM	40000
+#define STMMAC_TX_MAX_FRAMES	128
 
 /* Module parameters */
 #define TX_TIMEO 5000 /* default 5 seconds */
@@ -688,15 +690,18 @@ static void stmmac_dma_operation_mode(struct stmmac_priv *priv)
 }
 
 /**
- * stmmac_tx:
- * @priv: private driver structure
+ * stmmac_tx_clean:
+ * @data: data pointer
  * Description: it reclaims resources after transmission completes.
  */
-static void stmmac_tx(struct stmmac_priv *priv)
+static void stmmac_tx_clean(unsigned long data)
 {
+	struct stmmac_priv *priv = (struct stmmac_priv *)data;
 	unsigned int txsize = priv->dma_tx_size;
 
 	spin_lock(&priv->tx_lock);
+
+	priv->xstats.tx_clean++;
 
 	while (priv->dirty_tx != priv->cur_tx) {
 		int last;
@@ -778,30 +783,6 @@ static inline void stmmac_disable_irq(struct stmmac_priv *priv)
 	priv->hw->dma->disable_dma_irq(priv->ioaddr);
 }
 
-static int stmmac_has_work(struct stmmac_priv *priv)
-{
-	unsigned int has_work = 0;
-	int rxret, tx_work = 0;
-
-	rxret = priv->hw->desc->get_rx_owner(priv->dma_rx +
-		(priv->cur_rx % priv->dma_rx_size));
-
-	if (priv->dirty_tx != priv->cur_tx)
-		tx_work = 1;
-
-	if (likely(!rxret || tx_work))
-		has_work = 1;
-
-	return has_work;
-}
-
-static inline void _stmmac_schedule(struct stmmac_priv *priv)
-{
-	if (likely(stmmac_has_work(priv))) {
-		stmmac_disable_irq(priv);
-		napi_schedule(&priv->napi);
-	}
-}
 
 /**
  * stmmac_tx_err:
@@ -814,6 +795,7 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 	netif_stop_queue(priv->dev);
 
 	priv->hw->dma->stop_tx(priv->ioaddr);
+	tasklet_disable(&priv->tx_work);
 	dma_free_tx_skbufs(priv);
 	priv->hw->desc->init_tx_desc(priv->dma_tx, priv->dma_tx_size);
 	priv->dirty_tx = 0;
@@ -821,10 +803,11 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 	priv->hw->dma->start_tx(priv->ioaddr);
 
 	priv->dev->stats.tx_errors++;
+	tasklet_enable(&priv->tx_work);
 	netif_wake_queue(priv->dev);
 }
 
-static inline void stmmac_rx_schedule(struct stmmac_priv *priv)
+static void stmmac_rx_schedule(struct stmmac_priv *priv)
 {
 	if (likely(napi_schedule_prep(&priv->napi))) {
 		stmmac_disable_irq(priv);
@@ -843,7 +826,7 @@ static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 	}
 	if (likely(status & handle_tx)) {
 		priv->xstats.tx_normal_irq_n++;
-		stmmac_tx(priv);
+		tasklet_schedule(&priv->tx_work);
 	} else if (unlikely(status & tx_hard_error_bump_tc)) {
 		/* Try to bump up the dma threshold on this failure */
 		if (unlikely(tc != SF_DMA_MODE) && (tc <= 256)) {
@@ -1001,6 +984,18 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 				   priv->dma_rx_phy);
 }
 
+static void stmmac_init_tx_coalesce(struct stmmac_priv *priv)
+{
+	/* Set Tx coalesce parameters and timers */
+	priv->tx_coal_frames = STMMAC_TX_MAX_FRAMES / 4;
+	priv->tx_coal_timer = jiffies + usecs_to_jiffies(STMMAC_TX_TM);
+	init_timer(&priv->txtimer);
+	priv->txtimer.expires = priv->tx_coal_timer;
+	priv->txtimer.data = (unsigned long)priv;
+	priv->txtimer.function = stmmac_tx_clean;
+	add_timer(&priv->txtimer);
+}
+
 /**
  *  stmmac_open - open entry point of the driver
  *  @dev : pointer to the device structure.
@@ -1109,6 +1104,10 @@ static int stmmac_open(struct net_device *dev)
 	priv->tx_lpi_timer = STMMAC_DEFAULT_TWT_LS_TIMER;
 	priv->eee_enabled = stmmac_eee_init(priv);
 
+	tasklet_init(&priv->tx_work, stmmac_tx_clean, (unsigned long) priv);
+
+	stmmac_init_tx_coalesce(priv);
+
 	napi_enable(&priv->napi);
 	skb_queue_head_init(&priv->rx_recycle);
 	netif_start_queue(dev);
@@ -1156,6 +1155,9 @@ static int stmmac_release(struct net_device *dev)
 	napi_disable(&priv->napi);
 	skb_queue_purge(&priv->rx_recycle);
 
+	del_timer_sync(&priv->txtimer);
+	tasklet_kill(&priv->tx_work);
+
 	/* Free the IRQ lines */
 	free_irq(dev->irq, dev);
 	if (priv->wol_irq != dev->irq)
@@ -1198,6 +1200,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 	int nfrags = skb_shinfo(skb)->nr_frags;
 	struct dma_desc *desc, *first;
 	unsigned int nopaged_len = skb_headlen(skb);
+	unsigned long flags;
 
 	if (unlikely(stmmac_tx_avail(priv) < nfrags + 1)) {
 		if (!netif_queue_stopped(dev)) {
@@ -1209,7 +1212,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		return NETDEV_TX_BUSY;
 	}
 
-	spin_lock(&priv->tx_lock);
+	spin_lock_irqsave(&priv->tx_lock, flags);
 
 	if (priv->tx_path_in_lpi_mode)
 		stmmac_disable_eee_mode(priv);
@@ -1218,11 +1221,13 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 
 #ifdef STMMAC_XMIT_DEBUG
 	if ((skb->len > ETH_FRAME_LEN) || nfrags)
-		pr_info("stmmac xmit:\n"
-		       "\tskb addr %p - len: %d - nopaged_len: %d\n"
-		       "\tn_frags: %d - ip_summed: %d - %s gso\n",
-		       skb, skb->len, nopaged_len, nfrags, skb->ip_summed,
-		       !skb_is_gso(skb) ? "isn't" : "is");
+		pr_debug("stmmac xmit: [entry %d]\n"
+			 "\tskb addr %p - len: %d - nopaged_len: %d\n"
+			 "\tn_frags: %d - ip_summed: %d - %s gso\n"
+			 "\ttx_count_frames %d\n", entry,
+			 skb, skb->len, nopaged_len, nfrags, skb->ip_summed,
+			 !skb_is_gso(skb) ? "isn't" : "is",
+			 priv->tx_count_frames);
 #endif
 
 	csum_insertion = (skb->ip_summed == CHECKSUM_PARTIAL);
@@ -1232,9 +1237,9 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 
 #ifdef STMMAC_XMIT_DEBUG
 	if ((nfrags > 0) || (skb->len > ETH_FRAME_LEN))
-		pr_debug("stmmac xmit: skb len: %d, nopaged_len: %d,\n"
-		       "\t\tn_frags: %d, ip_summed: %d\n",
-		       skb->len, nopaged_len, nfrags, skb->ip_summed);
+		pr_debug("\tskb len: %d, nopaged_len: %d,\n"
+			 "\t\tn_frags: %d, ip_summed: %d\n",
+			 skb->len, nopaged_len, nfrags, skb->ip_summed);
 #endif
 	priv->tx_skbuff[entry] = skb;
 
@@ -1265,10 +1270,23 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		wmb();
 	}
 
-	/* Interrupt on completition only for the latest segment */
+	/* Finalize the latest segment. */
 	priv->hw->desc->close_tx_desc(desc);
 
 	wmb();
+	/* According to the coalesce parameter the IC bit for the latest
+	 * segment could be reset and the timer re-started to invoke the
+	 * stmmac_tx function. This approach takes care about the fragments.
+	 */
+	priv->tx_count_frames += nfrags + 1;
+	if (priv->tx_coal_frames > priv->tx_count_frames) {
+		priv->hw->desc->clear_tx_ic(desc);
+		priv->xstats.tx_reset_ic_bit++;
+		TX_DBG("\t[entry %d]: tx_count_frames %d\n", entry,
+		       priv->tx_count_frames);
+		mod_timer(&priv->txtimer, priv->tx_coal_timer);
+	} else
+		priv->tx_count_frames = 0;
 
 	/* To avoid raise condition */
 	priv->hw->desc->set_tx_owner(first);
@@ -1298,7 +1316,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	priv->hw->dma->enable_dma_transmission(priv->ioaddr);
 
-	spin_unlock(&priv->tx_lock);
+	spin_unlock_irqrestore(&priv->tx_lock, flags);
 
 	return NETDEV_TX_OK;
 }
@@ -1443,7 +1461,6 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit)
  *	      all interfaces.
  *  Description :
  *   This function implements the the reception process.
- *   Also it runs the TX completion thread
  */
 static int stmmac_poll(struct napi_struct *napi, int budget)
 {

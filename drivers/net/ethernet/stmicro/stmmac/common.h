@@ -95,11 +95,12 @@ struct stmmac_extra_stats {
 	unsigned long threshold;
 	unsigned long tx_pkt_n;
 	unsigned long rx_pkt_n;
-	unsigned long rx_napi_poll;
-	unsigned long rx_normal_irq_n;
-	unsigned long tx_normal_irq_n;
-	unsigned long sched_timer_n;
 	unsigned long normal_irq_n;
+	unsigned long rx_normal_irq_n;
+	unsigned long rx_napi_poll;
+	unsigned long tx_normal_irq_n;
+	unsigned long tx_clean;
+	unsigned long tx_reset_ic_bit;
 	unsigned long mmc_tx_irq_n;
 	unsigned long mmc_rx_irq_n;
 	unsigned long mmc_rx_csum_offload_irq_n;

@@ -30,6 +30,7 @@
 #include <linux/stmmac.h>
 #include <linux/phy.h>
 #include <linux/pci.h>
+#include <linux/interrupt.h>
 #include "common.h"
 
 struct stmmac_priv {
@@ -88,6 +89,11 @@ struct stmmac_priv {
 	int eee_enabled;
 	int eee_active;
 	int tx_lpi_timer;
+	struct timer_list txtimer;
+	struct tasklet_struct tx_work;
+	u32 tx_count_frames;
+	u32 tx_coal_frames;
+	u32 tx_coal_timer;
 };
 
 extern int phyaddr;
