@@ -39,14 +39,20 @@ void dwmac_enable_dma_transmission(void __iomem *ioaddr)
 	writel(1, ioaddr + DMA_XMT_POLL_DEMAND);
 }
 
-void dwmac_enable_dma_irq(void __iomem *ioaddr)
+void dwmac_enable_rx_dma_irq(void __iomem *ioaddr)
 {
-	writel(DMA_INTR_DEFAULT_MASK, ioaddr + DMA_INTR_ENA);
+	u32 value = readl(ioaddr + DMA_INTR_ENA);
+
+	value |= DMA_INTR_ENA_RIE;
+	writel(value, ioaddr + DMA_INTR_ENA);
 }
 
-void dwmac_disable_dma_irq(void __iomem *ioaddr)
+void dwmac_disable_rx_dma_irq(void __iomem *ioaddr)
 {
-	writel(0, ioaddr + DMA_INTR_ENA);
+	u32 value = readl(ioaddr + DMA_INTR_ENA);
+
+	value &= ~DMA_INTR_ENA_RIE;
+	writel(value, ioaddr + DMA_INTR_ENA);
 }
 
 void dwmac_dma_start_tx(void __iomem *ioaddr)
@@ -206,15 +212,22 @@ int dwmac_dma_interrupt(void __iomem *ioaddr,
 	/* TX/RX NORMAL interrupts */
 	if (intr_status & DMA_STATUS_NIS) {
 		x->normal_irq_n++;
-		if (likely(intr_status & DMA_STATUS_RI))
-			ret |= handle_rx;
-		if (intr_status & (DMA_STATUS_TI))
+		if (likely(intr_status & DMA_STATUS_RI)) {
+			u32 value = readl(ioaddr + DMA_INTR_ENA);
+			/* to schedule NAPI on real RIE event. */
+			if (likely(value & DMA_INTR_ENA_RIE))
+				ret |= handle_rx;
+		}
+		if (intr_status & DMA_STATUS_TI)
 			ret |= handle_tx;
+		if (intr_status & DMA_STATUS_ERI)
+			x->rx_early_irq++;
 	}
 	/* Optional hardware blocks, interrupts should be disabled */
 	if (unlikely(intr_status &
 		     (DMA_STATUS_GPI | DMA_STATUS_GMI | DMA_STATUS_GLI)))
 		pr_info("%s: unexpected status %08x\n", __func__, intr_status);
+
 	/* Clear the interrupt by writing a logic 1 to the CSR5[15-0] */
 	writel((intr_status & 0x1ffff), ioaddr + DMA_STATUS);
 

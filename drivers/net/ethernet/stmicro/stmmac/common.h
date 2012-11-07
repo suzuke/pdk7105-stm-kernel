@@ -85,7 +85,7 @@ struct stmmac_extra_stats {
 	unsigned long rx_missed_cntr;
 	unsigned long rx_overflow_cntr;
 	unsigned long rx_vlan;
-	/* Tx/Rx IRQ errors */
+	/* Tx/Rx IRQ error info */
 	unsigned long tx_undeflow_irq;
 	unsigned long tx_process_stopped_irq;
 	unsigned long tx_jabber_irq;
@@ -95,7 +95,8 @@ struct stmmac_extra_stats {
 	unsigned long rx_watchdog_irq;
 	unsigned long tx_early_irq;
 	unsigned long fatal_bus_error_irq;
-	/* Extra info */
+	/* Tx/Rx IRQ Events */
+	unsigned long rx_early_irq;
 	unsigned long threshold;
 	unsigned long tx_pkt_n;
 	unsigned long rx_pkt_n;
@@ -105,11 +106,12 @@ struct stmmac_extra_stats {
 	unsigned long tx_normal_irq_n;
 	unsigned long tx_clean;
 	unsigned long tx_reset_ic_bit;
+	unsigned long irq_receive_pmt_irq_n;
+	/* MMC info */
 	unsigned long mmc_tx_irq_n;
 	unsigned long mmc_rx_irq_n;
 	unsigned long mmc_rx_csum_offload_irq_n;
 	/* EEE */
-	unsigned long irq_receive_pmt_irq_n;
 	unsigned long irq_tx_path_in_lpi_mode_n;
 	unsigned long irq_tx_path_exit_lpi_mode_n;
 	unsigned long irq_rx_path_in_lpi_mode_n;
@@ -302,8 +304,8 @@ struct stmmac_dma_ops {
 	void (*dma_diagnostic_fr) (void *data, struct stmmac_extra_stats *x,
 				   void __iomem *ioaddr);
 	void (*enable_dma_transmission) (void __iomem *ioaddr);
-	void (*enable_dma_irq) (void __iomem *ioaddr);
-	void (*disable_dma_irq) (void __iomem *ioaddr);
+	void (*enable_rx_dma_irq) (void __iomem *ioaddr);
+	void (*disable_rx_dma_irq) (void __iomem *ioaddr);
 	void (*start_tx) (void __iomem *ioaddr);
 	void (*stop_tx) (void __iomem *ioaddr);
 	void (*start_rx) (void __iomem *ioaddr);

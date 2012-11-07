@@ -105,8 +105,8 @@
 #define DMA_CONTROL_FTF		0x00100000 /* Flush transmit FIFO */
 
 extern void dwmac_enable_dma_transmission(void __iomem *ioaddr);
-extern void dwmac_enable_dma_irq(void __iomem *ioaddr);
-extern void dwmac_disable_dma_irq(void __iomem *ioaddr);
+extern void dwmac_enable_rx_dma_irq(void __iomem *ioaddr);
+extern void dwmac_disable_rx_dma_irq(void __iomem *ioaddr);
 extern void dwmac_dma_start_tx(void __iomem *ioaddr);
 extern void dwmac_dma_stop_tx(void __iomem *ioaddr);
 extern void dwmac_dma_start_rx(void __iomem *ioaddr);

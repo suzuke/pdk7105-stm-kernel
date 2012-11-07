@@ -778,12 +778,12 @@ static void stmmac_tx_clean(unsigned long data)
 
 static inline void stmmac_enable_dma_rx_irq(struct stmmac_priv *priv)
 {
-	priv->hw->dma->enable_dma_irq(priv->ioaddr);
+	priv->hw->dma->enable_rx_dma_irq(priv->ioaddr);
 }
 
 static inline void stmmac_disable_dma_rx_irq(struct stmmac_priv *priv)
 {
-	priv->hw->dma->disable_dma_irq(priv->ioaddr);
+	priv->hw->dma->disable_rx_dma_irq(priv->ioaddr);
 }
 
 
@@ -810,14 +810,6 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 	netif_wake_queue(priv->dev);
 }
 
-static void stmmac_rx_work(struct stmmac_priv *priv)
-{
-	if (likely(napi_schedule_prep(&priv->napi))) {
-		stmmac_disable_dma_rx_irq(priv);
-		__napi_schedule(&priv->napi);
-	}
-}
-
 static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 {
 	int status;
@@ -825,7 +817,10 @@ static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 	status = priv->hw->dma->dma_interrupt(priv->ioaddr, &priv->xstats);
 	if (likely(status & handle_rx)) {
 		priv->xstats.rx_normal_irq_n++;
-		stmmac_rx_work(priv);
+		if (likely(napi_schedule_prep(&priv->napi))) {
+			stmmac_disable_dma_rx_irq(priv);
+			__napi_schedule(&priv->napi);
+		}
 	}
 	if (likely(status & handle_tx)) {
 		priv->xstats.tx_normal_irq_n++;
