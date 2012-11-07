@@ -83,6 +83,7 @@ int stig125_configure_ssc_i2c(int ssc, unsigned i2c_bus_speed);
 int stig125_configure_ssc_spi(int ssc, struct stig125_ssc_config *config);
 
 void stig125_configure_keyscan(const struct stm_keyscan_config *config);
+void stig125_configure_spifsm(struct stm_plat_spifsm_data *data);
 
 struct stig125_lirc_config {
 	enum {
