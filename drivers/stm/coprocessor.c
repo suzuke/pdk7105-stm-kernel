@@ -334,7 +334,7 @@ int coproc_device_add(struct coproc *cop)
 		goto err_dev_add;
 
 	cop->dev = device_create(coproc_class, cop->parent, cop->devt, cop,
-				 "%s%d", cop->name, cop->id);
+				 "%s.%d", cop->name, cop->id);
 	if (IS_ERR(cop->dev)) {
 		ret = PTR_ERR(cop->dev);
 		goto err_device;
