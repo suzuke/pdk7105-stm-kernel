@@ -113,7 +113,6 @@ static struct snd_kcontrol_new snd_stm_clk_adjustment_ctl = {
 int snd_stm_clk_enable(struct snd_stm_clk *clk)
 {
 	int result = 0;
-	struct snd_stm_clk *snd_stm_clk;
 
 	snd_stm_printd(1, "%s(clk=%p)\n", __func__, clk);
 
