@@ -58,7 +58,6 @@ static void stm_fdma_irq_complete(struct stm_fdma_chan *fchan)
 	case CMD_STAT_STATUS_PAUSED:
 		switch (fchan->state) {
 		case STM_FDMA_STATE_RUNNING:	/* Hit a pause node */
-		case STM_FDMA_STATE_PAUSING:
 			fchan->state = STM_FDMA_STATE_PAUSED;
 			break;
 
@@ -78,7 +77,6 @@ static void stm_fdma_irq_complete(struct stm_fdma_chan *fchan)
 		switch (fchan->state) {
 		case STM_FDMA_STATE_IDLE:	/* Ignore IDLE -> IDLE */
 		case STM_FDMA_STATE_RUNNING:
-		case STM_FDMA_STATE_PAUSING:
 		case STM_FDMA_STATE_STOPPING:
 			fchan->state = STM_FDMA_STATE_IDLE;
 			break;
@@ -689,8 +687,6 @@ static int stm_fdma_pause(struct stm_fdma_chan *fchan)
 		/* Hardware is running, send the command */
 		stm_fdma_hw_channel_pause(fchan, 0);
 		/* Fall through */
-
-	case STM_FDMA_STATE_PAUSING:
 		/* Hardware is pausing already, wait for interrupt */
 		break;
 
@@ -747,7 +743,6 @@ static void stm_fdma_stop(struct stm_fdma_chan *fchan)
 		stm_fdma_hw_channel_pause(fchan, 0);
 		/* Fall through */
 
-	case STM_FDMA_STATE_PAUSING:
 	case STM_FDMA_STATE_STOPPING:
 		/* Channel is pausing - just change state */
 		fchan->state = STM_FDMA_STATE_STOPPING;
