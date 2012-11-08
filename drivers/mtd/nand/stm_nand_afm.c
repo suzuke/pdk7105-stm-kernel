@@ -23,7 +23,6 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/err.h>
-#include <linux/dma-mapping.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/clk.h>
 #include <linux/stm/platform.h>
@@ -31,6 +30,7 @@
 #include <linux/completion.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
+#include <asm/cacheflush.h>
 
 #include "stm_nand_ecc.h"
 #include "stm_nand_regs.h"
@@ -650,7 +650,7 @@ afm_init_controller(struct platform_device *pdev)
 	afm->fifo_cached = ioremap_cache(afm->fifo_phys, 512);
 	if (!afm->fifo_cached) {
 		dev_err(&pdev->dev, "fifo ioremap failed [0x%08x]\n",
-			afm->map_base + EMIHAM_AFM_DATA_FIFO);
+			afm->map_base + NANDHAM_AFM_DATA_FIFO);
 		err = -ENXIO;
 		goto err3;
 	}
