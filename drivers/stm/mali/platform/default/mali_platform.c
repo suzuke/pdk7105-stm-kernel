@@ -47,7 +47,7 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
 				power_mode ? "SLEEP" : "ON"));
 		if (power_mode == MALI_POWER_MODE_ON)
 			clk_enable(mali_clk);
-		else
+		if (power_mode == MALI_POWER_MODE_DEEP_SLEEP)	
 			clk_disable(mali_clk);
 	}
 	MALI_SUCCESS;
