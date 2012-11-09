@@ -34,6 +34,8 @@
 #include <linux/stm/poke_table.h>
 #include <linux/stm/synopsys_dwc_ddr32.h>
 
+#include "./suspend-mcm.h"
+
 static const long stih415_ddr0_enter[] = {
 synopsys_ddr32_in_self_refresh(MPE41_DDR0_PCTL_BASE),
 synopsys_ddr32_phy_standby_enter(MPE41_DDR0_PCTL_BASE),
@@ -66,82 +68,20 @@ static struct stm_suspend_table stih415_suspend_tables[] = {
 	SUSPEND_TBL(stih415_ddr1_enter, stih415_ddr1_exit),
 };
 
-struct stm_wakeup_devices stih415_wkd;
-static struct stm_mcm_suspend *main_mcm;
-static struct stm_mcm_suspend *peripheral_mcm;
 struct stm_mcm_suspend *stx_mpe41_suspend_setup(void);
 struct stm_mcm_suspend *stx_sasg1_suspend_setup(void);
-static suspend_state_t target_state;
-
-static int stih415_suspend_begin(suspend_state_t state)
-{
-	int ret = 0;
-
-	pr_info("[STM][PM] Analyzing the wakeup devices\n");
-
-	stm_check_wakeup_devices(&stih415_wkd);
-	target_state = state;
-
-	ret = stm_suspend_mcm_begin(main_mcm, state, &stih415_wkd);
-	if (ret)
-		return ret;
-
-	ret = stm_suspend_mcm_begin(peripheral_mcm, state, &stih415_wkd);
-	if (ret)
-		stm_suspend_mcm_end(main_mcm, state);
-
-
-	return ret;
-}
-
-static int stih415_suspend_pre_enter(suspend_state_t state)
-{
-	int ret = 0;
-
-	ret = stm_suspend_mcm_pre_enter(main_mcm, state, &stih415_wkd);
-
-	if (ret)
-		return ret;
-
-	ret = stm_suspend_mcm_pre_enter(peripheral_mcm, state, &stih415_wkd);
-	if (ret)
-		stm_suspend_mcm_post_enter(main_mcm, state);
-
-	return ret;
-}
-
-static void stih415_suspend_post_enter(suspend_state_t state)
-{
-	stm_suspend_mcm_post_enter(peripheral_mcm, state);
-
-	stm_suspend_mcm_post_enter(main_mcm, state);
-}
-
-static void stih415_suspend_end(void)
-{
-	stm_suspend_mcm_end(peripheral_mcm, target_state);
-	stm_suspend_mcm_end(main_mcm, target_state);
-}
 
 static int stih415_get_wake_irq(void)
 {
-	int irq = 0;
-	struct irq_data *d;
-	void *gic_cpu = __io_address(MPE41_GIC_CPU_BASE);
-
-	irq = readl(gic_cpu + GIC_CPU_INTACK);
-	d = irq_get_irq_data(irq);
-	writel(d->hwirq, gic_cpu + GIC_CPU_EOI);
-
-	return irq;
+	return stm_get_wake_irq(__io_address(MPE41_GIC_CPU_BASE));
 }
 
 static struct stm_platform_suspend stih415_suspend = {
-	.ops.begin = stih415_suspend_begin,
-	.ops.end = stih415_suspend_end,
+	.ops.begin = stm_dual_mcm_suspend_begin,
+	.ops.end = stm_dual_mcm_suspend_end,
 
-	.pre_enter = stih415_suspend_pre_enter,
-	.post_enter = stih415_suspend_post_enter,
+	.pre_enter = stm_dual_mcm_suspend_pre_enter,
+	.post_enter = stm_dual_mcm_suspend_post_enter,
 
 	.eram_iomem = (void *)0xc00a0000,
 	.get_wake_irq = stih415_get_wake_irq,
