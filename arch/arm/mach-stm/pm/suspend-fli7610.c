@@ -20,54 +20,13 @@
 #include <linux/io.h>
 
 #include <linux/stm/fli7610.h>
-#include <linux/stm/fli7610-periphs.h>
-#include <linux/stm/mpe41-periphs.h>
-#include <linux/stm/sysconf.h>
-#include <linux/stm/clk.h>
-#include <linux/stm/wakeup_devices.h>
 
 #include "../suspend.h"
 #include <mach/hardware.h>
 #include <mach/mpe41.h>
 #include <mach/soc-fli7610.h>
-#include <asm/hardware/gic.h>	/* gic offset and struct gic_chip_data */
-
-#include <linux/stm/poke_table.h>
-#include <linux/stm/synopsys_dwc_ddr32.h>
 
 #include "./suspend-mcm.h"
-
-static const long fli7610_ddr0_enter[] = {
-synopsys_ddr32_in_self_refresh(MPE41_DDR0_PCTL_BASE),
-synopsys_ddr32_phy_standby_enter(MPE41_DDR0_PCTL_BASE),
-};
-
-static const long fli7610_ddr1_enter[] = {
-synopsys_ddr32_in_self_refresh(MPE41_DDR1_PCTL_BASE),
-synopsys_ddr32_phy_standby_enter(MPE41_DDR1_PCTL_BASE),
-};
-
-static const long fli7610_ddr0_exit[] = {
-synopsys_ddr32_phy_standby_exit(MPE41_DDR0_PCTL_BASE),
-synopsys_ddr32_out_of_self_refresh(MPE41_DDR0_PCTL_BASE),
-};
-
-static const long fli7610_ddr1_exit[] = {
-synopsys_ddr32_phy_standby_exit(MPE41_DDR1_PCTL_BASE),
-synopsys_ddr32_out_of_self_refresh(MPE41_DDR1_PCTL_BASE),
-};
-
-#define SUSPEND_TBL(_enter, _exit) {			\
-	.enter = _enter,				\
-	.enter_size = ARRAY_SIZE(_enter) * sizeof(long),\
-	.exit = _exit,					\
-	.exit_size = ARRAY_SIZE(_exit) * sizeof(long),	\
-}
-
-static struct stm_suspend_table fli7610_suspend_tables[] = {
-	SUSPEND_TBL(fli7610_ddr0_enter, fli7610_ddr0_exit),
-	SUSPEND_TBL(fli7610_ddr1_enter, fli7610_ddr1_exit),
-};
 
 struct stm_mcm_suspend *stx_mpe41_suspend_setup(void);
 struct stm_mcm_suspend *stx_tae_suspend_setup(void);
@@ -102,8 +61,8 @@ static int __init fli7610_suspend_setup(void)
 		return -ENOSYS;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(fli7610_suspend_tables); ++i)
-		list_add_tail(&fli7610_suspend_tables[i].node,
+	for (i = 0; i < main_mcm->nr_tables; ++i)
+		list_add_tail(&main_mcm->tables[i].node,
 			&fli7610_suspend.mem_tables);
 
 	return stm_suspend_register(&fli7610_suspend);

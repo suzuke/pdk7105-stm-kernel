@@ -19,12 +19,12 @@
 #include <linux/io.h>
 #include <linux/slab.h>
 
-#include <linux/stm/sysconf.h>
-#include <linux/stm/clk.h>
-#include <linux/stm/wakeup_devices.h>
-
 #include "../suspend.h"
 #include <mach/hardware.h>
+
+#include <linux/stm/poke_table.h>
+#include <linux/stm/synopsys_dwc_ddr32.h>
+#include <linux/stm/mpe41-periphs.h>
 
 #define MPE_POWER_CFG			0x018
 /*
@@ -154,7 +154,41 @@ static void stx_mpe41_suspend_post_enter(suspend_state_t state)
 	stx_mpe41_suspend_core(state, NULL, 0);
 }
 
+static const long stx_mpe41_ddr0_enter[] = {
+	synopsys_ddr32_in_self_refresh(MPE41_DDR0_PCTL_BASE),
+	synopsys_ddr32_phy_standby_enter(MPE41_DDR0_PCTL_BASE),
+};
+
+static const long stx_mpe41_ddr1_enter[] = {
+	synopsys_ddr32_in_self_refresh(MPE41_DDR1_PCTL_BASE),
+	synopsys_ddr32_phy_standby_enter(MPE41_DDR1_PCTL_BASE),
+};
+
+static const long stx_mpe41_ddr0_exit[] = {
+	synopsys_ddr32_phy_standby_exit(MPE41_DDR0_PCTL_BASE),
+	synopsys_ddr32_out_of_self_refresh(MPE41_DDR0_PCTL_BASE),
+};
+
+static const long stx_mpe41_ddr1_exit[] = {
+	synopsys_ddr32_phy_standby_exit(MPE41_DDR1_PCTL_BASE),
+	synopsys_ddr32_out_of_self_refresh(MPE41_DDR1_PCTL_BASE),
+};
+
+#define SUSPEND_TBL(_enter, _exit) {			\
+	.enter = _enter,				\
+	.enter_size = ARRAY_SIZE(_enter) * sizeof(long),\
+	.exit = _exit,					\
+	.exit_size = ARRAY_SIZE(_exit) * sizeof(long),	\
+}
+
+static struct stm_suspend_table stx_mpe41_suspend_tables[] = {
+	SUSPEND_TBL(stx_mpe41_ddr0_enter, stx_mpe41_ddr0_exit),
+	SUSPEND_TBL(stx_mpe41_ddr1_enter, stx_mpe41_ddr1_exit),
+};
+
 static struct stm_mcm_suspend stx_mpe41_suspend = {
+	.tables = stx_mpe41_suspend_tables,
+	.nr_tables = ARRAY_SIZE(stx_mpe41_suspend_tables),
 	.pre_enter = stx_mpe41_suspend_pre_enter,
 	.post_enter = stx_mpe41_suspend_post_enter,
 };

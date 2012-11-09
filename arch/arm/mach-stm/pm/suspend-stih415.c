@@ -20,53 +20,13 @@
 #include <linux/io.h>
 
 #include <linux/stm/stih415.h>
-#include <linux/stm/stih415-periphs.h>
-#include <linux/stm/sysconf.h>
-#include <linux/stm/clk.h>
-#include <linux/stm/wakeup_devices.h>
 
 #include "../suspend.h"
 #include <mach/hardware.h>
 #include <mach/mpe41.h>
 #include <mach/soc-stih415.h>
-#include <asm/hardware/gic.h>	/* gic offset and struct gic_chip_data */
-
-#include <linux/stm/poke_table.h>
-#include <linux/stm/synopsys_dwc_ddr32.h>
 
 #include "./suspend-mcm.h"
-
-static const long stih415_ddr0_enter[] = {
-synopsys_ddr32_in_self_refresh(MPE41_DDR0_PCTL_BASE),
-synopsys_ddr32_phy_standby_enter(MPE41_DDR0_PCTL_BASE),
-};
-
-static const long stih415_ddr1_enter[] = {
-synopsys_ddr32_in_self_refresh(MPE41_DDR1_PCTL_BASE),
-synopsys_ddr32_phy_standby_enter(MPE41_DDR1_PCTL_BASE),
-};
-
-static const long stih415_ddr0_exit[] = {
-synopsys_ddr32_phy_standby_exit(MPE41_DDR0_PCTL_BASE),
-synopsys_ddr32_out_of_self_refresh(MPE41_DDR0_PCTL_BASE),
-};
-
-static const long stih415_ddr1_exit[] = {
-synopsys_ddr32_phy_standby_exit(MPE41_DDR1_PCTL_BASE),
-synopsys_ddr32_out_of_self_refresh(MPE41_DDR1_PCTL_BASE),
-};
-
-#define SUSPEND_TBL(_enter, _exit) {			\
-	.enter = _enter,				\
-	.enter_size = ARRAY_SIZE(_enter) * sizeof(long),\
-	.exit = _exit,					\
-	.exit_size = ARRAY_SIZE(_exit) * sizeof(long),	\
-}
-
-static struct stm_suspend_table stih415_suspend_tables[] = {
-	SUSPEND_TBL(stih415_ddr0_enter, stih415_ddr0_exit),
-	SUSPEND_TBL(stih415_ddr1_enter, stih415_ddr1_exit),
-};
 
 struct stm_mcm_suspend *stx_mpe41_suspend_setup(void);
 struct stm_mcm_suspend *stx_sasg1_suspend_setup(void);
@@ -102,8 +62,8 @@ static int __init stih415_suspend_setup(void)
 		return -ENOSYS;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(stih415_suspend_tables); ++i)
-		list_add_tail(&stih415_suspend_tables[i].node,
+	for (i = 0; i < main_mcm->nr_tables; ++i)
+		list_add_tail(&main_mcm->tables[i].node,
 			&stih415_suspend.mem_tables);
 
 	return stm_suspend_register(&stih415_suspend);

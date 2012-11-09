@@ -34,6 +34,8 @@ struct stm_platform_suspend {
 };
 
 struct stm_mcm_suspend {
+	struct stm_suspend_table *tables;
+	unsigned long nr_tables;
 	int (*begin)(suspend_state_t state,
 		struct stm_wakeup_devices *wkd);
 	int (*pre_enter)(suspend_state_t state,
