@@ -20,6 +20,9 @@
 #include <linux/io.h>
 #include <linux/preempt.h>
 #include <linux/suspend.h>
+#include <linux/clk.h>
+
+#include <linux/stm/platform.h>
 
 #include <linux/stm/poke_table.h>
 #include <asm/idmap.h>
@@ -279,6 +282,27 @@ static int __cpuinitdata stm_hom_enter(void)
 	return 0;
 }
 
+static void __cpuinitdata
+stm_hom_early_console_setup(struct stm_mem_hibernation *platform)
+{
+	struct stm_plat_asc_data *console_pdata =
+		stm_asc_console_device->dev.platform_data;
+	struct clk *asc_clk;
+
+	/* setup the early console */
+	platform->early_console_base = (void *)ioremap(
+		stm_asc_console_device->resource[0].start, 0x1000);
+
+	asc_clk = clk_get(NULL, console_pdata->clk_id ?
+		console_pdata->clk_id : "comms_clk");
+
+	platform->early_console_rate = clk_get_rate(asc_clk);
+
+	pr_info("stm pm hom: early console: iobase: 0x%x; clk: %uMHz\n",
+		(unsigned int) platform->early_console_base,
+		(unsigned long)platform->early_console_rate / 1000000);
+}
+
 int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 {
 	struct hom_table *table;
@@ -306,6 +330,9 @@ int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 
 	platform->ops.enter = stm_hom_enter;
 
+	/* setup the early console */
+	stm_hom_early_console_setup(platform);
+
 	if (hom_set_ops(&platform->ops)) {
 		platform = NULL;
 		return -EINVAL;
@@ -314,7 +341,6 @@ int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(stm_hom_register);
-
 
 static struct stm_hom_board *board_hom;
 

@@ -103,8 +103,6 @@ static int fli7610_hom_complete(void)
 static struct stm_mem_hibernation fli7610_hom = {
 	.eram_iomem = (void *)0xc0080000,
 
-	.early_console_rate = 100000000,
-
 	.ops.prepare = fli7610_hom_prepare,
 	.ops.complete = fli7610_hom_complete,
 };
@@ -124,13 +122,6 @@ static int __init hom_fli7610_setup(void)
 	gpio_direction_output(LMI_RETENTION_PIN, 1);
 
 	INIT_LIST_HEAD(&fli7610_hom.table);
-
-	fli7610_hom.early_console_base = (void *)ioremap(
-		stm_asc_console_device->resource[0].start, 0x1000);
-
-	pr_info("stm pm hom: Early console [%d] @ 0x%x\n",
-			stm_asc_console_device->id,
-			(unsigned int) fli7610_hom.early_console_base);
 
 	for (i = 0; i < ARRAY_SIZE(fli7610_hom_table); ++i)
 		list_add_tail(&fli7610_hom_table[i].node, &fli7610_hom.table);

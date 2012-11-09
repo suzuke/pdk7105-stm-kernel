@@ -92,8 +92,6 @@ static int stxh415_hom_complete(void)
 static struct stm_mem_hibernation stxh415_hom = {
 	.eram_iomem = (void *)0xc00a0000,
 
-	.early_console_rate = 100000000,
-
 	.ops.prepare = stxh415_hom_prepare,
 	.ops.complete = stxh415_hom_complete,
 };
@@ -113,13 +111,6 @@ static int __init hom_stxh415_setup(void)
 	gpio_direction_output(LMI_RETENTION_PIN, 1);
 
 	INIT_LIST_HEAD(&stxh415_hom.table);
-
-	stxh415_hom.early_console_base = (void *)ioremap(
-		stm_asc_console_device->resource[0].start, 0x1000);
-
-	pr_info("stm pm hom: Early console [%d] @ 0x%x\n",
-			stm_asc_console_device->id,
-			(unsigned int) stxh415_hom.early_console_base);
 
 	for (i = 0; i < ARRAY_SIZE(stxh415_hom_table); ++i)
 		list_add_tail(&stxh415_hom_table[i].node, &stxh415_hom.table);
