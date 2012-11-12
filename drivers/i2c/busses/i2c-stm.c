@@ -57,6 +57,8 @@
  *   + Fixed the IIC_FSM_REPSTART_ADDR to wait in case of clock stretching
  * Version 2.8  (28 Oct 2011) Francesco Virlinzi <francesco.virlinzi@st.com>
  *   + Fixed Idle state to avoid glitch on SDA
+ * Version 2.8.1 (21 Oct 2012) Francesco Rundo <francesco.rundo@st.com>
+ *   + Put SDA line to high level by using pull-up resistors.
  *
  * --------------------------------------------------------------------
  *
@@ -239,6 +241,7 @@ struct iic_ssc {
 #define clear_ready_fastmode(adap) ((adap)->config &= ~IIC_STM_READY_SPEED_FAST)
 
 static void iic_stm_setup_timing(struct iic_ssc *adap);
+static void iic_pio_sda_pull_up(struct iic_ssc *adap);
 
 static irqreturn_t iic_state_machine(int this_irq, void *data)
 {
@@ -609,11 +612,9 @@ be_fsm_stop:
 		 * i.e.: it is much less sensible to the noice on the cable
 		 */
 		dbg_print2("-Idle\n");
-		/* push the data line high */
-		ssc_store32(adap, SSC_TBUF, 0x1ff);
+		/* pull-up data line by resistors */
+		iic_pio_sda_pull_up(adap);
 		ssc_store32(adap, SSC_I2C, SSC_I2C_I2CM);
-		ssc_store32(adap, SSC_CTL, SSC_CTL_EN |
-			    SSC_CTL_PO | SSC_CTL_PH | SSC_CTL_HB | 0x8);
 		/* No break here! */
 	case IIC_FSM_COMPLETE:
 		dbg_print2("-Complete\n");
@@ -745,6 +746,28 @@ static void iic_pio_stop(struct iic_ssc *adap)
 		       "i2c-stm:  Cannot recover bus.  Status: 0x%08x\n",
 		       ssc_load32(adap, SSC_STA));
 }
+
+/* Put SDA line at high level by pull-up resistors */
+static void iic_pio_sda_pull_up(struct iic_ssc *adap)
+{
+	unsigned sda;
+
+	/* SSC hard wired */
+	if (!adap->pad_state) {
+		printk(KERN_WARNING "i2c-stm: No PIO for setting SDA line!\n");
+		return;
+	}
+	/* Put in 3-state the SSC port for SDA line */
+	sda = stm_pad_gpio_request_input(adap->pad_state, "SDA");
+
+	BUG_ON(sda == STM_GPIO_INVALID);
+
+	/* Delay needed to allow SDA to pull-up to high level */
+	udelay(2);
+
+	stm_pad_gpio_free(adap->pad_state, sda);
+}
+
 
 /*
  * Description: Prepares the controller for a transaction
