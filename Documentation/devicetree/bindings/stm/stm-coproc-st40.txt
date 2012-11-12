@@ -1,0 +1,36 @@
+
+
+===============================================================================
+			stm cprocessor st40
+===============================================================================
+
+Required properties:
+- compatible : "st,coproc-st40"
+- st,proc-name		Processor Name.
+- st,dev-config	is the standard way to pass dev config to the drivers.
+
+
+Example:
+
+st40_0 :st40@0{
+   compatible	= "st,coproc-st40", "simple-bus";
+   st,proc-name = "st40";
+   st,dev-configs = <&st40_dev_config>;
+
+   st40_dev_config: dev-config {
+	#stm-sysconf-cells = <4>;
+	sysconfs{
+		BOOT_ADDR	=	<&mpe_sysconf 648 1 28>;
+		RESET		=	<&mpe_sysconf 644 2 2>;
+		LMI_SYS_BASE	=	<&mpe_sysconf 629 0 3>;
+		LMI0_NOT_LMI1	=	<&mpe_sysconf 629 4 4>;
+		BART_LOCK_ENABLE=	<&mpe_sysconf 629 5 5>;
+		MASK_RESET	=	<&mpe_sysconf 645 2 2>;
+		SW_PWR_RESET_MASK =	<&mpe_sysconf 645 8 8>;
+		BART_LOCK_ENABLE_STATUS	=	<&mpe_sysconf 662 5 5>;
+		BART_LMI0_NOT_LMI1_SEL_STATUS	=	<&mpe_sysconf 662 4 4>;
+		BART_LMI_OFFSET_BASEADDR_STATUS	=	<&mpe_sysconf 662 0 3>;
+     };
+   };
+ };
+};
