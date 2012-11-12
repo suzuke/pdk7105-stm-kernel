@@ -33,7 +33,8 @@ static LIST_HEAD(miphy_style_list);
 /****************************************************************************
  * 	MiPHY Generic functions available for other drivers
  */
-static void stm_miphy_write(struct stm_miphy *miphy, u8 addr, u8 data)
+static void __maybe_unused stm_miphy_write(struct stm_miphy *miphy, u8 addr,
+					   u8 data)
 {
 	struct stm_miphy_device *dev = miphy->dev;
 	int port = miphy->port;
