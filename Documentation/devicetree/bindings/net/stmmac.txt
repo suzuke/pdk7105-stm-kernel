@@ -36,6 +36,12 @@ Optional properties:
 - snps,phy-bus-id	Mdio bus number to connect. if not specified 0 is used.
 - snps,phy-addr		phy address to connect to.
 
+- snps,reset-gpio 	gpio number for phy reset.
+- snps,reset-active-low boolean flag to indicate if phy reset is active low.
+- snps,reset-delays-us  is triplet of delays
+	The 1st cell is reset pre-delay in micro seconds.
+	The 2nd cell is reset pulse in micro seconds.
+	The 3rd cell is reset post-delay in micro seconds.
 
 Examples:
 
@@ -62,4 +68,8 @@ Examples:
 		snps,phy-bus-name = "stmmac";
 		snps,phy-bus-id = <0>;
 		snps,phy-addr = <0x9>;
+
+		snps,reset-gpio = <&gpio_bank4 7>;
+		snps,reset-active-low;
+		snps,reset-delays-us = <0 10000 10000>;
 	};

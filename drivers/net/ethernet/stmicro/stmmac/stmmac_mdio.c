@@ -27,6 +27,9 @@
 #include <linux/mii.h>
 #include <linux/phy.h>
 #include <linux/slab.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+
 #include <asm/io.h>
 
 #include "stmmac.h"
@@ -131,17 +134,46 @@ static int stmmac_mdio_reset(struct mii_bus *bus)
 	struct net_device *ndev = bus->priv;
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	unsigned int mii_address = priv->hw->mii.addr;
+	struct device *dev = priv->device;
 
-	if (priv->plat->mdio_bus_data->phy_reset) {
-		pr_debug("stmmac_mdio_reset: calling phy_reset\n");
-		priv->plat->mdio_bus_data->phy_reset(priv->plat->bsp_priv);
+	if (!dev->of_node) {
+		if (priv->plat->mdio_bus_data->phy_reset) {
+			pr_debug("stmmac_mdio_reset: calling phy_reset\n");
+			priv->plat->mdio_bus_data->phy_reset(
+							priv->plat->bsp_priv);
+		}
+
+		/* This is a workaround for problems with the STE101P PHY.
+		 * It doesn't complete its reset until at least one clock cycle
+		 * on MDC, so perform a dummy mdio read.
+		 */
+		writel(0, priv->ioaddr + mii_address);
+	} else {
+		int reset_gpio, active_low;
+		struct device_node *np = dev->of_node;
+		u32 delays[3] = {0,};
+
+		if (!np)
+			return 0;
+
+		reset_gpio = of_get_named_gpio(np, "snps,reset-gpio", 0);
+		if (reset_gpio < 0)
+			return 0;
+
+		active_low = of_get_property(np,
+				"snps,reset-active-low", NULL) ? 1 : 0;
+		of_property_read_u32_array(np,
+				"snps,reset-delays-us", delays, 3);
+
+		gpio_request(reset_gpio, "mdio-reset");
+		gpio_direction_output(reset_gpio, active_low ? 1 : 0);
+		udelay(delays[0]);
+		gpio_set_value(reset_gpio, active_low ? 0 : 1);
+		udelay(delays[1]);
+		gpio_set_value(reset_gpio, active_low ? 1 : 0);
+		udelay(delays[2]);
+		gpio_free(reset_gpio);
 	}
-
-	/* This is a workaround for problems with the STE101P PHY.
-	 * It doesn't complete its reset until at least one clock cycle
-	 * on MDC, so perform a dummy mdio read.
-	 */
-	writel(0, priv->ioaddr + mii_address);
 #endif
 	return 0;
 }
