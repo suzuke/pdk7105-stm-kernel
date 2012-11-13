@@ -1,7 +1,7 @@
 * STMicroelectronics 10/100/1000 Ethernet driver (GMAC)
 
 Required properties:
-- compatible: Should be "st,spear600-gmac"
+- compatible: Should be "snps,dwmac" or "st,spear600-gmac"
 - reg: Address and length of the register set for the device
 - interrupt-parent: Should be the phandle for the interrupt controller
   that services interrupts for this device
@@ -13,16 +13,53 @@ Required properties:
   Supported values are: "mii", "rmii", "gmii", "rgmii".
 
 Optional properties:
-- mac-address: 6 bytes, mac address
+- mac-address		6 bytes, mac address
+- phy-handle		Should be a phandle to the PHY.
+- snps,clk-csr		Fixed CSR Clock range selection.
+- snps,enh-desc		Boolean flag to indicate if mac support
+			enhanced descriptors.
+- snps,tx-coe		flag for Tx Checksum Offload engine presence
+- snps,rx-coe		flag fo Rx Checksum Offload engine presence.
+- snps,bugged-jumbo	some HWs are not able to perform the csum in HW for
+			over-sized frames due to limited buffer sizes.
+			Setting this flag the csum will be done in SW on
+			JUMBO frames.
+- snps,force-sf-dma-mode  force DMA to use the Store and Forward mode
+			instead of the Threshold.
+- snps,pbl		Programmable Burst Length
+- snps,fixed-burst	Program the DMA to use the fixed burst mode
+- snps,burst-len		This is the value we put in the register
+			supported values are provided as macros in
+			linux/stmmac.h header file.
+- snps,phy-bus-name	Name of the mdio bus to connect. if not specified
+			mac attempts to connect to stmmac mdio bus.
+- snps,phy-bus-id	Mdio bus number to connect. if not specified 0 is used.
+- snps,phy-addr		phy address to connect to.
+
 
 Examples:
 
 	gmac0: ethernet@e0800000 {
-		compatible = "st,spear600-gmac";
+		compatible = "snps,dwmac";
 		reg = <0xe0800000 0x8000>;
 		interrupt-parent = <&vic1>;
 		interrupts = <24 23>;
 		interrupt-names = "macirq", "eth_wake_irq";
 		mac-address = [000000000000]; /* Filled in by U-Boot */
 		phy-mode = "gmii";
+
+		snps,clk-csr	= <0x0>;
+		snps,enh-desc;
+		snps,tx-coe;
+		snps,rx-coe;
+		snps,bugged-jumbo;
+		snps,force-sf-dma-mode;
+		snps,pbl	= <32>;
+		snps,burst-len	= <32>;
+		snps,fixed-burst;
+
+		/* PHY specific */
+		snps,phy-bus-name = "stmmac";
+		snps,phy-bus-id = <0>;
+		snps,phy-addr = <0x9>;
 	};
