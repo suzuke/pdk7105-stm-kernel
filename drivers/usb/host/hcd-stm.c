@@ -148,7 +148,7 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 			pr_warning("clk %s not found\n", usb_clks_n[i]);
 			continue;
 		}
-		clk_enable(clk);
+		clk_prepare_enable(clk);
 		if (!i)
 			/*
 			 * On some chip the USB_48_CLK comes from

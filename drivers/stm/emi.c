@@ -17,7 +17,7 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/device.h>
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 
 #define EMISS_CONFIG				0x0000
 #define EMISS_CONFIG_PCI_CLOCK_MASTER		(0x1 << 0)
@@ -74,9 +74,9 @@ static inline void emi_clk_xxable(int enable)
 		return;
 
 	if (enable)
-		clk_enable(emi_clk);
+		clk_prepare_enable(emi_clk);
 	else
-		clk_disable(emi_clk);
+		clk_disable_unprepare(emi_clk);
 }
 
 static inline void emi_clk_enable(void)

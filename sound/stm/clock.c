@@ -22,7 +22,7 @@
  */
 
 #include <linux/slab.h>
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 #include <asm/div64.h>
 #include <sound/core.h>
 
@@ -122,7 +122,7 @@ int snd_stm_clk_enable(struct snd_stm_clk *clk)
 	if (clk->enabled)
 		return 0;
 
-	result = clk_enable(clk->clk);
+	result = clk_prepare_enable(clk->clk);
 	if (result)
 		return result;
 
@@ -141,7 +141,7 @@ int snd_stm_clk_disable(struct snd_stm_clk *clk)
 	if (!clk->enabled)
 		return 0;
 
-	clk_disable(clk->clk);
+	clk_disable_unprepare(clk->clk);
 	clk->enabled = 0;
 
 	return 0;
@@ -198,8 +198,8 @@ int snd_stm_clk_set_rate(struct snd_stm_clk *clk, unsigned long rate)
 	 * spinlock the current execution context already owns.
 	 */
 	if (likely(clk_set_rate(clk->clk, rate_adjusted)) < 0) {
-		snd_stm_printe("Failed to set rate %d on clock '%s'!\n",
-				rate_adjusted, clk->clk->name);
+		snd_stm_printe("Failed to clk set rate %d !\n",
+				rate_adjusted);
 		return -EINVAL;
 	}
 

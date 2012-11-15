@@ -319,7 +319,7 @@ static void __devinit asc_init_port(struct asc_port *ascport,
 
 	if (IS_ERR(ascport->clk))
 		return;
-	clk_enable(ascport->clk);
+	clk_prepare_enable(ascport->clk);
 	WARN_ON(clk_get_rate(ascport->clk) == 0); /* It won't work at all */
 
 	ascport->port.uartclk = clk_get_rate(ascport->clk);
@@ -442,7 +442,7 @@ static int asc_serial_suspend(struct device *dev)
 	ascport->suspended = 1;
 	asc_disable_tx_interrupts(port);
 	asc_disable_rx_interrupts(port);
-	clk_disable(ascport->clk);
+	clk_disable_unprepare(ascport->clk);
 ret_asc_suspend:
 	local_irq_restore(flags);
 	return 0;
@@ -457,7 +457,7 @@ static int asc_serial_resume(struct device *dev)
 	unsigned long flags;
 
 	if (!device_can_wakeup(dev))
-		clk_enable(ascport->clk);
+		clk_prepare_enable(ascport->clk);
 
 	local_irq_save(flags);
 	asc_out(port, CTL, ascport->pm_ctrl);
@@ -478,7 +478,7 @@ static int asc_serial_freeze(struct device *dev)
 	ascport->pm_ctrl = asc_in(port, CTL);
 	ascport->pm_irq = asc_in(port, INTEN);
 
-	clk_disable(ascport->clk);
+	clk_disable_unprepare(ascport->clk);
 	return 0;
 }
 
@@ -488,7 +488,7 @@ static int asc_serial_restore(struct device *dev)
 	struct asc_port *ascport = &asc_ports[pdev->id];
 	struct uart_port *port   = &(ascport->port);
 
-	clk_enable(ascport->clk);
+	clk_prepare_enable(ascport->clk);
 
 	stm_pad_setup(ascport->pad_state);
 

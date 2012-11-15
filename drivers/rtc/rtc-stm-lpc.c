@@ -21,8 +21,8 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/irq.h>
+#include <linux/clk.h>
 #include <linux/stm/platform.h>
-#include <linux/stm/clk.h>
 
 #define DRV_NAME "stm-rtc"
 #define DRV_VERSION "0.1"
@@ -340,13 +340,13 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 		ret = PTR_ERR(rtc->clk);
 		goto err_badreg;
 	}
-	clk_enable(rtc->clk);
+	clk_prepare_enable(rtc->clk);
 
 	if (plat_data->force_clk_rate)
 		clk_set_rate(rtc->clk, plat_data->force_clk_rate);
 
-	pr_debug("%s: is using clk: %s @ %lu\n",
-		DRV_NAME, rtc->clk->name, clk_get_rate(rtc->clk));
+	pr_debug("%s: clk @ %lu\n",
+		DRV_NAME, clk_get_rate(rtc->clk));
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {

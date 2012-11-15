@@ -84,7 +84,7 @@ static int __devinit ahci_stm_driver_probe(struct platform_device *pdev)
 
 	pm_clk_init(dev);
 	pm_clk_add(dev, "ahci_clk");
-	clk_enable(drv_data->clk);
+	clk_prepare_enable(drv_data->clk);
 
 	drv_data->device_state =
 		devm_stm_device_init(&pdev->dev, pdata->device_config);

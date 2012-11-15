@@ -91,10 +91,10 @@
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
 #include <linux/time.h>
+#include <linux/clk.h>
 #include <media/lirc.h>
 #include <linux/err.h>
 #include <linux/stm/platform.h>
-#include <linux/stm/clk.h>
 #include <media/rc-core.h>
 #include "stm_ir.h"
 
@@ -994,7 +994,7 @@ static int ir_stm_remove(struct platform_device *pdev)
 {
 	struct stm_ir_device *ir_dev = platform_get_drvdata(pdev);
 	DPRINTK("ir_stm_remove called\n");
-	clk_disable(ir_dev->sys_clock);
+	clk_disable_unprepare(ir_dev->sys_clock);
 	rc_unregister_device(ir_dev->rdev);
 	return 0;
 }
@@ -1064,7 +1064,7 @@ static int ir_stm_probe(struct platform_device *pdev)
 		return PTR_ERR(ir_dev->sys_clock);
 	}
 
-	clk_enable(ir_dev->sys_clock);
+	clk_prepare_enable(ir_dev->sys_clock);
 	pr_info(IR_STM_NAME
 	       ": probe found data for platform device %s\n", pdev->name);
 	ir_dev->pdata = dev->platform_data;
@@ -1217,7 +1217,7 @@ static int ir_stm_suspend(struct device *dev)
 		ir_stm_rx_restore(dev);
 		ir_stm_scd_restart(ir_dev);
 	} else
-		clk_disable(ir_dev->sys_clock);
+		clk_disable_unprepare(ir_dev->sys_clock);
 
 	return 0;
 }
@@ -1227,7 +1227,7 @@ static int ir_stm_resume(struct device *dev)
 	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
 	if (!device_may_wakeup(dev))
-		clk_enable(ir_dev->sys_clock);
+		clk_prepare_enable(ir_dev->sys_clock);
 
 	ir_stm_hardware_init(ir_dev);
 	ir_stm_rx_restore(dev);
@@ -1249,7 +1249,7 @@ static int ir_stm_freeze(struct device *dev)
 	/* disabling LIRC irq request */
 	/* flush LIRC plugin data */
 
-	clk_disable(ir_dev->sys_clock);
+	clk_disable_unprepare(ir_dev->sys_clock);
 	return 0;
 }
 
@@ -1260,7 +1260,7 @@ static int ir_stm_restore(struct device *dev)
 	if (device_may_wakeup(dev))
 		return 0;
 
-	clk_enable(ir_dev->sys_clock);
+	clk_prepare_enable(ir_dev->sys_clock);
 
 	stm_pad_setup(ir_dev->pad_state);
 

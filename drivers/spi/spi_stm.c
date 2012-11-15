@@ -456,7 +456,7 @@ static int spi_stm_probe(struct platform_device *pdev)
 		goto err5;
 	}
 
-	clk_enable(spi_stm->clk);
+	clk_prepare_enable(spi_stm->clk);
 	/* Start "bitbang" worker */
 	status = spi_bitbang_start(&spi_stm->bitbang);
 	if (status) {
@@ -498,7 +498,7 @@ static int spi_stm_remove(struct platform_device *pdev)
 
 	spi_bitbang_stop(&spi_stm->bitbang);
 
-	clk_disable(spi_stm->clk);
+	clk_disable_unprepare(spi_stm->clk);
 
 	stm_pad_release(spi_stm->pad_state);
 	free_irq(spi_stm->r_irq.start, spi_stm);
@@ -521,7 +521,7 @@ static int spi_stm_suspend(struct device *dev)
 
 	ssc_store32(spi_stm, SSC_IEN, 0);
 
-	clk_disable(spi_stm->clk);
+	clk_disable_unprepare(spi_stm->clk);
 	return 0;
 }
 
@@ -532,7 +532,7 @@ static int spi_stm_resume(struct device *dev)
 
 	spi_stm = spi_master_get_devdata(master);
 
-	clk_enable(spi_stm->clk);
+	clk_prepare_enable(spi_stm->clk);
 	return 0;
 }
 

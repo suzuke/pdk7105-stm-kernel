@@ -16,7 +16,7 @@
 #include "mali_osk.h"
 #include "mali_platform.h"
 #include <linux/err.h>
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 
 static struct clk *mali_clk;
 
@@ -28,7 +28,7 @@ _mali_osk_errcode_t mali_platform_init(void)
 	if (IS_ERR(mali_clk))
 		MALI_DEBUG_PRINT(2, ("PM clk %s not found\n", mali_clk_n));
 	else
-		clk_enable(mali_clk);
+		clk_prepare_enable(mali_clk);
 
 	MALI_SUCCESS;
 }
@@ -36,7 +36,7 @@ _mali_osk_errcode_t mali_platform_init(void)
 _mali_osk_errcode_t mali_platform_deinit(void)
 {
 	if (mali_clk)
-		clk_disable(mali_clk);
+		clk_disable_unprepare(mali_clk);
 	MALI_SUCCESS;
 }
 
@@ -46,9 +46,9 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
 		MALI_DEBUG_PRINT(4, ("PM mode_change %s\n",
 				power_mode ? "SLEEP" : "ON"));
 		if (power_mode == MALI_POWER_MODE_ON)
-			clk_enable(mali_clk);
+			clk_prepare_enable(mali_clk);
 		if (power_mode == MALI_POWER_MODE_DEEP_SLEEP)	
-			clk_disable(mali_clk);
+			clk_disable_unprepare(mali_clk);
 	}
 	MALI_SUCCESS;
 }

@@ -20,7 +20,7 @@
 #include <linux/platform_device.h>
 
 #include <linux/stm/platform.h>
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 #include <linux/stm/dma.h>
 
 #include "stm_fdma.h"
@@ -188,7 +188,7 @@ static int stm_fdma_clk_enable(struct stm_fdma_device *fdev)
 
 	for (i = 0; i < STM_FDMA_CLKS; ++i) {
 		if (fdev->clks[i]) {
-			int result = clk_enable(fdev->clks[i]);
+			int result = clk_prepare_enable(fdev->clks[i]);
 			if (result)
 				return result;
 		}
@@ -203,7 +203,7 @@ static void stm_fdma_clk_disable(struct stm_fdma_device *fdev)
 
 	for (i = 0; i < STM_FDMA_CLKS; ++i) {
 		if (fdev->clks[i])
-			clk_disable(fdev->clks[i]);
+			clk_disable_unprepare(fdev->clks[i]);
 	}
 }
 

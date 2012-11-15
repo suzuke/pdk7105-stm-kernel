@@ -1233,7 +1233,7 @@ static int iic_stm_probe(struct platform_device *pdev)
 		return PTR_ERR(i2c_stm->clk);
 	}
 
-	clk_enable(i2c_stm->clk);
+	clk_prepare_enable(i2c_stm->clk);
 
 	iic_stm_setup_timing(i2c_stm);
 	init_waitqueue_head(&(i2c_stm->wait_queue));
@@ -1260,7 +1260,7 @@ static int iic_stm_remove(struct platform_device *pdev)
 	struct resource *res;
 	struct iic_ssc *iic_stm = platform_get_drvdata(pdev);
 
-	clk_disable(iic_stm->clk);
+	clk_disable_unprepare(iic_stm->clk);
 
 	i2c_del_adapter(&iic_stm->adapter);
 	/* irq */
@@ -1294,7 +1294,7 @@ static int iic_stm_suspend(struct device *dev)
 #endif
 	ssc_store32(i2c_bus, SSC_IEN, 0);
 	ssc_store32(i2c_bus, SSC_CTL, 0);
-	clk_disable(i2c_bus->clk);
+	clk_disable_unprepare(i2c_bus->clk);
 
 	return 0;
 }
@@ -1319,7 +1319,7 @@ static int iic_stm_resume(struct device *dev)
 		stpio_configure_pin(pio_info->sdout, STPIO_ALT_BIDIR);
 	}
 #endif
-	clk_enable(i2c_bus->clk);
+	clk_prepare_enable(i2c_bus->clk);
 
 	stm_pad_setup(i2c_bus->pad_state);
 
