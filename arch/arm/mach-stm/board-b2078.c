@@ -165,4 +165,5 @@ MACHINE_START(STM_B2078, "STMicroelectronics B2078 - STiG125 board")
 	.timer		= &stig125_timer,
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= b2078_init,
+	.restart        = stig125_reset,
 MACHINE_END

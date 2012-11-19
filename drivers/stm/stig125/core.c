@@ -786,6 +786,13 @@ static struct platform_device stig125_sysconf_devices[] = {
 	/* SYSCFG_DOCSIS: ??? */
 };
 
+void stig125_reset(char mode, const char *cmd)
+{
+	struct sysconf_field *sc = sysconf_claim(SBC_SYSCONF(7),
+					15, 15, "LPM_SW_RST_N");
+	sysconf_write(sc, 0);
+}
+
 /* Early initialisation-----------------------------------------------------*/
 
 /* Initialise devices which are required early in the boot process. */
