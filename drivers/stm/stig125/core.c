@@ -1078,12 +1078,23 @@ static struct platform_device stig125_fdma_xbar_device = {
 	},
 };
 
+/* Hardware RNG resources ------------------------------------------------- */
+
+static struct platform_device stig125_devhwrandom_device = {
+	.name           = "stm-hwrandom",
+	.id             = -1,
+	.num_resources  = 1,
+	.resource       = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfe951000, 0x1000),
+	}
+};
+
 static struct platform_device *stig125_devices[] __initdata = {
 	&stig125_temp_device,
 	&stig125_fdma_devices[0],
 	&stig125_fdma_devices[1],
-	&stig125_fdma_xbar_device
-
+	&stig125_fdma_xbar_device,
+	&stig125_devhwrandom_device,
 };
 
 static int __init stig125_devices_setup(void)
