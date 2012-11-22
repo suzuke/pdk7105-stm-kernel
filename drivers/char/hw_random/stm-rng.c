@@ -53,7 +53,7 @@ static struct hwrng stm_rng_ops = {
 	.data_read	= stm_rng_data_read,
 };
 
-static int __init stm_rng_probe(struct platform_device *pdev)
+static int __devinit stm_rng_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	int ret;
