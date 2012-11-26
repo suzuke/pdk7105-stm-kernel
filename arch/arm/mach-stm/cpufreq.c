@@ -19,7 +19,7 @@
 #include <linux/cpumask.h>
 #include <linux/smp.h>
 #include <linux/sched.h>	/* set_cpus_allowed() */
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/err.h>
 
@@ -251,7 +251,7 @@ static int __init stm_cpufreq_module_init(void)
 		goto _err_1;
 	}
 
-	cpufreq->cpu_clk = cpufreq->cpu_clk->parent;
+	cpufreq->cpu_clk = clk_get_parent(cpufreq->cpu_clk);
 
 	mutex_init(&cpufreq->mutex);
 
@@ -281,11 +281,10 @@ static int __init stm_cpufreq_module_init(void)
 #endif
 	ret = cpufreq_register_driver(&stm_cpufreq_driver);
 	if (ret) {
-		pr_err("[STM][CpuFreq]: Registration error\n");
+		pr_err("stm: cpufreq: Error on registration\n");
 		goto _err_3;
 	}
-	pr_info("[STM]: [CPUFreq] Registered (based on %s clock)\n",
-		cpufreq->cpu_clk->name);
+	pr_info("stm: cpufreq registered\n");
 
 	return 0;
 

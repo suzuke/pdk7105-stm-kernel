@@ -10,7 +10,7 @@
  */
 
 #include <linux/init.h>
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 
 int __init plat_clk_alias_init(void)
 {

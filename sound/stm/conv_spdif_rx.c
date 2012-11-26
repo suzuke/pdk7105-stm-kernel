@@ -30,7 +30,7 @@
 #include <sound/info.h>
 #include <sound/stm.h>
 
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 
 #include "common.h"
 #include "reg_aud_spdif_rx.h"
@@ -241,7 +241,7 @@ static int snd_stm_conv_spdif_rx_enable(struct snd_stm_conv_spdif_rx *conv)
 	BUG_ON(!snd_stm_magic_valid(conv));
 
 	/* Enable the clock */
-	clk_enable(conv->clock);
+	clk_prepare_enable(conv->clock);
 	clk_set_rate(conv->clock, conv->clock_rate);
 
 	/* Set configuration */
@@ -307,7 +307,7 @@ static int snd_stm_conv_spdif_rx_disable(struct snd_stm_conv_spdif_rx *conv)
 	set__AUD_SPDIF_RX_CTRL0__INSTR_DISABLE(conv);
 	set__AUD_SPDIF_RX_CTRL0__DISABLE(conv);
 
-	clk_disable(conv->clock);
+	clk_disable_unprepare(conv->clock);
 
 	return 0;
 }

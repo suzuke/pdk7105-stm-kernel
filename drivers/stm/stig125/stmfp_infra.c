@@ -55,6 +55,7 @@ int setup_fp_clocks(void)
 			ret = -EINVAL;
 			goto on_error;
 		}
+		clk_prepare_enable(clk);
 		ret = clk_set_rate(clk, fastpath_clks[i].rate);
 		if (ret)
 			goto on_error;

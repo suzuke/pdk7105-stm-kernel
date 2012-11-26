@@ -21,7 +21,7 @@
 #include <linux/err.h>
 
 #include <linux/stm/sysconf.h>
-#include <linux/stm/clk.h>
+#include <linux/clk.h>
 #include <linux/stm/wakeup_devices.h>
 
 #include "../suspend.h"

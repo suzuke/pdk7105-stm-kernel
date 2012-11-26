@@ -13,6 +13,7 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/err.h>
+#include <linux/clk.h>
 #include <linux/stm/clk.h>
 #include <linux/clockchips.h>
 

@@ -120,7 +120,7 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 		dev_err(mmc_dev(host->mmc), "clk err\n");
 		return PTR_ERR(clk);
 	}
-	clk_enable(clk);
+	clk_prepare_enable(clk);
 	pltfm_host = sdhci_priv(host);
 	pltfm_host->clk = clk;
 
@@ -151,7 +151,7 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 	return ret;
 
 err_out:
-	clk_disable(clk);
+	clk_disable_unprepare(clk);
 	clk_put(clk);
 
 	return ret;
@@ -166,7 +166,7 @@ static int __devexit sdhci_stm_remove(struct platform_device *pdev)
 	if (pdata && pdata->exit)
 		pdata->exit(pdev);
 
-	clk_disable(pltfm_host->clk);
+	clk_disable_unprepare(pltfm_host->clk);
 	clk_put(pltfm_host->clk);
 
 	return sdhci_pltfm_unregister(pdev);
@@ -183,7 +183,7 @@ static int sdhci_stm_suspend(struct device *dev)
 		goto out;
 
 	if (pltfm_host->clk)
-		clk_disable(pltfm_host->clk);
+		clk_disable_unprepare(pltfm_host->clk);
 out:
 	return ret;
 }
@@ -195,7 +195,7 @@ static int sdhci_stm_resume(struct device *dev)
 	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
 
 	if (pltfm_host->clk)
-		clk_enable(pltfm_host->clk);
+		clk_prepare_enable(pltfm_host->clk);
 
 	if (pdata->amba_bridge)
 		stm_amba_bridge_init(pdata->amba_bridge);
