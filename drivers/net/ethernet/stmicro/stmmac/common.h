@@ -102,7 +102,7 @@ struct stmmac_extra_stats {
 	unsigned long rx_pkt_n;
 	unsigned long normal_irq_n;
 	unsigned long rx_normal_irq_n;
-	unsigned long rx_napi_poll;
+	unsigned long napi_poll;
 	unsigned long tx_normal_irq_n;
 	unsigned long tx_clean;
 	unsigned long tx_reset_ic_bit;
@@ -171,13 +171,14 @@ struct stmmac_extra_stats {
 #define DMA_HW_FEAT_ACTPHYIF	0x70000000 /* Active/selected PHY interface */
 #define DEFAULT_DMA_PBL		8
 
-/* Coalesce defines */
-#define MAX_DMA_RIWT		0xff	/* Max RI Watchdog Timer count */
+/* Max/Min RI Watchdog Timer count value */
+#define MAX_DMA_RIWT		0xff
 #define MIN_DMA_RIWT		0x20
+/* Tx coalesce parameters */
 #define STMMAC_COAL_TX_TIMER	40000
 #define STMMAC_MAX_COAL_TX_TICK	100000
-#define STMMAC_TX_MAX_FRAMES	128
-
+#define STMMAC_TX_MAX_FRAMES	256
+#define STMMAC_TX_FRAMES	64
 
 enum rx_frame_status { /* IPC status */
 	good_frame = 0,
@@ -304,8 +305,8 @@ struct stmmac_dma_ops {
 	void (*dma_diagnostic_fr) (void *data, struct stmmac_extra_stats *x,
 				   void __iomem *ioaddr);
 	void (*enable_dma_transmission) (void __iomem *ioaddr);
-	void (*enable_rx_dma_irq) (void __iomem *ioaddr);
-	void (*disable_rx_dma_irq) (void __iomem *ioaddr);
+	void (*enable_dma_irq) (void __iomem *ioaddr);
+	void (*disable_dma_irq) (void __iomem *ioaddr);
 	void (*start_tx) (void __iomem *ioaddr);
 	void (*stop_tx) (void __iomem *ioaddr);
 	void (*start_rx) (void __iomem *ioaddr);

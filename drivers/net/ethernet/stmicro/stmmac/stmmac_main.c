@@ -131,7 +131,6 @@ MODULE_PARM_DESC(eee_timer, "LPI tx expiration time in msec");
 #define STMMAC_LPI_TIMER(x) (jiffies + msecs_to_jiffies(x))
 
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id);
-static int stmmac_rx(struct stmmac_priv *priv, int limit);
 
 #ifdef CONFIG_STMMAC_DEBUG_FS
 static int stmmac_init_fs(struct net_device *dev);
@@ -694,12 +693,11 @@ static void stmmac_dma_operation_mode(struct stmmac_priv *priv)
 
 /**
  * stmmac_tx_clean:
- * @data: data pointer
+ * @priv: private data pointer
  * Description: it reclaims resources after transmission completes.
  */
-static void stmmac_tx_clean(unsigned long data)
+static void stmmac_tx_clean(struct stmmac_priv *priv)
 {
-	struct stmmac_priv *priv = (struct stmmac_priv *)data;
 	unsigned int txsize = priv->dma_tx_size;
 
 	spin_lock(&priv->tx_lock);
@@ -776,14 +774,14 @@ static void stmmac_tx_clean(unsigned long data)
 	spin_unlock(&priv->tx_lock);
 }
 
-static inline void stmmac_enable_dma_rx_irq(struct stmmac_priv *priv)
+static inline void stmmac_enable_dma_irq(struct stmmac_priv *priv)
 {
-	priv->hw->dma->enable_rx_dma_irq(priv->ioaddr);
+	priv->hw->dma->enable_dma_irq(priv->ioaddr);
 }
 
-static inline void stmmac_disable_dma_rx_irq(struct stmmac_priv *priv)
+static inline void stmmac_disable_dma_irq(struct stmmac_priv *priv)
 {
-	priv->hw->dma->disable_rx_dma_irq(priv->ioaddr);
+	priv->hw->dma->disable_dma_irq(priv->ioaddr);
 }
 
 
@@ -798,7 +796,6 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 	netif_stop_queue(priv->dev);
 
 	priv->hw->dma->stop_tx(priv->ioaddr);
-	tasklet_disable(&priv->tx_work);
 	dma_free_tx_skbufs(priv);
 	priv->hw->desc->init_tx_desc(priv->dma_tx, priv->dma_tx_size);
 	priv->dirty_tx = 0;
@@ -806,7 +803,6 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 	priv->hw->dma->start_tx(priv->ioaddr);
 
 	priv->dev->stats.tx_errors++;
-	tasklet_enable(&priv->tx_work);
 	netif_wake_queue(priv->dev);
 }
 
@@ -815,17 +811,13 @@ static void stmmac_dma_interrupt(struct stmmac_priv *priv)
 	int status;
 
 	status = priv->hw->dma->dma_interrupt(priv->ioaddr, &priv->xstats);
-	if (likely(status & handle_rx)) {
-		priv->xstats.rx_normal_irq_n++;
+	if (likely((status & handle_rx)) || (status & handle_tx)) {
 		if (likely(napi_schedule_prep(&priv->napi))) {
-			stmmac_disable_dma_rx_irq(priv);
+			stmmac_disable_dma_irq(priv);
 			__napi_schedule(&priv->napi);
 		}
 	}
-	if (likely(status & handle_tx)) {
-		priv->xstats.tx_normal_irq_n++;
-		tasklet_schedule(&priv->tx_work);
-	} else if (unlikely(status & tx_hard_error_bump_tc)) {
+	if (unlikely(status & tx_hard_error_bump_tc)) {
 		/* Try to bump up the dma threshold on this failure */
 		if (unlikely(tc != SF_DMA_MODE) && (tc <= 256)) {
 			tc += 64;
@@ -941,7 +933,6 @@ static int stmmac_get_hw_features(struct stmmac_priv *priv)
 		/* Alternate (enhanced) DESC mode*/
 		priv->dma_cap.enh_desc =
 			(hw_cap & DMA_HW_FEAT_ENHDESSEL) >> 24;
-
 	}
 
 	return hw_cap;
@@ -982,15 +973,35 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 				   priv->dma_rx_phy);
 }
 
+/**
+ * stmmac_tx_timer:
+ * @data: data pointer
+ * Description:
+ * This is the timer handler to directly invoke the stmmac_tx_clean.
+ */
+static void stmmac_tx_timer(unsigned long data)
+{
+	struct stmmac_priv *priv = (struct stmmac_priv *)data;
+
+	stmmac_tx_clean(priv);
+}
+
+/**
+ * stmmac_tx_timer:
+ * @priv: private data structure
+ * Description:
+ * This inits the transmit coalesce parameters: i.e. timer rate,
+ * timer handler and default threshold used for enabling the
+ * interrupt on completion bit.
+ */
 static void stmmac_init_tx_coalesce(struct stmmac_priv *priv)
 {
-	/* Set Tx coalesce parameters and timers */
-	priv->tx_coal_frames = STMMAC_TX_MAX_FRAMES / 4;
+	priv->tx_coal_frames = STMMAC_TX_FRAMES;
 	priv->tx_coal_timer = STMMAC_COAL_TX_TIMER;
 	init_timer(&priv->txtimer);
 	priv->txtimer.expires = STMMAC_COAL_TIMER(priv->tx_coal_timer);
 	priv->txtimer.data = (unsigned long)priv;
-	priv->txtimer.function = stmmac_tx_clean;
+	priv->txtimer.function = stmmac_tx_timer;
 	add_timer(&priv->txtimer);
 }
 
@@ -1102,8 +1113,6 @@ static int stmmac_open(struct net_device *dev)
 	priv->tx_lpi_timer = STMMAC_DEFAULT_TWT_LS_TIMER;
 	priv->eee_enabled = stmmac_eee_init(priv);
 
-	tasklet_init(&priv->tx_work, stmmac_tx_clean, (unsigned long) priv);
-
 	stmmac_init_tx_coalesce(priv);
 
 	if ((priv->use_riwt) && (priv->hw->dma->rx_watchdog)) {
@@ -1159,7 +1168,6 @@ static int stmmac_release(struct net_device *dev)
 	skb_queue_purge(&priv->rx_recycle);
 
 	del_timer_sync(&priv->txtimer);
-	tasklet_kill(&priv->tx_work);
 
 	/* Free the IRQ lines */
 	free_irq(dev->irq, dev);
@@ -1203,7 +1211,6 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 	int nfrags = skb_shinfo(skb)->nr_frags;
 	struct dma_desc *desc, *first;
 	unsigned int nopaged_len = skb_headlen(skb);
-	unsigned long flags;
 
 	if (unlikely(stmmac_tx_avail(priv) < nfrags + 1)) {
 		if (!netif_queue_stopped(dev)) {
@@ -1215,7 +1222,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		return NETDEV_TX_BUSY;
 	}
 
-	spin_lock_irqsave(&priv->tx_lock, flags);
+	spin_lock(&priv->tx_lock);
 
 	if (priv->tx_path_in_lpi_mode)
 		stmmac_disable_eee_mode(priv);
@@ -1320,7 +1327,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	priv->hw->dma->enable_dma_transmission(priv->ioaddr);
 
-	spin_unlock_irqrestore(&priv->tx_lock, flags);
+	spin_unlock(&priv->tx_lock);
 
 	return NETDEV_TX_OK;
 }
@@ -1462,19 +1469,20 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit)
  *  @budget : maximum number of packets that the current CPU can receive from
  *	      all interfaces.
  *  Description :
- *   This function implements the the reception process.
+ *  To look at the incoming frames and clear the tx resources.
  */
 static int stmmac_poll(struct napi_struct *napi, int budget)
 {
 	struct stmmac_priv *priv = container_of(napi, struct stmmac_priv, napi);
 	int work_done = 0;
 
-	priv->xstats.rx_napi_poll++;
-	work_done = stmmac_rx(priv, budget);
+	priv->xstats.napi_poll++;
+	stmmac_tx_clean(priv);
 
+	work_done = stmmac_rx(priv, budget);
 	if (work_done < budget) {
 		napi_complete(napi);
-		stmmac_enable_dma_rx_irq(priv);
+		stmmac_enable_dma_irq(priv);
 	}
 	return work_done;
 }

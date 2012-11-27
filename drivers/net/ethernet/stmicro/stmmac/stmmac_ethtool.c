@@ -93,7 +93,7 @@ static const struct stmmac_stats stmmac_gstrings_stats[] = {
 	STMMAC_STAT(rx_pkt_n),
 	STMMAC_STAT(normal_irq_n),
 	STMMAC_STAT(rx_normal_irq_n),
-	STMMAC_STAT(rx_napi_poll),
+	STMMAC_STAT(napi_poll),
 	STMMAC_STAT(tx_normal_irq_n),
 	STMMAC_STAT(tx_clean),
 	STMMAC_STAT(tx_reset_ic_bit),
