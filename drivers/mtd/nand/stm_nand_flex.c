@@ -882,6 +882,32 @@ static void flex_print_regs(struct stm_nand_flex_controller *flex)
 }
 #endif /* CONFIG_MTD_DEBUG */
 
+static void flex_init_controller_hw(struct stm_nand_flex_controller *flex)
+{
+
+	/* Disable boot_not_flex */
+	flex_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
+
+	/* Reset FLEX Controller */
+	flex_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
+	udelay(1);
+	flex_writereg(0x00, NANDHAM_FLEXMODE_CFG);
+
+	/* Set Controller to FLEX mode */
+	flex_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
+
+	/* Not using interrupts in FLEX mode */
+	flex_writereg(0x00, NANDHAM_INT_EN);
+
+	/* To fit with MTD framework, configure FLEX_DATA reg for 1-byte
+	 * read/writes, and deassert CSn
+	 */
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAWRITE_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
+}
+
 static struct stm_nand_flex_controller * __devinit
 flex_init_controller(struct platform_device *pdev)
 {
@@ -949,29 +975,10 @@ flex_init_controller(struct platform_device *pdev)
 
 	/* Initialise 'controller' structure */
 	spin_lock_init(&flex->hwcontrol.lock);
+
 	init_waitqueue_head(&flex->hwcontrol.wq);
 
-	/* Disable boot_not_flex */
-	flex_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
-
-	/* Reset FLEX Controller */
-	flex_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
-	udelay(1);
-	flex_writereg(0x00, NANDHAM_FLEXMODE_CFG);
-
-	/* Set Controller to FLEX mode */
-	flex_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
-
-	/* Not using interrupts in FLEX mode */
-	flex_writereg(0x00, NANDHAM_INT_EN);
-
-	/* To fit with MTD framework, configure FLEX_DATA reg for 1-byte
-	 * read/writes, and deassert CSn
-	 */
-	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
-		      NANDHAM_FLEX_DATAWRITE_CONFIG);
-	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
-		      NANDHAM_FLEX_DATAREAD_CONFIG);
+	flex_init_controller_hw(flex);
 
 #ifdef CONFIG_MTD_DEBUG
 	flex_print_regs(flex);
@@ -1223,12 +1230,30 @@ static int __devexit stm_nand_flex_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_HIBERNATION
+static int stm_nand_flex_restore(struct device *dev)
+{
+	struct stm_nand_flex_controller *flex = dev_get_drvdata(dev);
+
+	flex_init_controller_hw(flex);
+	return 0;
+}
+
+static struct dev_pm_ops stm_nand_flex_pm_ops = {
+	.thaw = stm_nand_flex_restore,
+	.restore = stm_nand_flex_restore,
+};
+#else
+static struct dev_pm_ops stm_nand_flex_pm_ops;
+#endif
+
 static struct platform_driver stm_nand_flex_driver = {
 	.probe		= stm_nand_flex_probe,
 	.remove		= stm_nand_flex_remove,
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+		.pm	= &stm_nand_flex_pm_ops,
 	},
 };
 
