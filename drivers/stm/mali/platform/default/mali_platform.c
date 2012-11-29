@@ -20,7 +20,7 @@
 
 static struct clk *mali_clk;
 
-_mali_osk_errcode_t __init mali_platform_init(void)
+_mali_osk_errcode_t mali_platform_init(void)
 {
 	char *mali_clk_n = "gpu_clk";
 
@@ -33,7 +33,7 @@ _mali_osk_errcode_t __init mali_platform_init(void)
 	MALI_SUCCESS;
 }
 
-_mali_osk_errcode_t __exit mali_platform_deinit(void)
+_mali_osk_errcode_t mali_platform_deinit(void)
 {
 	if (mali_clk)
 		clk_disable(mali_clk);
