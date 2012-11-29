@@ -593,6 +593,29 @@ static void afm_set_timings(struct stm_nand_afm_controller *afm,
 	afm_writereg(reg, NANDHAM_REN_TIMING);
 }
 
+static void afm_init_boot(struct stm_nand_afm_controller *afm)
+{
+	/* Stop AFM Controller, in case it's still running! */
+	afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
+	memset(afm->base + NANDHAM_AFM_SEQ_REG_1, 0, 32);
+
+	/* Reset AFM Controller */
+	afm_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
+	udelay(1);
+	afm_writereg(0x00, NANDHAM_FLEXMODE_CFG);
+
+	/* Disable boot_not_flex */
+	afm_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
+
+	/* Set Controller to AFM */
+	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
+
+	/* Enable Interrupts: individual interrupts enabled when needed! */
+	afm_writereg(0x0000007C, NANDHAM_INT_CLR);
+	afm_writereg(NAND_EDGE_CFG_RBN_RISING, NANDHAM_INT_EDGE_CFG);
+	afm_writereg(NAND_INT_ENABLE, NANDHAM_INT_EN);
+}
+
 /* Initialise the AFM NAND controller */
 static struct stm_nand_afm_controller * __devinit
 afm_init_controller(struct platform_device *pdev)
@@ -680,25 +703,7 @@ afm_init_controller(struct platform_device *pdev)
 	init_completion(&afm->seq_completed);
 	afm->current_csn = -1;
 
-	/* Stop AFM Controller, in case it's still running! */
-	afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
-	memset(afm->base + NANDHAM_AFM_SEQ_REG_1, 0, 32);
-
-	/* Reset AFM Controller */
-	afm_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
-	udelay(1);
-	afm_writereg(0x00, NANDHAM_FLEXMODE_CFG);
-
-	/* Disable boot_not_flex */
-	afm_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
-
-	/* Set Controller to AFM */
-	afm_writereg(0x00000002, NANDHAM_FLEXMODE_CFG);
-
-	/* Enable Interrupts: individual interrupts enabled when needed! */
-	afm_writereg(0x0000007C, NANDHAM_INT_CLR);
-	afm_writereg(NAND_EDGE_CFG_RBN_RISING, NANDHAM_INT_EDGE_CFG);
-	afm_writereg(NAND_INT_ENABLE, NANDHAM_INT_EN);
+	afm_init_boot(afm);
 
 	platform_set_drvdata(pdev, afm);
 
@@ -3185,12 +3190,30 @@ static int __devexit stm_afm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_HIBERNATION
+static int stm_afm_nand_restore(struct device *dev)
+{
+	struct stm_nand_afm_controller *afm = dev_get_drvdata(dev);
+
+	afm_init_boot(afm);
+
+	return 0;
+}
+
+static struct dev_pm_ops stm_afm_nand_on_ops = {
+	.restore = stm_afm_nand_restore,
+};
+#else
+static struct dev_pm_ops stm_afm_nand_on_ops;
+#endif
+
 static struct platform_driver stm_afm_nand_driver = {
 	.probe		= stm_afm_probe,
 	.remove		= stm_afm_remove,
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+		.pm	= &stm_afm_nand_on_ops,
 	},
 };
 
