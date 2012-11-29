@@ -28,6 +28,7 @@
 #include <linux/init.h>
 #include <linux/errno.h>
 #include <linux/sched.h>
+#include <linux/pm_runtime.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 
@@ -546,6 +547,7 @@ static int bit_xfer(struct i2c_adapter *i2c_adap,
 	int i, ret;
 	unsigned short nak_ok;
 
+	pm_runtime_get_sync(i2c_adap->dev.parent);
 	if (adap->pre_xfer) {
 		ret = adap->pre_xfer(i2c_adap);
 		if (ret < 0)
@@ -603,6 +605,7 @@ bailout:
 
 	if (adap->post_xfer)
 		adap->post_xfer(i2c_adap);
+	pm_runtime_put(i2c_adap->dev.parent);
 	return ret;
 }
 

@@ -17,6 +17,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/of_i2c.h>
+#include <linux/pm_runtime.h>
 
 struct i2c_gpio_private_data {
 	struct i2c_adapter adap;
@@ -209,6 +210,9 @@ static int __devinit i2c_gpio_probe(struct platform_device *pdev)
 		 pdata->scl_is_output_only
 		 ? ", no clock stretching" : "");
 
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+
 	return 0;
 
 err_add_bus:
@@ -236,6 +240,80 @@ static int __devexit i2c_gpio_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int i2c_gpio_suspend(struct device *dev)
+{
+	struct i2c_gpio_private_data *priv;
+	struct i2c_gpio_platform_data *pdata;
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+
+	priv = platform_get_drvdata(pdev);
+	pdata = &priv->pdata;
+
+	gpio_free(pdata->scl_pin);
+	gpio_free(pdata->sda_pin);
+	return 0;
+}
+
+static int i2c_gpio_resume(struct device *dev)
+{
+	int ret;
+	struct i2c_gpio_private_data *priv;
+	struct i2c_gpio_platform_data *pdata;
+	struct i2c_algo_bit_data *bit_data;
+	struct platform_device *pdev =
+		container_of(dev, struct platform_device, dev);
+
+	priv = platform_get_drvdata(pdev);
+	pdata = &priv->pdata;
+	bit_data = &priv->bit_data;
+
+	ret = gpio_request(pdata->sda_pin, "sda");
+	if (ret)
+		goto err_request_sda;
+	ret = gpio_request(pdata->scl_pin, "scl");
+	if (ret)
+		goto err_request_scl;
+
+	if (pdata->sda_is_open_drain) {
+		gpio_direction_output(pdata->sda_pin, 1);
+		bit_data->setsda = i2c_gpio_setsda_val;
+	} else {
+		gpio_direction_input(pdata->sda_pin);
+		bit_data->setsda = i2c_gpio_setsda_dir;
+	}
+
+	if (pdata->scl_is_open_drain || pdata->scl_is_output_only) {
+		gpio_direction_output(pdata->scl_pin, 1);
+		bit_data->setscl = i2c_gpio_setscl_val;
+	} else {
+		gpio_direction_input(pdata->scl_pin);
+		bit_data->setscl = i2c_gpio_setscl_dir;
+	}
+
+	return 0;
+
+	gpio_free(pdata->scl_pin);
+err_request_scl:
+	gpio_free(pdata->sda_pin);
+err_request_sda:
+	return ret;
+}
+#else
+#define i2c_gpio_suspend NULL
+#define i2c_gpio_resume NULL
+#endif
+
+static const struct dev_pm_ops i2c_gpio_pm_ops = {
+	.suspend = i2c_gpio_suspend,
+	.resume = i2c_gpio_resume,
+	.freeze = i2c_gpio_suspend,
+	.restore = i2c_gpio_resume,
+	.runtime_suspend = i2c_gpio_suspend,
+	.runtime_resume = i2c_gpio_resume,
+};
+
 #if defined(CONFIG_OF)
 static const struct of_device_id i2c_gpio_dt_ids[] = {
 	{ .compatible = "i2c-gpio", },
@@ -250,6 +328,7 @@ static struct platform_driver i2c_gpio_driver = {
 		.name	= "i2c-gpio",
 		.owner	= THIS_MODULE,
 		.of_match_table	= of_match_ptr(i2c_gpio_dt_ids),
+		.pm = &i2c_gpio_pm_ops,
 	},
 	.probe		= i2c_gpio_probe,
 	.remove		= __devexit_p(i2c_gpio_remove),
