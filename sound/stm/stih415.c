@@ -84,7 +84,7 @@ static void snd_stm_stih415_setup(void)
 	sysconf_write(snd_stm_stih415_pcmp_valid_sel, 1);
 }
 
-static int __init snd_stm_stih415_probe(struct platform_device *pdev)
+static int __devinit snd_stm_stih415_probe(struct platform_device *pdev)
 {
 	int result;
 
