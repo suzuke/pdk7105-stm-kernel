@@ -46,6 +46,7 @@ struct isve_priv {
 	int irq_ds;
 	struct isve_desc *rx_desc;
 	unsigned int cur_rx;
+	unsigned int skip_hdr;
 
 	void __iomem *ioaddr_upiim;
 	unsigned int upstream_queue_size;

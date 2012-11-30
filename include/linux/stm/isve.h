@@ -25,6 +25,7 @@ struct plat_isve_data {
 	unsigned int downstream_queue_size;
 	unsigned int upstream_queue_size;
 	unsigned int queue_number;
+	unsigned int header_size;
 	char *ifname;
 };
 

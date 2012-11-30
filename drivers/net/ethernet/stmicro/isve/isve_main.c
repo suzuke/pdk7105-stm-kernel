@@ -531,7 +531,10 @@ static int isve_rx(struct isve_priv *priv, int limit)
 
 		dma_sync_single_for_cpu(priv->device, p->buf_addr, len,
 					DMA_FROM_DEVICE);
-		skb_copy_to_linear_data(skb, p->buffer + 14, len);
+		/* For some downstream queues it could be needed to skip some
+		 * bytes (DOCSIS Header) from the incoming frames.
+		 */
+		skb_copy_to_linear_data(skb, p->buffer + priv->skip_hdr, len);
 		dma_sync_single_for_device(priv->device, p->buf_addr, len,
 					   DMA_FROM_DEVICE);
 		skb_put(skb, len);
@@ -780,6 +783,7 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 	/* Init main private resources: queue numbers and sizes. */
 	priv->downstream_queue_size = plat_dat->downstream_queue_size;
 	priv->upstream_queue_size = plat_dat->upstream_queue_size;
+	priv->skip_hdr = plat_dat->header_size;
 
 	/* Init Upstream/Downstream modules */
 	priv->dfwd = isve_dfwd_core(priv->ioaddr_dfwd);
