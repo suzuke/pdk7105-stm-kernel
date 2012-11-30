@@ -618,21 +618,25 @@ static struct plat_isve_data stig125_isve_platform_data[] = {
 		.upstream_queue_size = 32,
 		.queue_number = 3,
 		.ifname = "if17",
+		.header_size = 14,
 	}, {
 		.downstream_queue_size = 32,
 		.upstream_queue_size = 32,
 		.queue_number = 4,
 		.ifname = "if18",
+		.header_size = 6,
 	}, {
 		.downstream_queue_size = 32,
 		.upstream_queue_size = 32,
 		.queue_number = 5,
 		.ifname = "if16",
+		.header_size = 14,
 	}, {
 		.downstream_queue_size = 32,
 		.upstream_queue_size = 32,
 		.queue_number = 7,
 		.ifname = "if1",
+		.header_size = 14,
 	}
 };
 
