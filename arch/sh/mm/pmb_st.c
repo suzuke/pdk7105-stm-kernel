@@ -405,7 +405,7 @@ static struct pmb_mapping* pmb_calc(unsigned long phys, unsigned long size,
 		if (entry == NULL) {
 			int pos;
 
-			pos = pmb_alloc(req_pos ? *req_pos++ : PMB_NO_ENTRY);
+			pos = pmb_alloc(req_pos ? (*req_pos)++ : PMB_NO_ENTRY);
 			if (pos == PMB_NO_ENTRY)
 				goto failed_give_up;
 			entry = &pmbe[pos];
