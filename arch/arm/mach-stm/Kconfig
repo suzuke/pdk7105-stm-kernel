@@ -71,7 +71,7 @@ config MACH_STM_B2000_CN22_B2048
 endchoice
 
 config	MACH_STM_B2000_CN22_B2032_GIGA_MODE
-	bool "B2032A: enable GMAC0 in GMII/RMII mode"
+	bool "B2032A: enable GMAC0 in GMII/RGMII mode"
 	depends on MACH_STM_B2000_CN22_B2032
 	help
 	  Select this options to support the GMII/RGMII
@@ -124,7 +124,7 @@ config MACH_STM_B2000_CN23_B2035
 endchoice
 
 config	MACH_STM_B2000_CN23_B2032_GIGA_MODE
-	bool "B2032A: enable GMAC1 in GMII/RMII mode"
+	bool "B2032A: enable GMAC1 in GMII/RGMII mode"
 	depends on MACH_STM_B2000_CN23_B2032
 	help
 	  Select this options to support the GMII/RGMII
