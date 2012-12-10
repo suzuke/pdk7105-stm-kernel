@@ -410,7 +410,6 @@ static int isve_release(struct net_device *dev)
 	/* Release and free the Rx/Tx resources */
 	isve_release_resources(priv);
 
-	netif_carrier_off(dev);
 	DBG("<<< isve release\n");
 
 	return 0;
@@ -833,7 +832,6 @@ static int isve_pltfr_remove(struct platform_device *pdev)
 
 	pr_info("%s: removing driver", __func__);
 
-	netif_carrier_off(ndev);
 	unregister_netdev(ndev);
 	free_netdev(ndev);
 
