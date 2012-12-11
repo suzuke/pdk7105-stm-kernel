@@ -16,15 +16,8 @@ config STM_ISVE
 if STM_ISVE
 
 config ISVE_DEBUG
-	tristate "Enable ISVE internal debugging option"
+	bool "Enable ISVE internal debugging option"
 	depends on STM_ISVE
 	default n
-	---help---
-	  This option improves the driver message output proving
-	  several information about its configuration.
-	  Pay attention that it also enables the verbosity for the
-	  receive and transmit processes generating an huge amount
-	  of message actually useful for debugging purpose.
 
-	  If unsure, say N.
 endif

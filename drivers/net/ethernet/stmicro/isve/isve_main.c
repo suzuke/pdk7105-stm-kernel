@@ -116,22 +116,21 @@ static void isve_release_resources(struct isve_priv *priv)
 
 /**
  * isve_alloc_resources: allocate the rx/tx buffers
- * @dev: net device structure
+ * @priv: private structure
  * Description: it allocates the TX / RX resources (buffers etc).
  * Driver maintains two lists of buffers for managing the trasmission
  * and the reception processes.
  * Streaming DMA mappings are used to DMA transfer,
  */
-static int isve_alloc_resources(struct net_device *dev)
+static int isve_alloc_resources(struct isve_priv *priv)
 {
-	struct isve_priv *priv = netdev_priv(dev);
 	unsigned int txlen = priv->upstream_queue_size;
 	unsigned int rxlen = priv->downstream_queue_size;
 	int i, ret = 0;
 
 	DBG(">>> %s: txlen %d, rxlen %d\n", __func__, txlen, rxlen);
 
-	priv->rx_desc = kmalloc(sizeof(struct isve_desc *) * rxlen, GFP_KERNEL);
+	priv->rx_desc = kzalloc(sizeof(struct isve_desc *) * rxlen, GFP_KERNEL);
 	if (priv->rx_desc == NULL) {
 		pr_err("%s: ERROR allocating the Rx buffers\n", __func__);
 		return -ENOMEM;
@@ -141,7 +140,7 @@ static int isve_alloc_resources(struct net_device *dev)
 		void *buf;
 		dma_addr_t d;
 
-		buf = kmalloc(ISVE_BUF_LEN, GFP_KERNEL);
+		buf = kzalloc(ISVE_BUF_LEN, GFP_KERNEL);
 		if (buf == NULL) {
 			ret = -ENOMEM;
 			goto err;
@@ -166,7 +165,7 @@ static int isve_alloc_resources(struct net_device *dev)
 	priv->dfwd->init_rx_fifo(priv->ioaddr_dfwd, priv->rx_desc[0].buf_addr);
 
 	/* Allocate the transmit resources */
-	priv->tx_desc = kmalloc(sizeof(struct isve_desc *) * txlen, GFP_KERNEL);
+	priv->tx_desc = kzalloc(sizeof(struct isve_desc *) * txlen, GFP_KERNEL);
 	if (priv->tx_desc == NULL) {
 		pr_err("%s: ERROR allocating the Tx buffers\n", __func__);
 		ret = -ENOMEM;
@@ -177,7 +176,7 @@ static int isve_alloc_resources(struct net_device *dev)
 		void *buf;
 		dma_addr_t d;
 
-		buf = kmalloc(ISVE_BUF_LEN, GFP_KERNEL);
+		buf = kzalloc(ISVE_BUF_LEN, GFP_KERNEL);
 		if (buf == NULL) {
 			ret = -ENOMEM;
 			goto err;
@@ -354,11 +353,6 @@ static int isve_open(struct net_device *dev)
 		return ret;
 	}
 
-	DBG("isve: init and allocate the resources...\n");
-	ret = isve_alloc_resources(dev);
-	if (ret)
-		goto error_fifo;
-
 	DBG("isve: init downstream and upstream modules...\n");
 	priv->dfwd->init(priv->ioaddr_dfwd);
 	priv->upiim->init(priv->ioaddr_upiim);
@@ -376,12 +370,6 @@ static int isve_open(struct net_device *dev)
 	napi_enable(&priv->napi);
 	netif_start_queue(dev);
 	DBG("<<< isve open\n");
-
-	return 0;
-
-error_fifo:
-	free_irq(priv->irq_us, dev);
-	free_irq(priv->irq_ds, dev);
 
 	return ret;
 }
@@ -406,9 +394,6 @@ static int isve_release(struct net_device *dev)
 	/* Free the IRQ lines */
 	free_irq(priv->irq_us, dev);
 	free_irq(priv->irq_ds, dev);
-
-	/* Release and free the Rx/Tx resources */
-	isve_release_resources(priv);
 
 	DBG("<<< isve release\n");
 
@@ -721,6 +706,7 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 	void __iomem *addr_dfwd = NULL;
 	void __iomem *addr_upiim = NULL;
 	struct plat_isve_data *plat_dat = NULL;
+	struct device *dev = &pdev->dev;
 
 	/* Get Resources for Downstream and Upstream.
 	 * Resource 0 is for dfwd and resource 1 is for  upiim.
@@ -730,7 +716,7 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	DBG("%s: get dfwd resource: res->start 0x%x\n", __func__, res->start);
-	addr_dfwd = ioremap(res->start, resource_size(res));
+	addr_dfwd = devm_request_and_ioremap(dev, res);
 	if (!addr_dfwd) {
 		pr_err("%s: ERROR: dfwd memory mapping failed", __func__);
 		release_mem_region(res->start, resource_size(res));
@@ -742,7 +728,7 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	DBG("%s: get upiim resource: res->start 0x%x\n", __func__, res1->start);
-	addr_upiim = ioremap(res1->start, resource_size(res1));
+	addr_upiim = devm_request_and_ioremap(dev, res1);
 	if (!addr_upiim) {
 		pr_err("%s: ERROR: upiim memory mapping failed", __func__);
 		release_mem_region(res->start, resource_size(res));
@@ -750,12 +736,12 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	plat_dat = pdev->dev.platform_data;
+	plat_dat = dev->platform_data;
 
-	priv = isve_dvr_probe(&(pdev->dev), plat_dat);
+	priv = isve_dvr_probe(dev, plat_dat);
 	if (!priv) {
 		pr_err("%s: main driver probe failed", __func__);
-		goto out_unmap;
+		return -ENODEV;
 	}
 
 	priv->ioaddr_dfwd = addr_dfwd;
@@ -763,18 +749,15 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 
 	priv->irq_ds = platform_get_irq_byname(pdev, "isveirq_ds");
 	if (priv->irq_ds == -ENXIO) {
-		pr_err("%s: ERROR: DFWD IRQ configuration information not found\n",
+		pr_err("%s: ERROR: DFWD IRQ configuration not found\n",
 		       __func__);
-		ret = -ENXIO;
-		goto out_unmap;
+		return -ENXIO;
 	}
 	priv->irq_us = platform_get_irq_byname(pdev, "isveirq_us");
 	if (priv->irq_ds == -ENXIO) {
-		pr_err("%s: ERROR: UPIIM IRQ configuration information not found\n",
+		pr_err("%s: ERROR: UPIIM IRQ configuration not found\n",
 		       __func__);
-		free_irq(priv->irq_ds, priv->dev);
-		ret = -ENXIO;
-		goto out_unmap;
+		return -ENXIO;
 	}
 
 	platform_set_drvdata(pdev, priv->dev);
@@ -790,8 +773,7 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 
 	if ((!priv->dfwd) || (!priv->upiim)) {
 		pr_err("isve: hard error allocating HW ops\n");
-		ret = -ENOMEM;
-		goto out_free_irq;
+		return -ENOMEM;
 	}
 
 	pr_info("ISVE (%s):\n\tioaddr_dfwd: 0x%p, ioaddr_upiim: 0x%p\n"
@@ -801,19 +783,8 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 		priv->irq_ds, priv->irq_us, plat_dat->queue_number,
 		priv->downstream_queue_size, priv->upstream_queue_size);
 
-	return 0;
-
-out_free_irq:
-	free_irq(priv->irq_us, priv->dev);
-	free_irq(priv->irq_ds, priv->dev);
-
-out_unmap:
-	iounmap(priv->ioaddr_dfwd);
-	iounmap(priv->ioaddr_upiim);
-	platform_set_drvdata(pdev, NULL);
-
-	release_mem_region(res->start, resource_size(res));
-	release_mem_region(res1->start, resource_size(res1));
+	DBG("isve: init and allocate the resources...\n");
+	ret = isve_alloc_resources(priv);
 
 	return ret;
 }
@@ -828,22 +799,14 @@ static int isve_pltfr_remove(struct platform_device *pdev)
 {
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct isve_priv *priv = netdev_priv(ndev);
-	struct resource *res, *res1;
 
-	pr_info("%s: removing driver", __func__);
+	isve_release_resources(priv);
 
 	unregister_netdev(ndev);
 	free_netdev(ndev);
 
-	iounmap((void *)priv->ioaddr_dfwd);
-	iounmap((void *)priv->ioaddr_upiim);
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	release_mem_region(res->start, resource_size(res));
-	res1 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	release_mem_region(res->start, resource_size(res1));
-
 	platform_set_drvdata(pdev, NULL);
+
 	return 0;
 }
 
