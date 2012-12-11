@@ -16,6 +16,9 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+#include <linux/zlib.h>
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
 
 
 /* Function which returns non-zero if the first range entirely contains the
@@ -211,6 +214,25 @@ int ELFW(physLoad)(const struct ELFW(info) *elfInfo,
 			if (res)
 				return res;
 
+#if defined(CONFIG_STM_ELF_EXTENSIONS)
+			if (phdr[i].p_flags & PF_ZLIB) {
+				/* Zlib inflate to a kernel buffer... */
+				int zlibResult;
+				virtSrcAddr = kmalloc(memSize, GFP_KERNEL);
+				zlibResult = zlib_inflate_blob_with_header(
+					virtSrcAddr, memSize,
+					elfBase + phdr[i].p_offset,
+					phdr[i].p_filesz);
+				if (zlibResult != memSize) {
+					kfree(virtSrcAddr);
+					pr_err("libelf: Segment %d inflation failed (result: %d)\n",
+					       i, zlibResult);
+					return -EINVAL;
+				}
+				copySize = memSize;
+				setSize = 0;
+			} else
+#endif /* defined(CONFIG_STM_ELF_EXTENSIONS) */
 			{
 				virtSrcAddr = elfBase + phdr[i].p_offset;
 				copySize = phdr[i].p_filesz;
@@ -278,8 +300,10 @@ int ELFW(physLoad)(const struct ELFW(info) *elfInfo,
 					phdr[i].p_paddr, virtSrcAddr, copySize,
 					memSize);
 
+#if defined(CONFIG_STM_ELF_EXTENSIONS)
 			if (virtSrcAddr != elfBase + phdr[i].p_offset)
 				kfree(virtSrcAddr);
+#endif /* defined(CONFIG_STM_ELF_EXTENSIONS) */
 
 			/* Flush the cache if we used a cached mapping */
 #ifdef CONFIG_SUPERH

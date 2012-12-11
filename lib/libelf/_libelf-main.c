@@ -12,6 +12,9 @@
 #include <linux/string.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+#include <linux/zlib.h>
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
 
 #define ELF_CHECK_FLAG(x)	({x ? x : ~SHF_NULL; })
 #define ELF_CHECK_TYPE(x)	({x ? x : ~SHT_NULL; })
@@ -115,8 +118,12 @@ struct ELFW(info) *ELFW(initFromMem)(uint8_t *elffile,
 	for (i = 0; i < elfinfo->numsections; i++) {
 		ElfW(Shdr) *shdr;
 		shdr = &elfinfo->secbase[i];
-		if (!ELFW(valid_offset)(elfinfo, shdr->sh_offset, shdr->sh_size)
-				&& shdr->sh_type != SHT_NOBITS)
+		if (shdr->sh_type != SHT_NULL && shdr->sh_type != SHT_NOBITS &&
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+		    !(shdr->sh_flags & SHF_COMPRESSED) &&
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
+		    !ELFW(valid_offset)(elfinfo, shdr->sh_offset, shdr->sh_size)
+		   )
 			goto fail;
 	}
 

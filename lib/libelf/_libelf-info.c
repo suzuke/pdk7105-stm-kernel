@@ -85,6 +85,10 @@ void ELFW(printSectionInfo)(const struct ELFW(info) *elfinfo)
 			flags[n++] = 'M';
 		if (sec->sh_flags & SHF_STRINGS)
 			flags[n++] = 'S';
+#if defined(CONFIG_STM_ELF_EXTENSIONS)
+		if (sec->sh_flags & SHF_COMPRESSED)
+			flags[n++] = 'Z';
+#endif /* defined(CONFIG_STM_ELF_EXTENSIONS) */
 		flags[n] = '\0';
 
 		printk(KERN_INFO"[%02u] %s %s %s\n", i, str, type, flags);

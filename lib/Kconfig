@@ -207,6 +207,14 @@ config LIBELF_32
 config LIBELF_64
 	bool
 
+config STM_ELF_EXTENSIONS
+	bool "STMicroelectonics ELF extensions for libelf"
+	select ZLIB_INFLATE
+	depends on (LIBELF_32 || LIBELF_64)
+	help
+	  Enables STMicroelectonics ELF extensions for libelf, such as Zlib
+	  compressed segment loading.
+
 #
 # Generic allocator support is selected if needed
 #

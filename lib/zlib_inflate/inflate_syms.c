@@ -17,4 +17,7 @@ EXPORT_SYMBOL(zlib_inflateEnd);
 EXPORT_SYMBOL(zlib_inflateReset);
 EXPORT_SYMBOL(zlib_inflateIncomp); 
 EXPORT_SYMBOL(zlib_inflate_blob);
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+EXPORT_SYMBOL(zlib_inflate_blob_with_header);
+#endif
 MODULE_LICENSE("GPL");

@@ -704,8 +704,17 @@ extern int zlib_inflateInit2(z_streamp strm, int  windowBits);
     struct internal_state {int dummy;}; /* hack for buggy compilers */
 #endif
 
-/* Utility function: initialize zlib, unpack binary blob, clean up zlib,
+/* Utility function: initialize zlib, unpack raw binary blob, clean up zlib,
  * return len or negative error code. */
 extern int zlib_inflate_blob(void *dst, unsigned dst_sz, const void *src, unsigned src_sz);
+
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+/* Utility function: initialize zlib, unpack binary blob, clean up zlib,
+   return len or negative error code.
+   This version allows the input data to have a header.
+*/
+extern int zlib_inflate_blob_with_header(void *unzip_buf, unsigned int sz,
+					 const void *buf, unsigned int len);
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
 
 #endif /* _ZLIB_H */

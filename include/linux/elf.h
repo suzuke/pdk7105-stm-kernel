@@ -242,6 +242,9 @@ typedef struct elf64_hdr {
 #define PF_R		0x4
 #define PF_W		0x2
 #define PF_X		0x1
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+#define PF_ZLIB		(1 << 8)	/* Segment compressed with zlib */
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
 
 typedef struct elf32_phdr{
   Elf32_Word	p_type;
@@ -291,6 +294,9 @@ typedef struct elf64_phdr {
 #define SHF_EXECINSTR	0x4
 #define SHF_MERGE	0x10
 #define SHF_STRINGS	0x20
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+#define SHF_COMPRESSED	(1 << 12)	/* Section data has been compressed */
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
 #define SHF_MASKPROC	0xf0000000
 
 /* special section indexes */
