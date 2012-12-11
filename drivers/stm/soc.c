@@ -42,8 +42,12 @@ const char *stm_soc(void)
 		return "FLI7610";
 	if (stm_soc_is_stig125())
 		return "STiG125";
+	if (stm_soc_is_stxh205())
+		return "STxH205";
 	if (stm_soc_is_stih415())
 		return "STiH415";
+	if (stm_soc_is_stx7108())
+		return "STx7108";
 	return NULL;
 }
 EXPORT_SYMBOL(stm_soc);

@@ -20,7 +20,7 @@ static inline unsigned long stm_soc_version_minor(void)
 
 /*
  * When we get round to supporting multi-SoC binary kernels these will need
- * to be modified to perfrom a run time test of which SoC we are actually
+ * to be modified to perform a run time test of which SoC we are actually
  * running on.
  */
 
@@ -36,10 +36,22 @@ static inline unsigned long stm_soc_version_minor(void)
 #define stm_soc_is_stig125()    (0)
 #endif
 
+#ifdef CONFIG_CPU_SUBTYPE_STXH205
+#define stm_soc_is_stxh205()	(1)
+#else
+#define stm_soc_is_stxh205()	(0)
+#endif
+
 #ifdef CONFIG_CPU_SUBTYPE_STIH415
 #define stm_soc_is_stih415()	(1)
 #else
 #define stm_soc_is_stih415()	(0)
+#endif
+
+#ifdef CONFIG_CPU_SUBTYPE_STX7108
+#define stm_soc_is_stx7108()	(1)
+#else
+#define stm_soc_is_stx7108()	(0)
 #endif
 
 #endif /* STM_SOC_H */
