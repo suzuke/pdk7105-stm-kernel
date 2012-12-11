@@ -576,6 +576,49 @@ static struct platform_device stxh205_fdma_xbar_device = {
 };
 
 
+/* st231 coprocessor resources -------------------------------------------- */
+
+static struct platform_device stxh205_st231_coprocessor_devices[2] = {
+	{
+		.name = "stm-coproc-st200",
+		.id = 0,
+		.dev.platform_data = &(struct plat_stm_st231_coproc_data) {
+			.name = "video",
+			.id = 0,
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 2,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYSCONF(SYSCONF(175),
+							6, 31, "BOOT_ADDR"),
+					STM_DEVICE_SYSCONF(SYSCONF(460),
+							27, 27, "RESET"),
+				},
+			},
+			.boot_shift = 6,
+			.not_reset = 1,
+		},
+	}, {
+		.name = "stm-coproc-st200",
+		.id = 1,
+		.dev.platform_data = &(struct plat_stm_st231_coproc_data) {
+			.name = "audio",
+			.id = 0,
+			.device_config = &(struct stm_device_config) {
+				.sysconfs_num = 2,
+				.sysconfs = (struct stm_device_sysconf []) {
+					STM_DEVICE_SYSCONF(SYSCONF(176),
+							6, 31, "BOOT_ADDR"),
+					STM_DEVICE_SYSCONF(SYSCONF(460),
+							26, 26, "RESET"),
+				},
+			},
+			.boot_shift = 6,
+			.not_reset = 1,
+		},
+	},
+};
+
+
 /* Hardware RNG resources ------------------------------------------------- */
 
 static struct platform_device stxh205_devhwrandom_device = {
@@ -605,6 +648,8 @@ postcore_initcall(stxh205_postcore_setup);
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stxh205_devices[] __initdata = {
+	&stxh205_st231_coprocessor_devices[0],
+	&stxh205_st231_coprocessor_devices[1],
 	&stxh205_sysconf_devices[0],
 	&stxh205_sysconf_devices[1],
 	&stxh205_sysconf_devices[2],
