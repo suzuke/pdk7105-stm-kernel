@@ -47,7 +47,50 @@ struct typess {
 	{0x6ffffffe, "GNU version needs"}, \
 	{0x6fffffff, "GNU version symbol table"}, \
 	{0xffffffff, NULL}
-#endif
+
+
+/* Default ELF load parameters */
+#define ELF_LOADPARAMS_INIT	{NULL, NULL, 0, NULL, 0, NULL}
+/* Macro to free some LoadParams */
+#define ELF_LOADPARAMS_FREE(p)	do { \
+					if ((p)->allowedRanges) \
+						kfree((p)->allowedRanges); \
+					if ((p)->existingMappings) \
+						kfree((p)->existingMappings); \
+				} while (0)
+
+#endif /* ELF_TYPES */
+
+struct ELFW(MemRange) {
+	ElfW(Addr)	base;
+	ElfW(Addr)	top;
+};
+
+struct ELFW(IORemapMapping) {
+	ElfW(Addr)	physBase;
+	void __iomem	*vIOBase;
+	uint32_t	size;
+};
+
+/* Parameters for an ELF<xx>_physLoad() */
+struct ELFW(LoadParams) {
+	/* A callback called with the data of each PT_LOAD segment with data in
+	 * it after it has been loaded.
+	 */
+	int (*ptLoadCallback)(unsigned int loadedSegNum, void *privData,
+			      unsigned long pAddr, void *segData,
+			      unsigned long dataSize, unsigned long fullSize);
+	/* Private data passed to the callback function */
+	void			*privData;
+	/* The number of allowed load ranges in the following list */
+	uint32_t		numAllowedRanges;
+	struct ELFW(MemRange)	*allowedRanges;
+	/* A list of existing ioremap mappings which the driver would like us to
+	 * use in preference to creating new mappings to perform the load.
+	 */
+	uint32_t		numExistingMappings;
+	struct ELFW(IORemapMapping) *existingMappings;
+};
 
 struct ELFW(info) {
 	uint8_t	*base;	/* Base address of ELF image in memory  */
@@ -89,3 +132,13 @@ static inline unsigned long ELFW(findBaseAddr)(ElfW(Ehdr) *hdr,
 {
 	return ELFW(findBaseAddrCheck)(hdr, sechdrs, base, SHF_NULL, SHT_NULL);
 }
+
+/* Perform an ELF load to physical addresses, returning non-zero on failure,
+ * else 0.
+ * loadParams specifies checks to perform and restrictions on the load.
+ * For successful loads:
+ *  - the ELF entry address is passed back via entryAddr
+ */
+int ELFW(physLoad)(const struct ELFW(info) *elfinfo,
+		   const struct ELFW(LoadParams) *loadParams,
+		   uint32_t *entryAddr);

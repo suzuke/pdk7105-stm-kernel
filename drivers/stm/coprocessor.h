@@ -13,7 +13,7 @@
 #define COPROC_BPA2_NAME_LEN 32		/* eg "coproc_video0" */
 
 #define COPROC_FIRMWARE_NAME "st_firmware"
-#define COPROC_FIRMWARE_NAME_LEN 32	/* eg "st_fimware_video0.elf" */
+#define COPROC_FIRMWARE_NAME_LEN 32	/* eg "st_firmware_<SoC>_video0.elf" */
 
 struct coproc_fns;
 
@@ -32,7 +32,6 @@ struct coproc {
 	u_long	    ram_phys;		/* Coprocessor RAM physical address */
 	u_long	    ram_size;		/* Coprocessor RAM size (in bytes)  */
 	unsigned long bpa2_alloc;	/* Start of allocated BPS2 memory */
-	void __iomem	*ram_base;	/* The remaped phiysical memory */
 
 	struct device *parent;
 	struct device *dev;

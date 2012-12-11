@@ -23,7 +23,7 @@
 static int stm_fdma_fw_check_header(struct stm_fdma_device *fdev,
 		struct ELF32_info *elfinfo)
 {
-	int i;
+	int i, loadable = 0;
 
 	/* Check the firmware ELF header */
 	if (elfinfo->header->e_type != ET_EXEC) {
@@ -41,47 +41,21 @@ static int stm_fdma_fw_check_header(struct stm_fdma_device *fdev,
 		return -EINVAL;
 	}
 
-	/* We expect the firmware to contain only 2 loadable segments */
-	if (elfinfo->header->e_phnum != STM_FDMA_FW_SEGMENTS) {
-		dev_err(fdev->dev, "Firmware contains more than 2 segments\n");
-		return -EINVAL;
-	}
-
+	/* We expect the firmware to contain 2 loadable segments.  We allow 1
+	 * in case they've been combined.
+	 * In fact it would be permissible to have more segments...we're just
+	 * checking expectations.
+	 */
 	for (i = 0; i < elfinfo->header->e_phnum; ++i) {
-		if (elfinfo->progbase[i].p_type != PT_LOAD) {
-			dev_err(fdev->dev, "Firmware segment %d not loadable\n",
-				i);
-			return -EINVAL;
-		}
+		if (elfinfo->progbase[i].p_type == PT_LOAD)
+			loadable++;
 	}
-
-	return 0;
-}
-
-static int stm_fdma_fw_check_segment(signed long offset,
-			   unsigned long size, struct stm_plat_fdma_ram *ram)
-{
-	return (offset >= ram->offset) &&
-		((offset + size) <= (ram->offset + ram->size));
-}
-
-static int stm_fdma_fw_copy_segment(struct stm_fdma_device *fdev,
-		struct ELF32_info *elfinfo, int i)
-{
-	Elf32_Phdr *phdr = &elfinfo->progbase[i];
-	void *data = elfinfo->base;
-	signed long offset = phdr->p_paddr - fdev->io_res->start;
-	unsigned long size = phdr->p_memsz;
-
-	/* Check DMEM and IMEM segments are valid */
-	if (!(stm_fdma_fw_check_segment(offset, size, &fdev->hw->dmem) ||
-		stm_fdma_fw_check_segment(offset, size, &fdev->hw->imem))) {
-		dev_err(fdev->dev, "Firmware segment check failed\n");
+	if (loadable < 1 || loadable > STM_FDMA_FW_SEGMENTS) {
+		dev_err(fdev->dev,
+			"Firmware has %d loadable segments (1 to %d expected)\n",
+			loadable, STM_FDMA_FW_SEGMENTS);
 		return -EINVAL;
 	}
-
-	/* Copy the segment to the FDMA */
-	memcpy_toio(fdev->io_base + offset, data + phdr->p_offset, size);
 
 	return 0;
 }
@@ -89,7 +63,7 @@ static int stm_fdma_fw_copy_segment(struct stm_fdma_device *fdev,
 int stm_fdma_fw_load(struct stm_fdma_device *fdev, struct ELF32_info *elfinfo)
 {
 	int result;
-	int i;
+	struct ELF32_LoadParams load_params = ELF_LOADPARAMS_INIT;
 
 	BUG_ON(!fdev);
 	BUG_ON(!elfinfo);
@@ -104,13 +78,45 @@ int stm_fdma_fw_load(struct stm_fdma_device *fdev, struct ELF32_info *elfinfo)
 	/* First ensure that the FDMA is disabled */
 	stm_fdma_hw_disable(fdev);
 
-	/* Copy the firmware segments to the FDMA */
-	for (i = 0; i < elfinfo->header->e_phnum; i++) {
-		result = stm_fdma_fw_copy_segment(fdev, elfinfo, i);
-		if (result) {
-			dev_err(fdev->dev, "Failed to copy segment %d\n", i);
-			return result;
-		}
+	/* Load the firmware segments to the FDMA */
+	load_params.numAllowedRanges = 2;
+	load_params.allowedRanges = kmalloc(sizeof(struct ELF32_MemRange) * 2,
+					   GFP_KERNEL);
+	if (!load_params.allowedRanges) {
+		dev_err(fdev->dev, "Out of memory loading FDMA\n");
+		return -ENOMEM;
+	}
+	load_params.allowedRanges[0].base =
+			(uint32_t)fdev->io_res->start + fdev->hw->dmem.offset;
+	load_params.allowedRanges[0].top =
+			(uint32_t)fdev->io_res->start +	fdev->hw->dmem.offset +
+			fdev->hw->dmem.size;
+	load_params.allowedRanges[1].base =
+			(uint32_t)fdev->io_res->start + fdev->hw->imem.offset;
+	load_params.allowedRanges[1].top =
+			(uint32_t)fdev->io_res->start + fdev->hw->imem.offset +
+			fdev->hw->imem.size;
+#ifdef CONFIG_ARM
+	/* ARM does not allow multiple mappings of memory with different
+	 * attributes.  Pass in the existing ioremapped range.
+	 */
+	load_params.numExistingMappings = 1;
+	load_params.existingMappings = kmalloc(
+			sizeof(struct ELF32_IORemapMapping), GFP_KERNEL);
+	if (!load_params.existingMappings) {
+		dev_err(fdev->dev, "Out of memory loading FDMA\n");
+		ELF_LOADPARAMS_FREE(&load_params);
+		return -ENOMEM;
+	}
+	load_params.existingMappings[0].physBase = fdev->io_res->start;
+	load_params.existingMappings[0].vIOBase = fdev->io_base;
+	load_params.existingMappings[0].size = resource_size(fdev->io_res);
+#endif /* CONFIG_ARM */
+	result = ELF32_physLoad(elfinfo, &load_params, NULL);
+	ELF_LOADPARAMS_FREE(&load_params);
+	if (result) {
+		dev_err(fdev->dev, "Failed to load FDMA\n");
+		return result;
 	}
 
 	/* Now enable the FDMA */

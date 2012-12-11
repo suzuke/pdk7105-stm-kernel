@@ -12,6 +12,7 @@
 
 #include <linux/device.h>
 #include <linux/bpa2.h>
+#include <linux/libelf.h>
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/stm/soc.h>
@@ -49,51 +50,13 @@ static struct bpa2_part *coproc_get_bpa2_area(struct coproc *cop)
 	return bpa2_find_part(coproc_bpa2_name);
 }
 
-static int coproc_load_segments(struct coproc *cop, struct ELF32_info *elfinfo)
-{
-	Elf32_Phdr *phdr = elfinfo->progbase;
-	void *data = elfinfo->base;
-	int i;
-
-	for (i = 0; i < elfinfo->header->e_phnum; i++)
-		if (phdr[i].p_type == PT_LOAD) {
-			long offset;
-			unsigned long size;
-
-			offset = phdr[i].p_paddr - cop->ram_phys;
-			size = phdr[i].p_memsz;
-
-			/* ST200 tools have a strange 0 size segment */
-			/* This is a result of the .note section, */
-			if (size == 0)
-				continue;
-
-			coproc_dbg(cop, "Segment %d: addr %08lx size %08lx\n",
-					i, (unsigned long)phdr[i].p_paddr,
-					(unsigned long)phdr[i].p_memsz);
-
-			if ((offset < 0) || (offset + size > cop->ram_size)) {
-				coproc_err(cop, "Segment %d outside memory\n",
-					 i);
-				return -EINVAL;
-			}
-
-			memcpy_toio(cop->ram_base + offset,
-				data + phdr[i].p_offset, phdr[i].p_filesz);
-			size -= phdr[i].p_filesz;
-			offset += phdr[i].p_filesz;
-			memset_io(cop->ram_base + offset, 0, size);
-		}
-
-	return 0;
-}
-
 static int coproc_load_elf(const struct firmware *fw, struct coproc *cop)
 {
 	int ret;
 	struct ELF32_info *elfinfo = NULL;
 	unsigned long boot_address;
 	unsigned long n_pages;
+	struct ELF32_LoadParams load_params = ELF_LOADPARAMS_INIT;
 
 	elfinfo = ELF32_initFromMem((uint8_t *)fw->data, fw->size, 0);
 	if (elfinfo == NULL) {
@@ -132,25 +95,25 @@ static int coproc_load_elf(const struct firmware *fw, struct coproc *cop)
 		goto err_bpa2_alloc;
 	}
 
-	cop->ram_base = ioremap_nocache((unsigned long)cop->ram_phys,
-						cop->ram_size);
-	if (cop->ram_base == NULL) {
-		coproc_dbg(cop, "Unable to ioremap\n");
-		ret = -EINVAL;
-		goto err_ioremap;
-	}
-
 	if (cop->fns->check_elf) {
 		ret = cop->fns->check_elf(cop, elfinfo);
 		if (ret)
 			goto err_check_elf;
 	}
 
-	ret = coproc_load_segments(cop, elfinfo);
+	load_params.numAllowedRanges = 1;
+	load_params.allowedRanges = kmalloc(sizeof(struct ELF32_MemRange),
+					   GFP_KERNEL);
+	if (!load_params.allowedRanges)
+		goto err_load;
+	load_params.allowedRanges[0].base = (Elf32_Addr)cop->ram_phys;
+	load_params.allowedRanges[0].top = (Elf32_Addr)cop->ram_phys +
+								cop->ram_size;
+	ret = ELF32_physLoad(elfinfo, &load_params,
+			     (Elf32_Addr *)&boot_address);
+	ELF_LOADPARAMS_FREE(&load_params);
 	if (ret)
 		goto err_load;
-
-	boot_address = elfinfo->header->e_entry;
 
 	coproc_dbg(cop, "Received firmware size %d bytes\n", fw->size);
 	coproc_dbg(cop, "cop->ram_size    = 0x%lx\n", cop->ram_size);
@@ -164,8 +127,6 @@ static int coproc_load_elf(const struct firmware *fw, struct coproc *cop)
 
 err_load:
 err_check_elf:
-	iounmap(cop->ram_base);
-err_ioremap:
 	bpa2_free_pages(cop->bpa2_partition, cop->bpa2_alloc);
 err_bpa2_alloc:
 err_bpa2_get:
@@ -183,7 +144,7 @@ static int coproc_open(struct coproc *cop)
 
 	/*
 	 * Build the firmware file name.
-	 * We use the standard name: "st_firmware_XX.elf"
+	 * We use the standard name: "st_firmware_<SoC>_<cop_name>.elf"
 	 * to specify the video/audio device number
 	 */
 	result = scnprintf(firm_loaded, sizeof(firm_loaded),
@@ -212,7 +173,6 @@ err_request_fw:
 
 static void coproc_close(struct coproc *cop)
 {
-	iounmap(cop->ram_base);
 	bpa2_free_pages(cop->bpa2_partition, cop->bpa2_alloc);
 }
 
