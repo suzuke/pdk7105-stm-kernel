@@ -1,0 +1,31 @@
+libelf and ST ELF extensions
+============================
+
+libelf provides an API for the kernel to examine and load ELF files.
+
+Both ELF32 and ELF64 are supported.
+
+The loader in libelf is intended for loading non-kernel ELF files such as
+firmware for peripherals or other CPUs in the SoC.
+
+STMicroelectonics' kernel FDMA and coprocessor drivers use libelf and its
+loader.
+
+The loader can either use existing ioremap mappings to perform loads, or, if not
+informed of any, will create its own mappings.  By default these will be cached
+if the architecture allows it in order to accelerate performance.
+
+Currently on the ST40 (SuperH) uses cached mappings as the architecture support
+includes a function to flush IO mapped regions.
+
+ARM will use write-combined mappings by default.
+
+Other architectures will use uncached mappings by default.
+
+STMicroelectronics has extended the ELF format.  These extensions include:
+ - Zlib compression of ELF segment content
+ - Checksums of ELF segment content
+
+STs Open Boot Support Package (OBSP) includes a tool called pblelftool which may
+be used to post-process ELF files to take advantage of compression and checksum
+support.

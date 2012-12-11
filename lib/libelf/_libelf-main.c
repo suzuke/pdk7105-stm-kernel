@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #ifdef CONFIG_STM_ELF_EXTENSIONS
 #include <linux/zlib.h>
+#include <linux/zutil.h>
 #endif /* CONFIG_STM_ELF_EXTENSIONS */
 
 #define ELF_CHECK_FLAG(x)	({x ? x : ~SHF_NULL; })

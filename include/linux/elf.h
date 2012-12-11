@@ -33,6 +33,9 @@ typedef __s64	Elf64_Sxword;
 #define PT_SHLIB   5
 #define PT_PHDR    6
 #define PT_TLS     7               /* Thread local storage segment */
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+#define PT_ST_INFO	0x50000000	/* ST auxiliary ELF info */
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
 #define PT_LOOS    0x60000000      /* OS-specific */
 #define PT_HIOS    0x6fffffff      /* OS-specific */
 #define PT_LOPROC  0x70000000
@@ -244,6 +247,7 @@ typedef struct elf64_hdr {
 #define PF_X		0x1
 #ifdef CONFIG_STM_ELF_EXTENSIONS
 #define PF_ZLIB		(1 << 8)	/* Segment compressed with zlib */
+#define PF_AUX		(1 << 9)	/* ST aux ELF info required */
 #endif /* CONFIG_STM_ELF_EXTENSIONS */
 
 typedef struct elf32_phdr{
@@ -282,6 +286,9 @@ typedef struct elf64_phdr {
 #define SHT_SHLIB	10
 #define SHT_DYNSYM	11
 #define SHT_NUM		12
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+#define SHT_ST_INFO	0x50000000	/* ST auxiliary ELF info */
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
 #define SHT_LOPROC	0x70000000
 #define SHT_HIPROC	0x7fffffff
 #define SHT_LOUSER	0x80000000

@@ -23,6 +23,13 @@ struct typess {
 	char 		*name;
 };
 
+#ifdef CONFIG_STM_ELF_EXTENSIONS
+#define MORE_ELF_TYPES \
+	{0x50000000, "ST_INFO"},
+#else /* !CONFIG_STM_ELF_EXTENSIONS */
+#define MORE_ELF_TYPES
+#endif /* CONFIG_STM_ELF_EXTENSIONS */
+
 #define ELF_TYPES	{0, "NULL"}, \
 	{1, "PROGBITS"}, \
 	{2, "SYMTAB"}, \
@@ -40,6 +47,7 @@ struct typess {
 	{16, "PREINIT_ARRAY"}, \
 	{17, "GROUP"}, \
 	{18, "SYMTAB_SHNDX"}, \
+	MORE_ELF_TYPES \
 	{0x6ffffff6, "GNU_HASH"}, \
 	{0x6ffffff7, "GNU_PRELINK_LIBLIST"}, \
 	{0x6ffffff8, "CHECKSUM"}, \
