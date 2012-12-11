@@ -88,8 +88,9 @@ static int coproc_st40_check_elf(struct coproc *cop, struct ELF32_info *elfinfo)
 		bart_bootaddr = ((lmi0_not_lmi1 ? 0x1 : 0x2) << 30) |
 					(lmi_offset_baseaddr << 26);
 
-		coproc_info(cop, "BART Frozen to translate "
-				"60MB from 0x%lx\n", bart_bootaddr);
+		coproc_info(cop,
+			    "BART Frozen to translate 64MB from 0x%lx\n",
+			    bart_bootaddr);
 
 		boot_address_phys = boot_address_phys & BART_ADDR_MASK;
 		if (boot_address_phys >= bart_bootaddr &&
