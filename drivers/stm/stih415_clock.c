@@ -64,7 +64,7 @@ int __init plat_clk_alias_init(void)
 
 	/* USB */
 	clk_add_alias("usb_48_clk", NULL, "CLKS_B_USB48", NULL);
-	clk_add_alias("usb_ic_clk", NULL, "CLKS_IC_IF_2", NULL);
+	clk_add_alias("usb_ic_clk", NULL, "CLKS_ICN_IF_2", NULL);
 	clk_add_alias("usb_phy_clk", NULL, "USB2_TRIPLE_PHY", NULL);
 
 	/* SDHCI clocks */
