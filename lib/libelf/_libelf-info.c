@@ -5,7 +5,7 @@
  * Author   : Giuseppe Condorelli <giuseppe.condorelli@st.com>
  * Contrib  : Carmelo Amoroso <carmelo.amoroso@st.com>
  *
- * Copyright (c) 2008, 2011 STMicroelectronics Limited.
+ * Copyright (c) 2008, 2011, 2012 STMicroelectronics Limited.
  *
  */
 
@@ -77,17 +77,17 @@ void ELFW(printSectionInfo)(const struct ELFW(info) *elfinfo)
 		n = 0;
 		if (sec->sh_flags & SHF_WRITE)
 			flags[n++] = 'W';
-		else if (sec->sh_flags & SHF_ALLOC)
+		if (sec->sh_flags & SHF_ALLOC)
 			flags[n++] = 'A';
-		else if (sec->sh_flags & SHF_EXECINSTR)
+		if (sec->sh_flags & SHF_EXECINSTR)
 			flags[n++] = 'X';
-		else if (sec->sh_flags & SHF_MERGE)
+		if (sec->sh_flags & SHF_MERGE)
 			flags[n++] = 'M';
-		else if (sec->sh_flags & SHF_STRINGS)
+		if (sec->sh_flags & SHF_STRINGS)
 			flags[n++] = 'S';
 		flags[n] = '\0';
 
-		printk(KERN_INFO"[%02u] %s %s %s \n", i, str, type, flags);
+		printk(KERN_INFO"[%02u] %s %s %s\n", i, str, type, flags);
 	}
 }
 EXPORT_SYMBOL(ELFW(printSectionInfo));
