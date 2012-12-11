@@ -50,7 +50,7 @@ struct typess {
 
 
 /* Default ELF load parameters */
-#define ELF_LOADPARAMS_INIT	{NULL, NULL, 0, NULL, 0, NULL}
+#define ELF_LOADPARAMS_INIT	{NULL, NULL, 0, NULL, true, 0, NULL}
 /* Macro to free some LoadParams */
 #define ELF_LOADPARAMS_FREE(p)	do { \
 					if ((p)->allowedRanges) \
@@ -70,6 +70,7 @@ struct ELFW(IORemapMapping) {
 	ElfW(Addr)	physBase;
 	void __iomem	*vIOBase;
 	uint32_t	size;
+	bool		cached;
 };
 
 /* Parameters for an ELF<xx>_physLoad() */
@@ -85,6 +86,10 @@ struct ELFW(LoadParams) {
 	/* The number of allowed load ranges in the following list */
 	uint32_t		numAllowedRanges;
 	struct ELFW(MemRange)	*allowedRanges;
+	/* Attempt to use cached regions for new mappings if this architecture
+	 * allows them.
+	 */
+	bool		useCached;
 	/* A list of existing ioremap mappings which the driver would like us to
 	 * use in preference to creating new mappings to perform the load.
 	 */

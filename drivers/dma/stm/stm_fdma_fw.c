@@ -111,6 +111,7 @@ int stm_fdma_fw_load(struct stm_fdma_device *fdev, struct ELF32_info *elfinfo)
 	load_params.existingMappings[0].physBase = fdev->io_res->start;
 	load_params.existingMappings[0].vIOBase = fdev->io_base;
 	load_params.existingMappings[0].size = resource_size(fdev->io_res);
+	load_params.existingMappings[0].cached = false;
 #endif /* CONFIG_ARM */
 	result = ELF32_physLoad(elfinfo, &load_params, NULL);
 	ELF_LOADPARAMS_FREE(&load_params);

@@ -6,6 +6,9 @@
  * Copyright (c) 2012 STMicroelectronics Limited.
  */
 
+#ifdef CONFIG_SUPERH
+#include <asm/cacheflush.h>
+#endif /* CONFIG_SUPERH */
 #ifdef CONFIG_ARM
 #include <asm/setup.h>
 #endif /* CONFIG_ARM */
@@ -142,12 +145,14 @@ static int allowedRangeCheck(const ElfW(Phdr) *phdr, const uint32_t segNum,
 
 /* Function which returns an IO address from an existing IO mapping (as
  * provided in the loadParams) if the entire segment can be loaded via that
- * mapping.
+ * mapping.  If a mapping is found, the cached pointer will be set to true or
+ * false.
  * Returns NULL if there is no existing mapping to use.
  */
 static void __iomem *findIOMapping(const ElfW(Addr) pAddr,
 				   const unsigned long size,
-				   const struct ELFW(LoadParams) *loadParams)
+				   const struct ELFW(LoadParams) *loadParams,
+				   bool *cached)
 {
 	int i;
 
@@ -159,6 +164,8 @@ static void __iomem *findIOMapping(const ElfW(Addr) pAddr,
 				&loadParams->existingMappings[i];
 		if (rangeContainsL(exMap->physBase, exMap->size,
 				   pAddr, size)) {
+			if (cached)
+				*cached = exMap->cached;
 			return exMap->vIOBase + (pAddr - exMap->physBase);
 		}
 	}
@@ -187,6 +194,7 @@ int ELFW(physLoad)(const struct ELFW(info) *elfInfo,
 			unsigned long memSize, copySize, setSize;
 			void __iomem *ioDestAddr;
 			void *virtSrcAddr;
+			bool mustFlush = false;
 			bool newIOMapping = true;
 			int res;
 
@@ -215,7 +223,8 @@ int ELFW(physLoad)(const struct ELFW(info) *elfInfo,
 			if (loadParams->numExistingMappings) {
 				ioDestAddr = findIOMapping(phdr[i].p_paddr,
 							   memSize,
-							   loadParams);
+							   loadParams,
+							   &mustFlush);
 				if (ioDestAddr)
 					newIOMapping = false;
 			}
@@ -229,7 +238,25 @@ int ELFW(physLoad)(const struct ELFW(info) *elfInfo,
 				 * existing mappings in the load parameters so
 				 * this path is not used!
 				 */
-				ioDestAddr = ioremap(phdr[i].p_paddr, memSize);
+				if (loadParams->useCached) {
+#ifdef CONFIG_SUPERH
+					ioDestAddr = ioremap_cache(
+								phdr[i].p_paddr,
+								memSize);
+					mustFlush = true;
+#else /* !CONFIG_SUPERH */
+					/* Cannot use ioremap_cached() on many
+					 * architectures as there is no API to
+					 * flush, but we can use write-combining
+					 * as the next best thing.
+					 */
+					ioDestAddr = ioremap_wc(phdr[i].p_paddr,
+								memSize);
+#endif /* CONFIG_SUPERH */
+				} else
+					ioDestAddr = ioremap(phdr[i].p_paddr,
+							     memSize);
+
 				if (ioDestAddr == NULL) {
 					if (virtSrcAddr !=
 					    elfBase + phdr[i].p_offset)
@@ -240,6 +267,7 @@ int ELFW(physLoad)(const struct ELFW(info) *elfInfo,
 					return -ENOMEM;
 				}
 			}
+
 			memcpy_toio(ioDestAddr, virtSrcAddr, copySize);
 			if (setSize)
 				memset_io(ioDestAddr + copySize, 0, setSize);
@@ -253,6 +281,13 @@ int ELFW(physLoad)(const struct ELFW(info) *elfInfo,
 			if (virtSrcAddr != elfBase + phdr[i].p_offset)
 				kfree(virtSrcAddr);
 
+			/* Flush the cache if we used a cached mapping */
+#ifdef CONFIG_SUPERH
+			if (mustFlush)
+				flush_ioremap_region(phdr[i].p_paddr,
+						     ioDestAddr, 0,
+						     phdr[i].p_memsz);
+#endif /* Architectures */
 			if (newIOMapping)
 				iounmap(ioDestAddr);
 			loadedSegNum++;
