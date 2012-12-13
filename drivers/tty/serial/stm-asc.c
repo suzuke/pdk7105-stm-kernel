@@ -459,6 +459,9 @@ static int asc_serial_resume(struct device *dev)
 	if (!device_can_wakeup(dev))
 		clk_prepare_enable(ascport->clk);
 
+	if (!ascport->pm_baud)
+		return 0;
+
 	local_irq_save(flags);
 	asc_out(port, CTL, ascport->pm_ctrl);
 	asc_out(port, TIMEOUT, 20);		/* hardcoded */
@@ -492,6 +495,8 @@ static int asc_serial_restore(struct device *dev)
 
 	stm_pad_setup(ascport->pad_state);
 
+	if (!ascport->pm_baud)
+		return 0;
 	/* program the port but do not enable it */
 	asc_out(port, CTL, ascport->pm_ctrl & ~ASC_CTL_RUN);
 	asc_out(port, TIMEOUT, 20);		/* hardcoded */
