@@ -18,38 +18,59 @@
 #include <linux/err.h>
 #include <linux/clk.h>
 
-static struct clk *mali_clk;
+struct stm_mali_platform_data {
+	int initialized;
+	struct clk *clk;
+	mali_power_mode power_mode;
+};
+
+static struct stm_mali_platform_data stm_mali;
+
 
 _mali_osk_errcode_t mali_platform_init(void)
 {
 	char *mali_clk_n = "gpu_clk";
 
-	mali_clk = clk_get(NULL, mali_clk_n);
-	if (IS_ERR(mali_clk))
+	if (stm_mali.initialized)
+		MALI_SUCCESS;
+
+	stm_mali.initialized = 1;
+
+	stm_mali.clk = clk_get(NULL, mali_clk_n);
+	if (IS_ERR(stm_mali.clk))
 		MALI_DEBUG_PRINT(2, ("PM clk %s not found\n", mali_clk_n));
 	else
-		clk_prepare_enable(mali_clk);
+		clk_prepare_enable(stm_mali.clk);
 
 	MALI_SUCCESS;
 }
 
 _mali_osk_errcode_t mali_platform_deinit(void)
 {
-	if (mali_clk)
-		clk_disable_unprepare(mali_clk);
+	if (stm_mali.clk)
+		clk_disable_unprepare(stm_mali.clk);
 	MALI_SUCCESS;
 }
 
 _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
 {
-	if (mali_clk) {
-		MALI_DEBUG_PRINT(4, ("PM mode_change %s\n",
+	if (!stm_mali.clk)
+		MALI_SUCCESS;
+
+	if (stm_mali.power_mode && power_mode)
+		/*
+		 * do nothig if switching between DEEP_SLEEP and LIGHT_SLEEP
+		 */
+		goto out;
+
+	MALI_DEBUG_PRINT(4, ("PM mode_change %s\n",
 				power_mode ? "SLEEP" : "ON"));
-		if (power_mode == MALI_POWER_MODE_ON)
-			clk_prepare_enable(mali_clk);
-		if (power_mode == MALI_POWER_MODE_DEEP_SLEEP)	
-			clk_disable_unprepare(mali_clk);
-	}
+	if (power_mode)
+		clk_disable_unprepare(stm_mali.clk);
+	else
+		clk_prepare_enable(stm_mali.clk);
+out:
+	stm_mali.power_mode = power_mode;
 	MALI_SUCCESS;
 }
 
