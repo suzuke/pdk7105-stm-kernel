@@ -243,6 +243,14 @@ config MACH_STM_B2078
 	help
 	  Include support for a B2078 - STiG125 (Docsis3) Reference Board.
 
+config MACH_STM_B2092
+	bool "Support B2092 - STiH416 (Orly-2) MBoard"
+	select MACH_STM_STIH416
+	help
+	  Include support for a B2092 - STiH416 (Orly-2) MBoard.
+
+# b2092 specific configuration
+source "arch/arm/mach-stm/Kconfig.b2092"
 
 config MACH_STM_FLI76XXHDK01
 	bool "Support FLI76XX HDK01 - FLI7610 (Newman) Board"
