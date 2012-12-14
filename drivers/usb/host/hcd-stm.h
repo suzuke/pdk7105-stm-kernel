@@ -25,12 +25,14 @@
 #define AHB2STBUS_INSREG01_OFFSET       (0x10 + 0x84) /* From EHCI_BASE */
 #define AHB2STBUS_INOUT_THRESHOLD       0x00800080
 
+#define NR_USB_CLKS			(3)
 struct drv_usb_data {
 	void *ahb2stbus_wrapper_glue_base;
 	struct platform_device *ehci_device;
 	struct platform_device *ohci_device;
 	struct stm_device_state *device_state;
 	struct stm_amba_bridge *amba_bridge;
+	struct clk *clks[NR_USB_CLKS];
 };
 
 #endif

@@ -148,6 +148,7 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 			pr_warning("clk %s not found\n", usb_clks_n[i]);
 			continue;
 		}
+		dr_data->clks[i] = clk;
 		clk_prepare_enable(clk);
 		if (!i)
 			/*
@@ -277,6 +278,14 @@ static int stm_usb_resume(struct device *dev)
 	ret = pm_clk_resume(dev);
 	if (ret)
 		return ret;
+
+	/*
+	 * the pm_clk_resume just enables the clks
+	 * but in case of usb_48_clk we have to guarantee
+	 * it's @ 48MHz!
+	 */
+	if (!IS_ERR(dr_data->clks[0]))
+		clk_set_rate(dr_data->clks[0], 48000000);
 
 	stm_device_setup(dr_data->device_state);
 
