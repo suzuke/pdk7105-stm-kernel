@@ -40,3 +40,4 @@ obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= stxh205.o stxh205_clock.o stxh205_comms.o s
 obj-$(CONFIG_MACH_STM_STIG125)		+= pio-control.o stig125/
 obj-$(CONFIG_CPU_SUBTYPE_STIH415)	+= stih415.o stih415_clock.o stih415_audio.o stih415_hispeed.o stih415_usb.o \
 					   stih415_comms.o stih415_pci.o pio-control.o mpe41_devices.o
+obj-$(CONFIG_MACH_STM_STIH416)		+= pio-control.o mpe42_devices.o stih416/

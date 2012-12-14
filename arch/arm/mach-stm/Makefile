@@ -3,6 +3,7 @@ obj-$(CONFIG_SMP)		+= platsmp.o headsmp.o
 obj-$(CONFIG_MACH_STM_FLI7610)	+= soc-fli7610.o mpe41.o
 obj-$(CONFIG_MACH_STM_STIG125)	+= soc-stig125.o
 obj-$(CONFIG_MACH_STM_STIH415)	+= soc-stih415.o mpe41.o
+obj-$(CONFIG_MACH_STM_STIH416)	+= soc-stih416.o mpe42.o
 obj-$(CONFIG_MACH_STM_FLI76XXHDK01)	+= board-fli76xxhdk01.o
 obj-$(CONFIG_MACH_STM_B2000)	+= board-b2000.o
 obj-$(CONFIG_MACH_STM_B2020)	+= board-b2020.o
@@ -20,6 +21,7 @@ obj-$(CONFIG_SUSPEND)		+= suspend.o suspend-asm.o
 
 ifdef CONFIG_STM_CPU_FREQ
 obj-$(CONFIG_CPU_SUBTYPE_STIH415)	+= cpufreq.o
+obj-$(CONFIG_MACH_STM_STIH416)	+= cpufreq.o
 endif
 
 # Hibernation on Disk

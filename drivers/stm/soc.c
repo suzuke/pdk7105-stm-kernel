@@ -48,6 +48,8 @@ const char *stm_soc(void)
 		return "STiH415";
 	if (stm_soc_is_stx7108())
 		return "STx7108";
+	if (stm_soc_is_stih416())
+		return "STiH416";
 	return NULL;
 }
 EXPORT_SYMBOL(stm_soc);

@@ -20,6 +20,8 @@
 
 #if defined(CONFIG_MACH_STM_STIH415)
 # define NR_GPIO_PORTS		27
+#elif defined(CONFIG_MACH_STM_STIH416)
+# define NR_GPIO_PORTS		30
 #elif defined(CONFIG_MACH_STM_FLI7610)
 # define NR_GPIO_PORTS		34
 #elif defined(CONFIG_MACH_STM_STIG125)

@@ -30,6 +30,13 @@ config MACH_STM_STIH415
 	help
 	  Include support for a generic STiH415 (Orly) platform.
 
+config MACH_STM_STIH416
+	def_bool n
+	select ARCH_HAS_CPUFREQ
+	select STM_HAS_MALI
+	help
+	  Include support for a generic STiH416 (Orly-2) platform.
+
 config MACH_STM_B2000
 	bool "Support B2000 - STiH415 (Orly) MBoard"
 	select MACH_STM_STIH415

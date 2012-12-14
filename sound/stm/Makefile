@@ -43,6 +43,9 @@ snd-stm-stx7108-y := stx7108.o
 obj-$(CONFIG_SND_STM_STIH415) += snd-stm-stih415.o
 snd-stm-stih415-y := stih415.o
 
+obj-$(CONFIG_SND_STM_STIH416) += snd-stm-stih416.o
+snd-stm-stih416-y := stih416.o
+
 obj-$(CONFIG_SND_STM_STIG125) += snd-stm-stig125.o
 snd-stm-stig125-y := stig125.o
 

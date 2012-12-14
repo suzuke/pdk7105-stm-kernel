@@ -54,4 +54,10 @@ static inline unsigned long stm_soc_version_minor(void)
 #define stm_soc_is_stx7108()	(0)
 #endif
 
+#ifdef CONFIG_MACH_STM_STIH416
+#define stm_soc_is_stih416()	(1)
+#else
+#define stm_soc_is_stih416()	(0)
+#endif
+
 #endif /* STM_SOC_H */

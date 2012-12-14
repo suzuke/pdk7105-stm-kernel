@@ -43,6 +43,7 @@ config STM_MIPHY_PCIE_MP
 	default y if CPU_SUBTYPE_STX7108
 	default y if MACH_STM_STIG125
 	default y if CPU_SUBTYPE_STIH415
+	default y if MACH_STM_STIH416
 	default n
 
 config STM_MIPHY_DUMMY
@@ -56,6 +57,7 @@ config STM_MIPHY365X
 	depends on STM_MIPHY
 	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STIH415
+	default y if MACH_STM_STIH416
 	default n
 
 config STM_MIPHYA40X

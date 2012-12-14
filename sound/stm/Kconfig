@@ -151,6 +151,20 @@ config SND_STM_STIH415
 		If you compile this driver as a module, it will be
 		called snd-stm-stih415.ko
 
+config SND_STM_STIH416
+	tristate "STiH416 support"
+	depends on SND_STM
+	default y if MACH_STM_STIH416
+	select SND_STM_UNIPERIF_PLAYER
+	select SND_STM_UNIPERIF_READER
+	select SND_STM_CONV_BIPHASE
+	select SND_STM_CONV_DAC_SYSCONF
+	help
+		Select this to get ALSA driver for STiH416 chip.
+
+		If you compile this driver as a module, it will be
+		called snd-stm-stih416.ko
+
 comment "External converters"
 	depends on SND_STM
 
