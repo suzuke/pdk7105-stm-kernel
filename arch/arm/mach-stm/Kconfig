@@ -38,12 +38,31 @@ config MACH_STM_STIH416
 	  Include support for a generic STiH416 (Orly-2) platform.
 
 config MACH_STM_B2000
-	bool "Support B2000 - STiH415 (Orly) MBoard"
-	select MACH_STM_STIH415
+	bool "Support B2000 - STiH415/STiH416 (Orly/Orly-2) MBoard"
 	help
-	  Include support for a B2000 - STiH415 (Orly) MBoard.
+	  Include support for a B2000 - STiH415/STiH416 (Orly/Orly-2) MBoard.
 
 if MACH_STM_B2000
+
+choice
+	prompt "B2000: System-On-Chip selection"
+	default MACH_STM_B2000_STIH415
+	help
+	  Select the appropriate SoC on-board.
+
+config MACH_STM_B2000_STIH415
+	bool "B2000 with STiH415 (Orly-1) SoC"
+	select MACH_STM_STIH415
+	help
+	  Select the appropriate SoC which the board is socketed with
+
+config MACH_STM_B2000_STIH416
+	bool "B2000 with STiH416 (Orly-2) SoC"
+	select MACH_STM_STIH416
+	help
+	  Select the appropriate SoC which the board is socketed with
+
+endchoice
 
 choice
 	prompt "B2000: card selection on CN22 connector"
