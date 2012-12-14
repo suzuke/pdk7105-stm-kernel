@@ -60,6 +60,8 @@ static inline unsigned long get_uart_base(void)
 #elif defined(CONFIG_MACH_STM_STIH416)
 	if (machine_is_stm_b2092() || machine_is_stm_b2000())
 		return SASG2_ASC2_BASE;
+	if (machine_is_stm_b2020())
+		return SASG2_SBC_ASC1_BASE;
 #endif
 	return 0;
 }

@@ -202,10 +202,33 @@ endchoice
 endif
 
 config MACH_STM_B2020
-	bool "Support B2020 - STiH415 (Orly) ADI Board"
+	bool "Support B2020 - STiH415/STiH416 (Orly-1/Orly-2) ADI Board"
+	help
+	  Include support for a B2020 - STiH415/STiH416 (Orly-1/Orly-2) ADI Board.
+
+if MACH_STM_B2020
+
+choice
+	prompt "B2020: System-On-Chip selection"
+	default MACH_STM_B2020_STIH415
+	help
+	  Select the appropriate SoC on-board.
+
+config MACH_STM_B2020_STIH415
+	bool "B2020 with STiH415 (Orly-1) SoC"
 	select MACH_STM_STIH415
 	help
-	  Include support for a B2020 - STiH415 (Orly) ADI Board.
+	  Select the appropriate SoC which the board is socketed with
+
+config MACH_STM_B2020_STIH416
+	bool "B2020 with STiH416 (Orly-2) SoC"
+	select MACH_STM_STIH416
+	help
+	  Select the appropriate SoC which the board is socketed with
+
+endchoice
+
+endif
 
 config MACH_STM_B2044
 	bool "Support B2044 - STiG125 (Barcelona) Evaluation Board"
