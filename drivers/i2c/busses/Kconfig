@@ -688,6 +688,7 @@ config GLITCH_DATA_WIDTH
 config I2C_STM_HW_GLITCH
         bool "I2C filter glitch suppression support"
         depends on I2C_STM
+        default y
         help
           Enable this option to add filter glitch suppression support in the
           STM I2C (SSC) device driver.
