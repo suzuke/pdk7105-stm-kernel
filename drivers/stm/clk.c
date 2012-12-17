@@ -463,7 +463,7 @@ static void clk_resume_from_hibernation(struct clk *clk)
 		/* re-parent to the frozen one! */
 		__clk_set_parent(clk, clk->parent);
 
-	if (rate) {
+	if (clk->usage_counter) {
 		__clk_enable(clk);
 		/* force the frozen rate */
 		__clk_set_rate(clk, rate);
