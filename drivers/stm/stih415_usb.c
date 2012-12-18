@@ -44,6 +44,16 @@ static u64 stih415_usb_dma_mask = DMA_BIT_MASK(32);
 
 static int stih415_usb_init(struct stm_device_state *device_state)
 {
+	static struct sysconf_field *usb2_triple_phy_sc;
+
+	if (!usb2_triple_phy_sc) {
+		usb2_triple_phy_sc = sysconf_claim(SYSCONFG(332), 6, 6, "USB");
+		if (!usb2_triple_phy_sc)
+			return -EBUSY;
+	}
+
+	sysconf_write(usb2_triple_phy_sc, 1);
+
 	stm_device_sysconf_write(device_state, USB_IN_DC_SHIFT, 0);
 	stm_device_sysconf_write(device_state, USB_IN_EDGE_CTRL, 1);
 
