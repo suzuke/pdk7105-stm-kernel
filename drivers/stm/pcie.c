@@ -232,6 +232,91 @@ static int link_up(struct stm_pcie_dev_data *priv)
  */
 static DEFINE_SPINLOCK(stm_pcie_config_lock);
 
+/*
+ * On ARM platforms, we actually get a bus error returned when the PCIe IP
+ * returns a UR or CRS instead of an OK. What we do to try to work around this
+ * is hook the arm async abort exception and then check if the pc value is in
+ * the region we expect bus errors could be generated. Fortunately we can
+ * constrain the area the CPU will generate the async exception with the use of
+ * a barrier instruction
+ *
+ * The abort_flag is set if we see a bus error returned when we make config
+ * requests.  It doesn't need to be an atomic variable, since it can only be
+ * looked at safely in the regions protected by the spinlock anyway. However,
+ * making it atomic avoids the need for volatile wierdness to prevent the
+ * compiler from optimizing incorrectly
+ */
+static atomic_t abort_flag;
+
+#ifdef CONFIG_ARM
+
+/*
+ * Macro to bung a label at a point in the code. I tried to do this with the
+ * computed label extension of gcc (&&label), but it is too vulnerable to the
+ * optimizer
+ */
+#define EMIT_LABEL(label) \
+	__asm__ __volatile__ ( \
+			#label":\n" \
+			)
+/*
+ * This rather vile macro gets the address of a label and puts in a variable of
+ * the same name.
+ */
+#define GET_LABEL_ADDR(label) \
+	__asm__ __volatile__ ( \
+			"adr %0, " #label ";\n" \
+			: "=r" (label) \
+			)
+
+static int stm_pcie_abort(unsigned long addr, unsigned int fsr,
+			  struct pt_regs *regs)
+{
+	unsigned long pc = regs->ARM_pc;
+	unsigned long config_read_start, config_read_end,
+		      config_write_start, config_write_end;
+	int abort_read, abort_write;
+
+	/*
+	 * Figure out the start and end of the places we
+	 * actually expect an exception to be generated
+	 */
+	GET_LABEL_ADDR(config_read_start);
+	GET_LABEL_ADDR(config_read_end);
+	GET_LABEL_ADDR(config_write_start);
+	GET_LABEL_ADDR(config_write_end);
+
+	abort_read = (pc >= config_read_start) && (pc < config_read_end);
+	abort_write = (pc >= config_write_start) && (pc < config_write_end);
+
+	/*
+	 * If it isn't in one of the two expected places, then return 1 which
+	 * will then fall through to the default error handler. This means that
+	 * if we get a bus error for something other than PCIE config read/write
+	 * accesses we will not just carry on silently.
+	 */
+	if (!(abort_read || abort_write))
+		return 1;
+
+	/* Again, if it isn't an async abort then return to default handler */
+	if (!((fsr & (1 << 10)) && ((fsr & 0xf) == 0x6)))
+		return 1;
+
+	/* Restart after exception address */
+	regs->ARM_pc += 4;
+
+	/* Set abort flag */
+	atomic_set(&abort_flag, 1) ;
+
+	/* Barrier to ensure propogation */
+	mb();
+
+	return 0;
+}
+
+#else /* CONFIG_ARM */
+#define EMIT_LABEL(label)
+#endif
 
 static struct stm_pcie_dev_data *stm_pci_bus_to_dev_data(struct pci_bus *bus)
 {
@@ -305,6 +390,7 @@ static int stm_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 	struct stm_pcie_dev_data *priv = stm_pci_bus_to_dev_data(bus);
 	int is_root_bus = pci_is_root_bus(bus);
 	int retry_count = 0;
+	int ret;
 
 	/* PCI express devices will respond to all config type 0 cycles, since
 	 * they are point to point links. Thus to avoid probing for multiple
@@ -337,16 +423,39 @@ retry:
 	 * this is that you end up reading from the wrong device.
 	 */
 	dbi_readl(priv, FUNC0_BDF_NUM);
+
+	atomic_set(&abort_flag, 0);
+	ret = PCIBIOS_SUCCESSFUL;
+
+	/* Mark start of region where we can expect bus errors */
+	EMIT_LABEL(config_read_start);
+
 	/* Read the dword aligned data */
 	data = readl(priv->config_area + config_addr(where, is_root_bus));
 
+	mb(); /* Barrier to force bus error to go no further than here */
+
+	EMIT_LABEL(config_read_end);
+
+	/* If the trap handler has fired, then set the data to 0xffffffff */
+	if (atomic_read(&abort_flag)) {
+		ret = PCIBIOS_DEVICE_NOT_FOUND;
+		data = ~0;
+	}
+
 	spin_unlock_irqrestore(&stm_pcie_config_lock, flags);
 
-	/* This is truly vile, but I am unable to think of anything better.
+	/*
+	 * This is truly vile, but I am unable to think of anything better.
 	 * This is a hack to help with when we are probing the bus.  The
 	 * problem is that the wrapper logic doesn't have any way to
 	 * interrogate if the configuration request failed or not. The read
 	 * will return 0 if something has gone wrong.
+	 *
+	 * What is actually happening here is that the ST40 is defined to
+	 * return 0 for a register read that causes a bus error. On the ARM
+	 * we actually get a real bus error, which is what the abort_flag check
+	 * above is checking for.
 	 *
 	 * Unfortunately this means it is impossible to tell the difference
 	 * between when a device doesn't exist (the switch will return a UR
@@ -364,9 +473,9 @@ retry:
 	 *
 	 * The downside of this is that we incur a delay of 1s for every pci
 	 * express link that doesn't have a device connected.
-	 *
 	 */
-	if (((where&~3) == 0) && devfn == 0 && data == 0) {
+
+	if (((where&~3) == 0) && devfn == 0 && (data == 0 || data == ~0)) {
 		if (retry_count++ < 1000) {
 			mdelay(1);
 			goto retry;
@@ -378,7 +487,7 @@ retry:
 
 	*val = shift_data_read(where, size, data);
 
-	return PCIBIOS_SUCCESSFUL;
+	return ret;
 }
 
 static int stm_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
@@ -390,6 +499,7 @@ static int stm_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 	int slot = PCI_SLOT(devfn);
 	struct stm_pcie_dev_data *priv = stm_pci_bus_to_dev_data(bus);
 	int is_root_bus = pci_is_root_bus(bus);
+	int ret;
 
 	if (!priv || (is_root_bus && slot != 1) || !link_up(priv))
 		return PCIBIOS_DEVICE_NOT_FOUND;
@@ -406,18 +516,31 @@ static int stm_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 	/* See comment in stm_pcie_config_read */
 	dbi_readl(priv, FUNC0_BDF_NUM);
 
+	atomic_set(&abort_flag, 0);
+
+	/* We can expect bus errors for the read and the write */
+	EMIT_LABEL(config_write_start);
+
 	/* Read the dword aligned data */
 	if (size != 4)
 		data = readl(priv->config_area +
 			     config_addr(where, is_root_bus));
+	mb();
 
 	data = shift_data_write(where, size, val, data);
 
 	writel(data, priv->config_area + config_addr(where, is_root_bus));
 
+	mb();
+
+	EMIT_LABEL(config_write_end);
+
+	ret = atomic_read(&abort_flag) ? PCIBIOS_DEVICE_NOT_FOUND
+				       : PCIBIOS_SUCCESSFUL;
+
 	spin_unlock_irqrestore(&stm_pcie_config_lock, flags);
 
-	return PCIBIOS_SUCCESSFUL;
+	return ret;
 }
 
 /* The configuration read/write functions. This is exported so
@@ -655,6 +778,16 @@ static int __devinit stm_pcie_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
+#ifdef CONFIG_ARM
+	/*
+	 * We have to hook the abort handler so that we can intercept bus
+	 * errors when doing config read/write that return UR, which is flagged
+	 * up as a bus error
+	 */
+	hook_fault_code(16+6, stm_pcie_abort, SIGBUS, 0,
+			"imprecise external abort");
+#endif
+
 	/* And now hook this into the generic driver */
 	err = stm_pci_register_controller(pdev, &stm_pcie_config_ops,
 					  STM_PCI_EXPRESS);
@@ -715,7 +848,7 @@ static void msi_irq_demux(unsigned int mux_irq, struct irq_desc *mux_desc)
 	u32 mask;
 	int irq;
 	struct stm_msi_info *msi = irq_desc_get_handler_data(mux_desc);
-	struct irq_chip *chip = irq_get_chip(mux_irq);
+	struct irq_chip __maybe_unused *chip = irq_get_chip(mux_irq);
 
 #ifdef CONFIG_ARM
 	/* These functions exist on the ARM only, chained_irq_enter/exit() are
