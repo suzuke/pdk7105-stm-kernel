@@ -42,193 +42,17 @@ config MACH_STM_B2000
 	help
 	  Include support for a B2000 - STiH415/STiH416 (Orly/Orly-2) MBoard.
 
-if MACH_STM_B2000
-
-choice
-	prompt "B2000: System-On-Chip selection"
-	default MACH_STM_B2000_STIH415
-	help
-	  Select the appropriate SoC on-board.
-
-config MACH_STM_B2000_STIH415
-	bool "B2000 with STiH415 (Orly-1) SoC"
-	select MACH_STM_STIH415
-	help
-	  Select the appropriate SoC which the board is socketed with
-
-config MACH_STM_B2000_STIH416
-	bool "B2000 with STiH416 (Orly-2) SoC"
-	select MACH_STM_STIH416
-	help
-	  Select the appropriate SoC which the board is socketed with
-
-endchoice
-
-choice
-	prompt "B2000: card selection on CN22 connector"
-	default MACH_STM_B2000_CN22_NONE
-	help
-	  Select the appropriate version of the GMAC0 Ethernet card.
-	  This controls the way Ethernet connection mode with PHY.
-
-config MACH_STM_B2000_CN22_NONE
-       bool "None"
-       help
-         No Ethernet card is plugged into CN22 of the B2000.
-
-config MACH_STM_B2000_CN22_B2032
-	bool "B2032A Card on GMAC0"
-	help
-	  B2032A Ethernet card on CN22 of B2000,
-
-config MACH_STM_B2000_CN22_B2035
-	bool "B2035 for GMAC0 and MMC/SD external slot"
-	help
-	  B2035 connected to CN22 of B2000
-
-config MACH_STM_B2000_CN22_B2048
-	bool "B2048A - eMMC/MMC Module"
-	help
-	  B2048A connected to CN22 of B2000.
-	  There are two versions of this modules:
-	  a card with the embedded MMC and onther one
-	  with the MMC/SD slot.
-
-endchoice
-
-config	MACH_STM_B2000_CN22_B2032_GIGA_MODE
-	bool "B2032A: enable GMAC0 in GMII/RGMII mode"
-	depends on MACH_STM_B2000_CN22_B2032
-	help
-	  Select this options to support the GMII/RGMII
-	  on GMAC0. The B2032A moudule has to be modified
-	  to support this modes.
-	  By default the GMAC0 works in MII mode.
-
-	  Do not select it if you want the GMAC in MII mode.
-choice
-	prompt  "Select GiGa mode"
-	default MACH_STM_B2000_CN22_B2032_GMII_MODE
-	depends on MACH_STM_B2000_CN22_B2032_GIGA_MODE
-
-config MACH_STM_B2000_CN22_B2032_GMII_MODE
-	bool "B2032A module modified for GMII mode"
-	depends on MACH_STM_B2000_CN22_B2032_GIGA_MODE
-	help
-	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
-
-config MACH_STM_B2000_CN22_B2032_RGMII_MODE
-	bool "B2032A module modified for RGMII mode"
-	depends on MACH_STM_B2000_CN22_B2032_GIGA_MODE
-	help
-	  B2032A modified (add R26) and J1 removed Ethernet card on CN22 of B2000.
-
-endchoice
-
-choice
-	prompt "B2000: card selection on CN23 connector"
-	default MACH_STM_B2000_CN23_B2032
-	help
-	  Select the appropriate version of the GMAC1 Ethernet card.
-	  This controls the way Ethernet connection mode with PHY.
-
-config MACH_STM_B2000_CN23_NONE
-       bool "None"
-       help
-         No Ethernet card is plugged into CN23 of the B2000.
-
-config MACH_STM_B2000_CN23_B2032
-	bool "B2032A Card on GMAC1"
-	help
-	  B2032A Ethernet card on CN23 of B2000.
-
-config MACH_STM_B2000_CN23_B2035
-	bool "B2035 on GMAC1"
-	help
-	  B2035 connected to CN23 of B2000
-
-endchoice
-
-config	MACH_STM_B2000_CN23_B2032_GIGA_MODE
-	bool "B2032A: enable GMAC1 in GMII/RGMII mode"
-	depends on MACH_STM_B2000_CN23_B2032
-	help
-	  Select this options to support the GMII/RGMII
-	  on GMAC1. The B2032A moudule has to be modified
-	  to support this modes.
-	  By default the GMAC1 works in MII mode.
-
-	  Do not select it if you want the GMAC in MII mode.
-choice
-	prompt  "Select GiGa mode"
-	default MACH_STM_B2000_CN23_B2032_GMII_MODE
-	depends on MACH_STM_B2000_CN23_B2032_GIGA_MODE
-
-config MACH_STM_B2000_CN23_B2032_GMII_MODE
-	bool "B2032A module modified for GMII mode"
-	depends on MACH_STM_B2000_CN23_B2032_GIGA_MODE
-	help
-	  B2032A modified (add R26) Ethernet card on CN22 of B2000,
-	  Unplug CN26 and CN30 on the B2000.
-
-config MACH_STM_B2000_CN23_B2032_RGMII_MODE
-	bool "B2032A module modified for RGMII mode"
-	depends on MACH_STM_B2000_CN23_B2032_GIGA_MODE
-	help
-	  B2032A modified (add R26) and J1 removed Ethernet card on CN22 of B2000.
-	  Unplug CN26 and CN30 on the B2000.
-
-endchoice
-
-choice
-	prompt  "B2048A slot/eMMC selection"
-	depends on MACH_STM_B2044_CN55_B2048 || MACH_STM_B2000_CN22_B2048
-	default MACH_STM_B2000_B2048_EMMC
-	help
-	  Select if the board has the eMMC or the MMC/SD slot.
-
-config	MACH_STM_B2000_B2048_SLOT
-	bool "Multi Media Card slot on daughter board"
-	help
-	  Select this option if the board has an MMC card slot.
-
-config	MACH_STM_B2000_B2048_EMMC
-	bool "Embedded Multi Media Card (eMMC) on daughter board"
-	help
-	  Select this option if the board has an eMMC device.
-
-endchoice
-
-endif
+# b2000 specific configuration
+source "arch/arm/mach-stm/Kconfig.b2000"
 
 config MACH_STM_B2020
 	bool "Support B2020 - STiH415/STiH416 (Orly-1/Orly-2) ADI Board"
 	help
 	  Include support for a B2020 - STiH415/STiH416 (Orly-1/Orly-2) ADI Board.
 
-if MACH_STM_B2020
+# b2020 specific configuration
+source "arch/arm/mach-stm/Kconfig.b2020"
 
-choice
-	prompt "B2020: System-On-Chip selection"
-	default MACH_STM_B2020_STIH415
-	help
-	  Select the appropriate SoC on-board.
-
-config MACH_STM_B2020_STIH415
-	bool "B2020 with STiH415 (Orly-1) SoC"
-	select MACH_STM_STIH415
-	help
-	  Select the appropriate SoC which the board is socketed with
-
-config MACH_STM_B2020_STIH416
-	bool "B2020 with STiH416 (Orly-2) SoC"
-	select MACH_STM_STIH416
-	help
-	  Select the appropriate SoC which the board is socketed with
-
-endchoice
-
-endif
 
 config MACH_STM_B2044
 	bool "Support B2044 - STiG125 (Barcelona) Evaluation Board"
@@ -236,48 +60,8 @@ config MACH_STM_B2044
 	help
 	  Include support for a B2044 - STiG125 (Barcelona) Evaluation Board.
 
-if MACH_STM_B2044
-
-choice
-	prompt "B2044: card selection on CN55 connector"
-	default MACH_STM_B2044_CN55_NONE
-	help
-	  Select the appropriate version of the MMC card.
-
-config MACH_STM_B2044_CN55_NONE
-	bool "None"
-	help
-	  No card is plugged into CN55 of the B2044.
-
-config MACH_STM_B2044_CN55_B2048
-	bool "B2048A - eMMC/MMC Module"
-	help
-	  B2048A connected to CN55 of B2044
-	  There are two versions of this modules:
-	  a card with an embedded MMC device and another one
-	  with an MMC/SD slot.
-endchoice
-
-choice
-	prompt  "B2048A slot/eMMC selection"
-	depends on MACH_STM_B2044_CN55_B2048
-	default MACH_STM_B2044_B2048_EMMC
-	help
-	  Select if the board has the eMMC or the MMC/SD slot.
-
-config	MACH_STM_B2044_B2048_SLOT
-	bool "Multi Media Card slot on daughter board"
-	help
-	  Select this option if the board has an MMC card slot.
-
-config	MACH_STM_B2044_B2048_EMMC
-	bool "Embedded Multi Media Card (eMMC) on daughter board"
-	help
-	  Select this option if the board has an eMMC device.
-
-endchoice
-
-endif
+# b2044 specific configuration
+source "arch/arm/mach-stm/Kconfig.b2044"
 
 config MACH_STM_B2078
 	bool "Support B2078 - STiG125 (Docsis3) Reference Board"
