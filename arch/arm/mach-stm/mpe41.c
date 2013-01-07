@@ -65,14 +65,8 @@ static void __init mpe41_twd_init(void)
 /* Setup the Global Timer */
 static void __init mpe41_timer_init(void)
 {
-	struct clk *a9_clk;
-
 	plat_clk_init();
 	plat_clk_alias_init();
-
-	a9_clk = clk_get(NULL, "CLKM_A9");
-	if (IS_ERR(a9_clk))
-		panic("Unable to determine Cortex A9 clock frequency\n");
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(MPE41_GLOBAL_TIMER_BASE),

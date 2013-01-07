@@ -113,14 +113,8 @@ static void __init mpe42_twd_init(void)
 /* Setup the Global Timer */
 static void __init mpe42_timer_init(void)
 {
-	struct clk *a9_periph_clk;
-
 	plat_clk_init();
 	plat_clk_alias_init();
-
-	a9_periph_clk = clk_get(NULL, "CLK_M_A9_PERIPHS");
-	if (IS_ERR(a9_periph_clk))
-		panic("Unable to determine Cortex A9 peripheral clock frequency\n");
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(MPE42_GLOBAL_TIMER_BASE),
