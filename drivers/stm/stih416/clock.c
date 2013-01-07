@@ -14,10 +14,9 @@
 int __init plat_clk_alias_init(void)
 {
 	clk_add_alias("cpu_clk", NULL, "CLK_M_A9", NULL);
-#if defined(CONFIG_ARM) && defined(CONFIG_HAVE_ARM_TWD)
 	clk_add_alias(NULL, "smp_twd", "CLK_M_A9_PERIPHS", NULL);
-#endif
 	clk_add_alias(NULL, "smp_gt", "CLK_M_A9_PERIPHS", NULL);
+
 	/* comms clk */
 	clk_add_alias("comms_clk", NULL, "CLK_S_ICN_REG_LP_0", NULL);
 	/* SBC clk */
