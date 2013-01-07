@@ -32,10 +32,7 @@
 
 #include <mach/soc-stih415.h>
 
-#define SBC_GPIO_PORT(_nr)	(0xfe610000 + (_nr) * 0x1000)
-#define LMI_RET_GPIO_PORT		4
-#define LMI_RET_GPIO_PIN		4
-#define LMI_RETENTION_PIN	stm_gpio(LMI_RET_GPIO_PORT, LMI_RET_GPIO_PIN)
+#define SBC_GPIO_PORT_BASE	(0xfe610000)
 
 #define SBC_MBX			0xfe4b4000
 #define SBC_MBX_WRITE_STATUS(x)	(SBC_MBX + 0x4 + 0x4 * (x))
@@ -48,12 +45,12 @@ static const unsigned long __stxh415_hom_ddr_1[] = {
 synopsys_ddr32_in_hom(MPE41_DDR1_PCTL_BASE),
 };
 
-static const unsigned long __stxh415_hom_lmi_retention[] = {
+static unsigned long __stxh415_hom_lmi_retention[] = {
 /*
  * Enable retention mode gpio
+ * Address and value set in stm_setup_lmi_retention_gpio.
  */
-POKE32(SBC_GPIO_PORT(LMI_RET_GPIO_PORT) + STM_GPIO_REG_CLR_POUT,
-	1 << LMI_RET_GPIO_PIN),
+POKE32(0x0, 0x0), /* dummy value just to guarantee the required space */
 };
 
 static const unsigned long __stxh415_hom_enter_passive[] = {
@@ -75,40 +72,43 @@ static struct hom_table stxh415_hom_table[] = {
 	HOM_TBL(__stxh415_hom_enter_passive),
 };
 
+static struct stm_wakeup_devices stxh415_wkd;
+
 static int stxh415_hom_prepare(void)
 {
-	stm_freeze_board();
+	stm_check_wakeup_devices(&stxh415_wkd);
+	stm_freeze_board(&stxh415_wkd);
 
 	return 0;
 }
 
 static int stxh415_hom_complete(void)
 {
-	stm_restore_board();
+	stm_restore_board(&stxh415_wkd);
 
 	return 0;
 }
 
 static struct stm_mem_hibernation stxh415_hom = {
 	.eram_iomem = (void *)0xc00a0000,
+	.gpio_iomem = (void *)SBC_GPIO_PORT_BASE,
 
 	.ops.prepare = stxh415_hom_prepare,
 	.ops.complete = stxh415_hom_complete,
 };
 
-static int __init hom_stxh415_setup(void)
+int __init stm_hom_stxh415_setup(struct stm_hom_board *hom_board)
 {
-	int ret;
-	int i;
+	int ret, i;
+	int lmi_gpio_port, lmi_gpio_pin;
 
-	ret = gpio_request(LMI_RETENTION_PIN, "LMI retention mode");
-	if (ret) {
-		pr_err("[STM]: [PM]: [HoM]: GPIO for retention mode"
-			"not acquired\n");
+	stxh415_hom.board = hom_board;
+
+	ret = stm_setup_lmi_retention_gpio(&stxh415_hom,
+		__stxh415_hom_lmi_retention);
+
+	if (ret)
 		return ret;
-	};
-
-	gpio_direction_output(LMI_RETENTION_PIN, 1);
 
 	INIT_LIST_HEAD(&stxh415_hom.table);
 
@@ -117,10 +117,8 @@ static int __init hom_stxh415_setup(void)
 
 	ret =  stm_hom_register(&stxh415_hom);
 	if (ret) {
-		gpio_free(LMI_RETENTION_PIN);
-		pr_err("[STM][HoM]: Error: on stm_hom_register\n");
+		gpio_free(hom_board->lmi_retention_gpio);
+		pr_err("stm pm hom: Error: on stm_hom_register\n");
 	}
 	return ret;
 }
-
-module_init(hom_stxh415_setup);

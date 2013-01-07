@@ -342,28 +342,55 @@ int __cpuinitdata stm_hom_register(struct stm_mem_hibernation *data)
 }
 EXPORT_SYMBOL_GPL(stm_hom_register);
 
-static struct stm_hom_board *board_hom;
-
-int stm_freeze_board(void)
+int stm_freeze_board(struct stm_wakeup_devices *dev_wk)
 {
-	if (board_hom && board_hom->freeze)
-		return board_hom->freeze();
+	if (platform->board->freeze)
+		return platform->board->freeze(dev_wk);
 	return 0;
 }
 
-int stm_restore_board(void)
+int stm_restore_board(struct stm_wakeup_devices *dev_wk)
 {
-	if (board_hom && board_hom->restore)
-		return board_hom->restore();
+	if (platform->board->restore)
+		return platform->board->restore(dev_wk);
 	return 0;
 }
 
-int stm_hom_board_register(struct stm_hom_board *board)
+int __init stm_setup_lmi_retention_gpio(struct stm_mem_hibernation *platform,
+	unsigned long lmi_retention_table[])
 {
-	mutex_lock(&pm_mutex);
-	board_hom = board;
-	mutex_unlock(&pm_mutex);
+	int lmi_gpio_port, lmi_gpio_pin;
+	int ret;
+	struct stm_hom_board *board = platform->board;
+
+	if (!board)
+		return -EINVAL;
+
+	ret = gpio_request(board->lmi_retention_gpio, "LMI retention mode");
+	if (ret) {
+		pr_err("stm pm hom: GPIO for retention mode not acquired\n");
+		return ret;
+	};
+
+
+	lmi_gpio_port = stm_gpio_port(board->lmi_retention_gpio);
+	lmi_gpio_pin = stm_gpio_pin(board->lmi_retention_gpio);
+
+	pr_info("stm pm hom: LMI_Retention GPIO[%d][%d]\n",
+		lmi_gpio_port, lmi_gpio_pin);
+
+	gpio_direction_output(board->lmi_retention_gpio, 1);
+
+	/*
+	 * Update the lmi_retention_table based on the
+	 * lmi_retention gpio this board uses. Table format:
+	 *    [0] OP_POKE32
+	 *    [1] address
+	 *    [2] value
+	 */
+	lmi_retention_table[1] = STM_GPIO_REG_CLR_POUT + platform->gpio_iomem +
+		lmi_gpio_port * 0x1000;
+	lmi_retention_table[2] = 1 << lmi_gpio_pin;
+
 	return 0;
 }
-EXPORT_SYMBOL_GPL(stm_hom_board_register);
-

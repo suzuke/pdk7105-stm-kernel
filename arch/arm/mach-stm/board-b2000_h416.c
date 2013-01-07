@@ -408,20 +408,21 @@ MACHINE_END
 
 #include <linux/stm/hom.h>
 
-static int b2000_hom_restore(void)
+static int b2000_hom_restore(struct stm_wakeup_devices *dev_wk)
 {
 	b2000_ethphy_gpio_init(0);
 	return 0;
 }
 
 static struct stm_hom_board b2000_hom = {
+	.lmi_retention_gpio = stih416_gpio(4, 4),
 	.restore = b2000_hom_restore,
 };
 
 static int __init b2000_hom_init(void)
 {
-	return stm_hom_board_register(&b2000_hom);
+	return stm_hom_stxh416_setup(&b2000_hom);
 }
 
-late_initcall(b2000_hom_init);
+module_init(b2000_hom_init);
 #endif

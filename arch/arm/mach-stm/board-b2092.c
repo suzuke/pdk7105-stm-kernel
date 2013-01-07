@@ -352,7 +352,7 @@ MACHINE_END
 
 #include <linux/stm/hom.h>
 
-static int b2092_hom_restore(void)
+static int b2092_hom_restore(struct stm_wakeup_devices *dev_wk)
 {
 	b2092_gmac0phy_gpio_init(0);
 	b2092_gmac1phy_gpio_init(0);
@@ -366,8 +366,8 @@ static struct stm_hom_board b2092_hom = {
 
 static int __init b2092_hom_init(void)
 {
-	return stm_hom_board_register(&b2092_hom);
+	return stm_hom_stxh416_setup(&b2092_hom);
 }
 
-late_initcall(b2092_hom_init);
+module_init(b2092_hom_init);
 #endif
