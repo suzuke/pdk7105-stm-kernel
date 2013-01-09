@@ -253,49 +253,40 @@ static atomic_t abort_flag;
 /*
  * Macro to bung a label at a point in the code. I tried to do this with the
  * computed label extension of gcc (&&label), but it is too vulnerable to the
- * optimizer
+ * optimizer. The labels are forced to be word aligned to extend the range of
+ * the branch instructions in thumb mode.
  */
 #define EMIT_LABEL(label) \
 	__asm__ __volatile__ ( \
+			".align 2;\n" \
 			#label":\n" \
 			)
-/*
- * This rather vile macro gets the address of a label and puts in a variable of
- * the same name.
- */
-#define GET_LABEL_ADDR(label) \
+/* This vile macro gets the address of a label and puts it into a var */
+#define GET_LABEL_ADDR(label, var) \
 	__asm__ __volatile__ ( \
 			"adr %0, " #label ";\n" \
-			: "=r" (label) \
+			: "=r" (var) \
 			)
+
+/*
+ * Holds the addresses where we are expecting an abort to be generated. We only
+ * have to cope with one at a time as config read/write are spinlocked so
+ * cannot be in the critical code section at the same time
+ */
+static unsigned long abort_start, abort_end;
 
 static int stm_pcie_abort(unsigned long addr, unsigned int fsr,
 			  struct pt_regs *regs)
 {
 	unsigned long pc = regs->ARM_pc;
-	unsigned long config_read_start, config_read_end,
-		      config_write_start, config_write_end;
-	int abort_read, abort_write;
 
 	/*
-	 * Figure out the start and end of the places we
-	 * actually expect an exception to be generated
+	 * If it isn't the expected place, then return 1 which will then fall
+	 * through to the default error handler. This means that if we get a
+	 * bus error for something other than PCIE config read/write accesses
+	 * we will not just carry on silently.
 	 */
-	GET_LABEL_ADDR(config_read_start);
-	GET_LABEL_ADDR(config_read_end);
-	GET_LABEL_ADDR(config_write_start);
-	GET_LABEL_ADDR(config_write_end);
-
-	abort_read = (pc >= config_read_start) && (pc < config_read_end);
-	abort_write = (pc >= config_write_start) && (pc < config_write_end);
-
-	/*
-	 * If it isn't in one of the two expected places, then return 1 which
-	 * will then fall through to the default error handler. This means that
-	 * if we get a bus error for something other than PCIE config read/write
-	 * accesses we will not just carry on silently.
-	 */
-	if (!(abort_read || abort_write))
+	if (pc < abort_start || pc >= abort_end)
 		return 1;
 
 	/* Again, if it isn't an async abort then return to default handler */
@@ -316,6 +307,7 @@ static int stm_pcie_abort(unsigned long addr, unsigned int fsr,
 
 #else /* CONFIG_ARM */
 #define EMIT_LABEL(label)
+#define GET_LABEL_ADDR(label, var)
 #endif
 
 static struct stm_pcie_dev_data *stm_pci_bus_to_dev_data(struct pci_bus *bus)
@@ -427,7 +419,16 @@ retry:
 	atomic_set(&abort_flag, 0);
 	ret = PCIBIOS_SUCCESSFUL;
 
-	/* Mark start of region where we can expect bus errors */
+	/* Get the addresses of where we expect the aborts to happen. These are
+	 * placed as close as possible to the code due to branch length
+	 * limitations on the ARM
+	 */
+	GET_LABEL_ADDR(config_read_start, abort_start);
+	GET_LABEL_ADDR(config_read_end, abort_end);
+	/* Mark start of region where we can expect bus errors. This assumes
+	 * that readl is actually a macro not a real function call which is
+	 * the case on our ARM platforms.
+	 */
 	EMIT_LABEL(config_read_start);
 
 	/* Read the dword aligned data */
@@ -518,6 +519,8 @@ static int stm_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 
 	atomic_set(&abort_flag, 0);
 
+	GET_LABEL_ADDR(config_write_start, abort_start);
+	GET_LABEL_ADDR(config_write_end, abort_end);
 	/* We can expect bus errors for the read and the write */
 	EMIT_LABEL(config_write_start);
 
