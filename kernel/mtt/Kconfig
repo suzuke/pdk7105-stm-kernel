@@ -12,3 +12,4 @@ config MTT
 	  support for kptraceV4. ST kernel code may use this API
 	  (mtt_trace, mtt_print) for critical trace data, or when
 	  postprocessing is wanted. See "Documentation/mtt.txt"
+	  MTT is also the interface for the System Trace Module IP.

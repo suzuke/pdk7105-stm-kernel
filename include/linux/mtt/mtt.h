@@ -185,6 +185,9 @@ void mtt_pkt_put(mtt_packet_t *p);
 
 void mtt_relay_cleanup(void);
 
+int __init mtt_stm_init(void *);
+void __exit mtt_stm_cleanup(void);
+
 /* MTT Common components */
 extern struct mtt_component_obj **mtt_comp_cpu;
 extern struct mtt_component_obj **mtt_comp_kmux;
@@ -195,5 +198,4 @@ void mtt_version_tx(void);
 void mtt_stop_tx(void);
 
 #endif /*_KERNEL_*/
-
 #endif /*_MTT_DRIVER_H_*/

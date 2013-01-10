@@ -13,3 +13,7 @@ mtt-objs := \
 		components.o \
 		packets.o \
 		relay.o
+
+ifdef CONFIG_STM_SYSTRACE
+mtt-objs +=	systrace.o
+endif

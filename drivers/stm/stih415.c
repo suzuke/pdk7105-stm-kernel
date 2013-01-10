@@ -1162,6 +1162,40 @@ static struct platform_device stih415_lpc_device = {
 		.force_clk_rate = 300000,
 	}
 };
+
+/* System Trace Module resources------------------------------------------- */
+
+static struct stm_pad_config stih415_systrace_pad_config = {
+	.gpios_num = 5,
+	.gpios = (struct stm_pad_gpio[]){
+		 STM_PAD_PIO_OUT(20, 3, 4),	/* DATA0 */
+		 STM_PAD_PIO_OUT(20, 4, 4),	/* DATA1 */
+		 STM_PAD_PIO_OUT(20, 5, 4),	/* DATA2 */
+		 STM_PAD_PIO_OUT(20, 6, 4),	/* DATA3 */
+		 STM_PAD_PIO_OUT(20, 7, 4),	/* BCLK */
+		 },
+};
+
+static struct platform_device stih415_systrace_device = {
+	.name = "stm-systrace",
+	.id = 0,
+	.num_resources = 2,
+	.resource = (struct resource[]){
+		/* 8k (4k for each A9 initiator) */
+		STM_PLAT_RESOURCE_MEM(STIH415_SYSTRACE_BASE, 0x2000),
+		STM_PLAT_RESOURCE_MEM(STIH415_SYSTRACE_REGS, 0x1000),
+		},
+	.dev.platform_data = &(struct stm_plat_systrace_data) {
+		.pad_config = &stih415_systrace_pad_config,
+	},
+};
+
+static int __init stih415_setup_systrace(void)
+{
+	return platform_device_register(&stih415_systrace_device);
+}
+device_initcall(stih415_setup_systrace);
+
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stih415_devices[] __initdata = {

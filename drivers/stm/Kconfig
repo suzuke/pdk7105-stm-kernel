@@ -169,6 +169,19 @@ config STM_MALI_DEBUG
 	---help---
 	  Enable this option to enable debug trace messages on the console
 
+config STM_SYSTRACE
+	bool "System Trace Module"
+        depends on (STM_DRIVERS && CPU_SUBTYPE_STIH415)
+	select MTT
+	default m
+	---help---
+	  The System Trace Module peripheral complies with MIPI-Alliance
+	  specifications for the System Trace Protocol(STP) v2.
+	  See http://www.mipi.org/specifications/debug and in Documentation
+	  systrace.txt and mtt.txt.
+	  The trace data is built and written through the MTT Trace facility
+	  (see mtt-systrace.txt), and output on the MIPI wires.
+
 config STM_AMBA_BRIDGE
 	bool
         depends on STM_DRIVERS
