@@ -342,6 +342,7 @@ static void __init b2000_init(void)
 
 	/* IR_IN */
 	stih416_configure_lirc(&(struct stih416_lirc_config) {
+			.tx_enabled = IS_ENABLED(CONFIG_LIRC_STM_TX),
 			.rx_mode = stih416_lirc_rx_mode_ir, });
 
 	stih416_configure_pwm(&(struct stih416_pwm_config) {
