@@ -562,7 +562,7 @@ static int stih415_pio_config(unsigned gpio,
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
 		stih415_pio_controls,
-		ARRAY_SIZE(stih415_pio_devices), 6);
+		ARRAY_SIZE(stih415_pio_devices), 8);
 }
 
 #ifdef CONFIG_DEBUG_FS

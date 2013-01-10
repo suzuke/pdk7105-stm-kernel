@@ -475,7 +475,7 @@ static int fli7610_pio_config(unsigned gpio,
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
 		fli7610_pio_controls,
-		ARRAY_SIZE(fli7610_pio_controls), 6);
+		ARRAY_SIZE(fli7610_pio_controls), 8);
 }
 
 #ifdef CONFIG_DEBUG_FS
