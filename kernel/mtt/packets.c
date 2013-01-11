@@ -152,6 +152,7 @@ int __init mtt_pkt_init(void)
 
 	return 0;
 }
+early_initcall(mtt_pkt_init);
 
 /* Preset sysconfig in preallocated packets, if it changed */
 void mtt_pkt_config(void)

@@ -25,6 +25,7 @@
 #include <linux/futex.h>
 #include <linux/version.h>
 #include <linux/slab.h>
+#include <linux/console.h>
 
 #include <linux/mtt/mtt.h>
 
@@ -523,6 +524,34 @@ static const struct file_operations mtt_cdev_fops = {
 	.mmap = mtt_cdev_mmap,
 };
 
+static void mtt_console_write(struct console *co, const char *s, unsigned count)
+{
+	mtt_packet_t *pkt;
+	long core;
+	uint32_t target;
+	uint32_t type_info = MTT_TRACEITEM_STRING(count);
+
+	if (!co->data)
+		return;
+
+	core = raw_smp_processor_id();
+	target = MTT_TARGET_LIN0 + core;
+
+	/* allocate or retrieve a preallocated TRACE frame */
+	pkt = mtt_pkt_alloc(target);
+
+	memcpy(mtt_pkt_get(co->data, pkt, type_info, 0), s, count);
+
+	mtt_cur_out_drv->write_func(pkt, DRVLOCK);
+};
+
+static struct console mtt_console = {
+	.name   = "mttS",
+	.write  = mtt_console_write,
+	.flags  = CON_PRINTBUFFER,
+	.data   = NULL,
+};
+
 /* Initialize the default ouput and the control file system */
 static int __init mtt_core_init(void)
 {
@@ -580,6 +609,12 @@ static int __init mtt_core_init(void)
 		printk(KERN_ERR "Error %d adding \"" MTTDEV_NAME "\"\n", ret);
 		unregister_chrdev_region(mtt_drv_data.dev, 1);
 		return ret;
+	}
+
+	if (mtt_cur_out_drv) {
+	mtt_console.data = mtt_component_alloc(MTT_COMPID_SLOG,
+						"syslog", 0);
+	register_console(&mtt_console);
 	}
 
 	/* Init the builtin drivers. */
