@@ -801,11 +801,25 @@ union dwc3_event {
 void dwc3_set_mode(struct dwc3 *dwc, u32 mode);
 int dwc3_gadget_resize_tx_fifos(struct dwc3 *dwc);
 
+#if IS_ENABLED(CONFIG_USB_DWC3_HOST) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
 int dwc3_host_init(struct dwc3 *dwc);
 void dwc3_host_exit(struct dwc3 *dwc);
+#else
+static inline int dwc3_host_init(struct dwc3 *dwc)
+{ return 0; }
+static inline void dwc3_host_exit(struct dwc3 *dwc)
+{ }
+#endif
 
+#if IS_ENABLED(CONFIG_USB_DWC3_GADGET) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
 int dwc3_gadget_init(struct dwc3 *dwc);
 void dwc3_gadget_exit(struct dwc3 *dwc);
+#else
+static inline int dwc3_gadget_init(struct dwc3 *dwc)
+{ return 0; }
+static inline void dwc3_gadget_exit(struct dwc3 *dwc)
+{ }
+#endif
 
 extern int dwc3_get_device_id(void);
 extern void dwc3_put_device_id(int id);
