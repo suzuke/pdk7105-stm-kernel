@@ -712,6 +712,8 @@ information.</para>
     &sub-yuv411p;
     &sub-nv12;
     &sub-nv12m;
+    &sub-nv16m;
+    &sub-nv24m;
     &sub-nv12mt;
     &sub-nv16;
     &sub-nv24;
