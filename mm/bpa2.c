@@ -493,7 +493,38 @@ int bpa2_low_part(struct bpa2_part *part)
 }
 EXPORT_SYMBOL(bpa2_low_part);
 
+/**
+ * bpa2_find_part_addr - return the parent partition
+ * @base: the physical address of a buffer
+ * @size: the size of the buffer
+ *
+ * Return the bpa2_part from which the supplied buffer has been allocated.
+ *
+ * This function may not be called from an interrupt.
+ */
+struct bpa2_part *bpa2_find_part_addr(unsigned long base, unsigned long size)
+{
+	struct bpa2_part *part;
 
+	spin_lock(&bpa2_lock);
+
+	list_for_each_entry(part, &bpa2_parts, list) {
+		struct bpa2_range *range = part->used_list;
+		while (range) {
+			if (base >= range->base
+			    && (base + size) <= (range->base + range->size)) {
+				spin_unlock(&bpa2_lock);
+				return part;
+			}
+			range = range->next;
+		}
+	}
+
+	spin_unlock(&bpa2_lock);
+
+	return NULL;
+}
+EXPORT_SYMBOL(bpa2_find_part_addr);
 
 /**
  * __bpa2_alloc_pages - allocate pages from a bpa2 partition

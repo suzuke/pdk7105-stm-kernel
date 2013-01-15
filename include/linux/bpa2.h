@@ -43,6 +43,7 @@ void bpa2_init(struct bpa2_partition_desc *partdescs, int nparts);
 
 struct bpa2_part *bpa2_find_part(const char *name);
 int bpa2_low_part(struct bpa2_part *part);
+struct bpa2_part *bpa2_find_part_addr(unsigned long base, unsigned long size);
 
 #if defined(CONFIG_BPA2_ALLOC_TRACE)
 #define bpa2_alloc_pages(part, count, align, priority) \
