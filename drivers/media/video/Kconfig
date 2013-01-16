@@ -66,6 +66,12 @@ config VIDEOBUF2_DMA_SG
 	select VIDEOBUF2_CORE
 	select VIDEOBUF2_MEMOPS
 	tristate
+
+config VIDEOBUF2_BPA2_CONTIG
+	depends on ARCH_STM && BPA2
+	select VIDEOBUF2_CORE
+	select VIDEOBUF2_MEMOPS
+	tristate
 #
 # Multimedia Video device configuration
 #
