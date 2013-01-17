@@ -515,5 +515,7 @@ config KPTRACE_SYNC
         must not be inlined. This may adversely affect system performance,
         and so this option must be used with care.
 
+config MTT
+
 endif # TRACING_SUPPORT
 

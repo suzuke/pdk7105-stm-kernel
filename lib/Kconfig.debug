@@ -1144,6 +1144,7 @@ config LATENCYTOP
 
 source mm/Kconfig.debug
 source kernel/trace/Kconfig
+source kernel/mtt/Kconfig
 
 config PROVIDE_OHCI1394_DMA_INIT
 	bool "Remote debugging over FireWire early on boot"
