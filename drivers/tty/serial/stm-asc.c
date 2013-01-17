@@ -358,7 +358,12 @@ static struct console asc_console = {
 static int __init asc_console_init(void)
 {
 	int id;
-	if (!stm_asc_console_device || console_set_on_cmdline)
+	if (!stm_asc_console_device)
+		return 0;
+
+	/* If only non-ASC consoles are specified, don't register ourselves */
+	if (console_set_on_cmdline &&
+		(!strstr(saved_command_line, "console=ttyAS")))
 		return 0;
 
 	id = stm_asc_console_device->id;
