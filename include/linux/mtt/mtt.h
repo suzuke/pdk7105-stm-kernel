@@ -27,6 +27,7 @@
 #include <linux/ioctl.h>
 #include <linux/relay.h>
 #include <linux/device.h>
+#include <linux/kprobes.h>
 #endif
 
 /*#define _MTT_DEBUG_*/
@@ -34,10 +35,14 @@
 
 #include <linux/mtt/mtt_api_internal.h>
 #include <linux/mtt/mtt_ptcl.h>
+#include <linux/mtt/mtt_ptcl_kptrace.h>
 
 /*the interface version shall remain consistent with kptrace:
  MTT drivers expose basically a kptrace v4+ sysfs.*/
-#define MTT_INTERFACE_VERSION 0x00040000
+#define MTT_INTERFACE_VERSION ((MTT_KPT_VER_MAJOR<<16) \
+			+ (MTT_KPT_VER_MINOR<<8) \
+			+ MTT_KPT_VER_BUILD)
+
 #define	MTT_VERSION_STRING "MTT driver v1.0"
 
 /* ===vvv====== ARCH INDEPENDENT STRUCTURES ====vvv===== */

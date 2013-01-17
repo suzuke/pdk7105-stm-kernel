@@ -27,6 +27,10 @@
 
 #include <linux/mtt/mtt.h>
 
+#ifdef CONFIG_KPTRACE
+#include <linux/mtt/kptrace.h>
+#endif
+
 /*======================== PUBLIC APIs ===============================*/
 /*
  Some API entry points are not implemented kernel side.
@@ -325,6 +329,54 @@ mtt_return_t mtt_get_component_filter(const mtt_comp_handle_t co,
 	return MTT_ERR_NONE;
 }
 EXPORT_SYMBOL(mtt_get_component_filter);
+
+#ifdef CONFIG_KPTRACE
+
+/*======================== KPTRACE INTERNAL HANDLERS ==================*/
+
+/*
+ * Allocate and prepare a packet.
+ *
+ * returns the pointer to the right offset in the packet to
+ * start writing the payload.
+ */
+uint32_t *mtt_kptrace_pkt_get(uint32_t type_info, mtt_packet_t **p,
+		uint32_t loc)
+{
+	long core = 0;
+	uint32_t target = MTT_TARGET_LIN0;
+
+	BUG_ON(!p);
+
+	/* kptrace may be disabled, but this is checked prior
+	 * to enabling the trace points. */
+
+	core = raw_smp_processor_id();
+
+	target = MTT_TARGET_LIN0 + core;
+
+	/* allocate or retrieve a preallocated TRACE frame */
+	*p = mtt_pkt_alloc(target);
+
+	return mtt_pkt_get(mtt_comp_cpu[core], *p, type_info, loc);
+}
+
+/* Send the packet for output and release it. */
+int mtt_kptrace_pkt_put(mtt_packet_t *p)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&mttlib_lock, flags);
+
+	/* send the frame packet
+	* the output driver must take care of locking if needed */
+	mtt_cur_out_drv->write_func(p, APILOCK);
+
+	spin_unlock_irqrestore(&mttlib_lock, flags);
+	return 0;
+}
+
+#endif
 
 /*===================== COMMANDS & NOTIFICATIONS ==================*/
 

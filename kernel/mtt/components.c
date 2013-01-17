@@ -36,6 +36,10 @@
 
 #include <linux/hardirq.h>
 
+#ifdef CONFIG_KPTRACE
+#include <linux/mtt/kptrace.h>
+#endif
+
 LIST_HEAD(mtt_comp_list);
 
 static struct mutex comp_mutex;
@@ -402,6 +406,10 @@ int __init create_components_tree(struct device *parent)
 		remove_components_tree();
 		return -ENOMEM;
 	}
+
+#ifdef CONFIG_KPTRACE
+	mtt_kptrace_comp_alloc();
+#endif
 
 	return 0;
 }

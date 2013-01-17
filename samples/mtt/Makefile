@@ -18,6 +18,7 @@ endif
 ccflags-y = -g  -D_GNU_SOURCE -Wall -lpthread
 
 obj-m := mttsample_mod.o
+obj-m := kptrace_legacy.o
 
 all:
 	$(CROSS_COMPILE)gcc -DARCH_$(ARCH) $(ccflags-y) -o mttsample mttsample.c -lpthread -lrt -lmtt

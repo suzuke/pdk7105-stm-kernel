@@ -17,3 +17,8 @@ mtt-objs := \
 ifdef CONFIG_STM_SYSTRACE
 mtt-objs +=	systrace.o
 endif
+
+ifdef CONFIG_KPTRACE
+mtt-objs += kptrace.o \
+	../../arch/$(ARCH)/kernel/mtt-kptrace.o
+endif

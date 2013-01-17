@@ -500,6 +500,7 @@ config KPTRACE
 	select RELAY
 	select SYSFS
 	select KALLSYMS
+	select MTT
 	help
 	  KPTrace is a kprobes-based dynamic trace tool. It provides a full
 	  set of optional pre-defined tracepoints, plus a simple way to add

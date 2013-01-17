@@ -26,11 +26,20 @@
 
 #include <linux/mtt/mtt.h>
 
+#ifdef CONFIG_KPTRACE
+#include <linux/mtt/kptrace.h>
+#endif
+
 /* Simply allocate one packet per core for now. */
 #define MAX_PACKETS 8
 
 /* Command packets handling structures. */
 mtt_packet_t *mtt_pkts_cmd;
+
+#ifdef CONFIG_KPTRACE
+mtt_packet_t *mtt_pkts_ctxt;
+mtt_packet_t *mtt_pkts_irqs;
+#endif
 
 struct packet_index {
 	unsigned int val;
@@ -48,17 +57,30 @@ int __init mtt_pkt_init(void)
 
 	/* Bail out if already init because of console. */
 	if (mtt_pkts_cmd && mtt_pkts_cmd[0].u.buf &&
-	    (*(uint32_t *)(mtt_pkts_cmd[0].u.buf) == (MTT_SYNC \
-			      |(MTT_PTCL_VER_MAJOR<<12)\
-			      |(MTT_PTCL_VER_MINOR<<8)\
-			      |MTT_TARGET_LIN0)))
+	    (*(uint32_t *) (mtt_pkts_cmd[0].u.buf) == (MTT_SYNC
+						       | (MTT_PTCL_VER_MAJOR <<
+							  12)
+						       | (MTT_PTCL_VER_MINOR <<
+							  8)
+						       | MTT_TARGET_LIN0)))
 		return 0;
 
 	/* Allocate the command packet handling structures */
-	mtt_pkts_cmd =  kmalloc(num_possible_cpus() * sizeof(mtt_packet_t),
-				 GFP_KERNEL);
+	mtt_pkts_cmd = kmalloc(num_possible_cpus() * sizeof(mtt_packet_t),
+			       GFP_KERNEL);
+
 	if (!mtt_pkts_cmd)
 		return -ENOMEM;
+
+#ifdef CONFIG_KPTRACE
+	mtt_pkts_irqs = kmalloc(num_possible_cpus() * sizeof(mtt_packet_t),
+				GFP_KERNEL);
+	mtt_pkts_ctxt = kmalloc(num_possible_cpus() * sizeof(mtt_packet_t),
+				GFP_KERNEL);
+
+	if (unlikely(!mtt_pkts_irqs || !mtt_pkts_ctxt))
+		return -ENOMEM;
+#endif
 
 	/* Preallocate a trace packet per core.
 	 * this will be small pieces of cache aligned
@@ -83,7 +105,7 @@ int __init mtt_pkt_init(void)
 		/* Command & notification packets */
 		if (!err)
 			mtt_pkts_cmd[core].u.buf = kmalloc(MAX_PKT_SIZE,
-							GFP_KERNEL);
+							   GFP_KERNEL);
 		if (!mtt_pkts_cmd[core].u.buf)
 			err = ENOMEM;
 
@@ -92,9 +114,30 @@ int __init mtt_pkt_init(void)
 			 * do this once params are known
 			 */
 			MTT_PTCL_SET_HEADER(mtt_pkts_cmd[core].u.buf,
-				    MTT_TARGET_LIN0 + core,
-				    MTT_CMD_VERSION, MTT_PARAM_RET);
+					    MTT_TARGET_LIN0 + core,
+					    MTT_CMD_VERSION, MTT_PARAM_RET);
 		}
+#ifdef CONFIG_KPTRACE
+		/*context switch packets */
+		mtt_pkts_ctxt[core].u.buf = kmalloc(MAX_PKT_SIZE, GFP_KERNEL);
+
+		if (!mtt_pkts_ctxt[core].u.buf)
+			err = ENOMEM;
+
+		MTT_PTCL_SET_HEADER(mtt_pkts_ctxt[core].u.buf,
+				    MTT_TARGET_LIN0 + core,
+				    MTT_CMD_CSWITCH, mtt_sys_config.params);
+
+		/* Irqs packets */
+		mtt_pkts_irqs[core].u.buf = kmalloc(MAX_PKT_SIZE, GFP_KERNEL);
+
+		if (!mtt_pkts_irqs[core].u.buf)
+			err = ENOMEM;
+
+		MTT_PTCL_SET_HEADER(mtt_pkts_irqs[core].u.buf,
+				    MTT_TARGET_LIN0 + core,
+				    MTT_CMD_TRACE, mtt_sys_config.params);
+#endif /*CONFIG_KPTRACE */
 	}
 
 	if (!err)
@@ -117,6 +160,13 @@ void mtt_pkt_config(void)
 	for (core = 0; core < num_possible_cpus(); core++) {
 		_PKT_SET_CMD(&mtt_pkts_cmd[core],
 			     (MTT_CMD_TRACE | mtt_sys_config.params));
+#ifdef CONFIG_KPTRACE
+		_PKT_SET_CMD(&mtt_pkts_ctxt[core],
+			     (MTT_CMD_CSWITCH
+			      | MTT_PARAM_CTXT | mtt_sys_config.params));
+		_PKT_SET_CMD(&mtt_pkts_irqs[core],
+			     (MTT_CMD_TRACE | mtt_sys_config.params));
+#endif
 	}
 }
 
@@ -131,10 +181,20 @@ void mtt_pkt_cleanup(void)
 			kfree(p[j].u.buf);
 
 		kfree(mtt_pkts_cmd[core].u.buf);
+#ifdef CONFIG_KPTRACE
+		kfree(mtt_pkts_ctxt[core].u.buf);
+		kfree(mtt_pkts_irqs[core].u.buf);
+#endif
 	}
 
 	kfree(mtt_pkts_cmd);
 	mtt_pkts_cmd = 0;
+
+#ifdef CONFIG_KPTRACE
+	kfree(mtt_pkts_ctxt);
+	kfree(mtt_pkts_irqs);
+#endif
+
 }
 
 /* Return a preallocated trace packet, or allocate */
@@ -152,7 +212,7 @@ mtt_packet_t *mtt_pkt_alloc(mtt_target_type_t target)
 	spin_unlock_irqrestore(&p_index->lock, flags);
 
 	MTT_PTCL_SET_HEADER(p->u.buf, target, MTT_CMD_TRACE,
-				mtt_sys_config.params);
+			    mtt_sys_config.params);
 
 	return p;
 }
@@ -288,8 +348,76 @@ uint32_t *mtt_pkt_get(struct mtt_component_obj *co, mtt_packet_t *p,
 	}
 
 	/* Return offset of payload */
-	return (uint32_t *)buf;
+	return (uint32_t *) buf;
 }
+
+#ifdef CONFIG_KPTRACE
+/* Optimized packet initializer, for context switches. */
+int mtt_cswitch(uint32_t old_c, uint32_t new_c)
+{
+	char *buf;
+	mtt_packet_t *pkt;
+	struct mtt_component_obj *co;
+	uint32_t params;
+	int core = raw_smp_processor_id();
+
+	pkt = &mtt_pkts_ctxt[core];
+
+	/* We have a dedicated component for this. */
+	co = mtt_comp_ctxt[core];
+
+	params = _PKT_GET_CMD(pkt);
+
+	/* prepare size for a regular linux trace packet. */
+	pkt->length = DEFAULT_PKT_LINUX;
+
+	/*-----------------------preamble part--------------------------*/
+
+	/* the first fields are pre-initialized.
+	 * sync-version-target
+	 * command-param
+	 **/
+
+	/* move to componentid/
+	 */
+	buf = pkt->u.buf + 2 * 4;
+	mtt_pkt_put_comp_id(buf, co);
+
+	/* move to trace ID/
+	 */
+	mtt_pkt_put_trace_id(buf, 0);
+
+	/* write the type info
+	 **/
+	mtt_pkt_put_type_info(buf, MTT_TRACEITEM_INT32);
+
+	/*-----------------------optional part--------------------------*/
+
+	/*write the PID : CTXT is implied for this one! */
+	*(uint32_t *) buf = old_c;
+	buf += 4;
+
+	/*write the time-stamp if needed */
+	if (params & MTT_PARAM_TSTV) {
+		struct timeval tv;
+		do_gettimeofday(&tv);
+		mtt_pkt_put_tstv(buf, tv);
+		pkt->length += 8;
+	}
+
+	/* add payload size
+	 * the rounding is to insure that a frame
+	 * start is always aligned to a 32bits boundary.
+	 **/
+	mtt_pkt_update_align32(pkt->length, MTT_TRACEITEM_INT32);
+
+	*(uint32_t *) buf = new_c;
+
+	/*tell the output driver to lock if she needs to. */
+	mtt_cur_out_drv->write_func(pkt, DRVLOCK);
+	return 0;
+}
+#endif
 
 /* Initialize payload for a given type
  * and set packet size param. */
@@ -350,7 +478,7 @@ uint32_t *mtt_pkt_get_with_hint(struct mtt_component_obj *co,
 	}
 
 	/* Return offset of payload */
-	return (uint32_t *)buf;
+	return (uint32_t *) buf;
 }
 
 /* Initialize payload for a given type
@@ -411,5 +539,5 @@ uint32_t *mtt_pkt_get_raw(struct mtt_component_obj *co, mtt_packet_t *p,
 	}
 
 	/* Return offset of payload */
-	return (uint32_t *)buf;
+	return (uint32_t *) buf;
 }

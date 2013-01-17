@@ -28,6 +28,10 @@
 
 #include <linux/mtt/mtt.h>
 
+#ifdef CONFIG_KPTRACE
+#include <linux/mtt/kptrace.h>
+#endif
+
 MODULE_VERSION(MTT_VERSION_STRING);
 MODULE_AUTHOR("Marc Titinger <marc.uitinger@st.com>");
 MODULE_AUTHOR("Chris Smith <chris.smith@st.com>");
@@ -146,6 +150,14 @@ static void mtt_stop_tracing(void)
 			   mtt_sys_config.state);
 	}
 
+#ifdef CONFIG_KPTRACE
+	/* Dynamic tracing activated at session start
+	 * changing the kptrace component level requires
+	 * restart. This is an optim/exception to other
+	 * components that can be changed on the fly.*/
+	mtt_kptrace_stop();
+
+#endif /*CONFIG_KPTRACE*/
 	if (mtt_cur_out_drv)
 		mtt_cur_out_drv->last_error = 0;
 
@@ -172,6 +184,17 @@ static int mtt_start_tracing(void)
 	mtt_printk(KERN_DEBUG "mtt: state set RUNNING (%x)",
 		   mtt_sys_config.state);
 
+#ifdef CONFIG_KPTRACE
+	/* Dynamic tracing activated at session start
+	 * changing the kptrace component level requires
+	 * restart. This is an optim/exception to other
+	 * components that can be changed on the fly.*/
+	if (mtt_comp_ctxt[0]->filter) {
+		mtt_printk(KERN_DEBUG "Kptrace: filter is %x, starting!",
+				mtt_comp_ctxt[0]->filter);
+		ret = mtt_kptrace_start();
+	}
+#endif
 	return ret;
 }
 
@@ -199,11 +222,20 @@ static int __init create_sysfs_tree(void)
 	/* Initialize the component tree */
 	create_components_tree(&mtt_device);
 
+#ifdef CONFIG_KPTRACE
+	/*add kptrace part of sysfs */
+	mtt_kptrace_init(&mtt_subsys);
+
+#endif
 	return 0;
 }
 
 static void remove_sysfs_tree(void)
 {
+#ifdef CONFIG_KPTRACE
+	/*remove kptrace part of sysfs */
+	mtt_kptrace_cleanup();
+#endif
 	remove_components_tree();
 
 	if ((mtt_cur_out_drv) && (mtt_cur_out_drv->debugfs))
