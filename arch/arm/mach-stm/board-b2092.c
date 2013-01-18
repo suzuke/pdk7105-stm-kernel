@@ -57,6 +57,15 @@
  */
 #define GPIO_FP_LED		stih416_gpio(105, 7)
 
+#if defined(CONFIG_MACH_STM_B2092_CN23_NONE)
+static struct stm_pad_config stih416_hdmi_hp_pad_config = {
+        .gpios_num = 1,
+        .gpios = (struct stm_pad_gpio []) {
+                STIH416_PAD_PIO_IN(2, 5, 1),      /* HDMI Hotplug */
+        },
+};
+#endif
+
 /* Serial FLASH */
 static struct stm_plat_spifsm_data b2092_serial_flash =  {
 	.name		= "n25q128",
@@ -218,6 +227,12 @@ static void __init b2092_init(void)
 	/* Reset GMAC 0/1 PHY attached devices */
 	b2092_gmac0phy_gpio_init(1);
 	b2092_gmac1phy_gpio_init(1);
+
+#if defined(CONFIG_MACH_STM_B2092_CN23_NONE)
+	/* Default to HDMI HotPlug */
+	if (stm_pad_claim(&stih416_hdmi_hp_pad_config, "HDMI_Hotplug") == NULL)
+		pr_err("Failed to claim HDMI-Hotplug pad!\n");
+#endif
 
 #if defined(CONFIG_MACH_STM_B2092_CN22_B2032) ||	\
 	defined(CONFIG_MACH_STM_B2092_CN22_B2035)
