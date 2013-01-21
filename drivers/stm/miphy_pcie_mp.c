@@ -29,26 +29,35 @@ struct pcie_mp_device{
 	void __iomem *mp_base;
 	void (*mp_select)(int port);
 };
-static struct pcie_mp_device *mp_dev;
 
-static void stm_pcie_mp_register_write(int miphyselect, u8 address, u8 data)
+static void stm_pcie_mp_register_write(struct stm_miphy *miphy,
+				       u8 address, u8 data)
 {
+	struct pcie_mp_device *mp_dev;
+
+	mp_dev = container_of(miphy->dev, struct pcie_mp_device, miphy_dev);
+
 	BUG_ON(!mp_dev || !mp_dev->mp_select);
-	mp_dev->mp_select(miphyselect);
-	iowrite8(data, mp_dev->mp_base + address);
+	mp_dev->mp_select(miphy->port);
+	writeb(data, mp_dev->mp_base + address);
 }
 
-static u8 stm_pcie_mp_register_read(int miphyselect, u8 address)
+static u8 stm_pcie_mp_register_read(struct stm_miphy *miphy, u8 address)
 {
+	struct pcie_mp_device *mp_dev;
 	u8 data;
+
+	mp_dev = container_of(miphy->dev, struct pcie_mp_device, miphy_dev);
+
 	BUG_ON(!mp_dev || !mp_dev->mp_select);
-	mp_dev->mp_select(miphyselect);
-	data = ioread8(mp_dev->mp_base + address);
+	mp_dev->mp_select(miphy->port);
+	data = readb(mp_dev->mp_base + address);
 	return data;
 }
 
 static int __devinit pcie_mp_probe(struct platform_device *pdev)
 {
+	struct pcie_mp_device *mp_dev;
 	struct resource *res;
 	struct stm_miphy_device *miphy_dev;
 	struct stm_plat_pcie_mp_data *data =
@@ -86,6 +95,7 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 	miphy_dev->reg_write = stm_pcie_mp_register_write;
 	miphy_dev->reg_read = stm_pcie_mp_register_read;
 	miphy_dev->style_id = data->style_id;
+	platform_set_drvdata(pdev, mp_dev);
 
 	result = miphy_register_device(miphy_dev);
 
@@ -98,7 +108,14 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 }
 static int pcie_mp_remove(struct platform_device *pdev)
 {
+	struct stm_plat_pcie_mp_data *data =
+			(struct stm_plat_pcie_mp_data *)pdev->dev.platform_data;
+	struct pcie_mp_device *mp_dev;
+
+	mp_dev = platform_get_drvdata(pdev);
+
 	miphy_unregister_device(&mp_dev->miphy_dev);
+
 	return 0;
 }
 

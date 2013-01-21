@@ -22,6 +22,8 @@ struct stm_miphy_style {
 	struct stm_miphy_style_ops *miphy_ops;
 };
 
+struct stm_miphy;
+
 struct stm_miphy_device {
 	struct mutex mutex;
 	struct stm_miphy *dev;
@@ -33,8 +35,8 @@ struct stm_miphy_device {
 	char *style_id;
 	enum miphy_if_type type;
 	enum miphy_mode *modes;
-	void (*reg_write)(int port, u8 addr, u8 data);
-	u8 (*reg_read)(int port, u8 addr);
+	void (*reg_write)(struct stm_miphy *, u8 addr, u8 data);
+	u8 (*reg_read)(struct stm_miphy *, u8 addr);
 };
 
 struct stm_miphy {
@@ -48,6 +50,13 @@ struct stm_miphy {
 	u8 miphy_version;
 	u8 miphy_revision;
 };
+
+void stm_miphy_write(struct stm_miphy *miphy, u8 addr, u8 data);
+
+u8 stm_miphy_read(struct stm_miphy *miphy, u8 addr);
+
+/* Returns stm_miphy with that specified port number, NULL on failure */
+struct stm_miphy *stm_miphy_find_port(int port);
 
 /* MiPHY style registration for diff versions of MiPHY */
 int miphy_register_style(struct stm_miphy_style *drv);

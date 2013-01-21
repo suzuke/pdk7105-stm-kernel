@@ -33,21 +33,34 @@ static LIST_HEAD(miphy_style_list);
 /****************************************************************************
  * 	MiPHY Generic functions available for other drivers
  */
-static void __maybe_unused stm_miphy_write(struct stm_miphy *miphy, u8 addr,
-					   u8 data)
+void stm_miphy_write(struct stm_miphy *miphy, u8 addr, u8 data)
 {
 	struct stm_miphy_device *dev = miphy->dev;
-	int port = miphy->port;
 
-	dev->reg_write(port, addr, data);
+	dev->reg_write(miphy, addr, data);
 }
 
-static u8 stm_miphy_read(struct stm_miphy *miphy, u8 addr)
+u8 stm_miphy_read(struct stm_miphy *miphy, u8 addr)
 {
 	struct stm_miphy_device *dev = miphy->dev;
-	int port = miphy->port;
 
-	return dev->reg_read(port, addr);
+	return dev->reg_read(miphy, addr);
+}
+
+/*
+ * Find a miphy with the specified port number. This is useful because on
+ * the odd occasion you need to talk to a different port while configuring
+ * up a particular miphy_port
+ */
+struct stm_miphy *stm_miphy_find_port(int port)
+{
+	struct stm_miphy *iterator;
+
+	list_for_each_entry(iterator, &miphy_list, node)
+		if (iterator->port == port)
+			return iterator;
+
+	return NULL;
 }
 
 int stm_miphy_sata_status(struct stm_miphy *miphy)

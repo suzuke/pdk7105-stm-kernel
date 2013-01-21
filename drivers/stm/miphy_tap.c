@@ -85,10 +85,11 @@ static void stm_miphy_select(int port)
 #define DR_DATA_MASK	0xff
 
 /* TAP based register read/write functions */
-static u8 stm_miphy_tap_reg_read(int port, u8 addr)
+static u8 stm_miphy_tap_reg_read(struct stm_miphy *miphy, u8 addr)
 {
 	unsigned int value = 0;
 	int chain_size;
+	int port = miphy->port;
 
 	pr_debug("%s(port=%d, addr=0x%x)\n", __func__, port, addr);
 
@@ -126,9 +127,10 @@ static u8 stm_miphy_tap_reg_read(int port, u8 addr)
 
 	return value;
 }
-static void stm_miphy_tap_reg_write(int port, u8 addr, u8 data)
+static void stm_miphy_tap_reg_write(struct stm_miphy *miphy, u8 addr, u8 data)
 {
 	unsigned int value = 0;
+	int port = miphy->port;
 
 	pr_debug("%s(port=%d, addr=0x%x, data=0x%x)\n",
 			__func__, port, addr, data);
