@@ -488,7 +488,7 @@ struct stm_plat_pcie_mp_data stig125_sata_mp_platform_data[2] = {
 		.id	= _id,						\
 		.num_resources = 1,					\
 		.resource = (struct resource[]) {			\
-			STM_PLAT_RESOURCE_MEM(_iomem, 0xff),		\
+		  STM_PLAT_RESOURCE_MEM_NAMED("pcie-uport", _iomem, 0xff),\
 			},						\
 		.dev.platform_data =					\
 			&stig125_sata_mp_platform_data[_id],		\

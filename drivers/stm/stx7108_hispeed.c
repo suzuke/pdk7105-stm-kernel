@@ -972,11 +972,8 @@ static struct platform_device stx7108_pcie_mp_device = {
 	.id	= 0,
 	.num_resources = 1,
 	.resource = (struct resource[]) {
-		[0] = {
-			.start = PCIE_UPORT_BASE,
-			.end   = PCIE_UPORT_BASE + PCIE_UPORT_REG_SIZE,
-			.flags = IORESOURCE_MEM,
-		},
+		STM_PLAT_RESOURCE_MEM_NAMED("pcie-uport", PCIE_UPORT_BASE,
+					    PCIE_UPORT_REG_SIZE),
 	},
 	.dev = {
 		.platform_data = &stx7108_pcie_mp_platform_data,
