@@ -11,6 +11,11 @@
 
 #include <linux/platform_device.h>
 
+/* These two extra bytes have to be removed (also in case of the
+ * HW is programmed to remove both extra and docsis headers from the
+ * incoming frames) to keep the ethernet frame aligned to 32bit.
+ */
+#define ISVE_ALIGN_HDR	2
 /* Get the base address for a device queue */
 #define DSFWD_RPT_OFF	32
 #define UPIIM_RPT_OFF	40
