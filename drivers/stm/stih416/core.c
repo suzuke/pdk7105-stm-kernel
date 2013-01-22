@@ -16,6 +16,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/clk.h>
+#include <linux/irq.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/pad.h>
 #include <linux/stm/device.h>
@@ -1076,6 +1077,30 @@ static struct platform_device stih416_systrace_device = {
 	},
 };
 
+/* RTC initialisation -----------------------------------*/
+static struct platform_device stih416_lpc_device = {
+	.name	= "stm-rtc",
+	.id	= -1,
+	.num_resources = 2,
+	.resource = (struct resource[]){
+		STM_PLAT_RESOURCE_MEM(0xfde05000, 0x1000),
+		STIH416_RESOURCE_IRQ(118),
+	},
+	.dev.platform_data = &(struct stm_plat_rtc_lpc) {
+		.need_wdt_reset = 1,
+#ifdef CONFIG_ARM
+		.irq_edge_level = IRQ_TYPE_EDGE_RISING,
+#else
+		.irq_edge_level = IRQ_TYPE_EDGE_FALLING,
+#endif
+		/*
+		 * the lpc_clk is initialize @ 300 KHz to guarantee
+		 * it's working also for the temperature sensor
+		 */
+		.force_clk_rate = 300000,
+	}
+};
+
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stih416_devices[] __initdata = {
@@ -1092,6 +1117,7 @@ static struct platform_device *stih416_devices[] __initdata = {
 	&stih416_sas_fdma_xbar_device,
 
 	&stih416_systrace_device,
+	&stih416_lpc_device,
 };
 
 static int __init stih416_devices_setup(void)

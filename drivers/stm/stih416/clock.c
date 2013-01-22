@@ -59,6 +59,9 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias(NULL, "stmmaceth.0", "CLK_S_ICN_REG_0", NULL);
 	clk_add_alias(NULL, "stmmaceth.1", "CLK_S_ICN_REG_0", NULL);
 
+	/* LPC */
+	clk_add_alias("lpc_clk", NULL, "CLK_M_MPELPC", NULL);
+
 	/* GPU */
 	clk_add_alias("gpu_clk", NULL, "CLK_M_GPU", NULL);
 	/* AHCI */
