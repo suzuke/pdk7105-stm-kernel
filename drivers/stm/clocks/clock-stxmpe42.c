@@ -994,7 +994,7 @@ static int clkgene_fsyn_recalc(struct clk *clk_p)
 				&clk_p->rate);
 
 	chan = clk_p->id - CLK_M_PIX_MDTP_0;
-	if (sysconf_read(fsynth_channels[fsynth_e][chan].nsb)) {
+	if (sysconf_read(fsynth_channels[fsynth_e][chan].nsb) == 0) {
 		/* Digital standbye */
 		clk_p->rate = 0;
 		return 0;
