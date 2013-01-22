@@ -32,6 +32,7 @@ struct stm_miphy_device {
 	int miphy_count;
 	int tx_pol_inv;
 	int rx_pol_inv;
+	enum miphy_sata_gen sata_gen;
 	char *style_id;
 	enum miphy_if_type type;
 	enum miphy_mode *modes;

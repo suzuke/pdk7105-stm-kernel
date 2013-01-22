@@ -17,6 +17,8 @@
 
 enum miphy_if_type { TAP_IF, UPORT_IF, DUMMY_IF };
 enum miphy_mode { UNUSED_MODE, SATA_MODE, PCIE_MODE, USB30_MODE};
+/* Allows soc layer to explicitly ask for a specifed link speed */
+enum miphy_sata_gen {SATA_GEN_DEFAULT, SATA_GEN1, SATA_GEN2, SATA_GEN3};
 struct stm_miphy;
 
 /*

@@ -285,6 +285,7 @@ struct stm_plat_pcie_mp_data {
 	void (*mp_select)(int port);
 	int tx_pol_inv;	/* invert polarity of TXN/TXP differential outputs */
 	int rx_pol_inv;	/* invert polarity of RXN/RXP differential inputs */
+	enum miphy_sata_gen sata_gen; /* What generation of sata we want */
 	char *style_id;
 };
 

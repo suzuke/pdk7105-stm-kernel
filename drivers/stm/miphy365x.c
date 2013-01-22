@@ -324,24 +324,40 @@ static int miphy365x_uport_sata_start(struct stm_miphy *miphy)
 {
 	unsigned int regvalue;
 	int timeout;
+	struct stm_miphy_device *miphy_dev;
+	enum miphy_sata_gen sata_gen;
+	static u8 des_mode[] = {0x00, 0x00, 0x09, 0x12};
 
-	/* Force PHY macro reset,PLL calibration reset, PLL reset
-	 * and assert Deserializer Reset */
+	miphy_dev = miphy->dev;
+
+	/* Later revision can do GEN2 and GEN3 */
+	sata_gen = (miphy->miphy_revision == 9) ? SATA_GEN2 : SATA_GEN1;
+
+	/* Override from soc or board layer only way to get GEN3 */
+	if (miphy->dev->sata_gen != SATA_GEN_DEFAULT)
+		sata_gen = miphy->dev->sata_gen;
+
+	/*
+	 * Force PHY macro reset,PLL calibration reset, PLL reset
+	 * and assert Deserializer Reset
+	 */
 	stm_miphy_write(miphy, 0x00, 0x96);
-	/* Force macro1 to use rx_lspd, tx_lspd
-	 * (by default rx_lspd and tx_lspd set for Gen1 and 2) */
+
+	if (miphy_dev->tx_pol_inv)
+		stm_miphy_write(miphy, 0x2, 0x20);
+
+	/*
+	 * Force macro1 to use rx_lspd, tx_lspd
+	 * (by default rx_lspd and tx_lspd set for Gen1 and 2)
+	 */
 	stm_miphy_write(miphy, 0x10, 0x1);
 	/* Force Rx_Clock on first I-DLL phase on macro1 */
 	stm_miphy_write(miphy, 0x72, 0x40);
 
-	if (miphy->miphy_revision == 9)
-		/* Force Des in HP mode on macro, rx_lspd, tx_lspd for Gen2 */
-		stm_miphy_write(miphy, 0x12, 0x09);
-	else
-		/* Force Des in HP mode on macro1 */
-		stm_miphy_write(miphy, 0x12, 0x00);
+	/* Force Des in HP mode on macro, rx_lspd, tx_lspd for Gen2/3 */
+	stm_miphy_write(miphy, 0x12, des_mode[sata_gen]);
 
-	/*Wait for HFC_READY = 0*/
+	/* Wait for HFC_READY = 0*/
 	timeout = 50;
 	while (timeout-- && (stm_miphy_read(miphy, 0x01) & 0x3))
 		udelay(2000);
@@ -349,29 +365,46 @@ static int miphy365x_uport_sata_start(struct stm_miphy *miphy)
 		pr_err("%s(): HFC_READY timeout!\n", __func__);
 
 	/*--------Compensation Recaliberation--------------*/
-	if (miphy->miphy_revision == 9)
-		/*Set properly comp_2mhz_ratio for 30 MHz ref clock */
-		stm_miphy_write(miphy, 0x41, 0xF);
-	else
-		/*Set properly comp_1mhz_ratio for 30 MHz ref clock */
+	if (sata_gen == SATA_GEN1)
+		/* Set properly comp_1mhz_ratio for 30 MHz ref clock */
 		stm_miphy_write(miphy, 0x41, 0x1E);
+	else
+		/* Set properly comp_2mhz_ratio for 30 MHz ref clock */
+		stm_miphy_write(miphy, 0x41, 0xF);
 
-	stm_miphy_write(miphy, 0x42, 0x33);
-	/* Force VCO current to value defined by address 0x5A
-	 * and disable PCIe100Mref bit */
-	stm_miphy_write(miphy, 0x51, 0x2);
-	/* Enable auto load compensation for pll_i_bias */
-	stm_miphy_write(miphy, 0x47, 0x2A);
+	if (sata_gen != SATA_GEN3) {
+		stm_miphy_write(miphy, 0x42, 0x33);
+		/*
+		 * Force VCO current to value defined by address 0x5A
+		 * and disable PCIe100Mref bit
+		 */
+		stm_miphy_write(miphy, 0x51, 0x2);
+		/* Enable auto load compensation for pll_i_bias */
+		stm_miphy_write(miphy, 0x47, 0x2A);
+	}
 
-	/* Force restart compensation and enable auto load
-	 * for Comzc_Tx, Comzc_Rx and Comsr on macro*/
+	/*
+	 * Force restart compensation and enable auto load
+	 * for Comzc_Tx, Comzc_Rx and Comsr on macro
+	 * */
 	stm_miphy_write(miphy, 0x40, 0x13);
 	while ((stm_miphy_read(miphy, 0x40) & 0xC) != 0xC)
 		cpu_relax();
 
-	if (miphy->miphy_revision == 9) {
+	switch (sata_gen) {
+	case SATA_GEN3:
+		stm_miphy_write(miphy, 0x20, 0x12);
+		/* TX Swing target 550-600mv peak to peak diff */
+		stm_miphy_write(miphy, 0x21, 0x64);
+		/* Tx Slew target 90-110ps rising/falling time */
+		stm_miphy_write(miphy, 0x22, 0x2);
+		stm_miphy_write(miphy, 0x23, 0x0);
+		/* Rx Eq ON3, Sigdet threshold SDTH1 */
+		stm_miphy_write(miphy, 0x25, 0x31);
+		break;
+	case SATA_GEN2:
 		/* Recommended Settings for Swing & slew rate
-		* or SATA GEN 2 from CCI:(c1.9)
+		* for SATA GEN 2 from CCI:(c1.9)
 		* conf gen sel=0x1 to program Gen2 banked registers
 		* and VDDT filter ON
 		*/
@@ -382,7 +415,8 @@ static int miphy365x_uport_sata_start(struct stm_miphy *miphy)
 		stm_miphy_write(miphy, 0x22, 0x2);
 		/*RX Equalization ON1, Sigdet threshold SDTH1*/
 		stm_miphy_write(miphy, 0x25, 0x11);
-	} else {
+		break;
+	case SATA_GEN1:
 		/* Recommended Settings for Swing & slew rate
 		* for SATA GEN 1 from CCI:(c1.51)
 		* conf gen sel = 00b to program Gen1 banked registers &
@@ -393,9 +427,12 @@ static int miphy365x_uport_sata_start(struct stm_miphy *miphy)
 		stm_miphy_write(miphy, 0x21, 0x3);
 		/*(Tx Slew target120-140 ps rising/falling time) */
 		stm_miphy_write(miphy, 0x22, 0x4);
+		break;
+	default:
+		BUG();
 	}
 
-	/*Force Macro1 in partial mode & release pll cal reset */
+	/* Force Macro1 in partial mode & release pll cal reset */
 	stm_miphy_write(miphy, 0x00, 0x10);
 	udelay(100);
 	/* SSC Settings. SSC will be enabled through Link */
@@ -407,15 +444,16 @@ static int miphy365x_uport_sata_start(struct stm_miphy *miphy)
 	stm_miphy_write(miphy, 0x58, 0x00);
 	/*  SSC Freq=31KHz   */
 	stm_miphy_write(miphy, 0x59, 0xF1);
-	/*SSC Settings complete*/
-	if (miphy->miphy_revision == 9)
-		stm_miphy_write(miphy, 0x50, 0xCD);
-	else
+	/* SSC Settings complete*/
+	if (sata_gen == SATA_GEN1)
 		stm_miphy_write(miphy, 0x50, 0x8D);
-	/*MIPHY PLL ratio */
+	else
+		stm_miphy_write(miphy, 0x50, 0xCD);
+
+	/* MIPHY PLL ratio */
 	stm_miphy_read(miphy, 0x52);
-	/*  Wait for phy_ready */
-	/* When phy is in ready state ( register 0x01 reads 0x13)*/
+	/* Wait for phy_ready */
+	/* When phy is in ready state ( register 0x01 reads 0x13) */
 	regvalue = stm_miphy_read(miphy, 0x01);
 	timeout = 50;
 	while (timeout-- && ((regvalue & 0x03) != 0x03)) {
@@ -433,7 +471,8 @@ static int miphy365x_uport_sata_start(struct stm_miphy *miphy)
 		/* Assert deserializer reset */
 		stm_miphy_write(miphy, 0x00, 0x10);
 		/* des_bit_lock_en is set */
-		stm_miphy_write(miphy, 0x02, 0x08);
+		stm_miphy_write(miphy, 0x02,
+				miphy_dev->tx_pol_inv ? 0x28 : 0x08);
 		/* bit lock detection strength */
 		stm_miphy_write(miphy, 0x86, 0x61);
 		/* Deassert deserializer reset */

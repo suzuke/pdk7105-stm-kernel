@@ -1366,6 +1366,8 @@ static struct stm_plat_pcie_mp_data stih416_sata_mp_platform_data[2] = {
 		.miphy_count = 1,
 		.miphy_modes = (enum miphy_mode[1]) {},
 		.mp_select = stih416_sata_mp_select,
+		.sata_gen = SATA_GEN3,
+		.tx_pol_inv = 1,
 	}, {
 		.style_id = ID_MIPHY365X,
 		.miphy_first = 1,
@@ -1375,16 +1377,17 @@ static struct stm_plat_pcie_mp_data stih416_sata_mp_platform_data[2] = {
 	},
 };
 
-#define SATA_MIPHY(_id, _iomem)					\
-	{							\
-		.name = "pcie-mp",				\
-		.id     = _id,					\
-		.num_resources = 1,				\
-		.resource = (struct resource[]) {		\
-			STM_PLAT_RESOURCE_MEM(_iomem, 0xff),	\
-			},					\
-		.dev.platform_data =				\
-			&stih416_sata_mp_platform_data[_id],	\
+#define SATA_MIPHY(_id, _iomem)						\
+	{								\
+		.name = "pcie-mp",					\
+		.id     = _id,						\
+		.num_resources = 1,					\
+		.resource = (struct resource[]) {			\
+			STM_PLAT_RESOURCE_MEM_NAMED("sata-uport",	\
+						    _iomem, 0xff),	\
+		},							\
+		.dev.platform_data =					\
+			&stih416_sata_mp_platform_data[_id],		\
 	}
 
 static struct platform_device stih416_sata_mp_devices[2] = {
@@ -1417,10 +1420,8 @@ void stih416_configure_miphy(struct stih416_miphy_config *config)
 				5, 6, "MiPhy");
 	switch (config->mode) {
 	case SATA_MODE:
-		if (config->iface == UPORT_IF) {
-			pdata->rx_pol_inv = config->rx_pol_inv;
-			pdata->tx_pol_inv = config->tx_pol_inv;
-		}
+		pdata->rx_pol_inv = config->rx_pol_inv;
+		pdata->tx_pol_inv = config->tx_pol_inv;
 		sysconf_write(sc, 0);
 		break;
 	case PCIE_MODE:
@@ -1430,9 +1431,8 @@ void stih416_configure_miphy(struct stih416_miphy_config *config)
 	default:
 		BUG();
 	}
-	/* Only tested on UPort I/f */
-	if (config->iface == UPORT_IF)
-		platform_device_register(&stih416_sata_mp_devices[config->id]);
+
+	platform_device_register(&stih416_sata_mp_devices[config->id]);
 }
 
 #define AHCI_HOST_PWR	   "SATA_HOST_PWR"
