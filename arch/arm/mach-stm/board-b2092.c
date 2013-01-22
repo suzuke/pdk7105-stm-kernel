@@ -259,7 +259,7 @@ static void __init b2092_init(void)
 		.phy_addr = 1,
 #endif /* CONFIG_MACH_STM_B2092_CN22_B2032 */
 
-		.phy_bus = 1,
+		.phy_bus = 0,
 		.mdio_bus_data = &stmmac0_mdio_bus,});
 #endif /* CONFIG_MACH_STM_B2092_CN22_B2032 || CONFIG_MACH_STM_B2092_CN22_B2035*/
 
