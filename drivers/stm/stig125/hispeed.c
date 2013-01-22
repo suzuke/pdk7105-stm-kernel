@@ -631,12 +631,14 @@ static struct plat_isve_data stig125_isve_platform_data[] = {
 		.queue_number = 5,
 		.ifname = "if16",
 		.header_size = 14,
+#ifdef CONFIG_STM_ISVE_EROUTER
 	}, {
 		.downstream_queue_size = 32,
 		.upstream_queue_size = 32,
 		.queue_number = 7,
 		.ifname = "if1",
 		.header_size = 14,
+#endif	/* CONFIG_STM_ISVE_EROUTER */
 	}
 };
 
@@ -702,6 +704,7 @@ static struct platform_device stig125_isve_devices[] = {
 			.coherent_dma_mask = DMA_BIT_MASK(32),
 			.platform_data = &stig125_isve_platform_data[2],
 		},
+#ifdef CONFIG_STM_ISVE_EROUTER
 	}, {
 		.name = "isve",
 		.id = 3,
@@ -721,6 +724,7 @@ static struct platform_device stig125_isve_devices[] = {
 			.coherent_dma_mask = DMA_BIT_MASK(32),
 			.platform_data = &stig125_isve_platform_data[3],
 		},
+#endif /* CONFIG_STM_ISVE_EROUTER */
 	}
 };
 
@@ -728,7 +732,9 @@ static struct platform_device *stig125_isve_configured_device[] __initdata = {
 	&stig125_isve_devices[0],
 	&stig125_isve_devices[1],
 	&stig125_isve_devices[2],
+#ifdef CONFIG_STM_ISVE_EROUTER
 	&stig125_isve_devices[3],
+#endif /* CONFIG_STM_ISVE_EROUTER */
 };
 
 static int __init stig125_isve_devices_setup(void)

@@ -300,6 +300,18 @@ config MACH_STM_FLI76XXHDK01
 	help
 	  Include support for a FLI76XX HDK01 (Newman) Board.
 
+if (MACH_STM_B2044 || MACH_STM_B2078)
+
+config	STM_ISVE_EROUTER
+	bool "Manage the eRouter interfarce through ISVE"
+	depends on STM_ISVE
+	help
+	  Select this option if the eRouter interface (if1)
+	  has to be managed by using the ISVE Virtual driver
+	  instead of the FastPath.
+
+endif
+
 config STM_CPU_FREQ
 	def_bool CPU_FREQ
 	select CPU_FREQ_TABLE
