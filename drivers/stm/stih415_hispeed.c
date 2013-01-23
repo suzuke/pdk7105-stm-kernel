@@ -52,18 +52,6 @@
 		}, \
 	}
 
-/* On some boards MDIO line is missing Pull-up resistor, Enabling weak
- * internal PULL-UP overcomes the issue */
-#define DATA_OUT_PU(_port, _pin, _func, _retiming) \
-	{ \
-		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_in_pull_up, \
-		.function = _func, \
-		.priv = &(struct stm_pio_control_pad_config) { \
-			.retime = _retiming, \
-		}, \
-	}
-
 #define CLOCK_IN(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
@@ -98,13 +86,14 @@
 #define MDIO(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_out, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = _func, \
 		.name = "MDIO", \
 		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
 		}, \
 	}
+
 #define MDC(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \

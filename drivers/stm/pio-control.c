@@ -118,6 +118,7 @@ static unsigned long stm_pio_control_delay_to_bit(unsigned int delay,
 
 	switch (direction) {
 	case stm_pad_gpio_direction_in:
+	case stm_pad_gpio_direction_in_pull_up:
 		delay_times = retime_params->delay_times_in;
 		num_delay_times = retime_params->num_delay_times_in;
 		break;
@@ -126,7 +127,8 @@ static unsigned long stm_pio_control_delay_to_bit(unsigned int delay,
 		num_delay_times = retime_params->num_delay_times_out;
 		break;
 	default:
-		WARN(delay, "Attempt to set delay without knowing direction");
+		if (delay != 0)
+			WARN(delay, "Attempt to set delay without knowing direction");
 		return 0;
 	}
 
@@ -207,12 +209,15 @@ static void stm_pio_control_config_retime_dedicated(
 
 	unsigned long delay = stm_pio_control_delay_to_bit(
 		rt->delay, retime_params, direction);
+	unsigned long rt_input =
+		((direction == stm_pad_gpio_direction_in) ||
+		 (direction == stm_pad_gpio_direction_in_pull_up)) ? 1 : 0;
 
 	unsigned long retime_config =
 		((rt->clk            & 0x3) << 0) |
 		((rt->clknotdata     & 0x1) << 2) |
 		((delay              & 0xf) << 3) |
-		((direction == stm_pad_gpio_direction_in) ? (1 << 7) : 0) |
+		((rt_input           & 0x1) << 7) |
 		((rt->double_edge    & 0x1) << 8) |
 		((rt->invertclk      & 0x1) << 9) |
 		((rt->retime         & 0x1) << 10);

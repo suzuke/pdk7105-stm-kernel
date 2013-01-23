@@ -789,6 +789,13 @@ device_initcall(stig125_isve_devices_setup);
 			.retime = _retiming, \
 		}, \
 	}
+#define MDIO(_port, _pin, _func) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
+		.function = _func, \
+		.name = "MDIO", \
+	}
 
 static struct stm_pad_config stig125_fastpath_byoi_pad_config = {
 	.gpios_num = 14,
@@ -815,7 +822,7 @@ static struct stm_pad_config stig125_fastpath_byoi_pad_config = {
 		 CLOCK_IN(12, 7, 2, RET_NICLK(1250, 0)),/* WAN_RXCLK */
 
 		 /* Select PIO Alternate Function for MDIO and MDC Intf */
-		 STM_PAD_PIO_IN(14, 4, 1),	/* MDIO */
+		 MDIO(14, 4, 1),		/* MDIO */
 		 STM_PAD_PIO_OUT(14, 5, 1),	/* MDC */
 	},
 };

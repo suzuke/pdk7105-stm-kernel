@@ -52,10 +52,10 @@
 
 /* On some boards MDIO line is missing Pull-up resistor, Enabling weak
  * internal PULL-UP overcomes the issue */
-#define DATA_OUT_PU(_gmac, _port, _pin, _retiming) \
+#define MDIO(_gmac, _port, _pin, _retiming) \
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
-		.direction = stm_pad_gpio_direction_in_pull_up, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = _gmac + 1, \
 		.priv = &(struct stm_pio_control_pad_config) { \
 			.retime = _retiming, \
@@ -137,7 +137,7 @@ static struct stm_pad_config stx7108_ethernet_mii_pad_configs[] = {
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
 			CLOCK_IN(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO*/
+			MDIO(0, 7, 4, RET_BYPASS(3000)),/* MDIO*/
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
@@ -174,7 +174,7 @@ static struct stm_pad_config stx7108_ethernet_mii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_IN(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_IN(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 1)),/* RXDV */
 			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 1)),/* RX_ER */
@@ -212,7 +212,7 @@ static struct stm_pad_config stx7108_ethernet_gmii_pad_configs[] = {
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(3000, 0)),/* TXEN */
 			CLOCK_IN(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
@@ -257,7 +257,7 @@ static struct stm_pad_config stx7108_ethernet_gmii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(3000, 1)),/* TXER */
 			DATA_IN(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_IN(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 1)),/* RXDV */
 			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 1)),/* RX_ER */
@@ -295,7 +295,7 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 			/* TX Clock inversion is not set for 1000Mbps */
 			TX_CLOCK(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)), /* MDINT */
 			DATA_IN(0, 8, 0, RET_DE_IO(0, 0)),/* RXD[0] */
@@ -329,7 +329,7 @@ static struct stm_pad_config stx7108_ethernet_rgmii_pad_configs[] = {
 			/* TX Clock inversion is not set for 1000Mbps */
 			TX_CLOCK(1, 17, 0, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_IN(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_DE_IO(0, 1)),/* RXDV */
 			DATA_IN(1, 18, 0, RET_DE_IO(0, 1)),/* RXD[0] */
@@ -358,7 +358,7 @@ static struct stm_pad_config stx7108_ethernet_rmii_pad_configs[] = {
 			DATA_OUT(0, 7, 0, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 1)),/* TXEN */
 			DATA_OUT(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(0, 7, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_IN(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
@@ -389,7 +389,7 @@ static struct stm_pad_config stx7108_ethernet_rmii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 0)),/* TXER */
 			DATA_OUT(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_OUT(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_OUT(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 0)),/* RXDV */
 			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 0)),/* RX_ER */
@@ -420,7 +420,7 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 			DATA_OUT(0, 7, 1, RET_SE_NICLK_IO(0, 0)),/* TXEN */
 			CLOCK_IN(0, 7, 2, RET_NICLK(0, 0)),/* TXCLK */
 			DATA_OUT(0, 7, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(0, 7, 4, RET_BYPASS(3000)),/* MDIO*/
+			MDIO(0, 7, 4, RET_BYPASS(3000)),/* MDIO*/
 			CLOCK_IN(0, 7, 5, RET_NICLK(0, 0)),/* MDC */
 			DATA_OUT(0, 7, 6, RET_BYPASS(0)),/* CRS */
 			DATA_IN(0, 7, 7, RET_BYPASS(0)),/* MDINT */
@@ -457,7 +457,7 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 			DATA_OUT(1, 17, 1, RET_SE_NICLK_IO(0, 1)),/* TXER */
 			DATA_OUT(1, 17, 2, RET_BYPASS(0)),/* CRS */
 			DATA_OUT(1, 17, 3, RET_BYPASS(0)),/* COL */
-			DATA_OUT_PU(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
+			MDIO(1, 17, 4, RET_BYPASS(3000)),/* MDIO */
 			CLOCK_IN(1, 17, 5, RET_NICLK(0, 1)),/* MDC */
 			DATA_IN(1, 17, 6, RET_SE_NICLK_IO(1000, 1)),/* RXDV */
 			DATA_IN(1, 17, 7, RET_SE_NICLK_IO(1000, 1)),/* RX_ER */

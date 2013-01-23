@@ -76,7 +76,7 @@ static u64 stxh205_dma_mask = DMA_BIT_MASK(32);
  * On some boards the MDIO line is missing a pull-up resistor. Enabling
  * weak internal pull-up overcomes the issue.
  */
-#define DATA_OUT_PU(_port, _pin, _func, _retiming)	\
+#define MDIO(_port, _pin, _func, _retiming)	\
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_bidir_pull_up, \
@@ -129,7 +129,7 @@ static struct stm_pad_config stxh205_ethernet_mii_pad_config = {
 		DATA_OUT(0, 5, 1, RET_BYPASS(0)),/* TXEN */
 		CLOCK_IN(0, 6, 1, RET_NICLK(0, 0)),/* TXCLK */
 		DATA_IN(0, 7, 1, RET_BYPASS(0)),/* COL */
-		DATA_OUT_PU(1, 0, 1, RET_BYPASS(0)),/* MDIO*/
+		MDIO(1, 0, 1, RET_BYPASS(0)),/* MDIO*/
 		CLOCK_OUT(1, 1, 1, RET_NICLK(0, 0)),/* MDC */
 		DATA_IN(1, 2, 1, RET_BYPASS(0)),/* CRS */
 		DATA_IN_PU(1, 3, 1, RET_BYPASS(0)),/* MDINT */
@@ -167,7 +167,7 @@ static struct stm_pad_config stxh205_ethernet_rmii_pad_config = {
 		DATA_OUT(0, 0, 1, RET_BYPASS(0)),/* TXD[0] */
 		DATA_OUT(0, 1, 1, RET_BYPASS(0)),/* TXD[1] */
 		DATA_OUT(0, 5, 1, RET_BYPASS(0)),/* TXEN */
-		DATA_OUT_PU(1, 0, 1, RET_BYPASS(0)),/* MDIO */
+		MDIO(1, 0, 1, RET_BYPASS(0)),/* MDIO */
 		CLOCK_OUT(1, 1, 1, RET_NICLK(0, 0)),/* MDC */
 		DATA_IN_PU(1, 3, 1, RET_BYPASS(0)),/* MDINT */
 		DATA_IN(1, 4, 1, RET_BYPASS(0)),/* RXD.0 */
@@ -207,7 +207,7 @@ static struct stm_pad_config stxh205_ethernet_reverse_mii_pad_config = {
 		DATA_OUT(0, 5, 1, RET_BYPASS(0)),/* TXEN */
 		CLOCK_IN(0, 6, 1, RET_NICLK(0, 0)),/* TXCLK */
 		DATA_OUT(0, 7, 1, RET_BYPASS(0)),/* COL */
-		DATA_OUT_PU(1, 0, 1, RET_BYPASS(0)),/* MDIO*/
+		MDIO(1, 0, 1, RET_BYPASS(0)),/* MDIO*/
 		CLOCK_IN(1, 1, 1, RET_NICLK(0, 0)),/* MDC */
 		DATA_OUT(1, 2, 1, RET_BYPASS(0)),/* CRS */
 		DATA_IN(1, 3, 1, RET_BYPASS(0)),/* MDINT */

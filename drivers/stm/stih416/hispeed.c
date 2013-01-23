@@ -259,23 +259,6 @@ void __init stih416_configure_usb(int port)
 		}, \
 	}
 
-/* On some boards MDIO line is missing Pull-up resistor, Enabling weak
- * internal PULL-UP overcomes the issue */
-#define DATA_OUT_PU(_port, _pin, _func, _retiming) \
-	{ \
-		.gpio = stm_gpio(STIH416_GPIO(_port), _pin), \
-		.direction = stm_pad_gpio_direction_bidir, \
-		.function = _func, \
-		.priv = &(struct stm_pio_control_pad_config) { \
-			.retime = _retiming, \
-			.mode = &(struct stm_pio_control_mode_config) { \
-				.oe = 0, \
-				.pu = 1, \
-				.od = 0, \
-			}, \
-		}, \
-	}
-
 #define CLOCK_IN(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(STIH416_GPIO(_port), _pin), \
@@ -310,7 +293,7 @@ void __init stih416_configure_usb(int port)
 #define MDIO(_port, _pin, _func, _retiming) \
 	{ \
 		.gpio = stm_gpio(STIH416_GPIO(_port), _pin), \
-		.direction = stm_pad_gpio_direction_out, \
+		.direction = stm_pad_gpio_direction_bidir_pull_up, \
 		.function = _func, \
 		.name = "MDIO", \
 		.priv = &(struct stm_pio_control_pad_config) { \
