@@ -38,11 +38,17 @@
 #define SBC_MBX			(SASG2_SBC_LPM_BASE + 0xb4000)
 #define SBC_MBX_WRITE_STATUS(x)	(SBC_MBX + 0x4 + 0x4 * (x))
 
+#define SELF_REFRESH_ON_PCTL	1
+
 static const unsigned long __stxh416_hom_ddr_0[] = {
 OR32(MPE42_DDR_PCTL_BASE(0) + DDR_DTU_CFG, DDR_DTU_CFG_ENABLE),
 
+#ifdef SELF_REFRESH_ON_PCTL
+synopsys_ddr32_in_self_refresh(MPE42_DDR_PCTL_BASE(0)),
+#else
 UPDATE32(MPE42_DDR_PWR_DWN(0), ~MPE42_DDR_PWR_DWN_REQ, 0),
 WHILE_NE32(MPE42_DDR_PWR_STATUS(0), MPE42_DDR_PWR_STATUS_ACK, 0),
+#endif
 
 synopsys_ddr32_phy_hom_enter(MPE42_DDR_PCTL_BASE(0)),
 };
@@ -50,8 +56,12 @@ synopsys_ddr32_phy_hom_enter(MPE42_DDR_PCTL_BASE(0)),
 static const unsigned long __stxh416_hom_ddr_1[] = {
 OR32(MPE42_DDR_PCTL_BASE(1) + DDR_DTU_CFG, DDR_DTU_CFG_ENABLE),
 
+#ifdef SELF_REFRESH_ON_PCTL
+synopsys_ddr32_in_self_refresh(MPE42_DDR_PCTL_BASE(1)),
+#else
 UPDATE32(MPE42_DDR_PWR_DWN(1), ~MPE42_DDR_PWR_DWN_REQ, 0),
 WHILE_NE32(MPE42_DDR_PWR_STATUS(1), MPE42_DDR_PWR_STATUS_ACK, 0),
+#endif
 
 synopsys_ddr32_phy_hom_enter(MPE42_DDR_PCTL_BASE(1)),
 };
