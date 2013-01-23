@@ -97,4 +97,4 @@ stm_suspend_on_eram:
 	.balign 4
 .global stm_suspend_on_eram_sz
 stm_suspend_on_eram_sz:
-	.long . - stm_suspend_exec_table
+	.long . - stm_suspend_on_eram
