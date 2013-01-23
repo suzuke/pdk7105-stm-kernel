@@ -30,21 +30,34 @@
 /* ********************** Downstream functions ********************** */
 static void dfwd_enable_int(void __iomem *ioaddr, int enable)
 {
+	unsigned int ctrl = readl(ioaddr + DFWD_OUTQ_CTL);
+
 	if (enable)
-		writel(DFWD_CTRL_DEFAULT, ioaddr + DFWD_OUTQ_CTL);
+		ctrl &= ~DFWD_QUEUE_IRQ_MASK;
 	else
-		writel(DFWD_QUEUE_IRQ_DISABLE, ioaddr + DFWD_OUTQ_CTL);
+		ctrl |= DFWD_QUEUE_IRQ_MASK;
+
+	writel(ctrl, ioaddr + DFWD_OUTQ_CTL);
 
 	DBG("%s DFWD_OUTQ_CTL 0x%x\n", __func__, readl(ioaddr + DFWD_OUTQ_CTL));
 }
 
-static void dfwd_core_init(void __iomem *ioaddr)
+static void dfwd_core_init(void __iomem *ioaddr, unsigned int remove_header)
 {
+	unsigned int ctrl = DFWD_OUTQ_CTL_SWAPOUT | DFWD_OUTQ_CTL_FIFO_THRESH;
+
 	DBG("%s: init Downstream module\n", __func__);
 
 	/* Clear counters */
 	writel(0, ioaddr + DFWD_OVF_DROP_CNT);
 	writel(0, ioaddr + DFWD_PANIC_DROP_CNT);
+
+	if (remove_header & DFWD_REMOVE_DOCSIS_HDR)
+		ctrl |= DFWD_OUTQ_CTL_REMOVE_DOCSIS_HEADER;
+	if (remove_header & DFWD_REMOVE_SPECIAL_HDR)
+		ctrl |= DFWD_OUTQ_CTL_REMOVE_EXTRA_HEADER;
+
+	writel(ctrl, ioaddr + DFWD_OUTQ_CTL);
 
 	dfwd_enable_int(ioaddr, 1);
 }
@@ -214,7 +227,7 @@ static u32 upiim_freed_tx_add(void __iomem *ioaddr)
 }
 
 static struct isve_hw_ops dfwd_ops = {
-	.init = dfwd_core_init,
+	.dfwd_init = dfwd_core_init,
 	.dump_regs = dfwd_dump_regs,
 	.isr = dfwd_interrupt,
 	.enable_irq = dfwd_enable_int,
@@ -226,7 +239,7 @@ static struct isve_hw_ops dfwd_ops = {
 };
 
 static struct isve_hw_ops upiim_ops = {
-	.init = upiim_core_init,
+	.upiim_init = upiim_core_init,
 	.dump_regs = upiim_dump_regs,
 	.isr = upiim_interrupt,
 	.enable_irq = upiim_enable_int,

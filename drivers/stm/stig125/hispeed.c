@@ -618,26 +618,30 @@ static struct plat_isve_data stig125_isve_platform_data[] = {
 		.upstream_queue_size = 32,
 		.queue_number = 3,
 		.ifname = "if17",
-		.header_size = ISVE_ALIGN_HDR,
+		.skip_hdr = ISVE_ALIGN_HDR,
+		.hw_rem_hdr = ISVE_DFWD_REM_HDR_ALL,
 	}, {
 		.downstream_queue_size = 32,
 		.upstream_queue_size = 32,
 		.queue_number = 4,
 		.ifname = "if18",
-		.header_size = ISVE_ALIGN_HDR,
+		.skip_hdr = ISVE_ALIGN_HDR,
+		.hw_rem_hdr = ISVE_DFWD_REM_HDR_ALL,
 	}, {
 		.downstream_queue_size = 32,
 		.upstream_queue_size = 32,
 		.queue_number = 5,
 		.ifname = "if16",
-		.header_size = ISVE_ALIGN_HDR,
+		.skip_hdr = ISVE_ALIGN_HDR,
+		.hw_rem_hdr = ISVE_DFWD_REM_HDR_ALL,
 #ifdef CONFIG_STM_ISVE_EROUTER
 	}, {
 		.downstream_queue_size = 32,
 		.upstream_queue_size = 32,
 		.queue_number = 7,
 		.ifname = "if1",
-		.header_size = ISVE_ALIGN_HDR,
+		.skip_hdr = ISVE_ALIGN_HDR,
+		.hw_rem_hdr = ISVE_DFWD_REM_HDR_ALL,
 #endif	/* CONFIG_STM_ISVE_EROUTER */
 	}
 };

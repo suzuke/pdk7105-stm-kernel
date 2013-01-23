@@ -28,6 +28,9 @@
 #define DBG(fmt, args...)  do { } while (0)
 #endif
 
+#define DFWD_REMOVE_DOCSIS_HDR	0x1
+#define DFWD_REMOVE_SPECIAL_HDR	0x2
+
 enum interrupt_packet_status {
 	in_packet = 0x1,
 	in_packet_dropped = 0x2,
@@ -70,8 +73,10 @@ struct isve_extra_stats {
  * dedicated to a specific module.
  */
 struct isve_hw_ops {
-	/* Init UIIPM */
-	void (*init) (void __iomem *ioaddr);
+	/* UIIPM / DFWD init callbacks */
+	void (*dfwd_init) (void __iomem *ioaddr, unsigned int remove_header);
+	void (*upiim_init) (void __iomem *ioaddr);
+
 	/* Dump MAC registers */
 	void (*dump_regs) (void __iomem *ioaddr);
 	/* Enable/Disable interrupt */
@@ -82,10 +87,10 @@ struct isve_hw_ops {
 	void (*get_stats) (void __iomem *ioaddr, struct isve_extra_stats *x);
 	/* Manage tx entries in the input FIFO */
 	void (*fill_tx_add) (void __iomem *ioaddr, int add, int len);
-	 u32(*freed_tx_add) (void __iomem *ioaddr);
+	u32 (*freed_tx_add) (void __iomem *ioaddr);
 	/* Manage RX resources */
 	void (*init_rx_fifo) (void __iomem *ioaddr, unsigned int buffer);
-	 u32(*get_rx_used_add) (void __iomem *ioaddr);
+	u32 (*get_rx_used_add) (void __iomem *ioaddr);
 	int (*get_rx_len) (void __iomem *ioaddr);
 	struct dfwd_fifo (*get_rx_fifo_status) (void __iomem *ioaddr);
 };

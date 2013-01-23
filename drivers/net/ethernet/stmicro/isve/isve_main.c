@@ -354,8 +354,8 @@ static int isve_open(struct net_device *dev)
 	}
 
 	DBG("isve: init downstream and upstream modules...\n");
-	priv->dfwd->init(priv->ioaddr_dfwd);
-	priv->upiim->init(priv->ioaddr_upiim);
+	priv->dfwd->dfwd_init(priv->ioaddr_dfwd, priv->hw_rem_hdr);
+	priv->upiim->upiim_init(priv->ioaddr_upiim);
 
 	/* Extra statistics */
 	memset(&priv->xstats, 0, sizeof(struct isve_extra_stats));
@@ -586,7 +586,7 @@ static void isve_tx_timeout(struct net_device *dev)
 
 	DBG("isve_tx_timeout...\n");
 
-	priv->upiim->init(priv->ioaddr_upiim);
+	priv->upiim->upiim_init(priv->ioaddr_upiim);
 	priv->dev->stats.tx_errors++;
 
 	netif_wake_queue(priv->dev);
@@ -765,7 +765,8 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 	/* Init main private resources: queue numbers and sizes. */
 	priv->downstream_queue_size = plat_dat->downstream_queue_size;
 	priv->upstream_queue_size = plat_dat->upstream_queue_size;
-	priv->skip_hdr = plat_dat->header_size;
+	priv->skip_hdr = plat_dat->skip_hdr;
+	priv->hw_rem_hdr = plat_dat->hw_rem_hdr;
 
 	/* Init Upstream/Downstream modules */
 	priv->dfwd = isve_dfwd_core(priv->ioaddr_dfwd);

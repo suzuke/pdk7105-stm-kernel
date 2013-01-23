@@ -96,6 +96,13 @@ on platforms).
 If we pass the .ifname field it will be used to rename the interface.
 For example, if we pass if16 then we will get:
 
+The skip_header is used to remove a fixed number of bytes from the incoming
+frames.
+
+The hw_rem_hdr field is used to program the DFWD queue control register
+and remove in HW the docsis or extra special header from the incoming
+frames.
+
 # ifconfig -a
 if16      Link encap:Ethernet  HWaddr 5A:D0:1F:CD:B1:F3
           inet addr:192.168.1.56  Bcast:192.168.1.255  Mask:255.255.255.0

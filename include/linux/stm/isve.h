@@ -26,12 +26,20 @@
 					 (queue * DSFWD_RPT_OFF))
 #define UPIIM_QUEUE_ADD(base, queue)	(base + QUEUE_UPIIM_OFF + \
 					 (queue * UPIIM_RPT_OFF))
+
+#define ISVE_DFWD_REM_HDR_DOCSIS	0x1
+#define ISVE_DFWD_REM_HDR_EXTRA		0x2
+#define ISVE_DFWD_REM_HDR_ALL		(ISVE_DFWD_REM_HDR_DOCSIS | \
+					 ISVE_DFWD_REM_HDR_EXTRA)
 struct plat_isve_data {
 	unsigned int downstream_queue_size;
 	unsigned int upstream_queue_size;
 	unsigned int queue_number;
-	unsigned int header_size;
-	char *ifname;
+	unsigned int skip_hdr;		/* Force the driver to remove some
+					 * bytes from the incoming frames. */
+	unsigned int hw_rem_hdr;	/* To remove the extra or docsis HDR
+					 * in HW. */
+	char *ifname;			/* Own interface name. */
 };
 
 #endif /*__STM_ISVE_CONFIG_H*/
