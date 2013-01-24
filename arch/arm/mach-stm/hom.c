@@ -86,7 +86,7 @@ static void prepare_hom_frozen_data(struct hom_frozen_data *frozen_data,
 		"mrc	p15, 0, r2, c2, c0, 0\n"	/* TTBR0 */
 		"mrc	p15, 0, r3, c2, c0, 1\n"	/* TTBR1 */
 		"mrc	p15, 0, r4, c2, c0, 2\n"	/* TTBCR */
-		"stm	%0, {r2 - r5}\n"
+		"stm	%0, {r2 - r4}\n"
 		: : "r" (&frozen_data->ttbr0)
 		: "memory", "r2", "r3", "r4");
 
