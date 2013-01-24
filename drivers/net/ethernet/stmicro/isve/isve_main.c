@@ -107,7 +107,7 @@ static void isve_release_resources(struct isve_priv *priv)
 
 		d = priv->rx_desc[i].buf_addr;
 		if (d)
-			dma_unmap_single(dev, d, ISVE_BUF_LEN, DMA_TO_DEVICE);
+			dma_unmap_single(dev, d, ISVE_BUF_LEN, DMA_FROM_DEVICE);
 
 		if (priv->rx_desc[i].buffer != NULL)
 			kfree(priv->rx_desc[i].buffer);
@@ -147,7 +147,7 @@ static int isve_alloc_resources(struct isve_priv *priv)
 		}
 
 		d = dma_map_single(priv->device, buf, ISVE_BUF_LEN,
-				   DMA_TO_DEVICE);
+				   DMA_FROM_DEVICE);
 		if (dma_mapping_error(priv->device, d)) {
 			kfree(buf);
 			ret = -ENOMEM;
