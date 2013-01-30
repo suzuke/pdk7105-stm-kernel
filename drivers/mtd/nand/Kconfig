@@ -572,7 +572,8 @@ config MTD_NAND_STM_BCH
 	depends on (CPU_SUBTYPE_STX7108 || \
 		    CPU_SUBTYPE_FLI7610 || \
 		    CPU_SUBTYPE_STXH205 || \
-		    CPU_SUBTYPE_STIH415)
+		    CPU_SUBTYPE_STIH415 || \
+		    MACH_STM_STIH416)
 	help
 	  Adds support for the STMicroelectronics NANDi BCH Controller.
 

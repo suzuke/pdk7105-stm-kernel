@@ -116,7 +116,8 @@ config MTD_STM_SPI_FSM
 		    CPU_SUBTYPE_FLI7610 || \
 		    MACH_STM_STIG125 || \
 		    CPU_SUBTYPE_STXH205 || \
-		    CPU_SUBTYPE_STIH415)
+		    CPU_SUBTYPE_STIH415 || \
+		    MACH_STM_STIH416)
 	help
 	  This provides a MTD device driver for the ST Microelectronics SPI
 	  FSM Serial Flash Controller, and connected Serial Flash device.
