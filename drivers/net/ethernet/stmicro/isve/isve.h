@@ -23,7 +23,7 @@
 #include "isve_hw.h"
 
 #define ISVE_RESOURCE_NAME	"isve"
-#define DRV_MODULE_VERSION	"July_2012"
+#define DRV_MODULE_VERSION	"Jan_2013"
 #define ISVE_BUF_LEN		2048
 
 struct isve_desc {
