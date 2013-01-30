@@ -69,13 +69,13 @@ static inline int isve_tx_avail(unsigned int dirty_tx, unsigned int cur_tx,
 static void print_pkt(unsigned char *buf, int len)
 {
 	int j;
-	pr_info("len = %d byte, buf addr: 0x%p", len, buf);
+	printk("len = %d byte, buf addr: 0x%p\n", len, buf);
 	for (j = 0; j < len; j++) {
 		if ((j % 16) == 0)
-			pr_info(" %03x:", j);
-		pr_info(" %02x", buf[j]);
+			printk("\n%03x:", j);
+		printk(" %02x", buf[j]);
 	}
-	pr_info("\n");
+	printk("\n");
 }
 #endif /* CONFIG_ISVE_DEBUG */
 
@@ -502,6 +502,10 @@ static int isve_rx(struct isve_priv *priv, int limit)
 		/* Now get the address, the entry is removed from the FIFO */
 		addr = priv->dfwd->get_rx_used_add(ioaddr);
 		DBG("DFWD Regs: address: 0x%x, len  %d\n", addr, len);
+		/* CRC is removed and the len is properly reported by the HW.
+		 * We only need to remove the extra bytes added to fix the
+		 * alignment (for example). */
+		len -= priv->skip_hdr;
 
 		skb = netdev_alloc_skb_ip_align(priv->dev, len);
 		if (unlikely(skb == NULL)) {
@@ -510,8 +514,6 @@ static int isve_rx(struct isve_priv *priv, int limit)
 			ndev->stats.rx_dropped++;
 			break;
 		}
-
-		len -= 2;
 
 		dma_sync_single_for_cpu(priv->device, p->buf_addr, len,
 					DMA_FROM_DEVICE);
@@ -525,7 +527,7 @@ static int isve_rx(struct isve_priv *priv, int limit)
 
 #ifdef CONFIG_ISVE_DEBUG
 		if (netif_msg_pktdata(priv)) {
-			pr_info("Frame received (%dbytes)", skb->len);
+			pr_info("Frame received (%dbytes)\n", skb->len);
 			print_pkt(skb->data, skb->len);
 		}
 #endif /* CONFIG_ISVE_DEBUG */
