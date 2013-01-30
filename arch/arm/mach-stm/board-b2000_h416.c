@@ -62,6 +62,36 @@ static struct stm_pad_config stih416_hdmi_hp_pad_config = {
 };
 #endif
 
+/* NAND Flash */
+static struct stm_nand_bank_data b2000_nand_flash = {
+	.csn            = 0,
+	.options        = NAND_NO_AUTOINCR,
+	.bbt_options	= NAND_BBT_USE_FLASH,
+	.nr_partitions  = 2,
+	.partitions     = (struct mtd_partition []) {
+		{
+			.name   = "NAND Flash 1",
+			.offset = 0,
+			.size   = 0x00800000
+		}, {
+			.name   = "NAND Flash 2",
+			.offset = MTDPART_OFS_NXTBLK,
+			.size   = MTDPART_SIZ_FULL
+		},
+	},
+	.timing_data = &(struct stm_nand_timing_data) {
+		.sig_setup      = 10,		/* times in ns */
+		.sig_hold       = 10,
+		.CE_deassert    = 0,
+		.WE_to_RBn      = 100,
+		.wr_on          = 10,
+		.wr_off         = 30,
+		.rd_on          = 10,
+		.rd_off         = 30,
+		.chip_delay     = 30,		/* in us */
+	},
+};
+
 /* Serial FLASH */
 static struct stm_plat_spifsm_data b2000_serial_flash =  {
 	.name		= "n25q128",
@@ -361,6 +391,16 @@ static void __init b2000_init(void)
 	stih416_configure_mmc(0, 0);
 # endif
 #endif
+
+	/* Note that the b2000 board hasn't a nand device mounted on its pcb,
+	*  this support is provided just in case we have a daughter board
+	*  inserted on the CN43 connector.
+	*/
+	stih416_configure_nand(&(struct stm_nand_config) {
+			.driver = stm_nand_afm,
+			.nr_banks = 1,
+			.banks = &b2000_nand_flash,
+			.rbn.flex_connected = 1,});
 
 	stih416_configure_spifsm(&b2000_serial_flash);
 
