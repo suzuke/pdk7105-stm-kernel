@@ -56,7 +56,7 @@ static struct platform_device stih416_emi = {
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 256 * 1024 * 1024),
 		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfe900000, 0x874),
-		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfef00000, 0x80),
+		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfef01000, 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
 		.sysconfs_num = 2,
@@ -70,7 +70,7 @@ static struct platform_device stih416_emi = {
 
 /* NAND Resources --------------------------------------------------------- */
 /*
- * stih415 and stih415 shares the same EMI-SubSystem
+ * stih415 and stih416 shares the same EMI-SubSystem
  */
 static struct stm_plat_nand_flex_data stih416_nand_flex_data;
 static struct stm_plat_nand_bch_data stih416_nand_bch_data;
@@ -78,8 +78,8 @@ static struct stm_plat_nand_bch_data stih416_nand_bch_data;
 static struct platform_device stih416_nandi_device = {
 	.num_resources	= 3,
 	.resource	= (struct resource[]) {
-		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xFE901000, 0x1000),
-		STM_PLAT_RESOURCE_MEM_NAMED("nand_dma", 0xFEF00800, 0x0800),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_mem", 0xfe901000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("nand_dma", 0xfef00800, 0x0800),
 		STIH416_RESOURCE_IRQ_NAMED("nand_irq", 139),
 	},
 };
