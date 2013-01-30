@@ -153,14 +153,16 @@ static struct stm_pad_config stih416_asc_pad_configs[7] = {
 	},
 	[2] = {
 		/* UART2 */
-		/* Tx: PIO17[4], Rx: PIO17[5], RTS: PIO17[7], CTS: PIO17[6] */
+		/* Tx: PIO17[4], Rx: PIO17[5], RTS: PIO17[7], CTS: PIO17[6]
+		 * OE: PIO17[3]
+		 */
 		.gpios_num = 5,
 		.gpios = (struct stm_pad_gpio []) {
 			STIH416_PAD_PIO_OUT(17, 4, 2),	/* TX */
 			STIH416_PAD_PIO_IN(17, 5, 2),	/* RX */
 			STIH416_PAD_PIO_IN_NAMED(17, 6, 2, "CTS"),
 			STIH416_PAD_PIO_OUT_NAMED(17, 7, 2, "RTS"),
-			STIH416_PAD_PIO_OUT(11, 3, 2),	/* OE */
+			STIH416_PAD_PIO_OUT(17, 3, 2),	/* OE */
 		},
 	},
 	[3] = {
