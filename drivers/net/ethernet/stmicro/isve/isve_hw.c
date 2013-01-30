@@ -83,7 +83,7 @@ static void dfwd_dump_regs(void __iomem *ioaddr)
 static int dfwd_interrupt(void __iomem *ioaddr, struct isve_extra_stats *x)
 {
 	int status;
-	int ret;
+	int ret = 0;
 
 	status = readl(ioaddr + DFWD_QINT_STAT);
 	DBG("%s: status 0x%x\n", __func__, status);

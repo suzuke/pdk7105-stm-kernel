@@ -154,6 +154,8 @@ static int isve_alloc_resources(struct isve_priv *priv)
 			goto err;
 		}
 
+		priv->dfwd->init_rx_fifo(priv->ioaddr_dfwd, d);
+
 		priv->rx_desc[i].buffer = buf;
 		priv->rx_desc[i].buf_addr = d;
 
@@ -162,7 +164,6 @@ static int isve_alloc_resources(struct isve_priv *priv)
 	}
 
 	priv->cur_rx = 0;
-	priv->dfwd->init_rx_fifo(priv->ioaddr_dfwd, priv->rx_desc[0].buf_addr);
 
 	/* Allocate the transmit resources */
 	priv->tx_desc = kzalloc(sizeof(struct isve_desc *) * txlen, GFP_KERNEL);
@@ -507,6 +508,13 @@ static int isve_rx(struct isve_priv *priv, int limit)
 		 * alignment (for example). */
 		len -= priv->skip_hdr;
 
+		/* The address should be the head of the software FIFO queue
+		 * if HW is using the FIFO in the order SW has set it up.
+		 */
+		if (addr != p->buf_addr)
+			pr_err("%s: DFWD used fifo not aligned with SW fifo\n",
+				ndev->name);
+
 		skb = netdev_alloc_skb_ip_align(priv->dev, len);
 		if (unlikely(skb == NULL)) {
 			printk(KERN_NOTICE "%s: low memory, packet dropped.\n",
@@ -536,14 +544,13 @@ static int isve_rx(struct isve_priv *priv, int limit)
 		skb_checksum_none_assert(skb);
 		netif_receive_skb(skb);
 
+		priv->dfwd->init_rx_fifo(priv->ioaddr_dfwd, p->buf_addr);
+
 		ndev->stats.rx_packets++;
 		ndev->stats.rx_bytes += len;
 
 		count++;
 		priv->cur_rx++;
-		priv->dfwd->init_rx_fifo(priv->ioaddr_dfwd,
-					 priv->rx_desc[priv->cur_rx %
-						       rxlen].buf_addr);
 	}
 	DBG("<<< %s", __func__);
 	return count;
