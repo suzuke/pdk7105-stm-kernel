@@ -74,7 +74,7 @@ static void stih416_usb_power(struct stm_device_state *device_state,
 
 /* STBus Convertor config */
 static struct stm_amba_bridge_config stih416_amba_usb_config = {
-	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(256),
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(16),
 	.type2.sd_config_missing = 1,
 	.packets_in_chunk = 2,
 	.max_opcode = stm_amba_opc_LD64_ST64,
