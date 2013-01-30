@@ -84,7 +84,7 @@ static struct stm_nand_bank_data b2020_nand_flash = {
 
 /* Serial FLASH */
 static struct stm_plat_spifsm_data b2020_serial_flash = {
-	.name		= "m25p128",
+	.name		= "s25fl128s1",
 	.nr_parts	= 2,
 	.parts = (struct mtd_partition []) {
 		{
@@ -198,13 +198,12 @@ static void __init b2020_init(void)
 	stih416_configure_mmc(0, 0);
 	stih416_configure_mmc(1, 1);
 
-#if 0
 	stih416_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_bch,
 			.nr_banks = 1,
 			.banks = &b2020_nand_flash,
 			.rbn.flex_connected = 1,});
-#endif
+
 	stih416_configure_spifsm(&b2020_serial_flash);
 
 	stih416_configure_audio(&(struct stih416_audio_config) {
