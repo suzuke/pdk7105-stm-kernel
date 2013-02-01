@@ -36,6 +36,7 @@ config USB_ARCH_HAS_OHCI
 	default y if MACH_STM_STIG125
 	default y if CPU_SUBTYPE_STXH205
 	default y if CPU_SUBTYPE_STIH415
+	default y if MACH_STM_STIH416
 	# more:
 	default PCI
 
@@ -61,6 +62,7 @@ config USB_ARCH_HAS_EHCI
 	default y if MACH_STM_STIG125
 	default y if CPU_SUBTYPE_STXH205
 	default y if CPU_SUBTYPE_STIH415
+	default y if MACH_STM_STIH416
 	default y if ARCH_MMP
 	default y if MACH_LOONGSON1
 	default PCI
