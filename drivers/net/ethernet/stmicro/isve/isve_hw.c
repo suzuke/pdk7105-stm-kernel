@@ -44,7 +44,9 @@ static void dfwd_enable_int(void __iomem *ioaddr, int enable)
 
 static void dfwd_core_init(void __iomem *ioaddr, unsigned int remove_header)
 {
-	unsigned int ctrl = DFWD_OUTQ_CTL_SWAPOUT | DFWD_OUTQ_CTL_FIFO_THRESH;
+	unsigned int ctrl = DFWD_OUTQ_CTL_SWAPOUT |
+				DFWD_OUTQ_CTL_FREE_FIFO_FULL |
+				DFWD_OUTQ_CTL_FIFO_THRESH ;
 
 	DBG("%s: init Downstream module\n", __func__);
 
