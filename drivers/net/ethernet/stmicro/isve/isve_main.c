@@ -503,17 +503,17 @@ static int isve_rx(struct isve_priv *priv, int limit)
 		/* Now get the address, the entry is removed from the FIFO */
 		addr = priv->dfwd->get_rx_used_add(ioaddr);
 		DBG("DFWD Regs: address: 0x%x, len  %d\n", addr, len);
-		/* CRC is removed and the len is properly reported by the HW.
-		 * We only need to remove the extra bytes added to fix the
-		 * alignment (for example). */
-		len -= priv->skip_hdr;
 
 		/* The address should be the head of the software FIFO queue
 		 * if HW is using the FIFO in the order SW has set it up.
 		 */
-		if (addr != p->buf_addr)
+		if (unlikely(addr != p->buf_addr))
 			pr_err("%s: DFWD used fifo not aligned with SW fifo\n",
 				ndev->name);
+
+		if (unlikely(len <= priv->skip_hdr))
+			pr_err("%s: DFWD length=%d less than skip header bytes=%d\n",
+				ndev->name, len, priv->skip_hdr);
 
 		skb = netdev_alloc_skb_ip_align(priv->dev, len);
 		if (unlikely(skb == NULL)) {
@@ -527,8 +527,12 @@ static int isve_rx(struct isve_priv *priv, int limit)
 					DMA_FROM_DEVICE);
 		/* For some downstream queues it could be needed to skip some
 		 * bytes (DOCSIS Header) from the incoming frames.
+		 * CRC is removed and the len is properly reported by the HW.
+		 * We only need to remove the extra bytes added to fix the
+		 * alignment (for example).
 		 */
-		skb_copy_to_linear_data(skb, p->buffer + priv->skip_hdr, len);
+		skb_copy_to_linear_data(skb, p->buffer + priv->skip_hdr,
+					len - priv->skip_hdr);
 		dma_sync_single_for_device(priv->device, p->buf_addr, len,
 					   DMA_FROM_DEVICE);
 		skb_put(skb, len);
