@@ -1049,6 +1049,39 @@ static struct platform_device stih416_devhwrandom_devices[] = {
 	},
 };
 
+/* System Trace Module resources------------------------------------------- */
+
+static struct stm_pad_config stih416_systrace_pad_config = {
+	.gpios_num = 5,
+	.gpios = (struct stm_pad_gpio[]){
+		 STIH416_PAD_PIO_OUT(101, 3, 4),	/* DATA0 */
+		 STIH416_PAD_PIO_OUT(101, 4, 4),	/* DATA1 */
+		 STIH416_PAD_PIO_OUT(101, 5, 4),	/* DATA2 */
+		 STIH416_PAD_PIO_OUT(101, 6, 4),	/* DATA3 */
+		 STIH416_PAD_PIO_OUT(101, 7, 4),	/* BCLK */
+		 },
+};
+
+static struct platform_device stih416_systrace_device = {
+	.name = "stm-systrace",
+	.id = 0,
+	.num_resources = 2,
+	.resource = (struct resource[]){
+		/* 8k (4k for each A9 initiator) */
+		STM_PLAT_RESOURCE_MEM(MPE42_SYSTRACE_BASE, 0x2000),
+		STM_PLAT_RESOURCE_MEM(MPE42_SYSTRACE_REGS, 0x1000),
+		},
+	.dev.platform_data = &(struct stm_plat_systrace_data) {
+		.pad_config = &stih416_systrace_pad_config,
+	},
+};
+
+static int __init stih416_setup_systrace(void)
+{
+	return platform_device_register(&stih416_systrace_device);
+}
+device_initcall(stih416_setup_systrace);
+
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stih416_devices[] __initdata = {
