@@ -47,6 +47,27 @@ u8 stm_miphy_read(struct stm_miphy *miphy, u8 addr)
 	return dev->reg_read(miphy, addr);
 }
 
+/* 
+ * Pipe interface, which implements the standard PIPE interface between
+ * the PCIE express controller and the actual PCIe phy
+ */
+void stm_miphy_pipe_write(struct stm_miphy *miphy, u32 addr, u32 data)
+{
+	BUG_ON(miphy->mode != PCIE_MODE);
+	BUG_ON(!miphy->dev->pipe_write);
+
+	miphy->dev->pipe_write(miphy, addr, data);
+}
+
+u32 stm_miphy_pipe_read(struct stm_miphy *miphy, u32 addr)
+{
+	BUG_ON(miphy->mode != PCIE_MODE);
+	BUG_ON(!miphy->dev->pipe_write);
+
+	return miphy->dev->pipe_read(miphy, addr);
+}
+
+
 /*
  * Find a miphy with the specified port number. This is useful because on
  * the odd occasion you need to talk to a different port while configuring

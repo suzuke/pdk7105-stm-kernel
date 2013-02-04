@@ -28,6 +28,7 @@ struct pcie_mp_device{
 	struct stm_miphy_device miphy_dev;
 	void __iomem *pcie_base; /* Base for uport connected to PCIE */
 	void __iomem *sata_base; /* Base for uport connected to SATA */
+	void __iomem *pipe_base; /* Pipe registers, standard for PCIe phy */ 
 	void (*mp_select)(int port);
 };
 
@@ -100,6 +101,57 @@ static u8 stm_pcie_mp_register_read(struct stm_miphy *miphy, u8 address)
 	return data;
 }
 
+static void stm_pcie_mp_pipe_write(struct stm_miphy *miphy,
+				   u32 addr, u32 data)
+{
+	struct pcie_mp_device *mp_dev;
+
+	mp_dev = container_of(miphy->dev, struct pcie_mp_device, miphy_dev);
+
+	/* 
+	 * The pipe interface only exists on the PCIE cell, so you are 
+	 * doing something seriously wrong if you try to use it in any
+	 * other mode
+	 */
+	BUG_ON(miphy->mode != PCIE_MODE);
+	BUG_ON(!mp_dev || !mp_dev->pipe_base);
+
+	/* Seriously bizzare interface */
+	if (addr < 0x1000)
+		writeb(data & 0xff, mp_dev->pipe_base + addr);
+	else if (addr <= 0x1034) {
+		writeb(data & 0xff, mp_dev->pipe_base + addr);
+		writeb((data >> 8), mp_dev->pipe_base + addr + 1);
+		writeb((data >> 16) & 0x1f, mp_dev->pipe_base + addr + 2);
+		writeb((data >> 24) & 0x1, mp_dev->pipe_base + addr + 3);
+	} else
+		writel(data, mp_dev->pipe_base + addr);
+}
+
+static u32 stm_pcie_mp_pipe_read(struct stm_miphy *miphy, u32 addr)
+{
+	struct pcie_mp_device *mp_dev;
+	u32 data;
+
+	mp_dev = container_of(miphy->dev, struct pcie_mp_device, miphy_dev);
+
+	BUG_ON(miphy->mode != PCIE_MODE);
+	BUG_ON(!mp_dev || !mp_dev->pipe_base);
+
+	/* Seriously bizzare interface */
+	if (addr < 0x1000)
+		data = readb(mp_dev->pipe_base + addr);
+	else if (addr <= 0x1034)
+		data  = readb(mp_dev->pipe_base + addr) |
+			(readb(mp_dev->pipe_base + addr + 1) << 8) |
+			((readb(mp_dev->pipe_base + addr + 2) & 0x1f)<<16) |
+		        ((readb(mp_dev->pipe_base + addr + 3) & 0x1) << 24);
+	else
+		data = readl(mp_dev->pipe_base + addr);
+
+	return data;
+}
+
 static int __devinit pcie_mp_probe(struct platform_device *pdev)
 {
 	struct pcie_mp_device *mp_dev;
@@ -130,6 +182,16 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	/* Check for PIPE registers, onyl present for PCIe controllers */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pcie-pipe");
+	if (res) {
+		mp_dev->pipe_base = devm_request_and_ioremap(&pdev->dev, res);
+		if (!mp_dev->pipe_base) {
+			dev_err(&pdev->dev, "Unable to map PIPE registers\n");
+			return -EINVAL;
+		}
+	}
+
 	mp_dev->mp_select = data->mp_select;
 
 	miphy_dev = &mp_dev->miphy_dev;
@@ -143,6 +205,8 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 	miphy_dev->parent = &pdev->dev;
 	miphy_dev->reg_write = stm_pcie_mp_register_write;
 	miphy_dev->reg_read = stm_pcie_mp_register_read;
+	miphy_dev->pipe_write = stm_pcie_mp_pipe_write;
+	miphy_dev->pipe_read = stm_pcie_mp_pipe_read;
 	miphy_dev->style_id = data->style_id;
 	platform_set_drvdata(pdev, mp_dev);
 

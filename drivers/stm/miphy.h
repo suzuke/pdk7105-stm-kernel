@@ -38,6 +38,8 @@ struct stm_miphy_device {
 	enum miphy_mode *modes;
 	void (*reg_write)(struct stm_miphy *, u8 addr, u8 data);
 	u8 (*reg_read)(struct stm_miphy *, u8 addr);
+	void (*pipe_write)(struct stm_miphy *, u32 addr, u32 data);
+	u32 (*pipe_read)(struct stm_miphy *, u32 addr);
 };
 
 struct stm_miphy {
@@ -55,6 +57,14 @@ struct stm_miphy {
 void stm_miphy_write(struct stm_miphy *miphy, u8 addr, u8 data);
 
 u8 stm_miphy_read(struct stm_miphy *miphy, u8 addr);
+
+/* 
+ * Pipe interface, which implements the standard PIPE interface between
+ * the PCIE express controller and the actual PCIe phy
+ */
+void stm_miphy_pipe_write(struct stm_miphy *miphy, u32 addr, u32 data);
+
+u32 stm_miphy_pipe_read(struct stm_miphy *miphy, u32 addr);
 
 /* Returns stm_miphy with that specified port number, NULL on failure */
 struct stm_miphy *stm_miphy_find_port(int port);
