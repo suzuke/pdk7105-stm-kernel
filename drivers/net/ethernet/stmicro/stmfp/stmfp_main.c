@@ -71,6 +71,19 @@ static const u32 default_msg_level = (NETIF_MSG_LINK |
 
 static int debug = -1;
 
+static int fpgige_phyaddr = -1;
+module_param(fpgige_phyaddr, int, S_IRUGO);
+MODULE_PARM_DESC(fpgige_phyaddr, "fpgige phy address");
+
+static int fplan_phyaddr = -1;
+module_param(fplan_phyaddr, int, S_IRUGO);
+MODULE_PARM_DESC(fplan_phyaddr, "fplan phy address");
+
+static int fpdocsis_phyaddr = -1;
+module_param(fpdocsis_phyaddr, int, S_IRUGO);
+MODULE_PARM_DESC(fpdocsis_phyaddr, "fpdocsis phy address");
+
+
 enum IFBITMAP {
 	DEST_DOCSIS = 1 << 0,
 	DEST_GIGE = 1 << 1,
@@ -1172,7 +1185,7 @@ static int fpif_init_phy(struct net_device *dev)
 		netdev_err(dev, "Could not attach to PHY\n");
 		return PTR_ERR(phydev);
 	}
-	fpdbg("%s:attached to PHY (UID 0x%x) Link = %d\n", dev->name,
+	pr_info("%s:attached to PHY (UID 0x%x) Link = %d\n", dev->name,
 	      phydev->phy_id, phydev->link);
 	priv->phydev = phydev;
 
@@ -1789,6 +1802,29 @@ static int __devinit fpif_probe(struct platform_device *pdev)
 	fpgrp->rx_irq = rx_irq;
 	fpgrp->plat = devptr->platform_data;
 
+	/* Override phy address with kernel parameters if supplied */
+
+	if((fpgige_phyaddr >= 0) && (fpgige_phyaddr <=31)) {
+		fpgrp->plat->if_data[DEVID_GIGE]->phy_addr = fpgige_phyaddr;
+		dev_dbg(devptr, "setting %s phy_addr 0x%x\n",
+			fpgrp->plat->if_data[DEVID_GIGE]->ifname,
+			fpgige_phyaddr);
+	}
+
+	if((fplan_phyaddr >= 0) && (fplan_phyaddr <=31)) {
+		fpgrp->plat->if_data[DEVID_ISIS]->phy_addr = fplan_phyaddr;
+		dev_dbg(devptr, "setting %s phy_addr 0x%x\n",
+			fpgrp->plat->if_data[DEVID_ISIS]->ifname,
+			fplan_phyaddr);
+	}
+
+	if((fpdocsis_phyaddr >= 0) && (fpdocsis_phyaddr <=31)) {
+		fpgrp->plat->if_data[DEVID_DOCSIS]->phy_addr = fpdocsis_phyaddr;
+		dev_dbg(devptr, "setting %s phy_addr 0x%x\n",
+			fpgrp->plat->if_data[DEVID_DOCSIS]->ifname,
+			fpdocsis_phyaddr);
+	}
+
 	err = fpif_init(fpgrp);
 	if (err < 0) {
 		pr_err("ERROR: %s: err=%d\n", __func__, err);
@@ -1836,6 +1872,36 @@ static void __exit fpif_exit_module(void)
 	fpdbg("fpif_exit_module\n");
 	platform_driver_unregister(&fpif_driver);
 }
+
+#endif
+
+#ifndef MODULE
+static int __init fpif_cmdline_opt(char *cmdline)
+{
+        char *opt;
+
+        if (!cmdline || !*cmdline)
+                return -EINVAL;
+
+        while ((opt = strsep(&cmdline, ",")) != NULL) {
+                if (!strncmp(opt, "fpdocsis_phyaddr:", 17)) {
+                        if (kstrtoint(opt + 17, 0, &fpdocsis_phyaddr))
+                                goto err;
+                } else if (!strncmp(opt, "fplan_phyaddr:", 14)) {
+                        if (kstrtoint(opt + 14, 0, &fplan_phyaddr))
+                                goto err;
+                } else if (!strncmp(opt, "fpgige_phyaddr:",15)) {
+                        if (kstrtoint(opt + 15, 0, &fpgige_phyaddr))
+                                goto err;
+		}
+	}
+	return 0;
+err:
+	pr_err("%s: ERROR in parsing kernel parameters", __func__);
+	return -EINVAL;
+}
+
+__setup("stmfp=", fpif_cmdline_opt);
 
 #endif
 
