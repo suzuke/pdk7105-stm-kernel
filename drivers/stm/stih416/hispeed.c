@@ -1374,31 +1374,35 @@ static struct stm_plat_pcie_mp_data stih416_sata_mp_platform_data[2] = {
 		.miphy_count = 1,
 		.miphy_modes = (enum miphy_mode[1]) {},
 		.mp_select = stih416_sata_mp_select,
+		.sata_gen = SATA_GEN3,
+		.tx_pol_inv = 1,
 	},
 };
 
-#define SATA_MIPHY(_id, _iomem)						\
+#define MIPHY(_id, _iomem_sata, _iomem_pcie)				\
 	{								\
 		.name = "pcie-mp",					\
 		.id     = _id,						\
-		.num_resources = 1,					\
+		.num_resources = 2,					\
 		.resource = (struct resource[]) {			\
 			STM_PLAT_RESOURCE_MEM_NAMED("sata-uport",	\
-						    _iomem, 0xff),	\
+						    _iomem_sata, 0xff),	\
+			STM_PLAT_RESOURCE_MEM_NAMED("pcie-uport",	\
+						    _iomem_pcie, 0xff),	\
 		},							\
 		.dev.platform_data =					\
 			&stih416_sata_mp_platform_data[_id],		\
 	}
 
-static struct platform_device stih416_sata_mp_devices[2] = {
-	SATA_MIPHY(0, 0xfe380000 + 0x2000),
-	SATA_MIPHY(1, 0xfe388000 + 0x2000),
+static struct platform_device stih416_miphy_devices[2] = {
+	MIPHY(0, 0xfe382000, 0xfe394000),
+	MIPHY(1, 0xfe38a000, 0xfe804000),
 };
 
 void stih416_configure_miphy(struct stih416_miphy_config *config)
 {
 
-	static int configured[ARRAY_SIZE(stih416_sata_mp_devices)];
+	static int configured[ARRAY_SIZE(stih416_miphy_devices)];
 	struct sysconf_field *sc;
 	struct stm_plat_pcie_mp_data *pdata =
 		&stih416_sata_mp_platform_data[config->id];
@@ -1411,7 +1415,7 @@ void stih416_configure_miphy(struct stih416_miphy_config *config)
 	};
 
 	BUG_ON(config->id < 0 ||
-		config->id >= ARRAY_SIZE(stih416_sata_mp_devices));
+		config->id >= ARRAY_SIZE(stih416_miphy_devices));
 	BUG_ON(configured[config->id]++);
 
 	pdata->miphy_modes[0] = config->mode;
@@ -1432,7 +1436,7 @@ void stih416_configure_miphy(struct stih416_miphy_config *config)
 		BUG();
 	}
 
-	platform_device_register(&stih416_sata_mp_devices[config->id]);
+	platform_device_register(&stih416_miphy_devices[config->id]);
 }
 
 #define AHCI_HOST_PWR	   "SATA_HOST_PWR"

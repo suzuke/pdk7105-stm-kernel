@@ -215,8 +215,18 @@ static void __init b2020_init(void)
 	/* 1 SATA + 1 PCIe */
 	stih416_configure_miphy(&(struct stih416_miphy_config) {
 		.id = 0,
+		.iface = UPORT_IF,
 		.mode = SATA_MODE,});
 	stih416_configure_sata(0);
+
+	stih416_configure_miphy(&(struct stih416_miphy_config) {
+			.id = 1,
+			.mode = PCIE_MODE,
+			.iface = UPORT_IF,});
+
+	stih416_configure_pcie(&(struct stih416_pcie_config) {
+			.port = 1,
+			.reset_gpio = -1,});
 
 	return;
 }

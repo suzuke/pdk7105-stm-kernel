@@ -283,8 +283,8 @@ struct stm_plat_pcie_mp_data {
 	int miphy_first, miphy_count;
 	enum miphy_mode *miphy_modes;
 	void (*mp_select)(int port);
-	int tx_pol_inv;	/* invert polarity of TXN/TXP differential outputs */
-	int rx_pol_inv;	/* invert polarity of RXN/RXP differential inputs */
+	unsigned int tx_pol_inv:1; /* invert polarity of TXN/TXP differential outputs */
+	unsigned int rx_pol_inv:1; /* invert polarity of RXN/RXP differential inputs */
 	enum miphy_sata_gen sata_gen; /* What generation of sata we want */
 	char *style_id;
 };

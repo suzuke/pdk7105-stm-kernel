@@ -249,12 +249,21 @@ struct stih416_miphy_config {
 	enum miphy_mode mode;
 	enum miphy_if_type iface;
 	/* 1 if TXN/TXP has inverted polarity */
-	int tx_pol_inv;
+	unsigned int tx_pol_inv:1;
 	/* 1 if RXN/RXP has inverted polarity */
-	int rx_pol_inv;
+	unsigned int rx_pol_inv:1;
 };
 
 void stih416_configure_miphy(struct stih416_miphy_config *cfg);
 
 void stih416_configure_sata(int sata_port);
+
+struct stih416_pcie_config {
+	int port; /* Which port we are configuring */
+	unsigned reset_gpio; /* Which (if any) gpio for PCIe reset */
+	void (*reset)(void); /* Do something else on reset if needed */
+};
+
+void stih416_configure_pcie(struct stih416_pcie_config *config);
+
 #endif

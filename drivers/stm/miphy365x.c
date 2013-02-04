@@ -484,7 +484,13 @@ static int miphy365x_uport_sata_start(struct stm_miphy *miphy)
 
 static int miphy365x_uport_pcie_start(struct stm_miphy *miphy)
 {
-	/* The hardware sets everything up for us, so far nothing to do here */
+        if (miphy->dev->tx_pol_inv) {
+        	/* Invert Tx polarity for Orly-2 */
+                stm_miphy_write(miphy, 0x2, 0x2d);
+		/* Set pci_tx_detect_pol to 0 for Orly-2 */
+		stm_miphy_write(miphy, 0x16, 0x0);
+	}
+
 	return 0;
 }
 

@@ -7,4 +7,5 @@ obj-y		+= clock.o
 obj-y		+= comms.o
 obj-y		+= hispeed.o
 obj-y		+= audio.o
+obj-y		+= pci.o
 
