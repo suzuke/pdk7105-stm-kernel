@@ -20,6 +20,7 @@
 #include <linux/hardirq.h>
 #include <linux/jiffies.h>
 #include <linux/io.h>
+#include <linux/irq.h>
 
 #include <linux/stm/pm_notify.h>
 #include <linux/stm/poke_table.h>
@@ -27,6 +28,7 @@
 #include <asm/idmap.h>
 #include <asm/io.h>
 #include <asm-generic/sections.h>
+#include <asm/hardware/gic.h>
 #include <asm/pgalloc.h>
 #include <asm/system.h>
 #include <asm/cacheflush.h>
@@ -161,6 +163,13 @@ static int stm_suspend_valid_both(suspend_state_t state)
 	return 1;
 }
 
+static int stm_gic_set_wake(struct irq_data *d, unsigned int on)
+{
+	if (d->irq < 256)
+		return 0;
+	return -ENXIO;
+}
+
 int __init stm_suspend_register(struct stm_platform_suspend *_suspend)
 {
 	int ioremap_size;
@@ -188,6 +197,8 @@ int __init stm_suspend_register(struct stm_platform_suspend *_suspend)
 	platform_suspend->ops.valid = stm_suspend_valid_both;
 
 	suspend_set_ops(&platform_suspend->ops);
+
+	gic_arch_extn.irq_set_wake = stm_gic_set_wake;
 
 	pr_info("stm pm: Suspend support registered\n");
 
