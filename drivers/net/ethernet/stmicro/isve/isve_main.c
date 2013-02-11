@@ -130,11 +130,9 @@ static int isve_alloc_resources(struct isve_priv *priv)
 
 	DBG(">>> %s: txlen %d, rxlen %d\n", __func__, txlen, rxlen);
 
-	priv->rx_desc = kzalloc(sizeof(struct isve_desc *) * rxlen, GFP_KERNEL);
-	if (priv->rx_desc == NULL) {
-		pr_err("%s: ERROR allocating the Rx buffers\n", __func__);
+	priv->rx_desc = kcalloc(rxlen, sizeof(struct isve_desc), GFP_KERNEL);
+	if (priv->rx_desc == NULL)
 		return -ENOMEM;
-	}
 	DBG("Rx resources: rx_desc 0x%p\n", priv->rx_desc);
 	for (i = 0; i < rxlen; i++) {
 		void *buf;
@@ -166,9 +164,8 @@ static int isve_alloc_resources(struct isve_priv *priv)
 	priv->cur_rx = 0;
 
 	/* Allocate the transmit resources */
-	priv->tx_desc = kzalloc(sizeof(struct isve_desc *) * txlen, GFP_KERNEL);
+	priv->tx_desc = kcalloc(txlen, sizeof(struct isve_desc), GFP_KERNEL);
 	if (priv->tx_desc == NULL) {
-		pr_err("%s: ERROR allocating the Tx buffers\n", __func__);
 		ret = -ENOMEM;
 		goto err;
 	}

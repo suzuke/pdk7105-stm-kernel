@@ -117,8 +117,6 @@ static int dfwd_interrupt(void __iomem *ioaddr, struct isve_extra_stats *x)
 
 static void dfwd_init_rx_fifo(void __iomem *ioaddr, unsigned int buffer)
 {
-	DBG("%s: Write 0x%x to Reg addr 0x%p\n", __func__,
-	    buffer & DFWD_FREE_ADD_MASK, ioaddr + DFWD_FREE_ADD);
 	writel(buffer & DFWD_FREE_ADD_MASK, ioaddr + DFWD_FREE_ADD);
 }
 
