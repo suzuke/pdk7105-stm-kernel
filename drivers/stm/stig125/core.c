@@ -393,6 +393,20 @@ static int stig125_pio_pin_name(char *name, int size, int port, int pin)
 		},							\
 	}
 
+#define STIG125_PIO_WITH_IRQ_ENTRY(_num, _base, _irq)			\
+	[_num] = {							\
+		.name = "stm-gpio",					\
+		.id = _num,						\
+		.num_resources = 2,					\
+		.resource = (struct resource[]) {			\
+			STM_PLAT_RESOURCE_MEM(_base, 0x100),		\
+			STIG125_RESOURCE_IRQ(_irq),			\
+		},							\
+		.dev.platform_data = &(struct stm_plat_pio_data) {	\
+			.regs = (void __iomem *)IO_ADDRESS(_base),	\
+			.pin_name = stig125_pio_pin_name,		\
+		},							\
+	}
 static struct platform_device stig125_pio_devices[27] = {
 	/* 0-9: PIO_WEST */
 	/* PIO 10 bank west edge */
@@ -421,10 +435,10 @@ static struct platform_device stig125_pio_devices[27] = {
 
 	/* 19-22: PIO_NORTH */
 	/* PIO 10 bank on north edge */
-	STIG125_PIO_ENTRY(19, STIG125_PIO_NORTH_BASE),
-	STIG125_PIO_ENTRY(20, STIG125_PIO_NORTH_BASE + 0x1000),
-	STIG125_PIO_ENTRY(21, STIG125_PIO_NORTH_BASE + 0x2000),
-	STIG125_PIO_ENTRY(22, STIG125_PIO_NORTH_BASE + 0x3000),
+	STIG125_PIO_WITH_IRQ_ENTRY(19, STIG125_PIO_NORTH_BASE, 20),
+	STIG125_PIO_WITH_IRQ_ENTRY(20, STIG125_PIO_NORTH_BASE + 0x1000, 21),
+	STIG125_PIO_WITH_IRQ_ENTRY(21, STIG125_PIO_NORTH_BASE + 0x2000, 22),
+	STIG125_PIO_WITH_IRQ_ENTRY(22, STIG125_PIO_NORTH_BASE + 0x3000, 23),
 
 	/* SBC_PIO0-4 */
 	/* PIO inside SBC */
@@ -432,6 +446,51 @@ static struct platform_device stig125_pio_devices[27] = {
 	STIG125_PIO_ENTRY(24, STIG125_PIO_SBC_BASE + 0x1000),
 	STIG125_PIO_ENTRY(25, STIG125_PIO_SBC_BASE + 0x2000),
 	STIG125_PIO_ENTRY(26, STIG125_PIO_SBC_BASE + 0x3000),
+};
+
+static struct platform_device stig125_pio_irqmux_devices[] = {
+	{
+		.name = "stm-gpio-irqmux",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_PIO_WEST_BASE +
+				0xf080, 0x4),
+			STIG125_RESOURCE_IRQ(18),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 0,
+			.ports_num = 10,
+		}
+	}, {
+		.name = "stm-gpio-irqmux",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_PIO_SOUTH_BASE +
+				0xf080, 0x4),
+			STIG125_RESOURCE_IRQ(19),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 10,
+			.ports_num = 9,
+		}
+	},
+	/* pio-irqmux[2] in PIO_NORTH is not currently used */
+	{
+		.name = "stm-gpio-irqmux",
+		.id = 3,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_PIO_SBC_BASE +
+				0xf080, 0x4),
+			STIG125_RESOURCE_IRQ(24),
+		},
+		.dev.platform_data = &(struct stm_plat_pio_irqmux_data) {
+			.port_first = 23,
+			.ports_num = 4,
+		}
+	},
 };
 
 static unsigned int stig125_pio_control_delays[] = {
@@ -818,7 +877,40 @@ static int stig125_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
 {
 	*enable = 1;
 	*inv = 0;
-	*output = STIG125_IRQMUX_MAPPING(input);
+	*output = input % pdata->num_output;
+
+	return 0;
+}
+
+static int
+stig125_gpio_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
+		long input, long *enable, long *output, long *inv)
+{
+	int i;
+	const struct gpio_irqmux_port_remapping {
+		unsigned char first;
+		unsigned char size;
+		unsigned char output;
+	} gpio_remap[] = {
+		{	0,	9,	1},	/* PIO10-18  -> A9IRQ19 */
+		{	9,	10,	0},	/* PIO0-9    -> A9IRQ18 */
+		{	19,	1,	2},	/* PIO19     -> A9IRQ20 */
+		{	20,	1,	3},	/* PIO20     -> A9IRQ21 */
+		{	21,	1,	4},	/* PIO21     -> A9IRQ22 */
+		{	22,	1,	5},	/* PIO22     -> A9IRQ23 */
+		{	23,	4,	6}	/* SBCPIO0-3 -> A9IRQ24 */
+	};
+
+	for (i = 0; i < ARRAY_SIZE(gpio_remap); ++i) {
+		if (input >= gpio_remap[i].first &&
+		    input < (gpio_remap[i].first + gpio_remap[i].size)) {
+			*output = gpio_remap[i].output;
+			break;
+		}
+	}
+
+	*enable = 1;
+	*inv = 0;
 
 	return 0;
 }
@@ -874,9 +966,9 @@ static struct platform_device stig125_irqmux[] = {
 		},
 		.dev.platform_data = &(struct stm_plat_irq_mux_data) {
 			.name = "PIO IRQ-MUX",
-			.num_input = 27,
-			.num_output = 10,
-			.custom_mapping = stig125_irqmux_config,
+			.num_input = STIG125_PIO_IRQMUX_NUM_INPUT,
+			.num_output = STIG125_PIO_IRQMUX_NUM_OUTPUT,
+			.custom_mapping = stig125_gpio_irqmux_config,
 		},
 	},
 
@@ -902,6 +994,9 @@ static int __init stig125_postcore_setup(void)
 
 	for (i = 0; i < ARRAY_SIZE(stig125_irqmux); i++)
 		platform_device_register(&stig125_irqmux[i]);
+
+	for (i = 0; i < ARRAY_SIZE(stig125_pio_irqmux_devices); i++)
+		platform_device_register(&stig125_pio_irqmux_devices[i]);
 
 	return platform_device_register(&stig125_emi);
 }
