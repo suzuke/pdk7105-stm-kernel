@@ -196,6 +196,7 @@ static void __init b2020_init(void)
 			.out0_enabled = 1, });
 
 	stih416_configure_mmc(0, 0);
+	stih416_configure_mmc(1, 1);
 
 #if 0
 	stih416_configure_nand(&(struct stm_nand_config) {
