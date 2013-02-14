@@ -52,7 +52,12 @@ static struct stm_pad_config stih416_hdmi_hp_pad_config = {
 		STIH416_PAD_PIO_IN(2, 5, 1),	/* HDMI Hotplug */
 	},
 };
-/* NAND Flash */
+
+/*
+ * NAND Flash: Micron MT29F8G08ABABAWP
+ *  - Requires 4-bit ECC
+ *  - ONFI compliant: timing parameters retrieved during device probe
+ */
 static struct stm_nand_bank_data b2020_nand_flash = {
 	.csn		= 0,
 	.options	= NAND_NO_AUTOINCR,
@@ -69,22 +74,11 @@ static struct stm_nand_bank_data b2020_nand_flash = {
 			.size	= MTDPART_SIZ_FULL
 		},
 	},
-	.timing_data = &(struct stm_nand_timing_data) {
-		.sig_setup	= 10,		/* times in ns */
-		.sig_hold	= 10,
-		.CE_deassert	= 0,
-		.WE_to_RBn	= 100,
-		.wr_on		= 10,
-		.wr_off		= 30,
-		.rd_on		= 10,
-		.rd_off		= 30,
-		.chip_delay	= 30,		/* in us */
-	},
 };
 
-/* Serial FLASH */
+/* Serial Flash: Spansion S25FL129P0/S25FL129S0, depending on board revision */
 static struct stm_plat_spifsm_data b2020_serial_flash = {
-	.name		= "s25fl128s1",
+	/* .name is left unset, since different population options exist. */
 	.nr_parts	= 2,
 	.parts = (struct mtd_partition []) {
 		{
