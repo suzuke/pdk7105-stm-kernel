@@ -1110,7 +1110,7 @@ static int afm_do_read_ops(struct mtd_info *mtd, loff_t from,
 
 			/* Transfer not aligned data */
 			if (!aligned) {
-				chip->pagebuf = (ops->mode != MTD_OPS_RAW) ?
+				chip->pagebuf = (ops->mode == MTD_OPS_RAW) ?
 					-1 : realpage;
 				memcpy(buf, chip->buffers->databuf + col,
 				       bytes);
@@ -1448,6 +1448,7 @@ static int afm_write(struct mtd_info *mtd, loff_t to, size_t len,
 	ops.len = len;
 	ops.datbuf = (uint8_t *)buf;
 	ops.oobbuf = NULL;
+	ops.mode = 0;
 
 	ret = afm_do_write_ops(mtd, to, &ops);
 
