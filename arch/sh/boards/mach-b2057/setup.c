@@ -147,7 +147,11 @@ static struct stm_plat_spifsm_data b2057_serial_flash =  {
 	},
 };
 
-/* NAND Flash */
+/*
+ * NAND Flash: Micron MT29F8G08ABABAWP
+ *  - Requires 4-bit ECC
+ *  - ONFI compliant: timing parameters retrieved during device probe
+ */
 static struct stm_nand_bank_data b2057_nand_flash = {
 	.csn		= 0,	/* Rev A/B : set JF3 2-3 (EMI_CS0 -> NAND_CS) */
 	.options        = NAND_NO_AUTOINCR,
@@ -163,17 +167,6 @@ static struct stm_nand_bank_data b2057_nand_flash = {
 			.offset = MTDPART_OFS_NXTBLK,
 			.size	= MTDPART_SIZ_FULL
 		},
-	},
-	.timing_data	=  &(struct stm_nand_timing_data) {
-		.sig_setup	= 50,		/* times in ns */
-		.sig_hold	= 50,
-		.CE_deassert	= 0,
-		.WE_to_RBn	= 100,
-		.wr_on		= 10,
-		.wr_off		= 40,
-		.rd_on		= 10,
-		.rd_off		= 40,
-		.chip_delay	= 30,		/* in us */
 	},
 };
 

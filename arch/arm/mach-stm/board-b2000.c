@@ -21,6 +21,7 @@
 #include <linux/phy.h>
 #include <linux/leds.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/nand_devices.h>
 #include <linux/stm/stih415.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
@@ -61,7 +62,7 @@ static struct stm_pad_config stih415_hdmi_hp_pad_config = {
 };
 #endif
 
-/* NAND Flash */
+/* NAND Flash (supported via b2006/b2007 VPMEM daughter board) */
 static struct stm_nand_bank_data b2000_nand_flash = {
 	.csn            = 0,
 	.options        = NAND_NO_AUTOINCR,
@@ -78,17 +79,12 @@ static struct stm_nand_bank_data b2000_nand_flash = {
 			.size   = MTDPART_SIZ_FULL
 		},
 	},
-	.timing_data = &(struct stm_nand_timing_data) {
-		.sig_setup      = 10,		/* times in ns */
-		.sig_hold       = 10,
-		.CE_deassert    = 0,
-		.WE_to_RBn      = 100,
-		.wr_on          = 10,
-		.wr_off         = 30,
-		.rd_on          = 10,
-		.rd_off         = 30,
-		.chip_delay     = 30,		/* in us */
-	},
+	/*
+	 * Timing parameters specified for the Samsung K9F2G08U0C device.
+	 * Please update according to mounted device (numerous population
+	 * options available).
+	 */
+	.timing_spec	= &NAND_TSPEC_SAMSUNG_K9F2G08U0C,
 };
 
 /* Serial FLASH */
@@ -399,6 +395,7 @@ static void __init b2000_init(void)
 #endif
 #endif
 
+	/* NAND Flash via b2006/b2007 VPMEM daughter board. */
 	stih415_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_afm,
 			.nr_banks = 1,
