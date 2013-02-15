@@ -633,6 +633,7 @@ config MTD_NAND_STM_FLEX
 config STM_NAND_FLEX_CACHED
        depends on EXPERIMENTAL
        depends on MTD_NAND_STM_FLEX
+       depends on CPU_SH4
        bool "Reads via cacheline"
        help
 	  Perform read operations via a cacheline.  Reduces the impact of STBus
@@ -659,6 +660,7 @@ config MTD_NAND_STM_AFM
 config STM_NAND_AFM_CACHED
 	depends on EXPERIMENTAL
 	depends on MTD_NAND_STM_AFM
+	depends on CPU_SH4
 	bool "Cached Transfers [EXPERIMENTAL]"
 	help
 	  Perform page transers via the cache-line.  Reduces the impact of STBus
