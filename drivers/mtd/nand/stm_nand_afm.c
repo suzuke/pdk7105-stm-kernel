@@ -820,9 +820,7 @@ struct mtd_part {
 	struct mtd_info mtd;
 	struct mtd_info *master;
 	u_int32_t offset;
-	int index;
 	struct list_head list;
-	int registered;
 };
 
 #define PART(x)  ((struct mtd_part *)(x))
@@ -1115,10 +1113,16 @@ static int afm_check_wp(struct mtd_info *mtd)
 	return (status & NAND_STATUS_WP) ? 0 : 1;
 }
 
-static uint8_t *afm_fill_oob(struct nand_chip *chip, uint8_t *oob,
+static uint8_t *afm_fill_oob(struct mtd_info *mtd, uint8_t *oob, size_t len,
 			     struct mtd_oob_ops *ops)
 {
-	size_t len = ops->ooblen;
+	struct nand_chip *chip = mtd->priv;
+
+	/*
+	 * Initialise to all 0xFF, to avoid the possibility of left over OOB
+	 * data from a previous OOB read.
+	 */
+	memset(chip->oob_poi, 0xff, mtd->oobsize);
 
 	switch (ops->mode) {
 
@@ -1209,10 +1213,8 @@ static int afm_do_write_oob(struct mtd_info *mtd, loff_t to,
 	if (page == chip->pagebuf)
 		chip->pagebuf = -1;
 
-	memset(chip->oob_poi, 0xff, mtd->oobsize);
-	afm_fill_oob(chip, ops->oobbuf, ops);
+	afm_fill_oob(mtd, ops->oobbuf, ops->ooblen, ops);
 	status = chip->ecc.write_oob(mtd, chip, page & chip->pagemask);
-	memset(chip->oob_poi, 0xff, mtd->oobsize);
 
 	if (status)
 		return status;
@@ -1251,6 +1253,11 @@ static int afm_do_write_ops(struct mtd_info *mtd, loff_t to,
 	int chipnr, realpage, page, blockmask, column;
 	struct nand_chip *chip = mtd->priv;
 	uint32_t writelen = ops->len;
+
+	uint32_t oobwritelen = ops->ooblen;
+	uint32_t oobmaxlen = ops->mode == MTD_OPS_AUTO_OOB ?
+				mtd->oobavail : mtd->oobsize;
+
 	uint8_t *oob = ops->oobbuf;
 	uint8_t *buf = ops->datbuf;
 	int ret, subpage;
@@ -1287,10 +1294,6 @@ static int afm_do_write_ops(struct mtd_info *mtd, loff_t to,
 	    (chip->pagebuf << chip->page_shift) < (to + ops->len))
 		chip->pagebuf = -1;
 
-	/* If we're not given explicit OOB data, let it be 0xFF */
-	if (likely(!oob))
-		memset(chip->oob_poi, 0xff, mtd->oobsize);
-
 	while (1) {
 		int bytes = mtd->writesize;
 		int cached = writelen > bytes && page != blockmask;
@@ -1312,8 +1315,14 @@ static int afm_do_write_ops(struct mtd_info *mtd, loff_t to,
 			wbuf = chip->buffers->databuf;
 		}
 
-		if (unlikely(oob))
-			oob = afm_fill_oob(chip, oob, ops);
+		if (unlikely(oob)) {
+			size_t len = min(oobwritelen, oobmaxlen);
+			oob = afm_fill_oob(mtd, oob, len, ops);
+			oobwritelen -= len;
+		} else {
+			/* We still need to erase leftover OOB data */
+			memset(chip->oob_poi, 0xff, mtd->oobsize);
+		}
 
 		ret = chip->write_page(mtd, chip, wbuf, page, cached,
 				       (ops->mode == MTD_OPS_RAW));
@@ -1359,10 +1368,6 @@ static int afm_erase(struct mtd_info *mtd, struct erase_info *instr)
 static int afm_block_isbad(struct mtd_info *mtd, loff_t offs)
 {
 	struct nand_chip *chip = mtd->priv;
-
-	/* Check for invalid offset */
-	if (offs > mtd->size)
-		return -EINVAL;
 
 	/* We should always have a memory-resident BBT */
 	BUG_ON(!chip->bbt);
@@ -1426,12 +1431,6 @@ static int afm_read(struct mtd_info *mtd, loff_t from, size_t len,
 	int ret;
 	struct mtd_oob_ops ops;
 
-	/* Do not allow reads past end of device */
-	if ((from + len) > mtd->size)
-		return -EINVAL;
-	if (!len)
-		return 0;
-
 	nand_get_device(chip, mtd, FL_READING);
 	afm_select_eccparams(mtd, from);
 
@@ -1492,13 +1491,6 @@ static int afm_write(struct mtd_info *mtd, loff_t to, size_t len,
 	struct nand_chip *chip = mtd->priv;
 	int ret;
 	struct mtd_oob_ops ops;
-
-
-	/* Do not allow reads past end of device */
-	if ((to + len) > mtd->size)
-		return -EINVAL;
-	if (!len)
-		return 0;
 
 	nand_get_device(chip, mtd, FL_WRITING);
 	afm_select_eccparams(mtd, to);
