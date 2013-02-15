@@ -38,6 +38,7 @@
 #include <linux/stm/emi.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
+#include <asm/cacheflush.h>
 #include <asm/dma.h>
 
 #include "stm_nand_bbt.h"
@@ -185,7 +186,7 @@ static int nand_read_dma(struct mtd_info *mtd, uint8_t *buf, int buf_len,
 	dma_desc = data->dma_chan->device->device_prep_slave_sg(
 			data->dma_chan, sg, oob ? 2 : 1, DMA_DEV_TO_MEM,
 			DMA_CTRL_ACK | DMA_COMPL_SKIP_SRC_UNMAP |
-			DMA_COMPL_DEST_UNMAP_SINGLE);
+			DMA_COMPL_DEST_UNMAP_SINGLE, NULL);
 
 	dma_desc->callback = nand_callback_dma;
 	dma_desc->callback_param = &data->dma_rd_comp;
@@ -228,7 +229,7 @@ static int nand_write_dma(struct mtd_info *mtd, const uint8_t *buf, int buf_len,
 	dma_desc = data->dma_chan->device->device_prep_slave_sg(
 			data->dma_chan, sg, oob ? 2 : 1, DMA_MEM_TO_DEV,
 			DMA_CTRL_ACK | DMA_COMPL_SRC_UNMAP_SINGLE |
-			DMA_COMPL_SKIP_DEST_UNMAP);
+			DMA_COMPL_SKIP_DEST_UNMAP, NULL);
 
 	dma_desc->callback = nand_callback_dma;
 	dma_desc->callback_param = &data->dma_wr_comp;
