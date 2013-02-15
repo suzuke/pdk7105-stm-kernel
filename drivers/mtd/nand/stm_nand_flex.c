@@ -51,8 +51,6 @@
 #include <linux/slab.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
-#include <linux/dma-mapping.h>
-#include <asm/dma.h>
 #include <linux/clk.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
@@ -60,6 +58,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/mtd/partitions.h>
+#include <asm/cacheflush.h>
 
 #include "stm_nand_regs.h"
 #include "stm_nand_bbt.h"
