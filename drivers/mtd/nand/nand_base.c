@@ -3218,7 +3218,13 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	 * interface concerns can cause random data which looks like a
 	 * possibly credible NAND flash to appear. If the two results do
 	 * not match, ignore the device completely.
+	 *
+	 * Note, re-issue the RESET command to ensure READID restarts from the
+	 * 1st ID byte, rather than continuing on from 3rd byte (required by
+	 * Macronix MX30LF1G08AM device).
 	 */
+
+	chip->cmdfunc(mtd, NAND_CMD_RESET, -1, -1);
 
 	/* Read entire ID string */
 	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
