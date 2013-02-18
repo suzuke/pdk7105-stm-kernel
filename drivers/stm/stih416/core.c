@@ -910,6 +910,62 @@ static void stih416_temp_power(struct stm_device_state *device_state,
 	stm_device_sysconf_write(device_state, "TEMP_PWR", value);
 }
 
+static struct clk *temp_clk;
+
+static int stih416_temp_init(struct stm_device_state *device_state)
+{
+	struct clk *parent;
+	int ret;
+
+	temp_clk = clk_get(NULL, "CLK_S_THSENS");
+	if (IS_ERR(temp_clk)) {
+		ret = PTR_ERR(temp_clk);
+		goto failed;
+	}
+
+	parent = clk_get(NULL, "CLK_S_C_FS0_CH2");
+	if (IS_ERR(parent)) {
+		ret = PTR_ERR(parent);
+		goto failed_put_clk;
+	}
+
+	ret = clk_set_parent(temp_clk, parent);
+	if (ret)
+		goto failed_put_both;
+
+	ret = clk_prepare_enable(temp_clk);
+	if (ret)
+		goto failed_put_both;
+
+	ret = clk_set_rate(parent, 625000);
+	if (ret)
+		goto failed_disable;
+
+	ret = clk_set_rate(temp_clk, clk_get_rate(parent) >> 2);
+	if (ret)
+		goto failed_disable;
+
+	clk_put(parent);
+	return 0;
+
+failed_disable:
+	clk_disable_unprepare(temp_clk);
+failed_put_both:
+	clk_put(parent);
+failed_put_clk:
+	clk_put(temp_clk);
+failed:
+	return ret;
+}
+
+static int stih416_temp_exit(struct stm_device_state *state)
+{
+	clk_disable_unprepare(temp_clk);
+	clk_put(temp_clk);
+
+	return 0;
+}
+
 static struct platform_device stih416_temp_device[] = {
 	[0] = {
 		/* Thermal sensor on SAS */
@@ -921,6 +977,8 @@ static struct platform_device stih416_temp_device[] = {
 			.data = { SYSCONF(1594), 10, 16 },
 			.device_config = &(struct stm_device_config) {
 				.sysconfs_num = 1,
+				.init = stih416_temp_init,
+				.exit = stih416_temp_exit,
 				.power = stih416_temp_power,
 				.sysconfs = (struct stm_device_sysconf []){
 					STM_DEVICE_SYSCONF(SYSCONF(1552),
