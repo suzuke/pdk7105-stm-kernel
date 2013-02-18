@@ -53,7 +53,7 @@ int __init plat_clk_alias_init(void)
 	clk_add_alias("fdma_ic_clk", "stm-fdma.4", "CLK_S_ICN_REG_0", NULL);
 
 	/* USB clk */
-	clk_add_alias("usb_ic_clk", NULL, "CLK_S_ICN_REG_0",  NULL);
+	clk_add_alias("usb_ic_clk", NULL, "CLK_S_ICN_IF_2",  NULL);
 	clk_add_alias("usb_48_clk", NULL, "CLK_S_USB48", NULL);
 	/* ETH */
 	clk_add_alias(NULL, "stmmaceth.0", "CLK_S_ICN_REG_0", NULL);
