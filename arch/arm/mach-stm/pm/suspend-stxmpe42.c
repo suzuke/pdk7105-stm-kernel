@@ -63,12 +63,16 @@ static int stx_mpe42_suspend_pre_enter(suspend_state_t state,
 	int i;
 	unsigned long tmp;
 
-	cfg_0_0 = 0x0;
-	cfg_0_1 = 0x0;
-	cfg_1_0 = 0x0;
-	cfg_1_1 = 0xffffff00;
-	cfg_2_0 = 0x0;
-	cfg_2_1 = 0x0;
+#define clk_off(id)	(0x3 << (((id) > 15 ? ((id) - 16) : (id)) * 2))
+	/* A10 */
+	cfg_0_0 = ~(clk_off(6) | clk_off(10));
+	cfg_0_1 = ~(clk_off(17) | clk_off(18) | clk_off(21) | clk_off(30));
+	/* A11 */
+	cfg_1_0 = ~(clk_off(4) | clk_off(11) | clk_off(12) | clk_off(13));
+	cfg_1_1 = ~(clk_off(17));
+	/* A12 */
+	cfg_2_0 = ~(clk_off(0) | clk_off(1) | clk_off(2) | clk_off(3));
+	cfg_2_1 = ~(clk_off(18));
 
 	mpe42_clk_a_switch_cfg = kmalloc(sizeof(long) * 2 *
 		ARRAY_SIZE(mpe42_clk_a_base), GFP_ATOMIC);

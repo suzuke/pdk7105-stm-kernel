@@ -59,10 +59,13 @@ static int stx_sasg2_suspend_pre_enter(suspend_state_t state,
 	unsigned long pwr_0, pwr_1;
 	int i;
 
-	cfg_0_0 = 0xffff00ff;
+#define clk_off(id)	(0x3 << ((id) * 2))
+	cfg_0_0 = ~(clk_off(4) | clk_off(5));
 	cfg_0_1 = 0xffffffff;
-	cfg_1_0 = 0x0;
+	cfg_1_0 = clk_off(4) | clk_off(5) | clk_off(7) | clk_off(8) |
+		  clk_off(10) | clk_off(12);
 	cfg_1_1 = 0xffffffff;
+
 	pwr_0 = pwr_1 = 0x3;
 
 	sasg2_clk_a_switch_cfg = kmalloc(sizeof(long) * 2 *

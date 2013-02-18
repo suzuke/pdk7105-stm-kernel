@@ -52,7 +52,7 @@ static struct stm_platform_suspend stih416_suspend = {
 	.pre_enter = stm_dual_mcm_suspend_pre_enter,
 	.post_enter = stm_dual_mcm_suspend_post_enter,
 
-	.eram_iomem = (void *)0xc00a0000,
+	.eram_iomem = (void *)0xc00be000,
 	.get_wake_irq = stih416_get_wake_irq,
 };
 
