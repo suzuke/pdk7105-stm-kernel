@@ -18,6 +18,7 @@
 
 #include <asm/cacheflush.h>
 #include <mach/hardware.h>
+#include <asm/smp_plat.h>
 #include <asm/mach-types.h>
 #include <asm/localtimer.h>
 #include <asm/unified.h>
@@ -99,7 +100,7 @@ printk("%s(%d)\n", __FUNCTION__, cpu);
 	 * Note that "pen_release" is the hardware CPU ID, whereas
 	 * "cpu" is Linux's internal ID.
 	 */
-	write_pen_release(cpu);
+	write_pen_release(cpu_logical_map(cpu));
 
 #if 1
 	/*
