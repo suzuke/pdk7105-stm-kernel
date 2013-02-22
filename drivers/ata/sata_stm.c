@@ -1276,6 +1276,9 @@ static int __devinit stm_sata_probe(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
+	/* Enable SSC (spread spectrum clocking) */
+	writel((readl(mmio_base + SATA_PHYCR)) | 0x400,
+					mmio_base + SATA_PHYCR);
 	hpriv->amba_bridge =
 	  stm_amba_bridge_create(dev, mmio_base + SATA_AHB2STBUS_BASE,
 			  sata_private_info->amba_config);
