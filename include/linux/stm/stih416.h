@@ -108,6 +108,7 @@ struct stih416_asc_config {
 	int hw_flow_control;
 	int is_console;
 	int force_m1;
+	int use_oe_signal;
 };
 void stih416_configure_asc(int asc, struct stih416_asc_config *config);
 

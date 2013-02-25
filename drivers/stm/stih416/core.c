@@ -136,7 +136,7 @@ static struct stm_pad_config stih416_asc_pad_configs[7] = {
 			STIH416_PAD_PIO_IN(10, 1, 2),	/* RX */
 			STIH416_PAD_PIO_IN_NAMED(10, 2, 2, "CTS"),  /* CTS */
 			STIH416_PAD_PIO_OUT_NAMED(10, 3, 2, "RTS"), /* RTS */
-			STIH416_PAD_PIO_OUT(10, 4, 2),	/* OE */
+			STIH416_PAD_PIO_OUT_NAMED(10, 4, 2, "not_OE"),
 			},
 	},
 	[1] = {
@@ -148,7 +148,7 @@ static struct stm_pad_config stih416_asc_pad_configs[7] = {
 			STIH416_PAD_PIO_IN(11, 1, 2),	/* RX */
 			STIH416_PAD_PIO_IN_NAMED(11, 2, 2, "CTS"),  /* CTS */
 			STIH416_PAD_PIO_OUT_NAMED(11, 3, 2, "RTS"), /* RTS */
-			STIH416_PAD_PIO_OUT(11, 4, 2),/* OE */
+			STIH416_PAD_PIO_OUT_NAMED(11, 4, 2, "not_OE"),
 			},
 	},
 	[2] = {
@@ -162,7 +162,7 @@ static struct stm_pad_config stih416_asc_pad_configs[7] = {
 			STIH416_PAD_PIO_IN(17, 5, 2),	/* RX */
 			STIH416_PAD_PIO_IN_NAMED(17, 6, 2, "CTS"),
 			STIH416_PAD_PIO_OUT_NAMED(17, 7, 2, "RTS"),
-			STIH416_PAD_PIO_OUT(17, 3, 2),	/* OE */
+			STIH416_PAD_PIO_OUT_NAMED(17, 3, 2, "not_OE"),
 		},
 	},
 	[3] = {
@@ -185,8 +185,8 @@ static struct stm_pad_config stih416_asc_pad_configs[7] = {
 			STIH416_PAD_PIO_IN(101, 2, 1),  /* RX */
 			STIH416_PAD_PIO_IN_NAMED(101, 3, 1, "CTS"),
 			STIH416_PAD_PIO_OUT_NAMED(101, 4, 1, "RTS"),
-			STIH416_PAD_PIO_OUT(101, 5, 1), /* OE */
-			STIH416_PAD_PIO_OUT(101, 6, 1),
+			STIH416_PAD_PIO_OUT_NAMED(101, 5, 1, "not_OE"),
+			STIH416_PAD_PIO_OUT(101, 6, 1), /* ClkGEN */
 		},
 	},
 
@@ -195,24 +195,26 @@ static struct stm_pad_config stih416_asc_pad_configs[7] = {
 		/* SBC_UART0 */
 		/* Tx: PIO3[4], Rx: PIO3[5], RTS: PIO3[7], CTS: PIO3[6] */
 		/* OE: PIO4[0] */
-		.gpios_num = 4,
+		.gpios_num = 5,
 		.gpios = (struct stm_pad_gpio []) {
 			STIH416_PAD_PIO_OUT(3, 4, 1),	/* TX */
 			STIH416_PAD_PIO_IN(3, 5, 1),	/* RX */
 			STIH416_PAD_PIO_IN_NAMED(3, 6, 1, "CTS"),
 			STIH416_PAD_PIO_OUT_NAMED(3, 7, 1, "RTS"),
+			STIH416_PAD_PIO_OUT_NAMED(4, 0, 1, "not_OE"),
 		},
 	},
 	[6] = {
 		/* SBC_UART1 */
 		/* Tx: PIO2[6], Rx: PIO2[7], RTS: PIO3[1], CTS: PIO3[0] */
 		/* OE: PIO3[2] */
-		.gpios_num = 4,
+		.gpios_num = 5,
 		.gpios = (struct stm_pad_gpio []) {
 			STIH416_PAD_PIO_OUT(2, 6, 3),	/* TX */
 			STIH416_PAD_PIO_IN(2, 7, 3),	/* RX */
 			STIH416_PAD_PIO_IN_NAMED(3, 0, 3, "CTS"),
 			STIH416_PAD_PIO_OUT_NAMED(3, 1, 3, "RTS"),
+			STIH416_PAD_PIO_OUT_NAMED(3, 2, 3, "not_OE"),
 		},
 	},
 };
@@ -354,6 +356,7 @@ void __init stih416_configure_asc(int asc, struct stih416_asc_config *config)
 	struct stih416_asc_config default_config = {};
 	struct platform_device *pdev;
 	struct stm_plat_asc_data *plat_data;
+	struct stm_pad_config *pad_config = &stih416_asc_pad_configs[asc];
 
 	BUG_ON(asc < 0 || asc >= ARRAY_SIZE(stih416_asc_devices));
 
@@ -372,11 +375,13 @@ void __init stih416_configure_asc(int asc, struct stih416_asc_config *config)
 
 	if (!config->hw_flow_control) {
 		/* Don't claim RTS/CTS pads */
-		struct stm_pad_config *pad_config;
-		pad_config = &stih416_asc_pad_configs[asc];
 		stm_pad_set_pio_ignored(pad_config, "RTS");
 		stm_pad_set_pio_ignored(pad_config, "CTS");
 	}
+
+	if (!config->use_oe_signal)
+		/* Don't claim 'not_OE' pad */
+		stm_pad_set_pio_ignored(pad_config, "not_OE");
 
 	if (config->is_console)
 		stm_asc_console_device = pdev;
