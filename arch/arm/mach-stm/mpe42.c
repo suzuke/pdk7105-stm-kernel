@@ -19,6 +19,7 @@
 #include <asm/smp_twd.h>
 #include <asm/smp_gt.h>
 #include <asm/hardware/gic.h>
+#include <asm/pmu.h>
 
 #include <asm/mach/map.h>
 #include <asm/mach/time.h>
@@ -26,6 +27,7 @@
 #include <mach/hardware.h>
 #include <mach/irqs.h>
 
+#include <linux/stm/stih416.h>
 #include <linux/stm/mpe42-periphs.h>
 
 static struct map_desc mpe42_io_desc[] __initdata = {
