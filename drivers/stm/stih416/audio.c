@@ -174,7 +174,7 @@ static struct platform_device stih416_uni_player_3 = {
 	.dev.platform_data = &stih416_uni_player_3_info,
 };
 
-/* Uniperipheral reader */
+/* Uniperipheral readers */
 
 static struct snd_stm_pcm_reader_info stih416_uni_reader_0_info = {
 	.name = "Uni Reader #0 (SPDIF)",
@@ -202,10 +202,32 @@ static struct platform_device stih416_uni_reader_0 = {
 	.id = 4,
 	.num_resources = 2,
 	.resource = (struct resource []) {
-		STM_PLAT_RESOURCE_MEM(SASG2_PCMREADER_BASE, 0x14c),
+		STM_PLAT_RESOURCE_MEM(SASG2_PCMREADER_0_BASE, 0x14c),
 		STIH416_RESOURCE_IRQ(143),
 	},
 	.dev.platform_data = &stih416_uni_reader_0_info,
+};
+
+static struct snd_stm_pcm_reader_info stih416_uni_reader_1_info = {
+	.name = "Uni Reader #1 (HDMI)",
+	.ver = 1,
+	.card_device = 5,
+	.channels = 2,
+	.fdma_name = "stm-fdma.3",
+	.fdma_initiator = 0,
+	.fdma_request_line = 22,
+	/* .pad_config set by stih416_configure_audio() */
+};
+
+static struct platform_device stih416_uni_reader_1 = {
+	.name = "snd_uni_reader",
+	.id = 5,
+	.num_resources = 2,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(SASG2_PCMREADER_1_BASE, 0x14c),
+		STIH416_RESOURCE_IRQ(145),
+	},
+	.dev.platform_data = &stih416_uni_reader_1_info,
 };
 
 /* Devices */
@@ -219,6 +241,7 @@ static struct platform_device *stih416_audio_devices[] __initdata = {
 	&stih416_uni_player_3,  /* SPDIF */
 
 	&stih416_uni_reader_0,  /* SPDIF */
+	&stih416_uni_reader_1,  /* HDMI */
 };
 
 static int __init stih416_audio_devices_setup(void)
