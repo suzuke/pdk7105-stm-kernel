@@ -1453,7 +1453,7 @@ static int clkgen_freq_synth_set_rate(struct clk *clk, unsigned long freq)
 
 static int clkgen_freq_synth_xable_fsyn(struct clk *clk, unsigned long enable)
 {
-	unsigned long val, pwr, setup;
+	unsigned long pwr, setup;
 	int channel = 0;
 	void *base_address;
 
@@ -1483,7 +1483,6 @@ static int clkgen_freq_synth_xable_fsyn(struct clk *clk, unsigned long enable)
 
 	pwr = CLK_READ(base_address + CKG_FS_PWR);
 	setup = CLK_READ(base_address + CKG_FS_SETUP);
-	val = CLK_READ(base_address + CKG_FS_CFG(channel));
 
 	if (clk->id == CLK_S_C_VCO || clk->id == CLK_S_D_VCO ||
 	    clk->id == CLK_S_E_VCO || clk->id == CLK_S_F_VCO) {
