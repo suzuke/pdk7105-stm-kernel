@@ -40,8 +40,10 @@
  * TELSS node specific defines
  */
 
+#define TELSS_PARAM_NUM_FRAMES_MAX	511
 #define TELSS_PARAM_NUM_FRAMES_MASK	0x000001ff
 #define TELSS_PARAM_NUM_FRAMES_SHIFT	0
+#define TELSS_PARAM_WRDS_PER_FRM_MAX	31
 #define TELSS_PARAM_WRDS_PER_FRM_MASK	0x00003e00
 #define TELSS_PARAM_WRDS_PER_FRM_SHIFT	9
 #define TELSS_PARAM_NUM_HANDSETS_MASK	0x0003c000
@@ -69,6 +71,7 @@
  */
 
 struct stm_fdma_telss {
+	bool endian_swap;
 	u32 frame_count;
 	u32 frame_size;
 	u32 handset_count;
@@ -120,19 +123,22 @@ int stm_fdma_telss_alloc_chan_resources(struct stm_fdma_chan *fchan)
 
 	BUG_ON(fchan->type != STM_DMA_TYPE_TELSS);
 
-	/* Perform a simple once over on the telss parameters */
-	if (config->frame_count == 0) {
+	/* Ensure frame count is within range 1-511 */
+	if ((config->frame_count == 0) ||
+		config->frame_count > TELSS_PARAM_NUM_FRAMES_MAX) {
 		dev_err(fchan->fdev->dev, "Invalid telss frame count\n");
 		return -EINVAL;
 	}
 
-	if (config->frame_size == 0) {
+	/* Ensure the frames size in words does not exceed maximum */
+	if (config->frame_size > TELSS_PARAM_WRDS_PER_FRM_MAX) {
 		dev_err(fchan->fdev->dev, "Invalid telss frame size\n");
 		return -EINVAL;
 	}
 
+	/* Ensure the number of handsets is within range 1-10 */
 	if ((config->handset_count == 0) ||
-		(config->handset_count >= STM_FDMA_LLU_TELSS_HANDSETS)) {
+		(config->handset_count > STM_FDMA_LLU_TELSS_HANDSETS)) {
 		dev_err(fchan->fdev->dev, "Invalid telss handset count\n");
 		return -EINVAL;
 	}
@@ -163,6 +169,7 @@ int stm_fdma_telss_alloc_chan_resources(struct stm_fdma_chan *fchan)
 	}
 
 	/* Save all the telss configuration in the one place */
+	telss->endian_swap = config->endian_swap;
 	telss->frame_count = config->frame_count;
 	telss->frame_size = config->frame_size;
 	telss->handset_count = config->handset_count;
@@ -359,7 +366,8 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		fdesc->llu->control |= TELSS_CONTROL_TYPE_TELSS;
 		fdesc->llu->control |= fchan->dreq->request_line <<
 				TELSS_CONTROL_DREQ_SHIFT;
-		fdesc->llu->control |= TELSS_CONTROL_ENDIAN_SWAP_DIS;
+		if (!telss->endian_swap)
+			fdesc->llu->control |= TELSS_CONTROL_ENDIAN_SWAP_DIS;
 		fdesc->llu->control |= TELSS_CONTROL_COMP_IRQ;
 
 		fdesc->llu->nbytes = period_len;

@@ -81,9 +81,10 @@ struct stm_dma_telss_config {
 	dma_addr_t dma_addr;
 	struct stm_dma_dreq_config dreq_config;
 
-	u32 frame_count;
-	u32 frame_size;
-	u32 handset_count;
+	bool endian_swap;		/* Enable/disable endian swap */
+	u32 frame_count;		/* No frames to transfer */
+	u32 frame_size;			/* No words per frame, 0=1, 1=2 etc */
+	u32 handset_count;		/* Number of handsets */
 };
 
 struct stm_dma_telss_handset_config {
