@@ -427,3 +427,57 @@ error_desc_get:
 	return NULL;
 }
 EXPORT_SYMBOL(dma_telss_prep_dma_cyclic);
+
+int dma_telss_get_period(struct dma_chan *chan)
+{
+	struct stm_fdma_chan *fchan = to_stm_fdma_chan(chan);
+	struct stm_fdma_telss *telss = fchan->extension;
+	int period = 0;
+
+	dev_dbg(fchan->fdev->dev, "%s(chan=%p)\n", __func__, chan);
+
+	/* Only allow this function on telss channels */
+	BUG_ON(fchan->type != STM_DMA_TYPE_TELSS);
+	BUG_ON(!telss);
+
+	/* Only attempt to get residue on a non-idle channel */
+	if (fchan->state != STM_FDMA_STATE_IDLE) {
+		unsigned long stat1, stat2;
+		struct stm_fdma_desc *fdesc, *child;
+		unsigned long phys_node;
+
+		/* Stop thread being preempted in case removing descriptor */
+		preempt_disable();
+
+		/* Loop until sure we are not transitioning a node */
+		do {
+			stat1 = readl(CMD_STAT_REG(fchan));
+			stat2 = readl(CMD_STAT_REG(fchan));
+		} while (stat1 != stat2);
+
+		/* Convert the status to the physical node pointer address */
+		phys_node = stat1 & CMD_STAT_DATA_MASK;
+
+		/* Get the active descriptor */
+		fdesc = list_first_entry(&fchan->desc_active,
+				struct stm_fdma_desc, node);
+
+		/* Does the physical node match the first descriptor node? */
+		if (phys_node != fdesc->dma_desc.phys) {
+			/* Loop through all descriptor child nodes */
+			list_for_each_entry(child, &fdesc->llu_list, node) {
+				period++;
+
+				/* Does physical node match child? */
+				if (phys_node == child->dma_desc.phys)
+					break;
+			}
+		}
+
+		/* Restore preemption */
+		preempt_enable();
+	}
+
+	return period;
+}
+EXPORT_SYMBOL(dma_telss_get_period);
