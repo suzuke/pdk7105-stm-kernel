@@ -241,7 +241,6 @@ struct iic_ssc {
 #define clear_ready_fastmode(adap) ((adap)->config &= ~IIC_STM_READY_SPEED_FAST)
 
 static void iic_stm_setup_timing(struct iic_ssc *adap);
-static void iic_pio_sda_pull_up(struct iic_ssc *adap);
 
 static irqreturn_t iic_state_machine(int this_irq, void *data)
 {
@@ -612,8 +611,6 @@ be_fsm_stop:
 		 * i.e.: it is much less sensible to the noice on the cable
 		 */
 		dbg_print2("-Idle\n");
-		/* pull-up data line by resistors */
-		iic_pio_sda_pull_up(adap);
 		ssc_store32(adap, SSC_I2C, SSC_I2C_I2CM);
 		/* No break here! */
 	case IIC_FSM_COMPLETE:
@@ -835,6 +832,10 @@ iic_xfer_retry:
 	timeout = wait_event_interruptible_timeout(adap->wait_queue,
 						   (transaction.waitcondition ==
 						    0), i2c_adap->timeout);
+
+	/* pull-up data line by resistors */
+	if (transaction.state == IIC_FSM_IDLE)
+		iic_pio_sda_pull_up(adap);
 
 	local_irq_save(flag);
 
