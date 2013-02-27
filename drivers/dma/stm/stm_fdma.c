@@ -894,9 +894,10 @@ static int stm_fdma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
  * Assume we only get called with the channel lock held! As we should only be
  * called from stm_fdma_tx_status this should not be an issue.
  */
-static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
+static u32 stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 {
-	int count = 0;
+	u32 count = 0;
+	u32 partial = 0;
 
 	dev_dbg(fchan->fdev->dev, "%s(fchan=%p)\n", __func__, fchan);
 
@@ -920,7 +921,7 @@ static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 
 		do {
 			stat1 = readl(CMD_STAT_REG(fchan));
-			count = readl(NODE_COUNT_REG(fchan));
+			partial = readl(NODE_COUNT_REG(fchan));
 			stat2 = readl(CMD_STAT_REG(fchan));
 		} while (stat1 != stat2);
 
@@ -972,7 +973,6 @@ static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 
 		/* Loop through all descriptor child nodes */
 		list_for_each_entry(child, &fdesc->llu_list, node) {
-
 			/* If node has been found, add node nbytes to count */
 			if (found_node) {
 				count += child->llu->nbytes;
@@ -980,8 +980,15 @@ static int stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 			}
 
 			/* Does physical node match child? */
-			if (phys_node == child->dma_desc.phys)
+			if (phys_node == child->dma_desc.phys) {
 				found_node = 1;
+
+				/* Ensure NODE_COUNT_REG didn't contain junk */
+				if (partial > child->llu->nbytes)
+					partial = child->llu->nbytes;
+
+				count += partial;
+			}
 		}
 
 		/* Ensure the current node is from the active descriptor */
@@ -999,7 +1006,7 @@ static enum dma_status stm_fdma_tx_status(struct dma_chan *chan,
 	dma_cookie_t last_used;
 	dma_cookie_t last_complete;
 	enum dma_status status;
-	int residue = 0;
+	u32 residue = 0;
 
 	dev_dbg(fchan->fdev->dev, "%s(chan=%p, cookie=%08x, txstate=%p)\n",
 			__func__, chan, cookie, txstate);
