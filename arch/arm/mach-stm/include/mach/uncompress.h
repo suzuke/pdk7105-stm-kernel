@@ -62,6 +62,8 @@ static inline unsigned long get_uart_base(void)
 		return SASG2_ASC2_BASE;
 	if (machine_is_stm_b2020())
 		return SASG2_SBC_ASC1_BASE;
+#else
+#error "UART base address not defined"
 #endif
 	return 0;
 }
