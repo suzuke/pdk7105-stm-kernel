@@ -316,7 +316,8 @@ EXPORT_SYMBOL(dma_telss_handset_control);
 
 struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
-		size_t period_len, enum dma_transfer_direction direction)
+		size_t period_len, size_t period_stride,
+		enum dma_transfer_direction direction)
 {
 	struct stm_fdma_chan *fchan = to_stm_fdma_chan(chan);
 	struct stm_fdma_telss *telss = fchan->extension;
@@ -327,8 +328,9 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 	u32 tmp;
 
 	dev_dbg(fchan->fdev->dev, "%s(chan=%p, buf_addr=%08x, buf_len=%d,"
-			"period_len=%d, direction=%d)\n", __func__, chan,
-			buf_addr, buf_len, period_len, direction);
+			"period_len=%d, period_stride=%d, direction=%d)\n",
+			__func__, chan, buf_addr, buf_len, period_len,
+			period_stride, direction);
 
 	/* Only allow this function on telss channels */
 	BUG_ON(fchan->type != STM_DMA_TYPE_TELSS);
@@ -375,11 +377,11 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		switch (direction) {
 		case DMA_DEV_TO_MEM:
 			fdesc->llu->saddr = fchan->dma_addr;
-			fdesc->llu->daddr = buf_addr + (p * period_len);
+			fdesc->llu->daddr = buf_addr + (p * period_stride);
 			break;
 
 		case DMA_MEM_TO_DEV:
-			fdesc->llu->saddr = buf_addr + (p * period_len);
+			fdesc->llu->saddr = buf_addr + (p * period_stride);
 			fdesc->llu->daddr = fchan->dma_addr;
 			break;
 
