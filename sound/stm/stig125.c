@@ -1,7 +1,7 @@
 /*
  *   STMicrolectronics STiG125 SoC audio glue driver
  *
- *   Copyright (c) 2012 STMicroelectronics Limited
+ *   Copyright (c) 2012-2013 STMicroelectronics Limited
  *
  *   Authors: John Boddie <john.boddie@st.com>
  *            Japneet Chhatwal <Japneet.chhatwal@st.com>
@@ -33,115 +33,146 @@
 #include "common.h"
 
 
-static int snd_stm_debug_level;
-module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
+/*
+ * Audio pad configuration.
+ */
+
+static struct stm_pad_config snd_stm_stig125_pad_config = {
+	.sysconfs_num = 5,
+	.sysconfs = (struct stm_pad_sysconf []) {
+		/* Set bi-phase idle value */
+		STM_PAD_SYSCONF(SYSCONF(918), 8, 8, 0),
+		/* Select pcm reader input from pads (1 = player #1) */
+		STM_PAD_SYSCONF(SYSCONF(918), 6, 6, 0),
+		/* Route player #1 to ext dac (pio) */
+		STM_PAD_SYSCONF(SYSCONF(918), 3, 5, 1),
+		/* Set ext dac clock to player #1 */
+		STM_PAD_SYSCONF(SYSCONF(918), 1, 2, 1),
+		/* Ensure ext dac clock not inverted */
+		STM_PAD_SYSCONF(SYSCONF(918), 0, 0, 0),
+	},
+};
 
 
 /*
- * Audio initialization
+ * Power management.
  */
 
-static struct sysconf_field *snd_stm_stig125_biphase_idle_value;
-static struct sysconf_field *snd_stm_stig125_pcm_valid_sel;
-static struct sysconf_field *snd_stm_stig125_pcm_toextdac_sel;
-static struct sysconf_field *snd_stm_stig125_mclk_sel;
-static struct sysconf_field *snd_stm_stig125_extdac_mclk_invert;
+#ifdef CONFIG_HIBERNATION
+static int snd_stm_stig125_restore(struct device *dev)
+{
+	struct stm_pad_state *pad_state = dev_get_drvdata(dev);
 
+	dev_dbg(dev, "%s()", __func__);
+
+	stm_pad_setup(pad_state);
+
+	return 0;
+}
+
+static const struct dev_pm_ops snd_stm_stig125_pm_ops = {
+	.thaw		= snd_stm_stig125_restore,
+	.restore	= snd_stm_stig125_restore,
+};
+#else
+static const struct dev_pm_ops snd_stm_stig125_pm_ops;
+#endif
+
+
+/*
+ * Driver functions.
+ */
+
+static int __devinit snd_stm_stig125_probe(struct platform_device *pdev)
+{
+	int result;
+	struct stm_pad_state *pad_state;
+
+	dev_dbg(&pdev->dev, "%s()", __func__);
+
+	if (!stm_soc_is_stig125()) {
+		dev_err(&pdev->dev, "Unsupported (not STiG125) SOC detected!");
+		result = -EINVAL;
+		goto error_soc_type;
+	}
+
+	/* Claim all of the sysconf fields and initialise */
+	pad_state = stm_pad_claim(&snd_stm_stig125_pad_config,
+			"ALSA Glue Logic");
+	if (!pad_state) {
+		dev_err(&pdev->dev, "Failed to claim ALSA sysconf pads");
+		return -EBUSY;
+		goto error_pad_claim;
+	}
+
+	/* Register the sound card */
+	result = snd_stm_card_register(SND_STM_CARD_TYPE_AUDIO);
+	if (result) {
+		dev_err(&pdev->dev, "Failed to register ALSA audio card!");
+		goto error_card_register;
+	}
+
+	/* Save the pad state as driver data */
+	dev_set_drvdata(&pdev->dev, pad_state);
+
+	return 0;
+
+error_card_register:
+	stm_pad_release(pad_state);
+error_pad_claim:
+error_soc_type:
+	return result;
+}
+
+static int __devexit snd_stm_stig125_remove(struct platform_device *pdev)
+{
+	struct stm_pad_state *pad_state = dev_get_drvdata(&pdev->dev);
+
+	dev_dbg(&pdev->dev, "%s()", __func__);
+
+	stm_pad_release(pad_state);
+
+	return 0;
+}
+
+static struct platform_driver snd_stm_stig125_driver = {
+	.driver.name	= "snd_stig125",
+	.driver.pm	= &snd_stm_stig125_pm_ops,
+	.probe		= snd_stm_stig125_probe,
+	.remove		= snd_stm_stig125_remove,
+};
+
+
+/*
+ * Module initialistaion.
+ */
+
+static struct platform_device snd_stm_stig125_devices = {
+	.name = "snd_stig125",
+	.id = -1,
+};
 
 static int __init snd_stm_stig125_init(void)
 {
 	int result;
 
-	snd_stm_printd(0, "%s()\n", __func__);
+	/* Add the STiG125 audio glue platform device */
+	result = platform_device_register(&snd_stm_stig125_devices);
+	BUG_ON(result);
 
-	if (!stm_soc_is_stig125()) {
-		snd_stm_printe("Unsupported (not STiG125) SoC detected!\n");
-		return -EINVAL;
-	}
-
-	/* Set bi-phase idle value */
-	snd_stm_stig125_biphase_idle_value = sysconf_claim(SYSCONF(918), 8, 8,
-			"BIPHASE_IDLE_VALUE");
-	if (!snd_stm_stig125_biphase_idle_value) {
-		snd_stm_printe("Failed to claim BIPHASE_IDLE_VALUE sysconf\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_biphase_idle_value;
-	}
-	sysconf_write(snd_stm_stig125_biphase_idle_value, 0);
-
-	/* Set PCM reader input from pads (1 = input from player #1) */
-	snd_stm_stig125_pcm_valid_sel = sysconf_claim(SYSCONF(918), 6, 6,
-			"PCM_VALID_SEL");
-	if (!snd_stm_stig125_pcm_valid_sel) {
-		snd_stm_printe("Failed to claim PCM_VALID_SEL sysconf\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_pcm_valid_sel;
-	}
-	sysconf_write(snd_stm_stig125_pcm_valid_sel, 0);
-
-	/* Route player #1 to Ext DAC (PIO) */
-	snd_stm_stig125_pcm_toextdac_sel = sysconf_claim(SYSCONF(918), 3, 5,
-			"PCM_TOEXTDAC_SEL");
-	if (!snd_stm_stig125_pcm_toextdac_sel) {
-		snd_stm_printe("Failed to claim PCM_TOEXTDAC_SEL sysconf\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_pcm_toextdac_sel;
-	}
-	sysconf_write(snd_stm_stig125_pcm_toextdac_sel, 1);
-
-	/* Set Ext DAC master clock to same clock as player #1 */
-	snd_stm_stig125_mclk_sel = sysconf_claim(SYSCONF(918), 1, 2,
-			"MCLK_SEL");
-	if (!snd_stm_stig125_mclk_sel) {
-		snd_stm_printe("Failed to claim MCLK_SEL sysconf\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_mclk_sel;
-	}
-	sysconf_write(snd_stm_stig125_mclk_sel, 1);
-
-	/* Set Ext DAC master clock to not inverted */
-	snd_stm_stig125_extdac_mclk_invert = sysconf_claim(SYSCONF(918), 0, 0,
-			"EXTDAC_MCLK_INVERT");
-	if (!snd_stm_stig125_extdac_mclk_invert) {
-		snd_stm_printe("Failed to claim EXTDAC_MCLK_INVERT sysconf\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_extdac_mclk_invert;
-	}
-	sysconf_write(snd_stm_stig125_extdac_mclk_invert, 0);
-
-	result = snd_stm_card_register(SND_STM_CARD_TYPE_AUDIO);
-	if (result != 0) {
-		snd_stm_printe("Failed to register ALSA audio card!\n");
-		goto error_card_register;
-	}
+	/* Register the platform driver */
+	result = platform_driver_register(&snd_stm_stig125_driver);
+	BUG_ON(result);
 
 	return 0;
-
-error_card_register:
-	sysconf_release(snd_stm_stig125_extdac_mclk_invert);
-error_sysconf_claim_extdac_mclk_invert:
-	sysconf_release(snd_stm_stig125_mclk_sel);
-error_sysconf_claim_mclk_sel:
-	sysconf_release(snd_stm_stig125_pcm_toextdac_sel);
-error_sysconf_claim_pcm_toextdac_sel:
-	sysconf_release(snd_stm_stig125_pcm_valid_sel);
-error_sysconf_claim_pcm_valid_sel:
-	sysconf_release(snd_stm_stig125_biphase_idle_value);
-error_sysconf_claim_biphase_idle_value:
-	return result;
 }
-
 
 static void __exit snd_stm_stig125_exit(void)
 {
-	snd_stm_printd(0, "%s()\n", __func__);
-
-	sysconf_release(snd_stm_stig125_extdac_mclk_invert);
-	sysconf_release(snd_stm_stig125_mclk_sel);
-	sysconf_release(snd_stm_stig125_pcm_toextdac_sel);
-	sysconf_release(snd_stm_stig125_pcm_valid_sel);
-	sysconf_release(snd_stm_stig125_biphase_idle_value);
+	platform_device_unregister(&snd_stm_stig125_devices);
+	platform_driver_unregister(&snd_stm_stig125_driver);
 }
+
 
 MODULE_AUTHOR("Japneet Chhatwal <japneet.chhatwal@st.com>");
 MODULE_DESCRIPTION("STMicroelectronics STiG125 audio glue driver");

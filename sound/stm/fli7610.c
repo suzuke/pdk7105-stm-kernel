@@ -1,7 +1,7 @@
 /*
  *   STMicrolectronics FLi7610 SoC audio glue driver
  *
- *   Copyright (c) 2011 STMicroelectronics Limited
+ *   Copyright (c) 2011-2013 STMicroelectronics Limited
  *
  *   Author: John Boddie <john.boddie@st.com>
  *
@@ -33,13 +33,43 @@
 #include "common.h"
 
 
-static int snd_stm_debug_level;
-module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
+/*
+ * Audio pad configuration.
+ */
+
+static struct stm_pad_config snd_stm_fli7610_pad_config = {
+	.sysconfs_num = 10,
+	.sysconfs = (struct stm_pad_sysconf []) {
+		/* Set spdif clock to clk_256fs_free_run */
+		STM_PAD_SYSCONF(TAE_SYSCONF(160), 0, 3, 0),
+		/* Set main clock to clk_256fs_free_run */
+		STM_PAD_SYSCONF(TAE_SYSCONF(160), 4, 7, 0),
+		/* Set aux i2s clock to clk_256fs_free_run */
+		STM_PAD_SYSCONF(TAE_SYSCONF(160), 8, 11, 0),
+		/* Set dac clock to clk_256fs_free_run */
+		STM_PAD_SYSCONF(TAE_SYSCONF(160), 12, 15, 0),
+		/* Set adc clock to clk_256fs_free_run */
+		STM_PAD_SYSCONF(TAE_SYSCONF(160), 16, 19, 0),
+		/* Turn off spdif clock division by 2 */
+		STM_PAD_SYSCONF(TAE_SYSCONF(160), 30, 30, 0),
+		/* Select spdif player output */
+		STM_PAD_SYSCONF(TAE_SYSCONF(161), 0, 0, 0),
+		/* Select ls for main i2s */
+		STM_PAD_SYSCONF(TAE_SYSCONF(161), 1, 3, 4),
+		/* Select aux for secondary i2s */
+		STM_PAD_SYSCONF(TAE_SYSCONF(161), 4, 6, 0),
+		/* Disable headphone amplifier standby */
+		STM_PAD_SYSCONF(TAE_SYSCONF(164), 0, 31, 0x00010000),
+	},
+};
 
 
 /*
- * AATV register offset defines
+ * Configure AATV.
  */
+
+#ifdef CONFIG_MACH_STM_FLI76XXHDK01
+#define AATV_BASE_ADDRESS	0xfef80000	/* 512KB */
 #define AATV_CMD_MUX_I2S_OUT	0x00076800
 #define AATV_SCART_IN_STDBY	0x00077800
 #define AATV_ANA_OUT_STDBY	0x00077804
@@ -54,38 +84,16 @@ module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
 #define AATV_ANTI_POP_CONTROL	0x00077834
 #define AATV_ANTI_POP_STATUS	0x00077838
 
-
-/*
- * TAE_SYSCONF fields
- */
-
-static struct sysconf_field *snd_stm_fli7610_spdif_clk;
-static struct sysconf_field *snd_stm_fli7610_main_clk;
-static struct sysconf_field *snd_stm_fli7610_aux_clk;
-static struct sysconf_field *snd_stm_fli7610_dac_clk;
-static struct sysconf_field *snd_stm_fli7610_adc_clk;
-static struct sysconf_field *snd_stm_fli7610_spdif_div2;
-
-static struct sysconf_field *snd_stm_fli7610_spdif_out_sel;
-static struct sysconf_field *snd_stm_fli7610_main_i2s_sel;
-static struct sysconf_field *snd_stm_fli7610_sec_i2s_sel;
-
-static struct sysconf_field *snd_stm_fli7610_aud_reg_5;
-
-
-#ifdef CONFIG_MACH_STM_FLI76XXHDK01
-#define AATV_BASE_ADDRESS 0xfef80000 /* 512KB */
-
-static void __init snd_stm_fli7610_configure_aatv(void)
+static void __init snd_stm_fli7610_configure_aatv(struct device *dev)
 {
 	void *aatv_base;
 
-	snd_stm_printd(0, "%s()\n", __func__);
+	dev_dbg(dev, "%s()", __func__);
 
 	/* Map the AATV registers into memory */
 	aatv_base = ioremap(AATV_BASE_ADDRESS, SZ_512K);
 	if (!aatv_base) {
-		snd_stm_printe("Failed to ioremap aatv base!\n");
+		dev_err(dev, "Failed to ioremap aatv base!\n");
 		goto error_ioremap;
 	}
 
@@ -108,37 +116,37 @@ static void __init snd_stm_fli7610_configure_aatv(void)
 	udelay(200);
 
 	/* Read anti-pop status to ensure everything is ready */
-	if ((readl(aatv_base + AATV_ANTI_POP_STATUS) & 0x1e) == 0x1e) {
-		/* Set SCARTs, analog outputs and DACs to active and unmute */
-		writel(0x00, aatv_base + AATV_SCART_IN_STDBY);
-		writel(0x01, aatv_base + AATV_ANA_OUT_STDBY);
-		writel(0x00, aatv_base + AATV_DAC_STDBY);
-		writel(0x00, aatv_base + AATV_DAC_CONTROL);
-
-		/* Disable SCART matrix configuration clock */
-		writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
-
-		/* Disable SCART 1/2/3 output */
-		writel(0x00, aatv_base + AATV_SCART_0_1_2);
-		writel(0x00, aatv_base + AATV_SCART_0_3_ADC);
-
-		/* Toggle SCART matrix configuration clock */
-		writel(0x01, aatv_base + AATV_SCART_CONF_LOAD);
-		writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
-
-		/* Enable SCART 1/2/3 output and load configuration */
-		writel(0x00, aatv_base + AATV_ANTI_POP_CONTROL);
-		udelay(200);
-		writel(0x15, aatv_base + AATV_ANTI_POP_CONTROL);
-		udelay(200);
-		writel(0x3f, aatv_base + AATV_ANTI_POP_CONTROL);
-		udelay(200);
-		writel(0x15, aatv_base + AATV_ANTI_POP_CONTROL);
-		udelay(200);
-	} else {
-		snd_stm_printe("Anti-pop status indicates not ready!\n");
+	if ((readl(aatv_base + AATV_ANTI_POP_STATUS) & 0x1e) != 0x1e) {
+		dev_err(dev, "Anti-pop status indicates not ready!\n");
 		goto error_anti_pop;
 	}
+
+	/* Set SCARTs, analog outputs and DACs to active and unmute */
+	writel(0x00, aatv_base + AATV_SCART_IN_STDBY);
+	writel(0x01, aatv_base + AATV_ANA_OUT_STDBY);
+	writel(0x00, aatv_base + AATV_DAC_STDBY);
+	writel(0x00, aatv_base + AATV_DAC_CONTROL);
+
+	/* Disable SCART matrix configuration clock */
+	writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
+
+	/* Disable SCART 1/2/3 output */
+	writel(0x00, aatv_base + AATV_SCART_0_1_2);
+	writel(0x00, aatv_base + AATV_SCART_0_3_ADC);
+
+	/* Toggle SCART matrix configuration clock */
+	writel(0x01, aatv_base + AATV_SCART_CONF_LOAD);
+	writel(0x00, aatv_base + AATV_SCART_CONF_LOAD);
+
+	/* Enable SCART 1/2/3 output and load configuration */
+	writel(0x00, aatv_base + AATV_ANTI_POP_CONTROL);
+	udelay(200);
+	writel(0x15, aatv_base + AATV_ANTI_POP_CONTROL);
+	udelay(200);
+	writel(0x3f, aatv_base + AATV_ANTI_POP_CONTROL);
+	udelay(200);
+	writel(0x15, aatv_base + AATV_ANTI_POP_CONTROL);
+	udelay(200);
 
 	/* Update I2S mux (0=PCMP0, 1=HP, 2=AVOUT, 3=PCMP0 4=PCMP0) */
 	writel(0x00980, aatv_base + AATV_CMD_MUX_I2S_OUT);
@@ -174,178 +182,132 @@ error_ioremap:
 
 
 /*
- * Audio initialization
+ * Power management.
  */
 
-static int __init snd_stm_fli7610_init(void)
+#ifdef CONFIG_HIBERNATION
+static int snd_stm_fli7610_restore(struct device *dev)
 {
-	int result = 0;
+	struct stm_pad_state *pad_state = dev_get_drvdata(dev);
 
-	snd_stm_printd(0, "%s()\n", __func__);
+	dev_dbg(dev, "%s()", __func__);
+
+	stm_pad_setup(pad_state);
+
+#ifdef CONFIG_MACH_STM_FLI76XXHDK01
+	snd_stm_fli7610_configure_aatv(dev);
+#endif
+
+	return 0;
+}
+
+static const struct dev_pm_ops snd_stm_fli7610_pm_ops = {
+	.thaw		= snd_stm_fli7610_restore,
+	.restore	= snd_stm_fli7610_restore,
+};
+#else
+static const struct dev_pm_ops snd_stm_fli7610_pm_ops;
+#endif
+
+
+/*
+ * Driver functions.
+ */
+
+static int __devinit snd_stm_fli7610_probe(struct platform_device *pdev)
+{
+	int result;
+	struct stm_pad_state *pad_state;
+
+	dev_dbg(&pdev->dev, "%s()", __func__);
 
 	if (!stm_soc_is_fli7610()) {
-		snd_stm_printe("Detected unsupported SoC (not FLi7610!)\n");
+		dev_err(&pdev->dev, "Unsupported (not Fli7610) SOC detected!");
 		result = -EINVAL;
 		goto error_soc_type;
 	}
 
-	/* Set spdif clock to clk_256fs_free_run */
-	snd_stm_fli7610_spdif_clk = sysconf_claim(TAE_SYSCONF(160), 0, 3,
-							"SPDIF_CLK");
-	if (!snd_stm_fli7610_spdif_clk) {
-		snd_stm_printe("Failed to claim sysconf (SPDIF_CLK)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_spdif_clk;
+	/* Claim all of the sysconf fields and initialise */
+	pad_state = stm_pad_claim(&snd_stm_fli7610_pad_config,
+			"ALSA Glue Logic");
+	if (!pad_state) {
+		dev_err(&pdev->dev, "Failed to claim ALSA sysconf pads");
+		return -EBUSY;
+		goto error_pad_claim;
 	}
-	sysconf_write(snd_stm_fli7610_spdif_clk, 0x0);
 
-	/* Set main clock to clk_256fs_free_run */
-	snd_stm_fli7610_main_clk = sysconf_claim(TAE_SYSCONF(160), 4, 7,
-							"MAIN_CLK");
-	if (!snd_stm_fli7610_main_clk) {
-		snd_stm_printe("Failed to claim sysconf (MAIN_CLK)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_main_clk;
-	}
-	sysconf_write(snd_stm_fli7610_main_clk, 0x0);
-
-	/* Set aux i2s clock to clk_256fs_free_run */
-	snd_stm_fli7610_aux_clk = sysconf_claim(TAE_SYSCONF(160), 8, 11,
-							"AUX_CLK");
-	if (!snd_stm_fli7610_aux_clk) {
-		snd_stm_printe("Failed to claim sysconf (AUX_CLK)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_aux_clk;
-	}
-	sysconf_write(snd_stm_fli7610_aux_clk, 0x0);
-
-	/* Set dac clock to clk_256fs_free_run */
-	snd_stm_fli7610_dac_clk = sysconf_claim(TAE_SYSCONF(160), 12, 15,
-							"DAC_CLK");
-	if (!snd_stm_fli7610_dac_clk) {
-		snd_stm_printe("Failed to claim sysconf (DAC_CLK)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_dac_clk;
-	}
-	sysconf_write(snd_stm_fli7610_dac_clk, 0x0);
-
-	/* Set adc clock to clk_256fs_free_run */
-	snd_stm_fli7610_adc_clk = sysconf_claim(TAE_SYSCONF(160), 16, 19,
-							"ADC_CLK");
-	if (!snd_stm_fli7610_adc_clk) {
-		snd_stm_printe("Failed to claim sysconf (ADC_CLK)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_adc_clk;
-	}
-	sysconf_write(snd_stm_fli7610_adc_clk, 0x0);
-
-	/* Turn spdif clock division by 2 off */
-	snd_stm_fli7610_spdif_div2 = sysconf_claim(TAE_SYSCONF(160), 30, 30,
-							"SPDIF_DIV2");
-	if (!snd_stm_fli7610_spdif_div2) {
-		snd_stm_printe("Failed to claim sysconf (SPDIF_DIV2)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_spdif_div2;
-	}
-	sysconf_write(snd_stm_fli7610_spdif_div2, 0x0);
-
-	/* Select spdif player for output */
-	snd_stm_fli7610_spdif_out_sel = sysconf_claim(TAE_SYSCONF(161), 0, 0,
-							"SPDIF_OUT_SEL");
-	if (!snd_stm_fli7610_spdif_out_sel) {
-		snd_stm_printe("Failed to claim sysconf (SPDIF_OUT_SEL)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_spdif_out_sel;
-	}
-	sysconf_write(snd_stm_fli7610_spdif_out_sel, 0x0);
-
-	/* Select ls for main i2s */
-	snd_stm_fli7610_main_i2s_sel = sysconf_claim(TAE_SYSCONF(161), 1, 3,
-							"MAIN_I2S_SEL");
-	if (!snd_stm_fli7610_main_i2s_sel) {
-		snd_stm_printe("Failed to claim sysconf (MAIN_I2S_SEL)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_main_i2s_sel;
-	}
-	sysconf_write(snd_stm_fli7610_main_i2s_sel, 0x4);
-
-	/* Select aux for secondary i2s */
-	snd_stm_fli7610_sec_i2s_sel = sysconf_claim(TAE_SYSCONF(161), 4, 6,
-							"SEC_I2S_SEL");
-	if (!snd_stm_fli7610_sec_i2s_sel) {
-		snd_stm_printe("Failed to claim sysconf (SEC_I2S_SEL)\n");
-		result = -EBUSY;
-		goto error_sysconf_claim_sec_i2s_sel;
-	}
-	sysconf_write(snd_stm_fli7610_sec_i2s_sel, 0x0);
-
-	/* Take headphone amplifier out of standby */
-	snd_stm_fli7610_aud_reg_5 = sysconf_claim(TAE_SYSCONF(164), 0, 31,
-							"AUD_REG_5");
-	if (!snd_stm_fli7610_aud_reg_5) {
-		snd_stm_printe("Failed to claim sysconf (AUD_REG_5)\n");
-		goto error_sysconf_claim_aud_reg_5;
-	}
-	sysconf_write(snd_stm_fli7610_aud_reg_5, 0x00010000);
-
+	/* Register the sound card */
 	result = snd_stm_card_register(SND_STM_CARD_TYPE_AUDIO);
-	if (result != 0) {
-		snd_stm_printe("Failed to register ALSA audio card!\n");
+	if (result) {
+		dev_err(&pdev->dev, "Failed to register ALSA audio card!");
 		goto error_card_register;
 	}
 
 #ifdef CONFIG_MACH_STM_FLI76XXHDK01
-	snd_stm_fli7610_configure_aatv();
+	snd_stm_fli7610_configure_aatv(&pdev->dev);
 #endif
+
+	/* Save the pad state as driver data */
+	dev_set_drvdata(&pdev->dev, pad_state);
 
 	return 0;
 
 error_card_register:
-	sysconf_release(snd_stm_fli7610_aud_reg_5);
-error_sysconf_claim_aud_reg_5:
-	sysconf_release(snd_stm_fli7610_sec_i2s_sel);
-error_sysconf_claim_sec_i2s_sel:
-	sysconf_release(snd_stm_fli7610_main_i2s_sel);
-error_sysconf_claim_main_i2s_sel:
-	sysconf_release(snd_stm_fli7610_spdif_out_sel);
-error_sysconf_claim_spdif_out_sel:
-	sysconf_release(snd_stm_fli7610_spdif_div2);
-error_sysconf_claim_spdif_div2:
-	sysconf_release(snd_stm_fli7610_adc_clk);
-error_sysconf_claim_adc_clk:
-	sysconf_release(snd_stm_fli7610_dac_clk);
-error_sysconf_claim_dac_clk:
-	sysconf_release(snd_stm_fli7610_aux_clk);
-error_sysconf_claim_aux_clk:
-	sysconf_release(snd_stm_fli7610_main_clk);
-error_sysconf_claim_main_clk:
-	sysconf_release(snd_stm_fli7610_spdif_clk);
-error_sysconf_claim_spdif_clk:
+	stm_pad_release(pad_state);
+error_pad_claim:
 error_soc_type:
 	return result;
 }
 
+static int __devexit snd_stm_fli7610_remove(struct platform_device *pdev)
+{
+	struct stm_pad_state *pad_state = dev_get_drvdata(&pdev->dev);
+
+	dev_dbg(&pdev->dev, "%s()", __func__);
+
+	stm_pad_release(pad_state);
+
+	return 0;
+}
+
+static struct platform_driver snd_stm_fli7610_driver = {
+	.driver.name	= "snd_fli7610",
+	.driver.pm	= &snd_stm_fli7610_pm_ops,
+	.probe		= snd_stm_fli7610_probe,
+	.remove		= snd_stm_fli7610_remove,
+};
+
+
+/*
+ * Module initialistaion.
+ */
+
+static struct platform_device snd_stm_fli7610_devices = {
+	.name = "snd_fli7610",
+	.id = -1,
+};
+
+static int __init snd_stm_fli7610_init(void)
+{
+	int result;
+
+	/* Add the Fli7610 audio glue platform device */
+	result = platform_device_register(&snd_stm_fli7610_devices);
+	BUG_ON(result);
+
+	/* Register the platform driver */
+	result = platform_driver_register(&snd_stm_fli7610_driver);
+	BUG_ON(result);
+
+	return 0;
+}
+
 static void __exit snd_stm_fli7610_exit(void)
 {
-	snd_stm_printd(0, "%s()\n", __func__);
-
-	sysconf_release(snd_stm_fli7610_aud_reg_5);
-
-	/* Release I2S routing fields in audio configuration registers */
-
-	sysconf_release(snd_stm_fli7610_sec_i2s_sel);
-	sysconf_release(snd_stm_fli7610_main_i2s_sel);
-	sysconf_release(snd_stm_fli7610_spdif_out_sel);
-
-	/* Release clock routing fields in audio configuration registers */
-
-	sysconf_release(snd_stm_fli7610_spdif_div2);
-	sysconf_release(snd_stm_fli7610_adc_clk);
-	sysconf_release(snd_stm_fli7610_dac_clk);
-	sysconf_release(snd_stm_fli7610_aux_clk);
-	sysconf_release(snd_stm_fli7610_main_clk);
-	sysconf_release(snd_stm_fli7610_spdif_clk);
+	platform_device_unregister(&snd_stm_fli7610_devices);
+	platform_driver_unregister(&snd_stm_fli7610_driver);
 }
+
 
 MODULE_AUTHOR("John Boddie <john.boddie@st.com>");
 MODULE_DESCRIPTION("STMicroelectronics FLi7610 audio glue driver");
