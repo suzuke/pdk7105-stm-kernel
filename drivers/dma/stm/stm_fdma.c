@@ -394,6 +394,9 @@ static void stm_fdma_free_chan_resources(struct dma_chan *chan)
 		dev_err(fchan->fdev->dev, "Invalid channel type (%d)\n",
 				fchan->type);
 	}
+
+	/* Clear the channel type */
+	fchan->type = 0;
 }
 
 static struct dma_async_tx_descriptor *stm_fdma_prep_dma_memcpy(
