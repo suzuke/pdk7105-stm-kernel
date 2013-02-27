@@ -188,8 +188,6 @@ int snd_stm_clk_set_rate(struct snd_stm_clk *clk, unsigned long rate)
 			1000000);
 	rate_adjusted = rate + delta;
 
-	snd_stm_printd(1, "Setting clock '%s' to rate %d.\n",
-			clk->clk->name, rate_adjusted);
 	/* adjusted rate should never be == 0 */
 	BUG_ON(rate_adjusted == 0);
 
