@@ -23,7 +23,10 @@ struct stm_fdma_regs {
 	unsigned long ver;
 	unsigned long en;
 	unsigned long clk_gate;
+	unsigned long slim_pc;
 	unsigned long rev_id;
+	unsigned long mchi_rx_nb_cur;
+	unsigned long mchi_rx_nb_all;
 	unsigned long cmd_statn;
 	unsigned long ptrn;
 	unsigned long ctrln;
@@ -157,6 +160,30 @@ struct stm_fdma_regs {
 	((_fchan)->fdev->io_base + \
 	(((_fchan)->id * (_fchan)->fdev->regs.node_size) + \
 	(_fchan)->fdev->regs.daddrn))
+
+
+/*
+ * FDMA MCHI node parameter registers
+ */
+
+#define NODE_MCHI_LENGTH_REG(_fchan) \
+	(NODE_PTR_REG(_fchan) + 0x14)
+
+#define NODE_MCHI_RX_FIFO_THR_ADDR_REG(_fchan) \
+	(NODE_PTR_REG(_fchan) + 0x18)
+
+#define NODE_MCHI_DSTRIDE_REG(_fchan) \
+	(NODE_PTR_REG(_fchan) + 0x1c)
+
+
+/*
+ * FDMA TELSS node parameter registers
+ */
+#define NODE_TELSS_NODE_PARAM_REG(_fchan) \
+	(NODE_PTR_REG(_fchan) + 0x14)
+
+#define NODE_TELSS_HANDSET_PARAMn_REG(_fchan, n) \
+	(NODE_PTR_REG(_fchan) + 0x18 + (n * 4))
 
 
 /*

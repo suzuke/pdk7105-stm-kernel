@@ -143,6 +143,7 @@ struct stm_fdma_device {
 	/* debugfs */
 	struct dentry *debug_dir;
 	struct dentry *debug_regs;
+	struct dentry *debug_dmem;
 	struct dentry *debug_chans[STM_FDMA_NUM_CHANNELS];
 #endif
 };

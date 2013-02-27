@@ -836,6 +836,7 @@ static int stm_fdma_slave_config(struct stm_fdma_chan *fchan,
 			fchan->dreq->direction = DMA_DEV_TO_MEM;
 			break;
 
+		case DMA_MEM_TO_MEM:
 		case DMA_MEM_TO_DEV:
 			fchan->dreq->maxburst = config->dst_maxburst;
 			fchan->dreq->buswidth = config->dst_addr_width;
@@ -1189,10 +1190,14 @@ static int __devinit stm_fdma_probe(struct platform_device *pdev)
 	fdev->regs.ver = fdev->hw->slim_regs.ver;
 	fdev->regs.en = fdev->hw->slim_regs.en;
 	fdev->regs.clk_gate = fdev->hw->slim_regs.clk_gate;
+	fdev->regs.slim_pc = fdev->hw->slim_regs.slim_pc;
 	fdev->regs.rev_id = fdev->fw->rev_id;
+	fdev->regs.mchi_rx_nb_cur = fdev->fw->mchi_rx_nb_cur;
+	fdev->regs.mchi_rx_nb_all = fdev->fw->mchi_rx_nb_all;
 	fdev->regs.cmd_statn = fdev->fw->cmd_statn;
 	fdev->regs.req_ctln = fdev->fw->req_ctln;
 	fdev->regs.ptrn = fdev->fw->ptrn;
+	fdev->regs.ctrln = fdev->fw->ctrln;
 	fdev->regs.cntn = fdev->fw->cntn;
 	fdev->regs.saddrn = fdev->fw->saddrn;
 	fdev->regs.daddrn = fdev->fw->daddrn;

@@ -647,6 +647,7 @@ static struct stm_plat_fdma_fw_regs fli7610_fdma_fw = {
 	.cmd_statn = 0x10200,
 	.req_ctln  = 0x10240,
 	.ptrn      = 0x10800,
+	.ctrln     = 0x10804,
 	.cntn      = 0x10808,
 	.saddrn    = 0x1080c,
 	.daddrn    = 0x10810,
@@ -659,6 +660,7 @@ static struct stm_plat_fdma_hw fli7610_fdma_hw = {
 		.ver      = 0x0000 + (0x001 << 2), /* 0x0004 */
 		.en       = 0x0000 + (0x002 << 2), /* 0x0008 */
 		.clk_gate = 0x0000 + (0x003 << 2), /* 0x000c */
+		.slim_pc  = 0x0000 + (0x008 << 2), /* 0x0020 */
 	},
 	.dmem = {
 		.offset = 0x10000,

@@ -446,6 +446,7 @@ struct stm_plat_fdma_slim_regs {
 	unsigned long ver;
 	unsigned long en;
 	unsigned long clk_gate;
+	unsigned long slim_pc;
 };
 
 struct stm_plat_fdma_periph_regs {
@@ -474,9 +475,12 @@ struct stm_plat_fdma_hw {
 
 struct stm_plat_fdma_fw_regs {
 	unsigned long rev_id;
+	unsigned long mchi_rx_nb_cur;
+	unsigned long mchi_rx_nb_all;
 	unsigned long cmd_statn;
 	unsigned long req_ctln;
 	unsigned long ptrn;
+	unsigned long ctrln;
 	unsigned long cntn;
 	unsigned long saddrn;
 	unsigned long daddrn;

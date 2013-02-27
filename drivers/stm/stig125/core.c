@@ -1091,9 +1091,12 @@ void stig125_configure_keyscan(const struct stm_keyscan_config *config)
  */
 static struct stm_plat_fdma_fw_regs stig125_fdma_fw = {
 	.rev_id		= 0x10000,
+	.mchi_rx_nb_cur = 0x100c4,
+	.mchi_rx_nb_all = 0x100c8,
 	.cmd_statn	= 0x10200,
 	.req_ctln	= 0x10240,
 	.ptrn		= 0x10800,
+	.ctrln		= 0x10804,
 	.cntn		= 0x10808,
 	.saddrn		= 0x1080c,
 	.daddrn		= 0x10810,
@@ -1106,6 +1109,7 @@ static struct stm_plat_fdma_hw stig125_fdma_hw = {
 		.ver	  = 0x0000 + (0x001 << 2), /* 0x0004 */
 		.en	  = 0x0000 + (0x002 << 2), /* 0x0008 */
 		.clk_gate = 0x0000 + (0x003 << 2), /* 0x000c */
+		.slim_pc  = 0x0000 + (0x008 << 2), /* 0x0020 */
 	},
 	.dmem = {
 		.offset = 0x10000,

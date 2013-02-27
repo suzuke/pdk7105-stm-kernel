@@ -267,6 +267,7 @@ static struct stm_plat_fdma_fw_regs stm_fdma_firmware_7108 = {
 	.cmd_statn = 0x8000 + (0x450 << 2), /* 0x9140 */
 	.req_ctln  = 0x8000 + (0x460 << 2), /* 0x9180 */
 	.ptrn      = 0x8000 + (0x560 << 2), /* 0x9580 */
+	.ctrln     = 0x8000 + (0x561 << 2), /* 0x9584 */
 	.cntn      = 0x8000 + (0x562 << 2), /* 0x9588 */
 	.saddrn    = 0x8000 + (0x563 << 2), /* 0x958c */
 	.daddrn    = 0x8000 + (0x564 << 2), /* 0x9590 */
@@ -278,6 +279,7 @@ static struct stm_plat_fdma_hw stx7108_fdma_hw = {
 		.ver      = 0x0000 + (0x001 << 2), /* 0x0004 */
 		.en       = 0x0000 + (0x002 << 2), /* 0x0008 */
 		.clk_gate = 0x0000 + (0x003 << 2), /* 0x000c */
+		.slim_pc  = 0x0000 + (0x008 << 2), /* 0x0020 */
 	},
 	.dmem = {
 		.offset = 0x8000,
