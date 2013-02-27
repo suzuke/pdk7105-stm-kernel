@@ -126,7 +126,7 @@ config SND_STM_STX7108
 config SND_STM_STIG125
 	tristate "STiG125 support"
 	depends on SND_STM
-	default y if CPU_SUBTYPE_STIG125
+	default y if MACH_STM_STIG125
 	select SND_STM_UNIPERIF_PLAYER
 	select SND_STM_UNIPERIF_READER
 	select SND_STM_CONV_BIPHASE
