@@ -43,15 +43,6 @@
 int snd_stm_debug_level;
 module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
 
-static int snd_stm_card_index = -1; /* First available index */
-module_param_named(index, snd_stm_card_index, int, 0444);
-MODULE_PARM_DESC(index, "Index value for STMicroelectronics audio subsystem "
-		"card.");
-
-static char *snd_stm_card_id;
-module_param_named(id, snd_stm_card_id, charp, 0444);
-MODULE_PARM_DESC(id, "ID string for STMicroelectronics audio subsystem card.");
-
 
 
 /*
@@ -70,8 +61,7 @@ int snd_stm_card_register(void)
 	BUG_ON(!snd_stm_card);
 	BUG_ON(snd_stm_card_registered);
 
-	if (!snd_stm_card_id)
-		strlcpy(snd_stm_card->id, soc_type, sizeof(snd_stm_card->id));
+	strlcpy(snd_stm_card->id, soc_type, sizeof(snd_stm_card->id));
 
 	strlcpy(snd_stm_card->driver, soc_type, sizeof(snd_stm_card->driver));
 	snprintf(snd_stm_card->shortname, sizeof(snd_stm_card->shortname),
@@ -710,8 +700,7 @@ static int __init snd_stm_core_init(void)
 
 	snd_stm_printd(0, "%s()\n", __func__);
 
-	result = snd_card_create(snd_stm_card_index, snd_stm_card_id,
-			THIS_MODULE, 0, &snd_stm_card);
+	result = snd_card_create(-1, stm_soc(), THIS_MODULE, 0, &snd_stm_card);
 	if (result != 0) {
 		snd_stm_printe("Failed to create ALSA card!\n");
 		goto error_card_create;

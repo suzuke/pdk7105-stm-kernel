@@ -37,19 +37,6 @@ module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
 
 
 /*
- * ALSA module parameters
- */
-
-static int index = -1; /* First available index */
-static char *id = "STiH415"; /* Default card ID */
-
-module_param(index, int, 0444);
-MODULE_PARM_DESC(index, "Index value for STiH415 audio subsystem card.");
-module_param(id, charp, 0444);
-MODULE_PARM_DESC(id, "ID string for STiH415 audio subsystem card.");
-
-
-/*
  * Audio initialization
  */
 

@@ -38,19 +38,6 @@ module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
 
 
 /*
- * ALSA module parameters
- */
-
-static int index = -1; /* First available index */
-static char *id = "FLi7610"; /* Default card ID */
-
-module_param(index, int, 0444);
-MODULE_PARM_DESC(index, "Index value for FLi7610 audio subsystem card.");
-module_param(id, charp, 0444);
-MODULE_PARM_DESC(id, "ID string for FLi7610 audio subsystem card.");
-
-
-/*
  * AATV register offset defines
  */
 #define AATV_CMD_MUX_I2S_OUT	0x00076800
