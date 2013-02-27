@@ -288,9 +288,9 @@ static int __init snd_stm_fli7610_init(void)
 	}
 	sysconf_write(snd_stm_fli7610_aud_reg_5, 0x00010000);
 
-	result = snd_stm_card_register();
+	result = snd_stm_card_register(SND_STM_CARD_TYPE_AUDIO);
 	if (result != 0) {
-		snd_stm_printe("Failed to register ALSA cards!\n");
+		snd_stm_printe("Failed to register ALSA audio card!\n");
 		goto error_card_register;
 	}
 

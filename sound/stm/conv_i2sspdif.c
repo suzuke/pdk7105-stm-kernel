@@ -500,6 +500,7 @@ static void snd_stm_conv_i2sspdif_dump_registers(struct snd_info_entry *entry,
 static int snd_stm_conv_i2sspdif_register(struct snd_device *snd_device)
 {
 	struct snd_stm_conv_i2sspdif *conv_i2sspdif = snd_device->device_data;
+	struct snd_card *card = snd_stm_card_get(SND_STM_CARD_TYPE_AUDIO);
 	int i;
 
 	snd_stm_printd(1, "%s(snd_device=0x%p)\n", __func__, snd_device);
@@ -535,7 +536,7 @@ static int snd_stm_conv_i2sspdif_register(struct snd_device *snd_device)
 				snd_stm_conv_get_card_device(
 				conv_i2sspdif->converter);
 		snd_stm_conv_i2sspdif_ctls[i].index = conv_i2sspdif->index;
-		result = snd_ctl_add(snd_stm_card_get(),
+		result = snd_ctl_add(card,
 				snd_ctl_new1(&snd_stm_conv_i2sspdif_ctls[i],
 				conv_i2sspdif));
 		if (result < 0) {
@@ -593,6 +594,7 @@ static int snd_stm_conv_i2sspdif_probe(struct platform_device *pdev)
 	struct snd_stm_conv_i2sspdif_info *conv_i2sspdif_info =
 			pdev->dev.platform_data;
 	struct snd_stm_conv_i2sspdif *conv_i2sspdif;
+	struct snd_card *card = snd_stm_card_get(SND_STM_CARD_TYPE_AUDIO);
 
 	snd_stm_printd(0, "%s('%s')\n", __func__, dev_name(&pdev->dev));
 
@@ -642,7 +644,7 @@ static int snd_stm_conv_i2sspdif_probe(struct platform_device *pdev)
 
 	/* Create ALSA lowlevel device*/
 
-	result = snd_device_new(snd_stm_card_get(), SNDRV_DEV_LOWLEVEL,
+	result = snd_device_new(card, SNDRV_DEV_LOWLEVEL,
 			conv_i2sspdif, &snd_stm_conv_i2sspdif_snd_device_ops);
 	if (result < 0) {
 		snd_stm_printe("ALSA low level device creation failed!\n");

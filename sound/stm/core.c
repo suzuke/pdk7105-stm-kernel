@@ -49,55 +49,119 @@ module_param_named(debug, snd_stm_debug_level, int, S_IRUGO | S_IWUSR);
  * ALSA card management
  */
 
-static struct snd_card *snd_stm_card;
-static int snd_stm_card_registered;
+struct snd_stm_card_info {
+	const char *name;
+	const char *subsystem;
+	struct snd_card *card;
+	int is_registered;
+};
 
-int snd_stm_card_register(void)
+static struct snd_stm_card_info snd_stm_cards[SND_STM_CARD_TYPE_COUNT];
+
+static struct snd_stm_card_info *snd_stm_card_find(
+		enum snd_stm_card_type card_type)
 {
-	int result;
+	switch (card_type) {
+	case SND_STM_CARD_TYPE_AUDIO:
+	case SND_STM_CARD_TYPE_TELSS:
+		return &snd_stm_cards[card_type];
+
+	default:
+		snd_BUG();
+		return NULL;
+	}
+}
+
+static int snd_stm_card_do_register(struct snd_stm_card_info *card_info)
+{
 	const char *soc_type = stm_soc();
+	char version[16];
+	int result;
+
+	snd_stm_printd(1, "%s(card_info=%p)\n", __func__, card_info);
 
 	BUG_ON(!soc_type);
-	BUG_ON(!snd_stm_card);
-	BUG_ON(snd_stm_card_registered);
+	BUG_ON(!card_info->card);
+	BUG_ON(!card_info->subsystem);
+	BUG_ON(card_info->is_registered);
 
-	strlcpy(snd_stm_card->id, soc_type, sizeof(snd_stm_card->id));
+	/* Configure card details */
+	snprintf(card_info->card->driver, sizeof(card_info->card->driver),
+			soc_type);
+	snprintf(card_info->card->shortname, sizeof(card_info->card->shortname),
+			"%s %s subsystem", soc_type, card_info->subsystem);
 
-	strlcpy(snd_stm_card->driver, soc_type, sizeof(snd_stm_card->driver));
-	snprintf(snd_stm_card->shortname, sizeof(snd_stm_card->shortname),
-			"%s audio subsystem", soc_type);
 	if (stm_soc_version_minor() < 0)
-		snprintf(snd_stm_card->longname, sizeof(snd_stm_card->longname),
-				"STMicroelectronics %s cut %lu.x SOC audio "
-				"subsystem", soc_type, stm_soc_version_major());
+		snprintf(version, sizeof(version), "%lu.x",
+			stm_soc_version_major());
 	else
-		snprintf(snd_stm_card->longname, sizeof(snd_stm_card->longname),
-				"STMicroelectronics %s cut %lu.%lu SOC audio "
-				"subsystem", soc_type, stm_soc_version_major(),
-				stm_soc_version_minor());
+		snprintf(version, sizeof(version), "%lu.%lu",
+			stm_soc_version_major(), stm_soc_version_minor());
 
-	result = snd_card_register(snd_stm_card);
+	snprintf(card_info->card->longname, sizeof(card_info->card->longname),
+			"STMicroelectronics %s cut %s SOC %s subsystem",
+			soc_type, version, card_info->subsystem);
 
-	if (result == 0)
-		snd_stm_card_registered = 1;
+	/* Register the sound card (and instantiate all attached devices) */
+	result = snd_card_register(card_info->card);
+	if (result) {
+		snd_stm_printe("Failed to register %s sound card\n",
+				card_info->subsystem);
+		return result;
+	}
+
+	/* Indicate card is registered */
+	card_info->is_registered = 1;
+
+	return result;
+}
+
+int snd_stm_card_register(enum snd_stm_card_type card_type)
+{
+	struct snd_stm_card_info *card_info;
+	int result = 0;
+	int i;
+
+	snd_stm_printd(1, "%s(card_type=%d)\n", __func__, card_type);
+
+	switch (card_type) {
+	case SND_STM_CARD_TYPE_ALL:
+		for (i = 0; i < SND_STM_CARD_TYPE_COUNT; ++i)
+			result |= snd_stm_card_do_register(&snd_stm_cards[i]);
+		break;
+
+	case SND_STM_CARD_TYPE_AUDIO:
+	case SND_STM_CARD_TYPE_TELSS:
+		card_info = snd_stm_card_find(card_type);
+		result = snd_stm_card_do_register(card_info);
+		break;
+
+	default:
+		snd_stm_printe("Invalid card type (%d)\n", card_type);
+		result = -EINVAL;
+	}
 
 	return result;
 }
 EXPORT_SYMBOL(snd_stm_card_register);
 
-int snd_stm_card_is_registered(void)
+int snd_stm_card_is_registered(enum snd_stm_card_type card_type)
 {
-	BUG_ON(!snd_stm_card);
+	struct snd_stm_card_info *card_info = snd_stm_card_find(card_type);
 
-	return snd_stm_card_registered;
+	snd_stm_printd(1, "%s(card_type=%d)\n", __func__, card_type);
+
+	return card_info->is_registered;
 }
 EXPORT_SYMBOL(snd_stm_card_is_registered);
 
-struct snd_card *snd_stm_card_get(void)
+struct snd_card *snd_stm_card_get(enum snd_stm_card_type card_type)
 {
-	BUG_ON(!snd_stm_card);
+	struct snd_stm_card_info *card_info = snd_stm_card_find(card_type);
 
-	return snd_stm_card;
+	snd_stm_printd(1, "%s(card_type=%d)\n", __func__, card_type);
+
+	return card_info->card;
 }
 EXPORT_SYMBOL(snd_stm_card_get);
 
@@ -697,45 +761,65 @@ void snd_stm_iec958_dump(const struct snd_aes_iec958 *vuc)
 static int __init snd_stm_core_init(void)
 {
 	int result;
+	int i;
 
 	snd_stm_printd(0, "%s()\n", __func__);
 
-	result = snd_card_create(-1, stm_soc(), THIS_MODULE, 0, &snd_stm_card);
-	if (result != 0) {
-		snd_stm_printe("Failed to create ALSA card!\n");
-		goto error_card_create;
+	/* Initialise the sound card info data */
+	snd_stm_cards[SND_STM_CARD_TYPE_AUDIO].name = "AUDIO";
+	snd_stm_cards[SND_STM_CARD_TYPE_AUDIO].subsystem = "audio";
+	snd_stm_cards[SND_STM_CARD_TYPE_TELSS].name = "TELSS";
+	snd_stm_cards[SND_STM_CARD_TYPE_TELSS].subsystem = "telss";
+
+	/* Create the sound cards (but don't register them yet!) */
+	for (i = 0; i < SND_STM_CARD_TYPE_COUNT; ++i) {
+		result = snd_card_create(-1, snd_stm_cards[i].name, THIS_MODULE,
+				0, &snd_stm_cards[i].card);
+		if (result) {
+			snd_stm_printe("Failed to create ALSA %s card",
+					snd_stm_cards[i].subsystem);
+			goto error_card_create;
+		}
 	}
 
 	result = snd_stm_info_create();
-	if (result != 0) {
+	if (result) {
 		snd_stm_printe("Procfs info creation failed!\n");
-		goto error_info;
+		goto error_info_create;
 	}
+
 	result = snd_stm_conv_init();
-	if (result != 0) {
+	if (result) {
 		snd_stm_printe("Converters infrastructure initialization"
 				" failed!\n");
-		goto error_conv;
+		goto error_conv_init;
 	}
 
 	return result;
 
-error_conv:
+error_conv_init:
 	snd_stm_info_dispose();
-error_info:
-	snd_card_free(snd_stm_card);
+error_info_create:
 error_card_create:
+	for (i = 0; i < SND_STM_CARD_TYPE_COUNT; ++i)
+		if (snd_stm_cards[i].card)
+			snd_card_free(snd_stm_cards[i].card);
 	return result;
 }
 
 static void __exit snd_stm_core_exit(void)
 {
+	int i;
+
 	snd_stm_printd(0, "%s()\n", __func__);
 
 	snd_stm_conv_exit();
 	snd_stm_info_dispose();
 
-	snd_card_free(snd_stm_card);
+	for (i = 0; i < SND_STM_CARD_TYPE_COUNT; ++i) {
+		if (snd_stm_cards[i].card)
+			snd_card_free(snd_stm_cards[i].card);
+	}
 }
 
 MODULE_AUTHOR("Pawel Moll <pawel.moll@st.com>");

@@ -256,7 +256,7 @@ static int snd_stm_conv_dac_sc_probe(struct platform_device *pdev)
 	struct snd_stm_conv_dac_sc_info *info =
 			pdev->dev.platform_data;
 	struct snd_stm_conv_dac_sc *conv_dac_sc;
-	struct snd_card *card = snd_stm_card_get();
+	struct snd_card *card = snd_stm_card_get(SND_STM_CARD_TYPE_AUDIO);
 
 	snd_stm_printd(0, "%s('%s')\n", __func__, dev_name(&pdev->dev));
 

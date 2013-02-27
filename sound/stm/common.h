@@ -23,9 +23,16 @@
  * ALSA card management
  */
 
-int snd_stm_card_register(void);
-int snd_stm_card_is_registered(void);
-struct snd_card *snd_stm_card_get(void);
+enum snd_stm_card_type {
+	SND_STM_CARD_TYPE_AUDIO,
+	SND_STM_CARD_TYPE_TELSS,
+	SND_STM_CARD_TYPE_COUNT,	/* Number of different card types */
+	SND_STM_CARD_TYPE_ALL		/* Used by snd_stm_card_register() */
+};
+
+int snd_stm_card_register(enum snd_stm_card_type card_type);
+int snd_stm_card_is_registered(enum snd_stm_card_type card_type);
+struct snd_card *snd_stm_card_get(enum snd_stm_card_type card_type);
 
 
 

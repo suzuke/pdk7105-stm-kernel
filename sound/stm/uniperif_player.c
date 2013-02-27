@@ -2113,7 +2113,7 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 {
 	int result = 0;
 	struct snd_stm_uniperif_player *player;
-	struct snd_card *card = snd_stm_card_get();
+	struct snd_card *card = snd_stm_card_get(SND_STM_CARD_TYPE_AUDIO);
 	static unsigned int channels_2_10[] = { 2, 4, 6, 8, 10 };
 	static unsigned char *strings_2_10[] = {
 			"2", "2/4", "2/4/6", "2/4/6/8", "2/4/6/8/10"};
@@ -2322,7 +2322,7 @@ static int snd_stm_uniperif_player_remove(struct platform_device *pdev)
 static int snd_stm_uniperif_player_suspend(struct device *dev)
 {
 	struct snd_stm_uniperif_player *player = dev_get_drvdata(dev);
-	struct snd_card *card = snd_stm_card_get();
+	struct snd_card *card = snd_stm_card_get(SND_STM_CARD_TYPE_AUDIO);
 
 	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
@@ -2341,7 +2341,7 @@ static int snd_stm_uniperif_player_suspend(struct device *dev)
 
 static int snd_stm_uniperif_player_resume(struct device *dev)
 {
-	struct snd_card *card = snd_stm_card_get();
+	struct snd_card *card = snd_stm_card_get(SND_STM_CARD_TYPE_AUDIO);
 
 	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 

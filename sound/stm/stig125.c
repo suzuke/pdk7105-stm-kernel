@@ -109,9 +109,9 @@ static int __init snd_stm_stig125_init(void)
 	}
 	sysconf_write(snd_stm_stig125_extdac_mclk_invert, 0);
 
-	result = snd_stm_card_register();
+	result = snd_stm_card_register(SND_STM_CARD_TYPE_AUDIO);
 	if (result != 0) {
-		snd_stm_printe("Failed to register ALSA card!\n");
+		snd_stm_printe("Failed to register ALSA audio card!\n");
 		goto error_card_register;
 	}
 

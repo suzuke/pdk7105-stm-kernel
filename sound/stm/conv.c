@@ -453,7 +453,7 @@ static int snd_stm_conv_ctl_mute_add(struct snd_stm_conv_converter *converter)
 	if (result >= 0) {
 		/* We will have to manually dispose "hot-plugged" controls...
 		 * ("normal" ones will be disposed during snd_card_free) */
-		if (snd_stm_card_is_registered())
+		if (snd_stm_card_is_registered(SND_STM_CARD_TYPE_AUDIO))
 			converter->ctl_mute = ctl_mute;
 
 		snd_stm_conv_ctl_mute.index++;
@@ -590,7 +590,7 @@ static int snd_stm_conv_ctl_route_add(struct snd_stm_conv_source *source)
 		/* We will have to manually dispose "hot-plugged"
 		 * controls... ("normal" ones will be disposed
 		 * during snd_card_free) */
-		if (snd_stm_card_is_registered())
+		if (snd_stm_card_is_registered(SND_STM_CARD_TYPE_AUDIO))
 			source->ctl_route = ctl_route;
 
 		snd_stm_conv_ctl_route.index++;

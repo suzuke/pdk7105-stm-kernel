@@ -120,9 +120,9 @@ static int __devinit snd_stm_stih415_probe(struct platform_device *pdev)
 	snd_stm_stih415_setup();
 
 	/* Register the sound card */
-	result = snd_stm_card_register();
+	result = snd_stm_card_register(SND_STM_CARD_TYPE_AUDIO);
 	if (result) {
-		dev_err(&pdev->dev, "Failed to register ALSA cards!");
+		dev_err(&pdev->dev, "Failed to register ALSA audio card!");
 		goto error_card_register;
 	}
 

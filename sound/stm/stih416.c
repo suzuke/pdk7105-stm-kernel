@@ -91,9 +91,11 @@ static int __devinit snd_stm_stih416_probe(struct platform_device *pdev)
 		result = -ENODEV;
 		goto error_soc_type;
 	}
-	result = snd_stm_card_register();
-	if (result != 0) {
-		snd_stm_printe("Failed to register ALSA cards!\n");
+
+	/* Register the sound card */
+	result = snd_stm_card_register(SND_STM_CARD_TYPE_AUDIO);
+	if (result) {
+		snd_stm_printe("Failed to register ALSA audio card!");
 		goto error_card_register;
 	}
 

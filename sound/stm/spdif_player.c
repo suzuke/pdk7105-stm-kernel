@@ -1558,7 +1558,7 @@ static int snd_stm_spdif_player_probe(struct platform_device *pdev)
 {
 	int result = 0;
 	struct snd_stm_spdif_player *spdif_player;
-	struct snd_card *card = snd_stm_card_get();
+	struct snd_card *card = snd_stm_card_get(SND_STM_CARD_TYPE_AUDIO);
 	int buffer_bytes_max;
 
 	snd_stm_printd(0, "%s('%s')\n", __func__, dev_name(&pdev->dev));
