@@ -149,9 +149,10 @@ static void b2000_gmac1_txclk_select(int txclk_125_not_25_mhz)
 }
 #endif
 
-#if !((defined(CONFIG_MACH_STM_B2000_CN22_NONE) || \
-	defined(CONFIG_MACH_STM_B2000_CN22_B2035)) && \
-	defined(CONFIG_MACH_STM_B2000_CN23_NONE))
+#if defined(CONFIG_MACH_STM_B2000_CN22_B2035) || \
+	defined(CONFIG_MACH_STM_B2000_CN22_B2032) || \
+	defined(CONFIG_MACH_STM_B2000_CN23_B2035) || \
+	defined(CONFIG_MACH_STM_B2000_CN23_B2032)
 static void b2000_gmii_gpio_reset(int gpio)
 {
 	gpio_set_value(gpio, 1);
