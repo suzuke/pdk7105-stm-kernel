@@ -494,7 +494,12 @@ static int __devinit dwc3_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	mode = DWC3_MODE(dwc->hwparams.hwparams0);
+	if (IS_ENABLED(CONFIG_USB_DWC3_HOST))
+		mode = DWC3_MODE_HOST;
+	else if (IS_ENABLED(CONFIG_USB_DWC3_GADGET))
+		mode = DWC3_MODE_DEVICE;
+	else
+		mode = DWC3_MODE_DRD;
 
 	switch (mode) {
 	case DWC3_MODE_DEVICE:
