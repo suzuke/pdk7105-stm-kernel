@@ -1261,6 +1261,11 @@ static struct stm_pad_config stih416_mmc_pad_config[] = {
 			STIH416_PIO_MMC_OUT(16, 2, 3),   /* MMC Card power */
 			STIH416_PIO_MMC_OUT(13, 6, 3),  /* MMC Reset_n */
 		},
+		.sysconfs_num = 1,
+		.sysconfs = (struct stm_pad_sysconf []) {
+			/* MMC1_BOOT_ENABLE_CONFIG */
+			STM_PAD_SYSCONF(SYSCONF(2582), 0, 0, 0),
+		},
 	},
 };
 
