@@ -1183,7 +1183,8 @@ static int ir_stm_probe(struct platform_device *pdev)
 		enable_irq_wake(irb_irq_wup);
 		pr_info(IR_STM_NAME
 		       ": the driver has wakeup IRQ %d\n", irb_irq_wup);
-	}
+	} else
+		enable_irq_wake(irb_irq);
 
 
 	return ret;
