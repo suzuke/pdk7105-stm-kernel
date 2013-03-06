@@ -1216,8 +1216,11 @@ static int ir_stm_suspend(struct device *dev)
 		ir_stm_scd_config(ir_dev, clk_get_rate(ir_dev->sys_clock));
 		ir_stm_rx_restore(dev);
 		ir_stm_scd_restart(ir_dev);
-	} else
+	} else {
+		writel(0x00, ir_dev->rx_base + IRB_RX_EN);
+		writel(0xff, ir_dev->rx_base + IRB_RX_INT_CLEAR);
 		clk_disable_unprepare(ir_dev->sys_clock);
+	}
 
 	return 0;
 }
@@ -1226,8 +1229,11 @@ static int ir_stm_resume(struct device *dev)
 {
 	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
-	if (!device_may_wakeup(dev))
+	if (!device_may_wakeup(dev)) {
 		clk_prepare_enable(ir_dev->sys_clock);
+		writel(LIRC_STM_ENABLE_IRQ, ir_dev->rx_base + IRB_RX_INT_EN);
+		writel(0x01, ir_dev->rx_base + IRB_RX_EN);
+	}
 
 	ir_stm_hardware_init(ir_dev);
 	ir_stm_rx_restore(dev);
@@ -1257,10 +1263,8 @@ static int ir_stm_restore(struct device *dev)
 {
 	struct stm_ir_device *ir_dev = dev_get_drvdata(dev);
 
-	if (device_may_wakeup(dev))
-		return 0;
-
-	clk_prepare_enable(ir_dev->sys_clock);
+	if (!device_may_wakeup(dev))
+		clk_prepare_enable(ir_dev->sys_clock);
 
 	stm_pad_setup(ir_dev->pad_state);
 
