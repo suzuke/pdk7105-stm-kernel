@@ -415,7 +415,7 @@ static int snd_stm_pcm_reader_hw_params(struct snd_pcm_substream *substream,
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
 	BUG_ON(transfer_size > pcm_reader->dma_max_transfer_size);
 	if (pcm_reader->ver > 3) {
-		BUG_ON(transfer_size != 1 && transfer_size % 2 == 0);
+		BUG_ON(transfer_size != 1 && transfer_size % 2 != 0);
 		BUG_ON(transfer_size >
 		       mask__AUD_PCMIN_FMT__DMA_REQ_TRIG_LMT(pcm_reader));
 		set__AUD_PCMIN_FMT__DMA_REQ_TRIG_LMT(pcm_reader, transfer_size);
