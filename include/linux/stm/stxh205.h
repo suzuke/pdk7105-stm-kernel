@@ -146,4 +146,11 @@ void stxh205_configure_spifsm(struct stm_plat_spifsm_data *data);
 
 void stxh205_configure_nand(struct stm_nand_config *config);
 
+struct stxh205_audio_config {
+	int pcm_player_2_output_enabled;
+	int spdif_player_output_enabled;
+	int pcm_reader_input_enabled;
+};
+void stxh205_configure_audio(struct stxh205_audio_config *config);
+
 #endif

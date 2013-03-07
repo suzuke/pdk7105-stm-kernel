@@ -36,7 +36,7 @@ obj-$(CONFIG_CPU_SUBTYPE_FLI7610)	+= fli7610.o fli7610_clock.o fli7610_audio.o p
 					   fli7610_usb.o fli7610_comms.o mpe41_devices.o \
 					   fli7610_hispeed.o
 obj-$(CONFIG_CPU_SUBTYPE_STX7108)	+= stx7108.o stx7108_clock.o stx7108_audio.o stx7108_comms.o stx7108_hispeed.o stx7108_pci.o pio-control.o
-obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= stxh205.o stxh205_clock.o stxh205_comms.o stxh205_hispeed.o pio-control.o
+obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= stxh205.o stxh205_clock.o stxh205_audio.o stxh205_comms.o stxh205_hispeed.o pio-control.o
 obj-$(CONFIG_MACH_STM_STIG125)		+= pio-control.o stig125/
 obj-$(CONFIG_CPU_SUBTYPE_STIH415)	+= stih415.o stih415_clock.o stih415_audio.o stih415_hispeed.o stih415_usb.o \
 					   stih415_comms.o stih415_pci.o pio-control.o mpe41_devices.o

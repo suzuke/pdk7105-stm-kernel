@@ -40,6 +40,9 @@ snd-stm-fli7610-y := fli7610.o
 obj-$(CONFIG_SND_STM_STX7108) += snd-stm-stx7108.o
 snd-stm-stx7108-y := stx7108.o
 
+obj-$(CONFIG_SND_STM_STXH205) += snd-stm-stxh205.o
+snd-stm-stxh205-y := stxh205.o
+
 obj-$(CONFIG_SND_STM_STIH415) += snd-stm-stih415.o
 snd-stm-stih415-y := stih415.o
 

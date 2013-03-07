@@ -227,10 +227,12 @@ static int __init device_init(void)
 			.routing.ssc1.mtsr = stxh205_ssc2_mtsr_pio9_5, });
 	/* 3: BACKEND (GMII (CN14), CN10, CN37), CN27 */
 	/* Fit jumpers J45 2-3, J46 2-3, J47 2-3 */
+
+#if !defined(CONFIG_STM_B2039_PIO15_AUDIO)
 	stxh205_configure_ssc_i2c(3, &(struct stxh205_ssc_config) {
 			.routing.ssc1.sclk = stxh205_ssc3_sclk_pio15_0,
 			.routing.ssc1.mtsr = stxh205_ssc3_mtsr_pio15_1, });
-
+#endif
 	stxh205_configure_lirc(&(struct stxh205_lirc_config) {
 #ifdef CONFIG_LIRC_STM_UHF
 			.rx_mode = stxh205_lirc_rx_mode_uhf, });
@@ -262,6 +264,15 @@ static int __init device_init(void)
 #elif defined(CONFIG_STM_B2039_B2048A_MMC_EMMC)
 	stxh205_configure_mmc(1);
 #endif
+
+	/* PCM Player #2 (PIO) and PCM Reader are not enabled by default */
+	stxh205_configure_audio(&(struct stxh205_audio_config) {
+#ifdef CONFIG_STM_B2039_PIO15_AUDIO
+			.pcm_player_2_output_enabled = 1,
+			.pcm_reader_input_enabled    = 1,
+#endif
+			.spdif_player_output_enabled = 1 });
+
 	return platform_add_devices(b2039_devices,
 			ARRAY_SIZE(b2039_devices));
 }

@@ -292,6 +292,10 @@ static int __init device_init(void)
 
 	stxh205_configure_spifsm(&b2057_serial_flash);
 
+	/* PCM Player #2 (PIO) and PCM Reader are not enabled */
+	stxh205_configure_audio(&(struct stxh205_audio_config) {
+			.spdif_player_output_enabled = 1 });
+
 	return platform_add_devices(b2057_devices,
 			ARRAY_SIZE(b2057_devices));
 }

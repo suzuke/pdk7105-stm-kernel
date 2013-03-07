@@ -93,6 +93,16 @@ config STM_B2039_J35_PHY_RESET
 	  the use of UART11). This also conflicts with the keyscan and
 	  PWM10 use of this pin.
 
+config STM_B2039_PIO15_AUDIO
+	bool "Use PIO15[7:0] for PCM audio"
+	default n
+	help
+	  Set this option to use PIO15 for audio purposes. This conflicts with
+	  SSC3 and UART2.
+	  The audio assignment for PIO15 is as follows:
+	  - PIO15[3:0] Alt Fn 3 for PCM Player #2 (PIO)
+	  - PIO15[7:4] Alt Fn 6 for PCM Reader
+
 config STM_B2039_MMC_B2048A_CARD
 	bool "B2048A - eMMC/MMC Module"
 	help

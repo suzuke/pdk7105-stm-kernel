@@ -137,6 +137,21 @@ config SND_STM_STIG125
 		If you compile this driver as a module, it will be
 		called snd-stm-stig125.ko
 
+config SND_STM_STXH205
+	tristate "STxH205 support"
+	depends on SND_STM
+	default y if CPU_SUBTYPE_STXH205
+	select SND_STM_PCM_PLAYER
+	select SND_STM_PCM_READER
+	select SND_STM_SPDIF_PLAYER
+	select SND_STM_CONV_DAC_SYSCONF
+	select SND_STM_CONV_I2S_TO_SPDIF
+	help
+		Select this to get ALSA driver for STxH205 chip.
+
+		If you compile this driver as a module, it will be
+		called snd-stm-stxh205.ko
+
 config SND_STM_STIH415
 	tristate "STih415 support"
 	depends on SND_STM

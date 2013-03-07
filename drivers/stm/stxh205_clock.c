@@ -50,5 +50,12 @@ int __init plat_clk_alias_init(void)
 
 	/* LPC */
 	clk_add_alias("lpc_clk", NULL, "CLK_C_LPM", NULL);
+
+	/* ALSA player clocks */
+	clk_add_alias("pcm_player_clk", "snd_pcm_player.0", "CLK_B_PCM0", NULL);
+	clk_add_alias("pcm_player_clk", "snd_pcm_player.1", "CLK_C_PCM1", NULL);
+	clk_add_alias("pcm_player_clk", "snd_pcm_player.2", "CLK_B_PCM2", NULL);
+	clk_add_alias("spdif_player_clk", NULL, "CLK_C_SPDIF", NULL);
+
 	return 0;
 }
