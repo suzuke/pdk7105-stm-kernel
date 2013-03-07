@@ -68,6 +68,7 @@ struct snd_stm_conv_dac_sc {
 	struct sysconf_field *softmute;
 	struct sysconf_field *mute_l;
 	struct sysconf_field *mute_r;
+	struct sysconf_field *npdana;
 	struct sysconf_field *pdana;
 	struct sysconf_field *pndbg;
 
@@ -195,6 +196,8 @@ static int snd_stm_conv_dac_sc_register(struct snd_device *snd_device)
 	/* Take the DAC analog bits out of standby */
 	if (conv_dac_sc->mode)
 		sysconf_write(conv_dac_sc->mode, 0);
+	if (conv_dac_sc->npdana)
+		sysconf_write(conv_dac_sc->npdana, 0);
 	if (conv_dac_sc->pdana)
 		sysconf_write(conv_dac_sc->pdana, 1);
 	if (conv_dac_sc->pndbg)
@@ -231,6 +234,8 @@ static int snd_stm_conv_dac_sc_disconnect(struct snd_device *snd_device)
 	/* Put the DAC analog bits into standby */
 	if (conv_dac_sc->mode)
 		sysconf_write(conv_dac_sc->mode, 0);
+	if (conv_dac_sc->npdana)
+		sysconf_write(conv_dac_sc->npdana, 1);
 	if (conv_dac_sc->pdana)
 		sysconf_write(conv_dac_sc->pdana, 0);
 	if (conv_dac_sc->pndbg)
@@ -328,6 +333,13 @@ static int snd_stm_conv_dac_sc_probe(struct platform_device *pdev)
 		BUG_ON(!conv_dac_sc->mode);
 	}
 
+	if (!FIELD_EMPTY(info->npdana)) {
+		conv_dac_sc->npdana = sysconf_claim(info->npdana.group,
+				info->npdana.num, info->npdana.lsb,
+				info->npdana.msb, "NPDANA");
+		BUG_ON(!conv_dac_sc->npdana);
+	}
+
 	if (!FIELD_EMPTY(info->pdana)) {
 		conv_dac_sc->pdana = sysconf_claim(info->pdana.group,
 				info->pdana.num, info->pdana.lsb,
@@ -402,6 +414,8 @@ static int snd_stm_conv_dac_sc_remove(struct platform_device *pdev)
 		sysconf_release(conv_dac_sc->mute_r);
 	if (conv_dac_sc->mode)
 		sysconf_release(conv_dac_sc->mode);
+	if (conv_dac_sc->npdana)
+		sysconf_release(conv_dac_sc->npdana);
 	if (conv_dac_sc->pdana)
 		sysconf_release(conv_dac_sc->pdana);
 	if (conv_dac_sc->pndbg)
