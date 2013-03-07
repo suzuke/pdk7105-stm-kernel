@@ -148,7 +148,7 @@ static int stxh205_pio_config(unsigned gpio,
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
 			stxh205_pio_controls,
-			ARRAY_SIZE(stxh205_pio_devices), 6);
+			ARRAY_SIZE(stxh205_pio_devices), 7);
 }
 
 #ifdef CONFIG_DEBUG_FS
