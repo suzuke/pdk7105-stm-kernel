@@ -171,8 +171,8 @@ static struct snd_pcm_hardware snd_stm_uniperif_player_pcm_hw = {
 	 * (NSAMPLE) interrupts... Keep it large enough not to kill
 	 * the system... */
 	.period_bytes_min = 4096, /* 1024 frames @ 32kHz, 16 bits, 2 ch. */
-	.period_bytes_max = 81920, /* 2048 frames @ 192kHz, 32 bits, 10 ch. */
-	.buffer_bytes_max = 81920 * 3, /* 3 worst-case-periods */
+	.period_bytes_max = 196608, /* DTSHD: 6144 frms @ 192kHz, 32-bit, 8ch */
+	.buffer_bytes_max = 196608 * 3, /* 3 worst-case-periods */
 };
 
 static struct snd_pcm_hardware snd_stm_uniperif_player_raw_hw = {
