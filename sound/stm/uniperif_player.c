@@ -60,7 +60,11 @@
 #define PARKING_NBFRAMES	4
 #define PARKING_BUFFER_SIZE	128	/* Optimal FDMA transfer is 128-bytes */
 
-#define SPDIF_PREAMBLE_BYTES 8
+#define SPDIF_PREAMBLE_BYTES	8
+
+#define UNIPERIF_FIFO_SIZE	70	/* FIFO is 70 cells deep */
+#define UNIPERIF_FIFO_FRAMES	4	/* FDMA trigger limit in frames */
+
 enum snd_stm_uniperif_spdif_input_mode {
 	SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_NORMAL,
 	SNDRV_STM_UNIPERIF_SPDIF_INPUT_MODE_RAW
@@ -121,7 +125,6 @@ struct snd_stm_uniperif_player {
 	int stream_iec958_status_cnt;
 	int stream_iec958_subcode_cnt;
 
-	int dma_max_transfer_size;
 	struct stm_dma_audio_config dma_config;
 	struct dma_chan *dma_channel;
 	struct dma_async_tx_descriptor *dma_descriptor;
@@ -372,11 +375,11 @@ static int snd_stm_uniperif_player_open(struct snd_pcm_substream *substream)
 		goto error;
 	}
 
-	/* Make the period (so buffer as well) length (in bytes) a multiply
+	/* Make the period (so buffer as well) length (in bytes) a multiple
 	 * of a FDMA transfer bytes (which varies depending on channels
 	 * number and sample bytes) */
 	result = snd_stm_pcm_hw_constraint_transfer_bytes(runtime,
-			player->dma_max_transfer_size * 4);
+			UNIPERIF_FIFO_SIZE * 4);
 	if (result < 0) {
 		dev_err(player->dev, "Failed to constrain buffer bytes");
 		goto error;
@@ -483,8 +486,8 @@ static int snd_stm_uniperif_player_hw_params(
 	struct snd_stm_uniperif_player *player =
 			snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	int buffer_bytes, frame_bytes, transfer_bytes, period_bytes, periods;
-	unsigned int transfer_size;
+	int buffer_bytes, frame_bytes, period_bytes, periods;
+	int transfer_size, transfer_bytes, trigger_limit;
 	struct dma_slave_config slave_config;
 	int result;
 
@@ -515,25 +518,43 @@ static int snd_stm_uniperif_player_hw_params(
 		goto error_buf_alloc;
 	}
 
-	/* Set FDMA transfer size (number of opcodes generated
-	 * after request line assertion) */
+	/*
+	 * SDK2 can perform simultaneous playback using multiple uniperipheral
+	 * players. As each player can support a different number of channels,
+	 * the number of frames that can be stored in the uniperipheral fifo
+	 * varies. Assuming 32-bit samples, 2ch allows 35 frames, 4ch allows
+	 * 17 frames, 6ch allows 11 frames, and 8ch allows 8 frames.
+	 *
+	 * To keep everything synchronised regardless of channel configuration,
+	 * each player should store the same number of frames in it's fifo at
+	 * any given time. In this case we will set the fdma trigger limit and
+	 * transfer size such that we store 4 frames of data.
+	 *
+	 * Despite calculating for 32-bit samples this also works for 16-bit,
+	 * (although number of frames obviously doubles). This only works for
+	 * 16/32-bit sample sizes.
+	 */
 
-	frame_bytes = snd_pcm_format_physical_width(params_format(hw_params)) *
-			params_channels(hw_params) / 8;
-	transfer_bytes = snd_stm_pcm_transfer_bytes(frame_bytes,
-			player->dma_max_transfer_size * 4);
-	transfer_size = transfer_bytes / 4;
+	/* Calculate transfer size (in fifo cells and bytes) for frame count */
+	transfer_size = params_channels(hw_params) * UNIPERIF_FIFO_FRAMES;
+	transfer_bytes = transfer_size * 4;
 
-	dev_dbg(player->dev, "FDMA trigger limit %d", transfer_size);
+	/* Calculate number of empty cells available before asserting DREQ */
+	trigger_limit = UNIPERIF_FIFO_SIZE - transfer_size;
+	BUG_ON(trigger_limit % 2 != 0);
 
+	/* Fifo utilisation should not cross period or buffer boundary */
+	BUG_ON(period_bytes % transfer_bytes != 0);
 	BUG_ON(buffer_bytes % transfer_bytes != 0);
-	BUG_ON(transfer_size > player->dma_max_transfer_size);
 
-	BUG_ON(transfer_size != 1 && transfer_size % 2 != 0);
-	BUG_ON(transfer_size >
+	/* Trigger limit must be an even number */
+	BUG_ON(trigger_limit != 1 && transfer_size % 2 != 0);
+	BUG_ON(trigger_limit >
 			mask__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(player));
 
-	set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(player, transfer_size);
+	dev_dbg(player->dev, "FDMA trigger limit %d", trigger_limit);
+
+	set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(player, trigger_limit);
 
 	/* Save the buffer bytes and period bytes for when start dma */
 	player->buffer_bytes = buffer_bytes;
@@ -550,6 +571,10 @@ static int snd_stm_uniperif_player_hw_params(
 		dev_err(player->dev, "Failed to configure DMA channel");
 		goto error_dma_config;
 	}
+
+	/* Calculate bytes per frame to keep parking buffer to minimum */
+	frame_bytes = snd_pcm_format_physical_width(params_format(hw_params)) *
+			params_channels(hw_params) / 8;
 
 	/* Set the parking configuration (actually set in 'prepare' fn) */
 	player->dma_park_config.sub_periods = PARKING_SUBBLOCKS;
@@ -2194,8 +2219,6 @@ static int snd_stm_uniperif_player_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed IRQ request");
 		return result;
 	}
-
-	player->dma_max_transfer_size = 40;
 
 	/* Get player capabilities */
 
