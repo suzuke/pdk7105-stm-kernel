@@ -1,0 +1,15 @@
+config MTT
+	bool "Multi-Target Trace (MTT) infrastructure support"
+	select KPROBES
+	select DEBUG_FS
+	select RELAY
+	select SYSFS
+	select KALLSYMS
+	default y
+	help
+	  MTT provides a trace infrastructure with an API and binary
+	  data format common to ARM/ST40/ST2xx/XP70. It also provides
+	  support for kptraceV4. ST kernel code may use this API
+	  (mtt_trace, mtt_print) for critical trace data, or when
+	  postprocessing is wanted. See "Documentation/mtt.txt"
+	  MTT is also the interface for the System Trace Module IP.

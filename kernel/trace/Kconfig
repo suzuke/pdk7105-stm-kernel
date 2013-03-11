@@ -500,6 +500,7 @@ config KPTRACE
 	select RELAY
 	select SYSFS
 	select KALLSYMS
+	select MTT
 	help
 	  KPTrace is a kprobes-based dynamic trace tool. It provides a full
 	  set of optional pre-defined tracepoints, plus a simple way to add
@@ -514,6 +515,8 @@ config KPTRACE_SYNC
         mutex and semaphore usage), certain key functions like mutex_lock
         must not be inlined. This may adversely affect system performance,
         and so this option must be used with care.
+
+config MTT
 
 endif # TRACING_SUPPORT
 

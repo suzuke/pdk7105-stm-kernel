@@ -28,6 +28,7 @@
 #include <linux/stm/amba_bridge.h>
 #include <linux/stm/mmc.h>
 #include <linux/stm/device.h>
+#include <linux/stm/systrace.h>
 
 /*** Platform definition helpers ***/
 

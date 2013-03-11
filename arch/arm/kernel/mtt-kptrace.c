@@ -1,5 +1,7 @@
 /*
- *  KPTrace - Kprobes-based tracing
+ *  Multi-Target Trace solution
+ *
+ *  MTT - ARCHITECTURE SPECIFIC CODE FOR ARM.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2
@@ -14,11 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) STMicroelectronics, 2008, 2012
- *
- * 2007-Jul	Created by Chris Smith <chris.smith@st.com>
- * 2008-Aug     Chris Smith <chris.smith@st.com> added a sysfs interface for
- *              user space tracing.
+ * Copyright (C) STMicroelectronics, 2011
  */
 #include <linux/module.h>
 #include <linux/kprobes.h>
@@ -28,76 +26,42 @@
 #include <linux/debugfs.h>
 #include <linux/futex.h>
 #include <linux/version.h>
-#include <trace/kptrace.h>
 #include <net/sock.h>
 #include <asm/sections.h>
 
-#include <asm/kptrace_target.h>
+#include <linux/mtt/kptrace.h>
+#include <asm/mtt-kptrace.h>
 
 /*
  * target specific context switch handler
  * */
 static int context_switch_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
-	char tbuf[KPTRACE_SMALL_BUF];
-	int prev, now;
-	now = current->pid;
-	prev = ((struct task_struct *)regs->ARG1)->pid;
+	uint32_t prev;
+	uint32_t new;
 
-	snprintf(tbuf, KPTRACE_SMALL_BUF, "C %d %d", prev, now);
-	kptrace_write_trace_record(p, regs, tbuf);
-	return 0;
+	/*look for the current "now" PID in the contextID field !*/
+	prev = ((struct task_struct *)regs->REG_ARG1)->pid;
+	new = current_thread_info()->task->pid;
+
+	return mtt_cswitch(prev, new);
 }
-
-#ifdef CONFIG_SMP
-static int ipi_pre_handler(struct kprobe *p, struct pt_regs *regs)
-{
-	char tbuf[KPTRACE_SMALL_BUF];
-	snprintf(tbuf, KPTRACE_SMALL_BUF, "IP %.8x", (int)regs->PC);
-
-	kptrace_write_trace_record(p, regs, tbuf);
-	return 0;
-}
-
-static int ipi_rp_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-	kptrace_write_trace_record_no_callstack("ip");
-	return 0;
-}
-#endif
 
 /*
  * target specific core events
  * */
-void init_core_event_logging(struct kp_tracepoint_set *set)
+void arch_init_core_event_logging(struct kp_tracepoint_set *set)
 {
 	/* get context switches before finish_task_switch on ARM */
 	kptrace_create_tracepoint(set, "finish_task_switch",
 			context_switch_pre_handler, NULL);
-
-	kptrace_create_tracepoint(set, "gt_clockevent_interrupt",
-			irq_pre_handler, irq_rp_handler);
-
-#ifdef CONFIG_SMP
-	kptrace_create_tracepoint(set, "twd_handler", irq_pre_handler,
-					irq_rp_handler);
-	kptrace_create_tracepoint(set, "scheduler_ipi", ipi_pre_handler,
-					ipi_rp_handler);
-	kptrace_create_tracepoint(set, "generic_smp_call_function_interrupt",
-					ipi_pre_handler, ipi_rp_handler);
-	kptrace_create_tracepoint(set,
-			"generic_smp_call_function_single_interrupt",
-			ipi_pre_handler, ipi_rp_handler);
-#endif
 }
 
- /*
-  * target specific syscalls
-  * */
-void init_syscall_logging(struct kp_tracepoint_set *set)
+/*
+ * target specific syscalls
+ * */
+void arch_init_syscall_logging(struct kp_tracepoint_set *set)
 {
-	/*CALL(sys_sigaltstack) TODO */
-
 	CALL_ABI(sys_pread64, sys_oabi_pread64)
 	CALL_ABI(sys_pwrite64, sys_oabi_pwrite64)
 	CALL_ABI(sys_truncate64, sys_oabi_truncate64)
@@ -140,15 +104,8 @@ void init_syscall_logging(struct kp_tracepoint_set *set)
 #undef ABI
 }
 
-void init_memory_logging(struct kp_tracepoint_set *set)
+void arch_init_memory_logging(struct kp_tracepoint_set *set)
 {
 	kptrace_create_tracepoint(set, "__alloc_pages_nodemask",
 			alloc_pages_pre_handler, alloc_pages_rp_handler);
 }
-
-/**/
-struct kp_target_t kp_target_arm = {
-	.init_core_event_logging = init_core_event_logging,
-	.init_syscall_logging = init_syscall_logging,
-	.init_memory_logging = init_memory_logging
-};

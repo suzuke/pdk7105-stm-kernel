@@ -1,8 +1,5 @@
-#ifndef _LINUX_KPTRACE_ARM_H
-#define _LINUX_KPTRACE_ARM_H
 /*
  *  KPTrace - KProbes-based tracing
- *  include/linux/kptrace_arm.h
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2
@@ -19,19 +16,15 @@
  *
  * Copyright (C) STMicroelectronics, 2010
  */
+#ifndef _MTT_ARCH_SH_H_
+#define _MTT_ARCH_SH_H_
 
-#define PC		ARM_pc
-#define SP		ARM_sp
-#define RET		uregs[0]
-#define ARG0		uregs[0]
-#define ARG1		uregs[1]
-#define ARG2		uregs[2]
-#define ARG3		uregs[3]
+#define REG_EIP	pc
+#define REG_SP	regs[15]
+#define REG_RET	regs[0]
+#define REG_ARG0	regs[4]
+#define REG_ARG1	regs[5]
+#define REG_ARG2	regs[6]
+#define REG_ARG3	regs[7]
 
-extern struct kp_target_t kp_target_arm ;
-
-#ifdef __DEFINE_KP_TARGET__
-static struct kp_target_t *kp_target = &kp_target_arm;
-#endif /*__DEFINE_KP_TARGET__*/
-
-#endif /* _LINUX_KPTRACE_ARM_H */
+#endif /* _MTT_ARCH_SH_H_ */
