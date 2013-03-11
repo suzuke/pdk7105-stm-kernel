@@ -1190,12 +1190,6 @@ static struct platform_device stih415_systrace_device = {
 	},
 };
 
-static int __init stih415_setup_systrace(void)
-{
-	return platform_device_register(&stih415_systrace_device);
-}
-device_initcall(stih415_setup_systrace);
-
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stih415_devices[] __initdata = {
@@ -1210,6 +1204,7 @@ static struct platform_device *stih415_devices[] __initdata = {
 	&stih415_temp_device[1],
 	&stih415_devhwrandom_device,
 	&stih415_lpc_device,
+	&stih415_systrace_device,
 };
 
 static int __init stih415_devices_setup(void)

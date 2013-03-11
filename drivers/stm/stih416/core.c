@@ -1076,12 +1076,6 @@ static struct platform_device stih416_systrace_device = {
 	},
 };
 
-static int __init stih416_setup_systrace(void)
-{
-	return platform_device_register(&stih416_systrace_device);
-}
-device_initcall(stih416_setup_systrace);
-
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stih416_devices[] __initdata = {
@@ -1096,6 +1090,8 @@ static struct platform_device *stih416_devices[] __initdata = {
 	&stih416_sas_fdma_devices[0],
 	&stih416_sas_fdma_devices[1],
 	&stih416_sas_fdma_xbar_device,
+
+	&stih416_systrace_device,
 };
 
 static int __init stih416_devices_setup(void)
