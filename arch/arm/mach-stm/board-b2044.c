@@ -73,6 +73,15 @@ static void __init b2044_init(void)
 
 	sti125_configure_sata(1);
 
+	stig125_configure_miphy(&(struct stig125_miphy_config){
+			.id = 2,
+			.mode = PCIE_MODE,
+			.iface = UPORT_IF,
+			});
+
+	stig125_configure_pcie(1);
+	stig125_configure_pcie(2);
+
 	stig125_configure_ssc_i2c(STIG125_TELSS_SSC, 100);
 	stig125_configure_ssc_i2c(STIG125_HDMI_SSC, 100);
 	stig125_configure_ssc_i2c(STIG125_FE_SSC, 100);

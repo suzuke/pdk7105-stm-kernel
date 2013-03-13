@@ -125,6 +125,8 @@ void stig125_configure_miphy(struct stig125_miphy_config *cfg);
 
 void sti125_configure_sata(unsigned int sata_port);
 
+void stig125_configure_pcie(int controller);
+
 void stig125_reset(char mode, const char *cmd);
 
 struct stig125_audio_config {

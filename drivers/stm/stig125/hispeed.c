@@ -464,9 +464,9 @@ static void stig125_sata_mp_select(int port)
 {
 }
 
-static enum miphy_mode stig125_miphy_modes[2];
+static enum miphy_mode stig125_miphy_modes[4];
 
-struct stm_plat_pcie_mp_data stig125_sata_mp_platform_data[2] = {
+struct stm_plat_pcie_mp_data stig125_sata_mp_platform_data[3] = {
 	{
 		.style_id = ID_MIPHYA40X,
 		.miphy_first = 0,
@@ -477,8 +477,16 @@ struct stm_plat_pcie_mp_data stig125_sata_mp_platform_data[2] = {
 		.style_id = ID_MIPHYA40X,
 		.miphy_first = 1,
 		.miphy_count = 1,
-		.miphy_modes = stig125_miphy_modes,
+		.miphy_modes = stig125_miphy_modes + 1,
 		.mp_select = stig125_sata_mp_select,
+		.ten_bit_symbols = 1,
+	}, {
+		.style_id = ID_MIPHYA40X,
+		.miphy_first = 2,
+		.miphy_count = 2,
+		.miphy_modes = stig125_miphy_modes + 2,
+		.mp_select = stig125_sata_mp_select,
+		.ten_bit_symbols = 1,
 	},
 };
 
@@ -488,15 +496,49 @@ struct stm_plat_pcie_mp_data stig125_sata_mp_platform_data[2] = {
 		.id	= _id,						\
 		.num_resources = 1,					\
 		.resource = (struct resource[]) {			\
-		  STM_PLAT_RESOURCE_MEM_NAMED("pcie-uport", _iomem, 0xff),\
+		  STM_PLAT_RESOURCE_MEM_NAMED("sata-uport", _iomem, 0xff),\
 			},						\
 		.dev.platform_data =					\
 			&stig125_sata_mp_platform_data[_id],		\
 	}
 
-static struct platform_device stig125_sata_mp_devices[2] = {
+#define PCIE_MIPHY(_id, _iomem)						\
+	{								\
+		.name = "pcie-mp",					\
+		.id	= _id,						\
+		.num_resources = 2,					\
+		.resource = (struct resource[]) {			\
+		  STM_PLAT_RESOURCE_MEM_NAMED("pcie-uport", _iomem, 0xff),\
+		  STM_PLAT_RESOURCE_MEM_NAMED("pcie-pipe", _iomem + 0x2000,\
+					      0x10b0),			\
+			},						\
+		.dev.platform_data =					\
+			&stig125_sata_mp_platform_data[_id],		\
+	}
+
+
+#define MIPHY(_id, _iomem_sata, _iomem_pcie)				\
+	{								\
+		.name = "pcie-mp",					\
+		.id     = _id,						\
+		.num_resources = 3,					\
+		.resource = (struct resource[]) {			\
+			STM_PLAT_RESOURCE_MEM_NAMED("sata-uport",	\
+						    _iomem_sata, 0xff),	\
+			STM_PLAT_RESOURCE_MEM_NAMED("pcie-uport",	\
+						    _iomem_pcie, 0xff),	\
+			STM_PLAT_RESOURCE_MEM_NAMED("pcie-pipe",	\
+					_iomem_pcie + 0x2000, 0x10b0),	\
+		},							\
+		.dev.platform_data =					\
+			&stig125_sata_mp_platform_data[_id],		\
+	}
+
+
+static struct platform_device stig125_sata_mp_devices[3] = {
 	SATA_MIPHY(0, 0xfefb2000),
-	SATA_MIPHY(1, 0xfefb6000),
+	MIPHY(1, 0xfefb6000, 0xfef24000),
+	PCIE_MIPHY(2, 0xfef34000),
 };
 
 void stig125_configure_miphy(struct stig125_miphy_config *config)
@@ -504,28 +546,24 @@ void stig125_configure_miphy(struct stig125_miphy_config *config)
 	switch (config->id) {
 	case 0:
 		stig125_miphy_modes[config->id] = SATA_MODE;
-		if (config->iface == UPORT_IF)
-			platform_device_register(&stig125_sata_mp_devices[0]);
+		platform_device_register(&stig125_sata_mp_devices[0]);
 		break;
 	case 1:
 		stig125_miphy_modes[config->id] = config->mode;
-		switch (config->mode) {
-		case SATA_MODE:
-			if (config->iface == UPORT_IF) {
-				stig125_sata_mp_platform_data[1].rx_pol_inv =
+		stig125_sata_mp_platform_data[1].ten_bit_symbols = 1;
+		stig125_sata_mp_platform_data[1].rx_pol_inv =
 						config->rx_pol_inv;
-				stig125_sata_mp_platform_data[1].tx_pol_inv =
+		stig125_sata_mp_platform_data[1].tx_pol_inv =
 						config->tx_pol_inv;
-			}
-			break;
-		case PCIE_MODE:
-			/* TODO */
-			break;
-		}
-		/* Only tested on UPort I/f */
-		if (config->iface == UPORT_IF)
-			platform_device_register(&stig125_sata_mp_devices[1]);
+		platform_device_register(&stig125_sata_mp_devices[1]);
 		break;
+	case 2:
+		stig125_miphy_modes[2] = PCIE_MODE;
+		stig125_miphy_modes[3] = PCIE_MODE;
+		stig125_sata_mp_platform_data[2].ten_bit_symbols = 1;
+		platform_device_register(&stig125_sata_mp_devices[2]);
+		break;
+
 	default:
 		BUG_ON(1);
 	}
