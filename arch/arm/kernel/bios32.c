@@ -414,9 +414,10 @@ static void __init pcibios_init_hw(struct hw_pci *hw)
 {
 	struct pci_sys_data *sys = NULL;
 	int ret;
-	int nr, busnr;
+	int nr;
+	static int busnr;
 
-	for (nr = busnr = 0; nr < hw->nr_controllers; nr++) {
+	for (nr = 0 ; nr < hw->nr_controllers; nr++) {
 		sys = kzalloc(sizeof(struct pci_sys_data), GFP_KERNEL);
 		if (!sys)
 			panic("PCI: unable to allocate sys data!");
