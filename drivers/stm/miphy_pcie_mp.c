@@ -202,6 +202,7 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 	miphy_dev->tx_pol_inv = data->tx_pol_inv;
 	miphy_dev->rx_pol_inv = data->rx_pol_inv;
 	miphy_dev->sata_gen = data->sata_gen;
+	miphy_dev->ten_bit_symbols = data->ten_bit_symbols;
 	miphy_dev->parent = &pdev->dev;
 	miphy_dev->reg_write = stm_pcie_mp_register_write;
 	miphy_dev->reg_read = stm_pcie_mp_register_read;

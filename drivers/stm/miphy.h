@@ -30,8 +30,10 @@ struct stm_miphy_device {
 	struct device *parent;
 	int miphy_first;
 	int miphy_count;
-	int tx_pol_inv;
-	int rx_pol_inv;
+	unsigned int tx_pol_inv:1;
+	unsigned int rx_pol_inv:1;
+	unsigned int ten_bit_symbols:1; /* Apply 10 bit sequence */
+	int ten_bit_done:1; /* Apply to one port only */
 	enum miphy_sata_gen sata_gen;
 	char *style_id;
 	enum miphy_if_type type;

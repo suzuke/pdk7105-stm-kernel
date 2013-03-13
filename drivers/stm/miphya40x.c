@@ -147,6 +147,33 @@ static int miphya40x_sata_start(struct stm_miphy *miphy)
 
 static int miphya40x_pcie_start(struct stm_miphy *miphy)
 {
+	/*
+	 * So far only thing we have to do for PCIe is apply the
+	 * 10 bit symbols settings for the pipe
+	 */
+	if (!miphy->dev->ten_bit_symbols ||
+	    miphy->dev->ten_bit_done)
+		return 0;
+
+	/* Change PIPE reset sequence length from 13 to 14 */
+	stm_miphy_pipe_write(miphy, 0x20, 0Xe);
+	/*
+	 * Make Rx symbol lock on 10-bit symbols, not 20-bit as default
+	 * Broadcast to all MiPHY lanes
+	 */
+	stm_miphy_pipe_write(miphy, 0x1034, 0x20200b);
+	/* Pulse soft reset of PCS */
+	stm_miphy_pipe_write(miphy, 0x00, 0x01);
+	stm_miphy_pipe_write(miphy, 0x00, 0x00);
+
+	/*
+	 * We only apply this 10 bit sequence to the first port to be brought
+	 * up on the miphy. The Pipe settings are broadcast to the other lanes,
+	 * so we should only really do it once, although repeating it seems to
+	 * do no harm.
+	 */
+	miphy->dev->ten_bit_done = 1;
+
 	return 0;
 }
 
