@@ -37,11 +37,18 @@
 
 static void __init b2000_init_early(void)
 {
+	int console = 2;
+
 	printk("STMicroelectronics STiH415 (Orly) MBoard initialisation\n");
 
 	stih415_early_device_init();
 
-	stih415_configure_asc(2, &(struct stih415_asc_config) {
+#if defined(CONFIG_MACH_STM_B2000_B2011A_AUDIO)
+	/* ASC2 pads conflict with audio pads - use ASC4 */
+	console = 4;
+#endif
+
+	stih415_configure_asc(console, &(struct stih415_asc_config) {
 			.hw_flow_control = 0,
 			.is_console = 1 });
 }
@@ -365,9 +372,11 @@ static void __init b2000_init(void)
 	stih415_configure_ssc_i2c(STIH415_SSC(1),
 			&(struct stih415_ssc_config) {.i2c_speed = 100,});
 
+#if !defined(CONFIG_MACH_STM_B2000_B2011A_AUDIO)
 	/* Frontend I2C, make sure J17-J20 are configured accordingly */
 	stih415_configure_ssc_i2c(STIH415_SSC(3),
 			&(struct stih415_ssc_config) {.i2c_speed = 100,});
+#endif
 
 	/* Backend I2C, make sure J50, J51 are configured accordingly */
 	stih415_configure_ssc_i2c(STIH415_SBC_SSC(0),
@@ -405,6 +414,13 @@ static void __init b2000_init(void)
 	stih415_configure_spifsm(&b2000_serial_flash);
 
 	stih415_configure_audio(&(struct stih415_audio_config) {
+#ifdef CONFIG_MACH_STM_B2000_B2011A_AUDIO_OUT_PIO_MODE
+			.uni_player_1_pcm_mode =
+				stih415_uni_player_1_pcm_2_channels,
+#endif
+#ifdef CONFIG_MACH_STM_B2000_B2011A_AUDIO_INP_PIO_MODE
+			.uni_reader_0_spdif_enabled = 1,
+#endif
 			.uni_player_3_spdif_enabled = 1, });
 
 	stih415_configure_keyscan(&(struct stm_keyscan_config) {

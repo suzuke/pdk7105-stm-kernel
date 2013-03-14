@@ -155,4 +155,48 @@ config	MACH_STM_B2000_B2048_EMMC
 
 endchoice
 
+config	MACH_STM_B2000_B2011A_AUDIO
+	bool "B2011A: enable audio support"
+	default n
+	help
+	  The B2011A daughter board allows audio input via SPDIF and 8-channel
+	  audio output via external DAC.
+
+	  Unfortunately the PIOs used by the audio input and output are shared
+	  so only one may be active at a time. Even worse, the same PIOs are
+	  also shared with I2C and ASC/UART.
+
+	  By default, the PIOs are selected for I2C and ASC/UART use. Selecting
+	  this option will allow you to use the PIOs for either audio input or
+	  audio output.
+
+choice
+	prompt  "Select B2011A audio mode"
+	default MACH_STM_B2000_B2011A_AUDIO_INP_PIO_MODE
+	depends on MACH_STM_B2000_B2011A_AUDIO
+
+config MACH_STM_B2000_B2011A_AUDIO_INP_PIO_MODE
+	bool "Audio input mode"
+	depends on MACH_STM_B2000_B2011A_AUDIO
+	help
+	  Enable uniperipheral reader input from B2011A
+
+	  B2000 Jumper settings should be changed as follows:
+	   - J23 1-2 (to select PIO13[0] for AUDPCMLRCLK)
+	   - J30 1-2 (to select PIO13[2] for AUDPCMSCLK)
+
+config MACH_STM_B2000_B2011A_AUDIO_OUT_PIO_MODE
+	bool "Audio output mode"
+	depends on MACH_STM_B2000_B2011A_AUDIO
+	help
+	  Enable uniperipheral player output to B2011A
+
+	  B2000 Jumper settings should be changed as follows:
+	   - J21 ON  (to select PCMOUTD1/PCMOUTD2)
+	   - J23 1-2 (to select PIO13[0] for AUDPCMLRCLK)
+	   - J24 2-3 (to select PCMOUTD0)
+	   - J30 1-2 (to select PIO13[2] for AUDPCMSCLK)
+
+endchoice
+
 endif

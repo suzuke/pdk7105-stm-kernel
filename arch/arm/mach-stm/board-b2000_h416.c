@@ -36,11 +36,18 @@
 
 static void __init b2000_init_early(void)
 {
+	int console = STIH416_ASC(2);
+
 	pr_info("STMicroelectronics STiH416 (Orly-2) MBoard initialisation\n");
 
 	stih416_early_device_init();
 
-	stih416_configure_asc(STIH416_ASC(2), &(struct stih416_asc_config) {
+#if defined(CONFIG_MACH_STM_B2000_B2011A_AUDIO)
+	/* ASC2 pads conflict with audio pads - use ASC0 */
+	console = STIH416_SBC_ASC(0);
+#endif
+
+	stih416_configure_asc(console, &(struct stih416_asc_config) {
 			.hw_flow_control = 0,
 			.is_console = 1 });
 }
@@ -359,9 +366,11 @@ static void __init b2000_init(void)
 	stih416_configure_ssc_i2c(STIH416_SSC(1),
 			&(struct stih416_ssc_config) {.i2c_speed = 100,});
 
+#if !defined(CONFIG_MACH_STM_B2000_B2011A_AUDIO)
 	/* Frontend I2C, make sure J17-J20 are configured accordingly */
 	stih416_configure_ssc_i2c(STIH416_SSC(3),
 			&(struct stih416_ssc_config) {.i2c_speed = 100,});
+#endif
 
 	/* Backend I2C, make sure J50, J51 are configured accordingly */
 	stih416_configure_ssc_i2c(STIH416_SBC_SSC(0),
@@ -428,6 +437,16 @@ static void __init b2000_init(void)
 			      .port = 1,
 			      .reset_gpio = -1 /* stih416_gpio(106,5) */});
 
+	/* Configure audio interfaces */
+	stih416_configure_audio(&(struct stih416_audio_config) {
+#ifdef CONFIG_MACH_STM_B2000_B2011A_AUDIO_OUT_PIO_MODE
+			.uni_player_1_pcm_mode =
+				stih416_uni_player_1_pcm_2_channels,
+#endif
+#ifdef CONFIG_MACH_STM_B2000_B2011A_AUDIO_INP_PIO_MODE
+			.uni_reader_0_spdif_enabled = 1,
+#endif
+			.uni_player_3_spdif_enabled = 1, });
 
 	platform_add_devices(b2000_devices,
 		ARRAY_SIZE(b2000_devices));
