@@ -29,6 +29,14 @@ config MACH_STM_STIG125
 	help
 	  Include support for a generic STiG125 (Barcelona) platform.
 
+config MACH_STM_STIG125_BOARD
+	bool "Generic board support for StiG125 based boards via Device trees"
+	depends on OF
+	select MACH_STM_STIG125
+	help
+	Include support for a Generic Board based on device trees for
+	StiG125
+
 config MACH_STM_STIH415
 	def_bool n
 	select CPU_SUBTYPE_STIH415
