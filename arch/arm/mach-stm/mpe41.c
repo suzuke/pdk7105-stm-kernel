@@ -34,7 +34,6 @@
 #include <asm/mach/time.h>
 #include <mach/mpe41.h>
 #include <mach/hardware.h>
-#include <mach/irqs.h>
 
 #ifdef CONFIG_CPU_SUBTYPE_STIH415
 #include <linux/stm/stih415.h>
@@ -97,10 +96,6 @@ static void __init mpe41_timer_init(void)
 struct sys_timer mpe41_timer = {
 	.init		= mpe41_timer_init,
 };
-
-#ifdef CONFIG_SMP
-void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(MPE41_SCU_BASE));
-#endif
 
 #ifdef CONFIG_HW_PERF_EVENTS
 
