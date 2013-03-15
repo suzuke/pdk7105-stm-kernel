@@ -1,0 +1,16 @@
+
+===============================================================================
+			stm socs
+===============================================================================
+
+Optional properties:
+	power-on-gpio	: Board specific power-on pios.
+	id		: Should be a sysconf where chip  id can be read from.
+	reset		: should be a sysconf or soc specific information to reset it.
+Example:
+	soc{
+		id		= <&stih415_sysconf 427 0 31>;
+		reset		= <&stih415_sysconf 11 0 0>;
+		...
+		...
+	};

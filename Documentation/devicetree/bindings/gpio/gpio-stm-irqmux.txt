@@ -1,0 +1,23 @@
+
+===============================================================================
+STM GPIO irqmux bindings
+===============================================================================
+
+Required properties:
+- compatible:
+  - "st,gpio-irqmux" for all STMicroelectronics gpio irqmux
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- first-port 	First GPIO bank where this interrupt belongs to.
+- ports		Number of GPIOS banks to with this interrupt belongs to.
+
+Example:
+
+gpio-irqmux@fe61f080{
+	compatible	= "st,gpio-irqmux", "simple-bus";
+	reg =	<0xfe61f080 0x4>;
+	interrupts = <0 180 0x0>;
+	first-port = <0>;
+	ports = <5>;
+};

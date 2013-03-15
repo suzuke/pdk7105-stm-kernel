@@ -1,0 +1,28 @@
+
+Here is the list of steps to use device trees on stlinux via MC2.
+
+Step 1:
+stlinux_arm_boot: Make sure you pickup the latest on of this script that support device trees.
+If you have the new script you can see two new options -dtb and -dtbaddr options.
+
+Step 2:
+Install host device tree compiler tools .
+/opt/STM/STLinux-2.4/host/bin/stmyum install stlinux24-host-dtc.i386
+
+Step 3: Build kernel as usual.
+make ARCH=arm CROSS_COMPILE=armv7-linux-  b2000_defconfig
+make ARCH=arm CROSS_COMPILE=armv7-linux-  vmlinux
+
+Step 4: Also build the device tree blob:
+make ARCH=arm CROSS_COMPILE=armv7-linux- b2000.dtb
+
+Step 5: pass the blob to the startup script using -dtb option.
+ex:
+stlinux_arm_boot  -t
+<MC2-IP>:a9_0,no_convertor_abort=1,stmc_core_param_stop_on_exception=0,stmc_core_param_stop_on_svc=0,stmc_core_param_coresight_debug_flags=0 -dtb arch/arm/boot/b2000.dtb -b vmlinux -- <NORMAL KERNEL PARAMS >
+
+Care should be taken here on where the dtb(device tree blob) is loaded into the memory.
+Without specifying -dtbaddr option, the script loads dtb at 128K offset from higher numerical address.
+
+
+
