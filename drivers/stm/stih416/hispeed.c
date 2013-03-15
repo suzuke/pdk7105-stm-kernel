@@ -23,6 +23,10 @@
 #include <linux/phy.h>
 
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 #include "../pio-control.h"
 
 
@@ -1348,6 +1352,7 @@ void __init stih416_configure_mmc(int port, int is_emmc)
 			"mmc_reset");
 	platform_device_register(&stih416_mmc_device[port]);
 }
+#endif /* CONFIG_OF */
 
 /*
  * AHCI support

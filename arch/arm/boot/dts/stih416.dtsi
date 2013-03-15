@@ -1,0 +1,1751 @@
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+#include "stm-mpe42.dtsi"
+#include "stih416-eth.dtsi"
+#include "stih416-padcfg.dtsi"
+/ {
+	compatible = "st,stih416";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		cpu@0 {
+			compatible = "arm,cortex-a9";
+		};
+		cpu@1 {
+			compatible = "arm,cortex-a9";
+		};
+	};
+
+	intc: interrupt-controller@fffe1000 {
+		compatible = "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0xfffe1000 0x1000>,
+		      <0xfffe0100 0x100>;
+	};
+
+	timers {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&intc>;
+		compatible = "simple-bus";
+		ranges;
+
+		timer@fffe0600 {
+			compatible = "arm,cortex-a9-twd-timer";
+			reg = <0xfffe0600 0x100>;
+			interrupts = <1 13 0x04>;
+		};
+
+		timer@fffe0200 {
+			compatible = "arm,cortex-a9-global-timer";
+			reg = <0xfffe0200 0x100>;
+			interrupts = <1 11 0x04>;
+		};
+	};
+
+	L2: cache-controller {
+		compatible = "arm,pl310-cache";
+	        reg = <0xfffe2000 0x1000>;
+	        arm,data-latency = <3 3 3>;
+		arm,tag-latency = <2 2 2>;
+		cache-unified;
+		cache-level = <2>;
+	};
+	pmus {
+		arm-pmu {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			#interrupt-cells = <3>;
+			interrupt-parent = <&intc>;
+			compatible = "arm,cortex-a9-pmu";
+			interrupts = <1 31 0x04>;
+			st,device-config = <&st_pmu_device_config>;
+		};
+	};
+
+	st_pmu_device_config: pmu-dev-config {
+		#stm-sysconf-cells = <4>;
+		device-seqs = <&pmu_dev_seqs>;
+		sysconfs{
+			A9_IRQ_EN = <&sysconf 7543 0 5>;
+			IRQ0_N_SEL = <&sysconf 7543 14 16>;
+			IRQ1_N_SEL = <&sysconf 7543 17 19>;
+		};
+	};
+
+	pmu_dev_seqs: pmu-dev-seqs{
+		init-seq{
+			step0 {
+				A9_IRQ_EN = <0xc>;
+				type = "sysconf";
+			};
+			step1 {
+				IRQ0_N_SEL = <0x5>;
+				type = "sysconf";
+			};
+			step2 {
+				IRQ1_N_SEL = <0x6>;
+				type = "sysconf";
+			};
+		};
+	};
+
+        aliases {
+		fdma0 = &fdma0_mpe;
+		fdma1 = &fdma1_mpe;
+		fdma2 = &fdma2_mpe;
+		fdma3 = &fdma0_sas;
+		fdma4 = &fdma1_sas;
+		fdmaxbar0 = &fdma_xbar_mpe;
+		fdmaxbar1 = &fdma_xbar_sas;
+	};
+
+	gpio-controllers {
+                 #address-cells = <1>;
+                 #size-cells = <1>;
+                 gpio-controller;
+                 ranges;
+                 PIO0: PIO@fe610000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe610000 0x100>;
+			 bank-name  = "PIO0";
+		};
+                 PIO1: PIO@fe611000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe611000 0x100>;
+			 bank-name  = "PIO1";
+		};
+                 PIO2: PIO@fe612000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe612000 0x100>;
+			 bank-name  = "PIO2";
+		};
+                 PIO3: PIO@fe613000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe613000 0x100>;
+			 bank-name  = "PIO3";
+		};
+                 PIO4: PIO@fe614000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe614000 0x100>;
+			 bank-name  = "PIO4";
+		};
+                 PIO40: PIO@fe615000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe615000 0x100>;
+			 bank-name  = "PIO40";
+		};
+                 /* 5-12: PIO_FRONT */
+                 PIO5: PIO@fee00000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee00000 0x100>;
+			 bank-name  = "PIO5";
+		};
+                 PIO6: PIO@fee01000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee01000 0x100>;
+			 bank-name  = "PIO6";
+		};
+                 PIO7: PIO@fee02000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee02000 0x100>;
+			 bank-name  = "PIO7";
+		};
+                 PIO8: PIO@fee03000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee03000 0x100>;
+			 bank-name  = "PIO8";
+		};
+                 PIO9: PIO@fee04000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee04000 0x100>;
+			 bank-name  = "PIO9";
+		};
+                 PIO10: PIO@fee05000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee05000 0x100>;
+			 bank-name  = "PIO10";
+		};
+                 PIO11: PIO@fee06000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee06000 0x100>;
+			 bank-name  = "PIO11";
+		};
+                 PIO12: PIO@fee07000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee07000 0x100>;
+			 bank-name  = "PIO12";
+		};
+                 PIO30: PIO@fee08000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee08000 0x100>;
+			 bank-name  = "PIO30";
+		};
+                 PIO31: PIO@fee09000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee09000 0x100>;
+			 bank-name  = "PIO31";
+		};
+                 /* 13-18: PIO_REAR */
+                 PIO13: PIO@fe820000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe820000 0x100>;
+			 bank-name  = "PIO13";
+		};
+                 PIO14: PIO@fe821000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe821000 0x100>;
+			 bank-name  = "PIO14";
+		};
+                 PIO15: PIO@fe822000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe822000 0x100>;
+			 bank-name  = "PIO15";
+		};
+                 PIO16: PIO@fe823000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe823000 0x100>;
+			 bank-name  = "PIO16";
+		};
+                 PIO17: PIO@fe824000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe824000 0x100>;
+			 bank-name  = "PIO17";
+		};
+                 PIO18: PIO@fe825000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe825000 0x100>;
+			 bank-name  = "PIO18";
+		};
+                 /* MPE */
+                 /* 100-102: PIO_RIGHT (aka MPE_PIO) */
+                 PIO100: PIO@fd6b0000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd6b0000 0x100>;
+			 bank-name  = "PIO100";
+		};
+                 PIO101: PIO@fd6b1000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd6b1000 0x100>;
+			 bank-name  = "PIO101";
+                 };
+                 PIO102: PIO@fd6b2000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd6b2000 0x100>;
+			 bank-name  = "PIO102";
+                 };
+                 /* 103-107: PIO_LEFT (aka PIO_1_MPE) */
+                 PIO103: PIO@fd330000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd330000 0x100>;
+			 bank-name  = "PIO103";
+                 };
+                 PIO104: PIO@fd331000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd331000 0x100>;
+			 bank-name  = "PIO104";
+                 };
+                 PIO105: PIO@fd332000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd332000 0x100>;
+			 bank-name  = "PIO105";
+                 };
+                 PIO106: PIO@fd333000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd333000 0x100>;
+			 bank-name  = "PIO106";
+                 };
+                 PIO107: PIO@fd334000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd334000 0x100>;
+			 bank-name  = "PIO107";
+                 };
+         };
+
+	/* start end group  */
+	lpm_sysconf: lpmsysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0 10 8>;
+		sysconf-names  = "LPM_CFG_REGS";
+	};
+
+	sysconf: sysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0     999 0>,
+				 <1000 1999 1>,
+				 <2000 2999 2>,
+				 <5000 5999 3>,
+				 <6000 6999 4>,
+				 <7000 7999 5>,
+				 <8000 8999 6>,
+				 <9000 9999 7>;
+
+		sysconf-names  = "SYSCFG_SBC",
+				 "SYSCFG_FRONT",
+				 "SYSCFG_REAR",
+				 "SYSCFG_FVDP_FE",
+				 "SYSCFG_FVDP_LITE",
+				 "SYSCFG_CPU",
+				 "SYSCFG_COMPO",
+				 "SYSCFG_TRANSPORT";
+	};
+
+	sysconfs {
+                #address-cells = <1>;
+                #size-cells = <1>;
+		ranges;
+		compatible	= "simple-bus";
+		sysconf@fe600000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfe600000 0x1000>;
+			group@0{
+				group	= <0>;
+				offset	= <0>;
+				start	= <0>;
+				group-name	=  "SYSCFG_SBC";
+			};
+		};
+		sysconf@fee10000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfee10000 0x1000>;
+			group@0{
+				group	= <1>;
+				offset	= <0>;
+				start	= <1000>;
+				group-name	=  "SYSCFG_FRONT";
+			};
+		};
+		sysconf@fe830000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfe830000 0x1000>;
+			group@0 {
+				group	= <2>;
+				offset	= <0>;
+				start	= <2000>;
+				group-name	=  "SYSCFG_REAR";
+			};
+		};
+
+		/* MPE */
+		sysconf@fddf0000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfddf0000 0x1000>;
+			group@0 {
+				group	= <3>;
+				offset	= <0>;
+				start	= <5000>;
+				group-name	=  "SYSCFG_FVDP_FE";
+			};
+		};
+		sysconf@fd6a0000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfd6a0000 0x1000>;
+			group@0 {
+				group	= <4>;
+				offset	= <0>;
+				start	= <6000>;
+				group-name	=  "SYSCFG_FVDP_LITE";
+			};
+		};
+
+		sysconf@fdde0000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfdde0000 0x1000>;
+			group@0 {
+				group	= <5>;
+				offset	= <0>;
+				start	= <7000>;
+				group-name	=  "SYSCFG_CPU";
+			};
+		};
+
+		sysconf@fd320000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfd320000 0x1000>;
+			group@0 {
+				group	= <6>;
+				offset	= <0>;
+				start	= <8000>;
+				group-name	=  "SYSCFG_COMPO";
+			};
+		};
+
+		sysconf@fd690000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfd690000 0x1000>;
+			group@0{
+				group	= <7>;
+				offset	= <0>;
+				start	= <9000>;
+				group-name	=  "SYSCFG_TRANSPORT";
+			};
+		};
+
+		sysconf@fe4b5100{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfe4b5100 0x54>;
+			group@0 {
+				group	= <8>;
+				offset	= <0>;
+				start	= <0>;
+				group-name	=  "LPM_CFG_REGS";
+			};
+		};
+	};
+
+
+/* pio control */
+	pio_retime_offset: pio-retime-offset {
+		clk1notclk0	= <0>;
+		delay-lsb	= <2>;
+		delay-msb	= <3>;
+		invertclk	= <4>;
+		retime		= <5>;
+		clknotdata	= <6>;
+		double-edge	= <7>;
+	};
+
+	pio-controls {
+		#retime-delay-cells = <14>;
+		retime-in-delay = <0 300 500 750 1000 1250 1500 1750 2000 2250 2500 2750 3000 3250>;
+		retime-out-delay = <0 300 500 750 1000 1250 1500 1750 2000 2250 2500 2750 3000 3250>;
+		pio-control@0{
+			alt-control = <&sysconf 0 0 31>;
+			oe-control = <&sysconf 40 0 7>;
+			pu-control = <&sysconf 50 0 7>;
+			od-control = <&sysconf 60 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 100 0 31>;
+			retime-control1 = <&sysconf 101 0 31>;
+			retime-control2 = <&sysconf 102 0 31>;
+			retime-control3 = <&sysconf 103 0 31>;
+			retime-control4 = <&sysconf 104 0 31>;
+			retime-control5 = <&sysconf 105 0 31>;
+			retime-control6 = <&sysconf 106 0 31>;
+			retime-control7 = <&sysconf 107 0 31>;
+		};
+		pio-control@1{
+			alt-control = <&sysconf 1 0 31>;
+			oe-control = <&sysconf 40 8 15>;
+			pu-control = <&sysconf 50 8 15>;
+			od-control = <&sysconf 60 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 108 0 31>;
+			retime-control1 = <&sysconf 109 0 31>;
+			retime-control2 = <&sysconf 110 0 31>;
+			retime-control3 = <&sysconf 111 0 31>;
+			retime-control4 = <&sysconf 112 0 31>;
+			retime-control5 = <&sysconf 113 0 31>;
+			retime-control6 = <&sysconf 114 0 31>;
+			retime-control7 = <&sysconf 115 0 31>;
+		};
+		pio-control@2{
+			alt-control = <&sysconf 2 0 31>;
+			oe-control = <&sysconf 40 16 23>;
+			pu-control = <&sysconf 50 16 23>;
+			od-control = <&sysconf 60 16 23>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 116 0 31>;
+			retime-control1 = <&sysconf 117 0 31>;
+			retime-control2 = <&sysconf 118 0 31>;
+			retime-control3 = <&sysconf 119 0 31>;
+			retime-control4 = <&sysconf 120 0 31>;
+			retime-control5 = <&sysconf 121 0 31>;
+			retime-control6 = <&sysconf 122 0 31>;
+			retime-control7 = <&sysconf 123 0 31>;
+		};
+		pio-control@3{
+			alt-control = <&sysconf 3 0 31>;
+			oe-control = <&sysconf 40 24 31>;
+			pu-control = <&sysconf 50 24 31>;
+			od-control = <&sysconf 60 24 31>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 124 0 31>;
+			retime-control1 = <&sysconf 125 0 31>;
+			retime-control2 = <&sysconf 126 0 31>;
+			retime-control3 = <&sysconf 127 0 31>;
+			retime-control4 = <&sysconf 128 0 31>;
+			retime-control5 = <&sysconf 129 0 31>;
+			retime-control6 = <&sysconf 130 0 31>;
+			retime-control7 = <&sysconf 131 0 31>;
+		};
+
+		pio-control@4{
+			alt-control = <&sysconf 4 0 31>;
+			oe-control = <&sysconf 41 0 7>;
+			pu-control = <&sysconf 51 0 7>;
+			od-control = <&sysconf 61 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 132 0 31>;
+			retime-control1 = <&sysconf 133 0 31>;
+			retime-control2 = <&sysconf 134 0 31>;
+			retime-control3 = <&sysconf 135 0 31>;
+			retime-control4 = <&sysconf 136 0 31>;
+			retime-control5 = <&sysconf 137 0 31>;
+			retime-control6 = <&sysconf 138 0 31>;
+			retime-control7 = <&sysconf 139 0 31>;
+		};
+
+		pio-control@40{
+			alt-control = <&sysconf 5 0 31>;
+			oe-control = <&sysconf 41 8 15>;
+			pu-control = <&sysconf 51 8 15>;
+			od-control = <&sysconf 61 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0x7f>;
+			retime-control0 = <&sysconf 140 0 31>;
+			retime-control1 = <&sysconf 141 0 31>;
+			retime-control2 = <&sysconf 142 0 31>;
+			retime-control3 = <&sysconf 143 0 31>;
+			retime-control4 = <&sysconf 144 0 31>;
+			retime-control5 = <&sysconf 145 0 31>;
+			retime-control6 = <&sysconf 146 0 31>;
+		};
+
+		pio-control@5{
+			alt-control = <&sysconf 1000 0 31>;
+			oe-control = <&sysconf 1040 0 7>;
+			pu-control = <&sysconf 1050 0 7>;
+			od-control = <&sysconf 1060 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1100 0 31>;
+			retime-control1 = <&sysconf 1101 0 31>;
+			retime-control2 = <&sysconf 1102 0 31>;
+			retime-control3 = <&sysconf 1103 0 31>;
+			retime-control4 = <&sysconf 1104 0 31>;
+			retime-control5 = <&sysconf 1105 0 31>;
+			retime-control6 = <&sysconf 1106 0 31>;
+			retime-control7 = <&sysconf 1107 0 31>;
+		};
+		pio-control@6{
+			alt-control = <&sysconf 1001 0 31>;
+			oe-control = <&sysconf 1040 8 15>;
+			pu-control = <&sysconf 1050 8 15>;
+			od-control = <&sysconf 1060 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1108 0 31>;
+			retime-control1 = <&sysconf 1109 0 31>;
+			retime-control2 = <&sysconf 1110 0 31>;
+			retime-control3 = <&sysconf 1111 0 31>;
+			retime-control4 = <&sysconf 1112 0 31>;
+			retime-control5 = <&sysconf 1113 0 31>;
+			retime-control6 = <&sysconf 1114 0 31>;
+			retime-control7 = <&sysconf 1115 0 31>;
+		};
+		pio-control@7{
+			alt-control = <&sysconf 1002 0 31>;
+			oe-control = <&sysconf 1040 16 23>;
+			pu-control = <&sysconf 1050 16 23>;
+			od-control = <&sysconf 1060 16 23>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1116 0 31>;
+			retime-control1 = <&sysconf 1117 0 31>;
+			retime-control2 = <&sysconf 1118 0 31>;
+			retime-control3 = <&sysconf 1119 0 31>;
+			retime-control4 = <&sysconf 1120 0 31>;
+			retime-control5 = <&sysconf 1121 0 31>;
+			retime-control6 = <&sysconf 1122 0 31>;
+			retime-control7 = <&sysconf 1123 0 31>;
+		};
+		pio-control@8{
+			alt-control = <&sysconf 1003 0 31>;
+			oe-control = <&sysconf 1040 24 31>;
+			pu-control = <&sysconf 1050 24 31>;
+			od-control = <&sysconf 1060 24 31>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1124 0 31>;
+			retime-control1 = <&sysconf 1125 0 31>;
+			retime-control2 = <&sysconf 1126 0 31>;
+			retime-control3 = <&sysconf 1127 0 31>;
+			retime-control4 = <&sysconf 1128 0 31>;
+			retime-control5 = <&sysconf 1129 0 31>;
+			retime-control6 = <&sysconf 1130 0 31>;
+			retime-control7 = <&sysconf 1131 0 31>;
+		};
+
+		pio-control@9{
+			alt-control = <&sysconf 1004 0 31>;
+			oe-control = <&sysconf 1041 0 7>;
+			pu-control = <&sysconf 1051 0 7>;
+			od-control = <&sysconf 1061 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1132 0 31>;
+			retime-control1 = <&sysconf 1133 0 31>;
+			retime-control2 = <&sysconf 1134 0 31>;
+			retime-control3 = <&sysconf 1135 0 31>;
+			retime-control4 = <&sysconf 1136 0 31>;
+			retime-control5 = <&sysconf 1137 0 31>;
+			retime-control6 = <&sysconf 1138 0 31>;
+			retime-control7 = <&sysconf 1139 0 31>;
+		};
+		pio-control@10{
+			alt-control = <&sysconf 1005 0 31>;
+			oe-control = <&sysconf 1041 8 15>;
+			pu-control = <&sysconf 1051 8 15>;
+			od-control = <&sysconf 1061 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1140 0 31>;
+			retime-control1 = <&sysconf 1141 0 31>;
+			retime-control2 = <&sysconf 1142 0 31>;
+			retime-control3 = <&sysconf 1143 0 31>;
+			retime-control4 = <&sysconf 1144 0 31>;
+			retime-control5 = <&sysconf 1145 0 31>;
+			retime-control6 = <&sysconf 1146 0 31>;
+			retime-control7 = <&sysconf 1147 0 31>;
+		};
+		pio-control@11{
+			alt-control = <&sysconf 1006 0 31>;
+			oe-control = <&sysconf 1041 16 23>;
+			pu-control = <&sysconf 1051 16 23>;
+			od-control = <&sysconf 1061 16 23>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1148 0 31>;
+			retime-control1 = <&sysconf 1149 0 31>;
+			retime-control2 = <&sysconf 1150 0 31>;
+			retime-control3 = <&sysconf 1151 0 31>;
+			retime-control4 = <&sysconf 1152 0 31>;
+			retime-control5 = <&sysconf 1153 0 31>;
+			retime-control6 = <&sysconf 1154 0 31>;
+			retime-control7 = <&sysconf 1155 0 31>;
+		};
+		pio-control@12{
+			alt-control = <&sysconf 1007 0 31>;
+			oe-control = <&sysconf 1041 24 31>;
+			pu-control = <&sysconf 1051 24 31>;
+			od-control = <&sysconf 1061 24 31>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1156 0 31>;
+			retime-control1 = <&sysconf 1157 0 31>;
+			retime-control2 = <&sysconf 1158 0 31>;
+			retime-control3 = <&sysconf 1159 0 31>;
+			retime-control4 = <&sysconf 1160 0 31>;
+			retime-control5 = <&sysconf 1161 0 31>;
+			retime-control6 = <&sysconf 1162 0 31>;
+			retime-control7 = <&sysconf 1163 0 31>;
+		};
+
+		pio-control@30{
+			alt-control = <&sysconf 1008 0 31>;
+			oe-control = <&sysconf 1042 0 7>;
+			pu-control = <&sysconf 1052 0 7>;
+			od-control = <&sysconf 1062 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1164 0 31>;
+			retime-control1 = <&sysconf 1165 0 31>;
+			retime-control2 = <&sysconf 1166 0 31>;
+			retime-control3 = <&sysconf 1167 0 31>;
+			retime-control4 = <&sysconf 1168 0 31>;
+			retime-control5 = <&sysconf 1169 0 31>;
+			retime-control6 = <&sysconf 1170 0 31>;
+			retime-control7 = <&sysconf 1171 0 31>;
+		};
+
+		pio-control@31{
+			alt-control = <&sysconf 1009 0 31>;
+			oe-control = <&sysconf 1042 8 15>;
+			pu-control = <&sysconf 1052 8 15>;
+			od-control = <&sysconf 1062 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 1172 0 31>;
+			retime-control1 = <&sysconf 1173 0 31>;
+			retime-control2 = <&sysconf 1174 0 31>;
+			retime-control3 = <&sysconf 1175 0 31>;
+			retime-control4 = <&sysconf 1176 0 31>;
+			retime-control5 = <&sysconf 1177 0 31>;
+			retime-control6 = <&sysconf 1178 0 31>;
+			retime-control7 = <&sysconf 1179 0 31>;
+		};
+
+
+
+		pio-control@13{
+			alt-control = <&sysconf 2000 0 31>;
+			oe-control = <&sysconf 2040 0 7>;
+			pu-control = <&sysconf 2050 0 7>;
+			od-control = <&sysconf 2060 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 2100 0 31>;
+			retime-control1 = <&sysconf 2101 0 31>;
+			retime-control2 = <&sysconf 2102 0 31>;
+			retime-control3 = <&sysconf 2103 0 31>;
+			retime-control4 = <&sysconf 2104 0 31>;
+			retime-control5 = <&sysconf 2105 0 31>;
+			retime-control6 = <&sysconf 2106 0 31>;
+			retime-control7 = <&sysconf 2107 0 31>;
+		};
+		pio-control@14{
+			alt-control = <&sysconf 2001 0 31>;
+			oe-control = <&sysconf 2040 8 15>;
+			pu-control = <&sysconf 2050 8 15>;
+			od-control = <&sysconf 2060 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 2108 0 31>;
+			retime-control1 = <&sysconf 2109 0 31>;
+			retime-control2 = <&sysconf 2110 0 31>;
+			retime-control3 = <&sysconf 2111 0 31>;
+			retime-control4 = <&sysconf 2112 0 31>;
+			retime-control5 = <&sysconf 2113 0 31>;
+			retime-control6 = <&sysconf 2114 0 31>;
+			retime-control7 = <&sysconf 2115 0 31>;
+		};
+		pio-control@15{
+			alt-control = <&sysconf 2002 0 31>;
+			oe-control = <&sysconf 2040 16 23>;
+			pu-control = <&sysconf 2050 16 23>;
+			od-control = <&sysconf 2060 16 23>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 2116 0 31>;
+			retime-control1 = <&sysconf 2117 0 31>;
+			retime-control2 = <&sysconf 2118 0 31>;
+			retime-control3 = <&sysconf 2119 0 31>;
+			retime-control4 = <&sysconf 2120 0 31>;
+			retime-control5 = <&sysconf 2121 0 31>;
+			retime-control6 = <&sysconf 2122 0 31>;
+			retime-control7 = <&sysconf 2123 0 31>;
+		};
+		pio-control@16{
+			alt-control = <&sysconf 2003 0 31>;
+			oe-control = <&sysconf 2040 24 31>;
+			pu-control = <&sysconf 2050 24 31>;
+			od-control = <&sysconf 2060 24 31>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 2124 0 31>;
+			retime-control1 = <&sysconf 2125 0 31>;
+			retime-control2 = <&sysconf 2126 0 31>;
+			retime-control3 = <&sysconf 2127 0 31>;
+			retime-control4 = <&sysconf 2128 0 31>;
+			retime-control5 = <&sysconf 2129 0 31>;
+			retime-control6 = <&sysconf 2130 0 31>;
+			retime-control7 = <&sysconf 2131 0 31>;
+		};
+
+		pio-control@17{
+			alt-control = <&sysconf 2004 0 31>;
+			oe-control = <&sysconf 2041 0 7>;
+			pu-control = <&sysconf 2051 0 7>;
+			od-control = <&sysconf 2061 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 2132 0 31>;
+			retime-control1 = <&sysconf 2133 0 31>;
+			retime-control2 = <&sysconf 2134 0 31>;
+			retime-control3 = <&sysconf 2135 0 31>;
+			retime-control4 = <&sysconf 2136 0 31>;
+			retime-control5 = <&sysconf 2137 0 31>;
+			retime-control6 = <&sysconf 2138 0 31>;
+			retime-control7 = <&sysconf 2139 0 31>;
+		};
+
+		pio-control@18{
+			alt-control = <&sysconf 2005 0 31>;
+			oe-control = <&sysconf 2041 8 15>;
+			pu-control = <&sysconf 2051 8 15>;
+			od-control = <&sysconf 2061 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xf>;
+			retime-control0 = <&sysconf 2140 0 31>;
+			retime-control1 = <&sysconf 2141 0 31>;
+			retime-control2 = <&sysconf 2142 0 31>;
+			retime-control3 = <&sysconf 2143 0 31>;
+		};
+		pio-control@100{
+			alt-control = <&sysconf 5000 0 31>;
+			oe-control = <&sysconf 5040 0 7>;
+			pu-control = <&sysconf 5050 0 7>;
+			od-control = <&sysconf 5060 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 5100 0 31>;
+			retime-control1 = <&sysconf 5101 0 31>;
+			retime-control2 = <&sysconf 5102 0 31>;
+			retime-control3 = <&sysconf 5103 0 31>;
+			retime-control4 = <&sysconf 5104 0 31>;
+			retime-control5 = <&sysconf 5105 0 31>;
+			retime-control6 = <&sysconf 5106 0 31>;
+			retime-control7 = <&sysconf 5107 0 31>;
+		};
+
+		pio-control@101{
+			alt-control = <&sysconf 5001 0 31>;
+			oe-control = <&sysconf 5040 8 15>;
+			pu-control = <&sysconf 5050 8 15>;
+			od-control = <&sysconf 5060 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 5108 0 31>;
+			retime-control1 = <&sysconf 5109 0 31>;
+			retime-control2 = <&sysconf 5110 0 31>;
+			retime-control3 = <&sysconf 5111 0 31>;
+			retime-control4 = <&sysconf 5112 0 31>;
+			retime-control5 = <&sysconf 5113 0 31>;
+			retime-control6 = <&sysconf 5114 0 31>;
+			retime-control7 = <&sysconf 5115 0 31>;
+		};
+
+		pio-control@102{
+			alt-control = <&sysconf 5002 0 31>;
+			oe-control = <&sysconf 5040 16 23>;
+			pu-control = <&sysconf 5050 16 23>;
+			od-control = <&sysconf 5060 16 23>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 5116 0 31>;
+			retime-control1 = <&sysconf 5117 0 31>;
+			retime-control2 = <&sysconf 5118 0 31>;
+			retime-control3 = <&sysconf 5119 0 31>;
+			retime-control4 = <&sysconf 5120 0 31>;
+			retime-control5 = <&sysconf 5121 0 31>;
+			retime-control6 = <&sysconf 5122 0 31>;
+			retime-control7 = <&sysconf 5123 0 31>;
+		};
+
+
+
+		pio-control@103{
+			alt-control = <&sysconf 6000 0 31>;
+			oe-control = <&sysconf 6040 0 7>;
+			pu-control = <&sysconf 6050 0 7>;
+			od-control = <&sysconf 6060 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 6100 0 31>;
+			retime-control1 = <&sysconf 6101 0 31>;
+			retime-control2 = <&sysconf 6102 0 31>;
+			retime-control3 = <&sysconf 6103 0 31>;
+			retime-control4 = <&sysconf 6104 0 31>;
+			retime-control5 = <&sysconf 6105 0 31>;
+			retime-control6 = <&sysconf 6106 0 31>;
+			retime-control7 = <&sysconf 6107 0 31>;
+		};
+		pio-control@104{
+			alt-control = <&sysconf 6001 0 31>;
+			oe-control = <&sysconf 6040 8 15>;
+			pu-control = <&sysconf 6050 8 15>;
+			od-control = <&sysconf 6060 8 15>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 6108 0 31>;
+			retime-control1 = <&sysconf 6109 0 31>;
+			retime-control2 = <&sysconf 6110 0 31>;
+			retime-control3 = <&sysconf 6111 0 31>;
+			retime-control4 = <&sysconf 6112 0 31>;
+			retime-control5 = <&sysconf 6113 0 31>;
+			retime-control6 = <&sysconf 6114 0 31>;
+			retime-control7 = <&sysconf 6115 0 31>;
+		};
+		pio-control@105{
+			alt-control = <&sysconf 6002 0 31>;
+			oe-control = <&sysconf 6040 16 23>;
+			pu-control = <&sysconf 6050 16 23>;
+			od-control = <&sysconf 6060 16 23>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 6116 0 31>;
+			retime-control1 = <&sysconf 6117 0 31>;
+			retime-control2 = <&sysconf 6118 0 31>;
+			retime-control3 = <&sysconf 6119 0 31>;
+			retime-control4 = <&sysconf 6120 0 31>;
+			retime-control5 = <&sysconf 6121 0 31>;
+			retime-control6 = <&sysconf 6122 0 31>;
+			retime-control7 = <&sysconf 6123 0 31>;
+		};
+		pio-control@106{
+			alt-control = <&sysconf 6003 0 31>;
+			oe-control = <&sysconf 6040 24 31>;
+			pu-control = <&sysconf 6050 24 31>;
+			od-control = <&sysconf 6060 24 31>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&sysconf 6124 0 31>;
+			retime-control1 = <&sysconf 6125 0 31>;
+			retime-control2 = <&sysconf 6126 0 31>;
+			retime-control3 = <&sysconf 6127 0 31>;
+			retime-control4 = <&sysconf 6128 0 31>;
+			retime-control5 = <&sysconf 6129 0 31>;
+			retime-control6 = <&sysconf 6130 0 31>;
+			retime-control7 = <&sysconf 6131 0 31>;
+		};
+
+		pio-control@107{
+			alt-control = <&sysconf 6004 0 31>;
+			oe-control = <&sysconf 6041 0 7>;
+			pu-control = <&sysconf 6051 0 7>;
+			od-control = <&sysconf 6061 0 7>;
+			retime-style = "dedicated";
+			retime-pin-mask = <0xf>;
+			retime-control0 = <&sysconf 6132 0 31>;
+			retime-control1 = <&sysconf 6133 0 31>;
+			retime-control2 = <&sysconf 6134 0 31>;
+			retime-control3 = <&sysconf 6135 0 31>;
+		};
+	};
+
+	gpio-irqmux {
+		#interrupt-cells = <3>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+		interrupt-parent = <&intc>;
+		ranges;
+		/* PIO0-4: SBC_PIO (aka pio_sas_sbc, PIO_SBC) */
+		/* PIO40 */
+		gpio-irqmux@fe61f080{
+			compatible	= "st,gpio-irqmux";
+			reg =	<0xfe61f080 0x4>;
+			interrupts = <0 182 0x0>;
+			first-port = <0>;
+			ports = <6>;
+		};
+
+		/* PIO5-12: PIO_FRONT (aka pio_sas_front) */
+		/* PIO30-31 */
+		gpio-irqmux@fee0f080{
+			compatible	= "st,gpio-irqmux";
+			reg =	<0xfee0f080 0x4>;
+			interrupts = <0 183 0x0>;
+			first-port = <6>;
+			ports = <10>;
+		};
+
+		/* PIO13-18: PIO_REAR (aka pio_sas_rear) */
+		gpio-irqmux@fe82f080{
+			compatible	= "st,gpio-irqmux";
+			reg =	<0xfe82f080 0x4>;
+			interrupts = <0 184 0x0>;
+			first-port = <16>;
+			ports = <6>;
+		};
+
+		/* PIO100-102: PIO_RIGHT (aka MPE_PIO, PIO0_MPE) */
+		gpio-irqmux@fd6bf080{
+			compatible	= "st,gpio-irqmux";
+			reg =	<0xfd6bf080 0x4>;
+			interrupts = <0 113 0x0>;
+			first-port = <22>;
+			ports = <3>;
+		};
+
+		/* PIO103-107: PIO_LEFT (aka PIO1_MPE) */
+		gpio-irqmux@fd33f080{
+			compatible	= "st,gpio-irqmux";
+			reg =	<0xfd33f080 0x4>;
+			interrupts = <0 114 0x0>;
+			first-port = <25>;
+			ports = <5>;
+		};
+	};
+
+	soc {
+	        #address-cells = <1>;
+	        #size-cells = <1>;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&intc>;
+		ranges;
+		compatible	= "simple-bus";
+		id		= <&sysconf 9516 0 31>;
+		reset		= <&sysconf 504 0 0>;
+		emis{
+		        #address-cells = <1>;
+		        #size-cells = <1>;
+			#interrupt-cells = <3>;
+			interrupt-parent = <&intc>;
+			ranges;
+			emi {
+				compatible	= "st,emi";
+				reg		=	<0 0x10000000>,
+							<0xfe900000 0x874>,
+							<0xfef01000 0x80>;
+				reg-names = "emi memory", "emi4 config", "emiss config";
+				device-config = <&emi_dev_config>;
+				emi_dev_config: emi-dev-config {
+					#stm-sysconf-cells = <4>;
+					device-seqs = <&emi_dev_seqs>;
+					sysconfs{
+						EMI_PWR = <&sysconf 1500 0 0>;
+						EMI_ACK = <&sysconf 1578 0 0>;
+					};
+				};
+
+				emi_dev_seqs: emi-dev-seqs{
+					power-on-seq{
+						step0 {
+							EMI_PWR = <0>;
+							type = "sysconf";
+						};
+						step1{
+							EMI_ACK = <0>;
+							type = "sysconf-feedback";
+						};
+					};
+					power-off-seq{
+						step0 {
+							EMI_PWR = <1>;
+							type = "sysconf";
+						};
+						step1{
+							EMI_ACK = <1>;
+							type = "sysconf-feedback";
+						};
+					};
+				};
+			};
+		};
+
+		nandafm: nand-afm{
+			compatible	= "st,nand-afm", "simple-bus";
+			reg =	<0xfe901000 0x1000>, <0xfef00800 0x0800>;
+			reg-names = "nand_mem", "nand_dma";
+			interrupts = <0 139 0x0>;
+			interrupt-names = "nand_irq";
+			status = "disabled";
+		};
+
+		nandbch: nand-bch {
+			compatible	= "st,nand-bch", "simple-bus";
+			reg =	<0xfe901000 0x1000>, <0xfef00800 0x0800>;
+			reg-names = "nand_mem", "nand_dma";
+			interrupts = <0 139 0x0>;
+			interrupt-names = "nand_irq";
+			status = "disabled";
+			st,bch-ecc-mode	= "auto";
+		};
+
+		/* FSM */
+		spifsm:	spifsm@fe902000{
+			compatible	= "st,spi-fsm", "simple-bus";
+			status		= "disabled";
+			reg =	<0xfe902000 0x1000>;
+			reg-names = "spi-fsm";
+			padcfg-0 	= <&padcfg_fsm>;
+			caps-handle = <&fsm_caps>;
+			fsm_caps: fsm-caps {
+				no-read-repeat;
+				no-write-repeat;
+				read-status-clkdiv4;
+				dual-mode;		/* DUAL mode */
+				quad-mode;		/* QUAD mode */
+			};
+		};
+
+		usb0_dev_seqs: usb0-dev-seqs{
+			init-seq{
+
+				step0 {
+					USB_IS_OSC_STABLE = <1>;
+					type = "sysconf";
+				};
+				step1 {
+					USB_IN_DC_SHIFT = <0>;
+					type = "sysconf";
+				};
+				step2 {
+					USB_IN_EDGE_CTRL = <1>;
+					type = "sysconf";
+				};
+			};
+			power-on-seq{
+				step0 {
+					USB_HOST_PWR = <0>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <0>;
+					type = "sysconf-feedback";
+				};
+			};
+			power-off-seq{
+				step0 {
+					USB_HOST_PWR = <1>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <1>;
+					type = "sysconf-feedback";
+				};
+			};
+		};
+
+		usb_dev_seqs: usb-dev-seqs{
+			init-seq{
+				step0 {
+					USB_IN_DC_SHIFT = <0>;
+					type = "sysconf";
+				};
+				step1 {
+					USB_IN_EDGE_CTRL = <1>;
+					type = "sysconf";
+				};
+			};
+			power-on-seq{
+				step0 {
+					USB_HOST_PWR = <0>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <0>;
+					type = "sysconf-feedback";
+				};
+			};
+			power-off-seq{
+				step0 {
+					USB_HOST_PWR = <1>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <1>;
+					type = "sysconf-feedback";
+				};
+			};
+		};
+
+		usb_amba_config: usbambaconfig {
+			bridge_type2;
+			sd_config_missing;
+			complete_on_error;
+			read_ahead;
+			max_opcode_LD64_ST64;
+
+			chunks_in_msg	=	<0>;
+			packets_in_chunk	=	<2>;
+			threshold		=	<256>;
+		};
+
+		usb0: usb@fe100000{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe100000 0x100>,
+						<0xfe103c00 0x100>,
+						<0xfe103e00 0x100>,
+						<0xfe103f00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+
+			interrupts	=  <0 148 0>, <0 149 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb0_dev_config>;
+			usb0_dev_config: usb_dev_config-0 {
+				#stm-sysconf-cells = <4>;
+				device-seqs = <&usb0_dev_seqs>;
+				padcfg-0 	= <&padcfg_usb0>;
+				sysconfs{
+					USB_IS_OSC_STABLE = <&sysconf 2520 6 6>;
+					USB_HOST_PWR = <&sysconf 2525 0 0>;
+					USB_PWR_ACK = <&sysconf 2583 0 0>;
+					USB_IN_DC_SHIFT = <&sysconf 2520 0 0>;
+					USB_IN_EDGE_CTRL = <&sysconf 2520 3 3>;
+				};
+			};
+
+		};
+
+		usb1: usb@fe200000{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe200000 0x100>,
+						<0xfe203c00 0x100>,
+						<0xfe203e00 0x100>,
+						<0xfe203f00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+			interrupts	=  <0 150 0>, <0 151 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb1_dev_config>;
+			usb1_dev_config: usb_dev_config-1 {
+				#stm-sysconf-cells = <4>;
+				padcfg-0 	= <&padcfg_usb1>;
+				device-seqs = <&usb_dev_seqs>;
+				sysconfs{
+					USB_HOST_PWR = <&sysconf 2525 1 1>;
+					USB_PWR_ACK = <&sysconf 2583 1 1>;
+					USB_IN_DC_SHIFT = <&sysconf 2520 1 1>;
+					USB_IN_EDGE_CTRL = <&sysconf 2520 4 4>;
+				};
+			};
+		};
+
+		usb2: usb@fe300000{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe300000 0x100>,
+						<0xfe303c00 0x100>,
+						<0xfe303e00 0x100>,
+						<0xfe303f00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+
+			interrupts	=  <0 152 0>, <0 153 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb2_dev_config>;
+
+			usb2_dev_config: usb_dev_config-2 {
+				#stm-sysconf-cells = <4>;
+				padcfg-0 	= <&padcfg_usb2>;
+				device-seqs = <&usb_dev_seqs>;
+				sysconfs{
+					USB_HOST_PWR = <&sysconf 2525 2 2>;
+					USB_PWR_ACK = <&sysconf 2583 2 2>;
+					USB_IN_DC_SHIFT = <&sysconf 2520 2 2>;
+					USB_IN_EDGE_CTRL = <&sysconf 2520 5 5>;
+				};
+			};
+		};
+
+		usb3: usb@fe400000{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe340000 0x100>,
+						<0xfe343c00 0x100>,
+						<0xfe343e00 0x100>,
+						<0xfe343f00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+
+			interrupts	=  <0 154 0>, <0 155 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb3_dev_config>;
+			usb3_dev_config: usb_dev_config-3 {
+				#stm-sysconf-cells = <4>;
+				padcfg-0 	= <&padcfg_usb3>;
+				device-seqs = <&usb_dev_seqs>;
+				sysconfs{
+					USB_HOST_PWR = <&sysconf 2525 6 6>;
+					USB_PWR_ACK = <&sysconf 2583 5 5>;
+					USB_IN_DC_SHIFT = <&sysconf 2520 8 8>;
+					USB_IN_EDGE_CTRL = <&sysconf 2520 9 9>;
+				};
+			};
+
+		};
+
+	/* SAS PWM MODULE */
+		pwm0: pwm-0{
+			compatible	= "st,pwm", "simple-bus";
+			reg		= <0xfed10000 0x68>;
+			interrupts	=  <0 200 0>;
+			status = "disabled";
+			padcfg-names = "chan0", "chan1", "chan2", "chan3";
+			padcfg-0 = <&padcfg_pwm0_chan0>;
+			padcfg-1 = <&padcfg_pwm0_chan1>;
+			padcfg-2 = <&padcfg_pwm0_chan2>;
+			padcfg-3 = <&padcfg_pwm0_chan3>;
+		};
+
+		/* SBC PWM MODULE */
+		pwm1: pwm-1{
+			compatible	= "st,pwm", "simple-bus";
+			reg		= <0xfe510000 0x68>;
+			interrupts	=  <0 202 0>;
+			status = "disabled";
+			padcfg-names = "chan0", "chan1", "chan2", "chan3";
+			padcfg-0 = <&padcfg_pwm1_chan0>;
+			padcfg-1 = <&padcfg_pwm1_chan1>;
+			padcfg-2 = <&padcfg_pwm1_chan2>;
+			padcfg-3 = <&padcfg_pwm1_chan3>;
+		};
+
+		lirc: lirc@fe518000 {
+			compatible	= "st,lirc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe518000 0x234>;
+			interrupts	=  <0 203 0>;
+			sys-clk	= "sbc_comms_clk";
+			irb-clock		= <0>;
+			irb-clkdiv		= <0>;
+			irb-period-mult	= <0>;
+			irb-period-div	= <0>;
+			irb-ontime-mult	= <0>;
+			irb-ontime-div	= <0>;
+			irb-rxmax-period	= <0x5000>;
+			irb-version		= <0>;
+			sys-clkdiv		= <1>;
+			rx-polarity		= <1>;
+			sub-carrwidth	= <0>;
+
+			device-config = <&lirc_ir_device_config>;
+
+			lirc_ir_device_config: lirc-ir-dev-config {
+				padcfg-0	= <&padcfg_ir>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+
+			lirc_uhf_device_config: lirc-uhf-dev-config {
+				padcfg-0	= <&padcfg_uhf>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+
+			lirc_tx_device_config: lirc-tx-dev-config {
+				padcfg-0	= <&padcfg_ir &padcfg_tx>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+			lirc_tx_od_device_config: lirc-tx-od-dev-config {
+				padcfg-0	= <&padcfg_ir &padcfg_tx_od>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+
+			lirc_dev_seqs: lirc-dev-seqs{
+				init-seq{
+					step0 {
+						irb-enabled = <1>;
+						type = "sysconf";
+					};
+					step1 {
+						irb-normal-mode = <0>;
+						type = "sysconf";
+					};
+				};
+			};
+		};
+
+		i2c0: i2c@fed40000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed40000 0x110>;
+			interrupts	=  <0 187 0>;
+			padcfg-0 	= <&padcfg_i2c0_sda_pio9_3 &padcfg_i2c0_sclk_pio9_2>;
+
+		};
+
+		i2c1: i2c@fed41000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed41000 0x110>;
+			interrupts	=  <0 188 0>;
+			padcfg-0 	= <&padcfg_i2c1>;
+		};
+
+		i2c2: i2c@fed42000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed42000 0x110>;
+			interrupts	=  <0 189 0>;
+			padcfg-0 	= <&padcfg_i2c2_sda_pio8_7 &padcfg_i2c2_sclk_pio8_6>;
+		};
+
+		i2c3: i2c@fed43000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed43000 0x110>;
+			interrupts	=  <0 190 0>;
+			padcfg-0 	= <&padcfg_i2c3>;
+		};
+
+		i2c4: i2c@fed44000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed44000 0x110>;
+			interrupts	=  <0 191 0>;
+			padcfg-0 	= <&padcfg_i2c4_sda_pio10_6 &padcfg_i2c4_sclk_pio10_5>;
+		};
+
+		i2c5: i2c@fed45000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed45000 0x110>;
+			interrupts	=  <0 192 0>;
+			padcfg-0 	= <&padcfg_i2c5_sda_pio14_5 &padcfg_i2c5_sclk_pio14_4>;
+		};
+
+		i2c6: i2c@fed46000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed46000 0x110>;
+			interrupts	=  <0 193 0>;
+			padcfg-0 	= <&padcfg_i2c6>;
+		};
+
+		i2c7: i2c@fed47000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed47000 0x110>;
+			interrupts	=  <0 194 0>;
+			padcfg-0 	= <&padcfg_i2c7>;
+		};
+
+		/* SBC SSC0 */
+		sbc_i2c0: i2c@fe540000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe540000 0x110>;
+			interrupts	=  <0 206 0>;
+			padcfg-0 	= <&padcfg_sbc_i2c0>;
+			st,dev-clk	= "sbc_comms_clk";
+		};
+
+		/* SBC SSC1 */
+		sbc_i2c1: i2c@fe541000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe541000 0x110>;
+			interrupts	=  <0 207 0>;
+			padcfg-0 	= <&padcfg_sbc_i2c1>;
+			st,dev-clk	= "sbc_comms_clk";
+		};
+
+		/* SBC SSC2 */
+		sbc_i2c2: i2c@fe542000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe542000 0x110>;
+			interrupts	=  <0 208 0>;
+			st,dev-clk	= "sbc_comms_clk";
+			padcfg-0 	= <&padcfg_sbc_i2c2>;
+		};
+
+		/* Comms block ASCs in SASG2 */
+		uart0: uart@fed30000{
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed30000 0x2c>;
+			interrupts	=  <0 195 0>;
+			padcfg-0 	= <&padcfg_uart0>;
+
+		};
+
+		uart1: uart@fed31000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed31000 0x2c>;
+			interrupts	=  <0 196 0>;
+			padcfg-0 	= <&padcfg_uart1>;
+		};
+
+		uart2: uart@fed32000{
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed32000 0x2c>;
+			interrupts	=  <0 197 0>;
+			padcfg-0 	= <&padcfg_uart2>;
+		};
+
+		uart3: uart@fed33000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed33000 0x2c>;
+			interrupts	=  <0 198 0>;
+
+			padcfg-0 	= <&padcfg_uart3>;
+
+		};
+
+		/* UART10 (MPE) */
+		uart4: uart@fd4fb000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfd4fb000 0x2c>;
+			interrupts	=  <0 117 0>;
+			padcfg-0 	= <&padcfg_uart4>;
+
+		};
+
+		/* SBC comms block ASCs */
+		/* SBC_UART0 */
+		sbc_uart0: uart@fe530000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe530000 0x2c>;
+			interrupts	=  <0 209 0>;
+			padcfg-0 	= <&padcfg_uart5>;
+
+			st,clk-id	= "sbc_comms_clk";
+		};
+
+		/* SBC_UART1 */
+		sbc_uart1: uart@fe531000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe531000 0x2c>;
+			interrupts	=  <0 210 0>;
+			padcfg-0 	= <&padcfg_uart6>;
+			st,clk-id	= "sbc_comms_clk";
+		};
+
+		sdhci0:sdhci@fe81e000 {
+			compatible	= "st,sdhci", "simple-bus";
+			status = "disabled";
+			reg	= <0xfe81e000  0x1000>;
+			interrupts	=  <0 127 0>;
+			interrupt-names = "mmcirq";
+			padcfg-0 	= <&padcfg_mmc0>;
+		};
+
+		sdhci1:sdhci@fe81f000 {
+			compatible	= "st,sdhci", "simple-bus";
+			status = "disabled";
+			reg	= <0xfe81f000  0x1000>;
+			interrupts	=  <0 128 0>;
+			interrupt-names = "mmcirq";
+			padcfg-0 	= <&padcfg_mmc1>;
+		};
+		ethernet0:ethernet@fe810000 {
+			compatible	= "snps,dwmac", "simple-bus";
+			status = "disabled";
+			device_type = "network";
+
+			reg = <0xfe810000 0x8000>;
+			interrupts = <0 133 0>, <0 134 0>, <0 135 0>;
+			interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
+
+			snps,enh-desc;
+			snps,bugged-jumbo;
+			snps,force-sf-dma-mode;
+			snps,pbl = <32>;
+			snps,mixed-burst;
+
+			amba-config	= <&ethernet_amba_bridge_config>;
+			st,phy-clk-name = "CLK_S_GMAC0_PHY";
+			st,fix-mac-speed = <&gmac_speed_fixups>;
+		};
+
+		ethernet1:ethernet@fef08000 {
+			device_type = "network";
+			compatible	= "snps,dwmac", "simple-bus";
+			status = "disabled";
+
+			reg = <0xfef08000 0x8000>;
+			interrupts = <0 136 0>, <0 137 0>, <0 138 0>;
+			interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
+
+			snps,enh-desc;
+			snps,bugged-jumbo;
+			snps,force-sf-dma-mode;
+			snps,pbl = <32>;
+			snps,mixed-burst;
+
+			amba-config	= <&ethernet_amba_bridge_config>;
+			st,phy-clk-name = "CLK_S_ETH1_PHY";
+			st,fix-mac-speed = <&gmac_speed_fixups>;
+
+		};
+
+		ethernet_amba_bridge_config: stm-eth-amba-bridge {
+			reg-offset		= <0x1ffc>;
+			bridge_type2;
+			chunks_in_msg	=	<1>;
+			packets_in_chunk	=	<2>;
+			write_posting;
+			max_opcode_LD64_ST64;
+			threshold		=	<512>;
+			sd_config_missing;
+			read_ahead;
+		};
+
+	/* temp */
+		temp_pwr_seqs: temp-pwr-seqs{
+			init-seq{
+				step0 {
+					clk-name = "CLK_S_THSENS";
+					clk-rate = <156250>;
+					clk-parent = "CLK_S_C_FS0_CH2";
+					clk-parent-rate = <625000>;
+					type = "clock";
+				};
+			};
+			power-on-seq{
+				step0 {
+					TEMP_PWR = <1>;
+					type = "sysconf";
+				};
+			};
+			power-off-seq{
+				step0 {
+					TEMP_PWR = <0>;
+					type = "sysconf";
+				};
+			};
+		};
+
+		temp0_dev_config: temp0-dev-config {
+			device-seqs = <&temp_pwr_seqs>;
+			sysconfs {
+				TEMP_PWR = <&sysconf 1552 9 9>;
+				DCORRECT = <&sysconf 1552 4 8>;
+				OVERFLOW = <&sysconf 1554 8 8>;
+				DATA = <&sysconf 1594 10 16>;
+			};
+		};
+
+		/* Thermal sensor on SAS */
+		temp0{
+			compatible    = "st,temp", "simple-bus";
+		        status = "okay";
+			device-config = <&temp0_dev_config>;
+		};
+
+		/* FDMA */
+		fdma_fw_regs: fdma-fw-regs{
+			fw-rev-id    = <0x10000>;
+			fw-cmd-statn = <0x10200>;
+			fw-req-ctln  = <0x10240>;
+			fw-ptrn      = <0x10800>;
+			fw-cntn      = <0x10808>;
+			fw-saddrn    = <0x1080c>;
+			fw-daddrn    = <0x10810>;
+			fw-node-size = <128>;
+		};
+
+		fdma_hw_config: fdma-hw-config {
+			slim-reg-id       = <0x0>;
+			slim-reg-ver      = <0x4>;
+			slim-reg-en       = <0x8>;
+			slim-reg-clk-gate = <0xc>;
+
+			dmem-offset = <0x10000>;
+			dmem-size   = <0x3000>;
+
+			periph-reg-sync-reg = <0x17f88>;
+			periph-reg-cmd-sta  = <0x17fc0>;
+			periph-reg-cmd-set  = <0x17fc4>;
+			periph-reg-cmd-clr  = <0x17fc8>;
+			periph-reg-cmd-mask = <0x17fcc>;
+			periph-reg-int-sta  = <0x17fd0>;
+			periph-reg-int-set  = <0x17fd4>;
+			periph-reg-int-clr  = <0x17fd8>;
+			periph-reg-int-mask = <0x17fdc>;
+
+			imem-offset = <0x18000>;
+			imem-size   = <0x6000>;
+		};
+
+		/* FDMA_0_MPE: */
+		fdma0_mpe:fdma-mpe@0{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfd600000 0x20000>;
+			interrupts	=  <0 10 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <0>;
+
+		};
+
+		/* FDMA_1_MPE: */
+		fdma1_mpe:fdma-mpe@1{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfd620000 0x20000>;
+			interrupts	=  <0 12 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <0>;
+		};
+
+		/* FDMA_2_MPE: */
+		fdma2_mpe:fdma-mpe@2{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfd640000 0x20000>;
+			interrupts	=  <0 14 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <0>;
+		};
+
+		fdma_xbar_mpe: fdma-xbar-mpe {
+			compatible	= "st,fdma-xbar", "simple-bus";
+			reg		= <0xfd6df000 0x1000>;
+			first-fdma	= <0>;
+			last-fdma	= <2>;
+		};
+
+		fdma_xbar_sas: fdma-xbar-sas {
+			compatible	= "st,fdma-xbar", "simple-bus";
+			reg		= <0xfee61000 0x1000>;
+			first-fdma	= <3>;
+			last-fdma	= <4>;
+		};
+
+		/* FDMA_100: SAS FDMA 0 */
+		fdma0_sas:fdma-sas@0{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfea00000 0x20000>;
+			interrupts	=  <0 121 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <1>;
+		};
+
+		/* FDMA_101: SAS FDMA 1 */
+		fdma1_sas:fdma-sas@1{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfea20000 0x20000>;
+			interrupts	=  <0 124 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <1>;
+		};
+	};
+};

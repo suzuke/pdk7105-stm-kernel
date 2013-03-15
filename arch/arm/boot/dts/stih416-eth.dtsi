@@ -1,0 +1,426 @@
+/*
+ * Copyright (C) 2011 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+#include "stm-padcfg.h"
+/ {
+	mii0_dev_config: dev-config-mii0-internal-phyclk {
+		device-seqs = <&mii_dev_seqs>;
+		padcfg-0 = <&padcfg_mii0 &padcfg_mii0_phyclk>;
+		sysconfs {
+			 EN_GMAC =	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ = <&sysconf 2559 0 0>;
+			 MIIx_PHY_SEL =		<&sysconf 2559   2  4>;
+			 ENMIIx =		<&sysconf 2559   5  5>;
+			 TXCLK_NOT_CLK125 =	<&sysconf 2559   6  6>;
+			 TX_RETIME_CLK =	<&sysconf 2559   8  8>;
+		};
+	};
+
+	mii0_ext_clk_dev_config: dev-config-mii0-ext-phyclk {
+		device-seqs = <&mii_dev_seqs>;
+		padcfg-0 = <&padcfg_mii0 &padcfg_mii0_phyclk_ext>;
+		sysconfs {
+			 EN_GMAC =	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ = <&sysconf 2559 0 0>;
+			 MIIx_PHY_SEL =		<&sysconf 2559   2  4>;
+			 ENMIIx =		<&sysconf 2559   5  5>;
+			 TXCLK_NOT_CLK125 =	<&sysconf 2559   6  6>;
+			 TX_RETIME_CLK =	<&sysconf 2559   8  8>;
+		};
+	};
+
+	/* GMAC1 in MII mode with internal clock */
+	mii1_dev_config: gmac1-mii-dev-config{
+		padcfg-0 = <&padcfg_mii1 &padcfg_mii1_phyclk>;
+		device-seqs = <&mii_dev_seqs>;
+		sysconfs{
+			 EN_GMAC =		<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =		<&sysconf 508   0  0>;
+			 MIIx_PHY_SEL =		<&sysconf 508   2  4>;
+			 ENMIIx =		<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 =	<&sysconf 508   6  6>;
+			 TX_RETIME_CLK =	<&sysconf 508   8  8>;
+		};
+	};
+
+	/* GMAC1 in MII mode with external phy clk */
+	mii1_ext_clk_dev_config: mii1-ext_clk_dev-config{
+		padcfg-0 = <&padcfg_mii1 &padcfg_mii1_phyclk_ext>;
+		device-seqs = <&mii_dev_seqs>;
+		sysconfs{
+			 EN_GMAC =		<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =		<&sysconf 508   0  0>;
+			 MIIx_PHY_SEL =		<&sysconf 508   2  4>;
+			 ENMIIx =		<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 =	<&sysconf 508   6  6>;
+			 TX_RETIME_CLK =	<&sysconf 508   8  8>;
+		};
+	};
+
+	/* GMAC0 in GMII mode with internal phy clk */
+	gmii0_dev_config: gmac0-gmii-dev-config{
+		padcfg-0 = <&padcfg_gmii0 &padcfg_gmii0_phyclk>;
+		device-seqs = <&gmii_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ =	<&sysconf 2559   0  0>;
+			 MIIx_PHY_SEL = <&sysconf 2559   2  4>;
+			 ENMIIx =	<&sysconf 2559   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 2559   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 2559   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 2559   8  8>;
+		};
+	};
+
+
+	/* GMAC0 in GMII mode with external phy clk */
+	gmii0_ext_clk_dev_config: gmac0-gmii-ext-clk-dev-config{
+		padcfg-0 = <&padcfg_gmii0 &padcfg_gmii0_phyclk_ext>;
+		device-seqs = <&gmii_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ =	<&sysconf 2559   0  0>;
+			 MIIx_PHY_SEL = <&sysconf 2559   2  4>;
+			 ENMIIx =	<&sysconf 2559   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 2559   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 2559   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 2559   8  8>;
+		};
+	};
+
+	/* GMAC1 in GMII mode with internal phy clk */
+	gmii1_dev_config: gmac1-gmii-dev-config{
+		padcfg-0 = <&padcfg_gmii1 &padcfg_gmii1_phyclk>;
+		device-seqs = <&gmii_dev_seqs>;
+		sysconfs{
+			 EN_GMAC =	<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =	<&sysconf 508   0  0>;
+			 MIIx_PHY_SEL =	 <&sysconf 508   2  4>;
+			 ENMIIx =	<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 508   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 508   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 508   8  8>;
+		};
+	};
+
+	/* GMAC1 in GMII mode with external phy clk */
+	gmii1_ext_clk_dev_config: gmac1-gmii-ext-clk-dev-config{
+		padcfg-0 = <&padcfg_gmii1 &padcfg_gmii1_phyclk_ext>;
+		device-seqs = <&gmii_dev_seqs>;
+		sysconfs{
+			 EN_GMAC =	<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =	<&sysconf 508   0  0>;
+			 MIIx_PHY_SEL =	 <&sysconf 508   2  4>;
+			 ENMIIx =	<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 508   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 508   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 508   8  8>;
+		};
+	};
+
+	/* GMAC0 in RGMII mode with internal phy clk */
+	rgmii0_dev_config: gmac0-rgmii-dev-config{
+		padcfg-0 = <&padcfg_rgmii0 &padcfg_rgmii0_phyclk>;
+		device-seqs = <&rgmii_dev_seqs>;
+		sysconfs{
+			 EN_GMAC =	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ =  <&sysconf 2559	0  0>;
+			 MIIx_PHY_SEL =	<&sysconf 2559   2  4>;
+			 ENMIIx =	<&sysconf 2559   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 2559   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 2559   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 2559   8  8>;
+		};
+	};
+
+	/* GMAC0 in RGMII mode with external phy clk */
+	rgmii0_ext_clk_dev_config: gmac0-rgmii-ext-clk-dev-config{
+		padcfg-0 = <&padcfg_rgmii0 &padcfg_rgmii0_phyclk_ext>;
+		device-seqs = <&rgmii_dev_seqs>;
+		sysconfs{
+			 EN_GMAC =	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ =  <&sysconf 2559	0  0>;
+			 MIIx_PHY_SEL =	<&sysconf 2559   2  4>;
+			 ENMIIx =	<&sysconf 2559   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 2559   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 2559   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 2559   8  8>;
+		};
+	};
+
+	/* GMAC01 in RGMII mode with internal phy clk */
+	rgmii1_dev_config: gmac1-rgmii-dev-config{
+		padcfg-0 = <&padcfg_rgmii1 &padcfg_rgmii1_phyclk>;
+		device-seqs = <&rgmii_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =	<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =  <&sysconf 508	0  0>;
+			 MIIx_PHY_SEL =	<&sysconf 508   2  4>;
+			 ENMIIx =	<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 508   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 508   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 508   8  8>;
+		};
+	};
+
+	/* GMAC1 in RGMII mode with external phy clk */
+	rgmii1_ext_clk_dev_config: gmac1-rgmii-ext-clk-dev-config{
+		padcfg-0 = <&padcfg_rgmii1>;
+		device-seqs = <&rgmii_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =	<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =  <&sysconf 508	0  0>;
+			 MIIx_PHY_SEL =	<&sysconf 508   2  4>;
+			 ENMIIx =	<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 508   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 508   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 508   8  8>;
+		};
+	};
+	/* GMAC0 in RMII mode with internal phy clk */
+	rmii0_dev_config: gmac0-rmii-dev-config {
+		padcfg-0 = <&padcfg_rmii0 &padcfg_rmii0_phyclk>;
+		device-seqs = <&rmii0_dev_seqs>;
+		sysconfs{
+			 EN_GMAC 	=	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ 	=	<&sysconf 2559   0  0>;
+			 MIIx_PHY_SEL 	=	<&sysconf 2559   2  4>;
+			 ENMIIx 	=	<&sysconf 2559   5  5>;
+			 INT_NOEXT_PHYCLK = 	<&sysconf 2559   7  7>;
+			 TX_RETIME_CLK 	= 	<&sysconf 2559   8  8>;
+		};
+	};
+
+	/* GMAC0 in RMII mode with external phy clk */
+	rmii0_ext_clk_dev_config: gmac0-rmii-ext-clk-dev-config {
+		padcfg-0 = <&padcfg_rmii0 &padcfg_rmii0_phyclk_ext>;
+		device-seqs = <&rmii_ext_clk_dev_seqs>;
+		sysconfs{
+			 EN_GMAC 	=	<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ 	=	<&sysconf 2559   0  0>;
+			 MIIx_PHY_SEL 	=	<&sysconf 2559   2  4>;
+			 ENMIIx 	=	<&sysconf 2559   5  5>;
+			 INT_NOEXT_PHYCLK = 	<&sysconf 2559   7  7>;
+			 TX_RETIME_CLK 	= 	<&sysconf 2559   8  8>;
+		};
+	};
+
+	/* GMAC1 in RMII mode with internal phy clk */
+	rmii1_dev_config: gmac1-rmii-dev-config {
+		padcfg-0 = <&padcfg_rmii1 &padcfg_rmii1_phyclk>;
+		device-seqs = <&rmii1_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =			<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =			<&sysconf 508   0  0>;
+			 MIIx_PHY_SEL =			<&sysconf 508   2  4>;
+			 ENMIIx =			<&sysconf 508   5  5>;
+			 INT_NOEXT_PHYCLK =		<&sysconf 508   7  7>;
+			 TX_RETIME_CLK =		<&sysconf 508   8  8>;
+		};
+	};
+
+	/* GMAC1 in RMII mode with external phy clk */
+	rmii1_ext_clk_dev_config: gmac1-rmii-ext-clk-dev-config {
+		padcfg-0 = <&padcfg_rmii1 &padcfg_rmii1_phyclk_ext>;
+		device-seqs = <&rmii_ext_clk_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =			<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =			<&sysconf 508   0  0>;
+			 MIIx_PHY_SEL =			<&sysconf 508   2  4>;
+			 ENMIIx =			<&sysconf 508   5  5>;
+			 INT_NOEXT_PHYCLK =		<&sysconf 508   7  7>;
+			 TX_RETIME_CLK =		<&sysconf 508   8  8>;
+		};
+	};
+	revmii0_dev_config: gmac0-reverse-mii-dev-config {
+		padcfg-0 = <&padcfg_revmii0>;
+		device-seqs = <&revmii_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =			<&sysconf 1539   0  0>;
+			 PWR_DWN_REQ =			<&sysconf 2559   0  0>;
+			 MIIx_PHY_SEL =			<&sysconf 2559   2  4>;
+			 ENMIIx =			<&sysconf 2559   5  5>;
+			 TXCLK_NOT_CLK125 =		<&sysconf 2559   6  6>;
+			 TX_RETIME_CLK =		<&sysconf 2559   8  8>;
+		};
+	};
+
+	revmii1_dev_config: gmac1-reverse-mii-dev-config{
+		padcfg-0 = <&padcfg_revmii1>;
+		device-seqs = <&revmii_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =			<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =			<&sysconf 508   0  0>;
+			 MIIx_PHY_SEL =			<&sysconf 508   2  4>;
+			 ENMIIx =			<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 =		<&sysconf 508   6  6>;
+			 TX_RETIME_CLK =		<&sysconf 508   8  8>;
+		};
+	};
+
+
+	mii_dev_seqs: mii-dev-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =		<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =		<0>;
+				ENMIIx =		<1>;
+				TXCLK_NOT_CLK125 =	<1>;
+				TX_RETIME_CLK =		<0>;
+				type = "sysconf";
+			};
+		};
+	};
+	gmii_dev_seqs: gmii-dev-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =		<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =		<0>;
+				ENMIIx =		<1>;
+				TXCLK_NOT_CLK125 =	<0>;
+				INT_NOEXT_PHYCLK =	<0>;
+				TX_RETIME_CLK    =	<0>;
+				type = "sysconf";
+			};
+		};
+
+	};
+
+	rgmii_dev_seqs: rgmii-dev-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =		<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =		<1>;
+				ENMIIx =		<1>;
+				TXCLK_NOT_CLK125 =	<0>;
+				INT_NOEXT_PHYCLK =	<0>;
+				TX_RETIME_CLK    =	<0>;
+				type = "sysconf";
+			};
+		};
+	};
+
+	rmii_ext_clk_dev_seqs: rmii-ext-clk-dev-sequence{
+		init-seq{
+			step0 {
+
+				EN_GMAC =		<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =		<4>;
+				ENMIIx =		<1>;
+				TX_RETIME_CLK =		<1>;
+				INT_NOEXT_PHYCLK =	<0>;
+				type = "sysconf";
+			};
+		};
+	};
+	rmii0_dev_seqs: rmii0-dev-sequence{
+		init-seq{
+			step0 {
+				clk-name = "CLK_S_GMAC0_PHY";
+				clk-rate = <50000000>;
+				type = "clock";
+			};
+			step1 {
+				INT_NOEXT_PHYCLK = 	<1>;
+				EN_GMAC =		<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =		<4>;
+				ENMIIx =		<1>;
+				TX_RETIME_CLK =		<1>;
+				type = "sysconf";
+			};
+		};
+	};
+
+	rmii1_dev_seqs: rmii1-dev-sequence{
+		init-seq{
+			step0 {
+				clk-name = "CLK_S_ETH1_PHY";
+				clk-rate = <50000000>;
+				type = "clock";
+			};
+			step1 {
+
+				EN_GMAC =		<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =		<4>;
+				ENMIIx =		<1>;
+				INT_NOEXT_PHYCLK = <1>;
+				TX_RETIME_CLK =		<1>;
+				type = "sysconf";
+			};
+		};
+	};
+	revmii_dev_seqs: revmii-dev-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =			<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =			<0>;
+				ENMIIx =			<0>;
+				TXCLK_NOT_CLK125 =		<1>;
+				TX_RETIME_CLK =			<0>;
+				type = "sysconf";
+			};
+		};
+	};
+
+
+
+	gmac_speed_fixups: gmac-speed-sel {
+		gmii-speed-sel {
+			speed-1000 {
+				sysconfs {
+					TXCLK_NOT_CLK125 = <0>;
+					INT_NOEXT_PHYCLK = <0>;
+					TX_RETIME_CLK    = <0>;
+				};
+			};
+
+			speed-100{
+				sysconfs {
+					TXCLK_NOT_CLK125 = <1>;
+					INT_NOEXT_PHYCLK = <0>;
+					TX_RETIME_CLK    = <0>;
+				};
+			};
+		};
+		rgmii-speed-sel {
+			speed-1000 {
+				sysconfs {
+					TXCLK_NOT_CLK125 = <0>;
+					INT_NOEXT_PHYCLK = <0>;
+					TX_RETIME_CLK    = <0>;
+				};
+			};
+
+			speed-100{
+				clk = <25000000>;
+				sysconfs {
+					TXCLK_NOT_CLK125 = <0>;
+					INT_NOEXT_PHYCLK = <1>;
+					TX_RETIME_CLK    = <1>;
+				};
+			};
+
+			speed-10{
+				clk = <2500000>;
+				sysconfs {
+					TXCLK_NOT_CLK125 = <0>;
+					INT_NOEXT_PHYCLK = <1>;
+					TX_RETIME_CLK    = <1>;
+				};
+			};
+		};
+	};
+
+};

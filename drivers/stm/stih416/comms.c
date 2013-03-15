@@ -23,6 +23,11 @@
 
 #include <mach/hardware.h>
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
+
 /* SSC resources ---------------------------------------------------------- */
 #define SSC_NUMBER		11
 /* Pad configuration for I2C mode */
@@ -707,7 +712,7 @@ void __init stih416_configure_pwm(struct stih416_pwm_config *config)
 
 	platform_device_register(&stih416_pwm_devices[pwm]);
 }
-
+#endif
 /* Keyscan resources -------------------------------------------------------*/
 static struct stm_pad_config stih416_keyscan_pad_config = {
 	.gpios_num = 8,

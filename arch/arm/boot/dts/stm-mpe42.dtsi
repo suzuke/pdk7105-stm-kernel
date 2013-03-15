@@ -1,0 +1,124 @@
+/*
+ * Copyright (C) 2011 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+
+/ {
+
+	aliases {
+		cproc-st200-0 = &st231_0;
+		cproc-st200-1 = &st231_1;
+		cproc-st200-2 = &st231_2;
+		cproc-st200-3 = &st231_3;
+		cproc-st200-4 = &st231_4;
+		cproc-st40-0 = &st40_0;
+
+	};
+
+	co-processors{
+		st231_0: st231@0{
+			compatible	= "st,coproc-st200", "simple-bus";
+			proc-name = "audio";
+			boot-shift = <6>;
+			not-reset;
+			dev-configs = <&st231_0_dev_config>;
+
+			st231_0_dev_config: dev-config-0 {
+				#stm-sysconf-cells = <4>;
+				sysconfs{
+					BOOT_ADDR = <&sysconf 7551 6 31>;
+					RESET = <&sysconf 7563 26  26>;
+				};
+			};
+		};
+
+		st231_1: st231@1{
+			compatible	= "st,coproc-st200", "simple-bus";
+			proc-name = "dmu";
+			boot-shift = <6>;
+			not-reset;
+			dev-configs = <&st231_1_dev_config>;
+
+			st231_1_dev_config: dev-config-1 {
+				#stm-sysconf-cells = <4>;
+				sysconfs{
+					BOOT_ADDR = <&sysconf 7550 6 31>;
+					RESET = <&sysconf 7563 27 27>;
+				};
+			};
+		};
+
+		st231_2: st231@2{
+			compatible	= "st,coproc-st200", "simple-bus";
+			proc-name = "audio";
+			boot-shift = <6>;
+			not-reset;
+			dev-configs = <&st231_2_dev_config>;
+
+			st231_2_dev_config: dev-config-2 {
+				#stm-sysconf-cells = <4>;
+				sysconfs{
+					BOOT_ADDR = <&sysconf 7552 6 31>;
+					RESET = <&sysconf 7563 28 28>;
+				};
+			};
+		};
+
+		st231_3: st231@3{
+			compatible	= "st,coproc-st200", "simple-bus";
+			proc-name = "dmu";
+			boot-shift = <6>;
+			not-reset;
+			dev-configs = <&st231_3_dev_config>;
+
+			st231_3_dev_config: dev-config-3 {
+				#stm-sysconf-cells = <4>;
+				sysconfs{
+					BOOT_ADDR = <&sysconf 7553 6 31>;
+					RESET = <&sysconf 7563 29 29>;
+				};
+			};
+		};
+
+		st231_4: st231@4{
+			compatible	= "st,coproc-st200", "simple-bus";
+			proc-name = "gp";
+			boot-shift = <6>;
+			not-reset;
+			dev-configs = <&st231_4_dev_config>;
+
+			st231_4_dev_config: dev-config-4 {
+				#stm-sysconf-cells = <4>;
+				sysconfs{
+					BOOT_ADDR = <&sysconf 7554 6 31>;
+					RESET = <&sysconf 7563 30 30>;
+				};
+			};
+		};
+
+		st40_0: st40@0{
+			compatible	= "st,coproc-st40", "simple-bus";
+			proc-name = "st40";
+			dev-configs = <&st40_dev_config>;
+
+			st40_dev_config: dev-config {
+				#stm-sysconf-cells = <4>;
+				sysconfs{
+					BOOT_ADDR	=	<&sysconf 7549 1 28>;
+					RESET		=	<&sysconf 7545 2 2>;
+					LMI_SYS_BASE	=	<&sysconf 7530 0 3>;
+					LMI0_NOT_LMI1	=	<&sysconf 7530 4 4>;
+					BART_LOCK_ENABLE=	<&sysconf 7530 5 5>;
+					MASK_RESET	=	<&sysconf 7546 2 2>;
+					BART_LOCK_ENABLE_STATUS	=	<&sysconf 7566 5 5>;
+					BART_LMI0_NOT_LMI1_SEL_STATUS	=	<&sysconf 7566 4 4>;
+					BART_LMI_OFFSET_BASEADDR_STATUS	=	<&sysconf 7566 0 3>;
+				};
+			};
+		};
+	};
+};

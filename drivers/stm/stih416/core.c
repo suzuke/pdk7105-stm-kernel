@@ -16,6 +16,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/irq.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/pad.h>
@@ -29,6 +30,11 @@
 #include <asm/mach/map.h>
 #include <mach/soc-stih416.h>
 #include <mach/hardware.h>
+
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 
 #include "../pio-control.h"
 
@@ -337,12 +343,6 @@ struct platform_device stih416_asc_devices[7] = {
 	},
 
 };
-
-/* Note these three variables are global, and shared with the stasc driver
- * for console bring up prior to platform initialisation. */
-
-/* the serial console device */
-struct platform_device *stm_asc_console_device;
 
 /* Platform devices to register */
 static unsigned int __initdata stm_asc_configured_devices_num;
@@ -812,15 +812,34 @@ static struct platform_device stih416_sysconf_devices[] = {
 			SASG2_SBC_LPM_CONF_BASE, 0x54),
 };
 
+#endif /* CONFIG_OF */
 /* Utility functions  ------------------------------------------------------*/
 
 void stih416_reset(char mode, const char *cmd)
+#ifndef CONFIG_OF
 {
 	struct sysconf_field *sc = sysconf_claim(SYSCONF(504),
 					0, 0, "LPM_SW_RST_N");
 	sysconf_write(sc, 0);
 }
+#else
+{
+	struct device_node *np;
+	struct sysconf_field *sc;
+	np = of_find_node_by_path("/soc");
+	if (np) {
+		sc = stm_of_sysconf_claim(np, "reset");
+		sysconf_write(sc, 0);
+		sysconf_release(sc);
+		of_node_put(np);
+	}
+}
+#endif
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 /* SPI FSM Resources ------------------------------------------------------ */
 
 static struct stm_pad_config stih416_spifsm_pad_config = {
@@ -977,9 +996,6 @@ static struct platform_device stih416_temp_device[] = {
 		.name = "stm-temp",
 		.id = 0,
 		.dev.platform_data = &(struct plat_stm_temp_data) {
-			.dcorrect = { SYSCONF(1552), 4, 8 },
-			.overflow = { SYSCONF(1594), 8, 8 },
-			.data = { SYSCONF(1594), 10, 16 },
 			.device_config = &(struct stm_device_config) {
 				.sysconfs_num = 4,
 				.init = stih416_temp_init,
@@ -988,6 +1004,12 @@ static struct platform_device stih416_temp_device[] = {
 				.sysconfs = (struct stm_device_sysconf []){
 					STM_DEVICE_SYSCONF(SYSCONF(1552),
 						9, 9, "TEMP_PWR"),
+					STM_DEVICE_SYSCONF(SYSCONF(1552),
+						4, 8, "DCORRECT"),
+					STM_DEVICE_SYSCONF(SYSCONF(1594),
+						8, 8, "OVERFLOW"),
+					STM_DEVICE_SYSCONF(SYSCONF(1594),
+						10, 16, "DATA"),
 				},
 			}
 		},
@@ -1191,3 +1213,4 @@ static int __init stih416_devices_setup(void)
 			ARRAY_SIZE(stih416_devices));
 }
 device_initcall(stih416_devices_setup);
+#endif /* CONFIG_OF */

@@ -1,0 +1,844 @@
+
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+#include "stm-padcfg.h"
+/ {
+
+	pad-configs {
+		uart0 {
+			padcfg_uart0: uart0-0 {
+				st,pins {
+					TX	= <&PIO10 0	OUT	ALT2>;
+					RX	= <&PIO10 1	IN 	ALT2>;
+					output-enable	= <&PIO10 4	OUT	ALT2>;
+				};
+			};
+			padcfg_uart0_rts: uart0_rts {
+				st,pins {
+					RTS	= <&PIO10 3	OUT	ALT2 >;
+				};
+			};
+			padcfg_uart0_cts: uart0_cts {
+				st,pins {
+					CTS	= <&PIO10 2	IN 	ALT2 >;
+				};
+			};
+		};
+		uart1{
+			padcfg_uart1: uart1-0 {
+				st,pins {
+
+					TX	= <&PIO11 0	OUT	ALT2>;
+					RX	= <&PIO11 1	IN 	ALT2>;
+					output-enable	= <&PIO11 4	OUT	ALT2>;
+				};
+			};
+			padcfg_uart1_rts: uart1_rts {
+				st,pins {
+					RTS	= <&PIO11 3	OUT	ALT2 >;
+				};
+			};
+			padcfg_uart1_cts: uart1_cts {
+				st,pins {
+					CTS	= <&PIO11 2	IN 	ALT2 >;
+				};
+			};
+		};
+
+		uart2 {
+			padcfg_uart2: uart2-0 {
+				st,pins {
+					TX	= <&PIO17 4	OUT	ALT2>;
+					RX	= <&PIO17 5	IN 	ALT2>;
+					output-enable	= <&PIO11 3	OUT	ALT2>;
+				};
+			};
+			padcfg_uart2_rts: uart2_rts {
+				st,pins {
+					RTS	= <&PIO17 7	OUT	ALT2 >;
+				};
+			};
+			padcfg_uart2_cts: uart2_cts {
+				st,pins {
+					CTS	= <&PIO17 6	IN 	ALT2 >;
+				};
+			};
+		};
+		uart3 {
+			padcfg_uart3: uart3-0 {
+				st,pins {
+					TX	= <&PIO10 4	OUT	ALT5>;
+					RX	= <&PIO10 5	IN 	ALT5>;
+				};
+			};
+			padcfg_uart3_rts: uart3_rts {
+				st,pins {
+					CTS	= <&PIO10 6	IN 	ALT5 >;
+				};
+			};
+			padcfg_uart3_cts: uart3_cts {
+				st,pins {
+					RTS	= <&PIO10 5	OUT	ALT5 >;
+				};
+			};
+		};
+		uart4 {
+			padcfg_uart4: uart4-0 {
+				st,pins {
+					TX	= <&PIO101 1	OUT	ALT1>;
+					RX	= <&PIO101 2	IN 	ALT1>;
+				};
+			};
+			padcfg_uart4_rts: uart4_rts {
+				st,pins {
+					RTS	= <&PIO101 4	OUT	ALT1 >;
+				};
+			};
+			padcfg_uart4_cts: uart4_cts {
+				st,pins {
+					CTS	= <&PIO101 3	IN 	ALT1 >;
+				};
+			};
+		};
+
+		/* SBC_UART0 */
+		uart5 {
+			padcfg_uart5: uart5-0 {
+				st,pins {
+					TX	= <&PIO3 4	OUT	ALT1>;
+					RX	= <&PIO3 5	IN 	ALT1>;
+				};
+			};
+			padcfg_uart5_rts: uart5_rts {
+				st,pins {
+					RTS	= <&PIO3 7	OUT	ALT1 >;
+				};
+			};
+			padcfg_uart5_cts: uart5_cts {
+				st,pins {
+					CTS	= <&PIO3 6	IN 	ALT1 >;
+				};
+			};
+		};
+		uart6 {
+			padcfg_uart6: uart6-0 {
+				st,pins {
+					TX	= <&PIO2 6	OUT	ALT3>;
+					RX	= <&PIO2 7	IN 	ALT3>;
+				};
+			};
+			padcfg_uart6_rts: uart6_rts {
+				st,pins {
+					RTS	= <&PIO3 1	OUT	ALT3 >;
+				};
+			};
+			padcfg_uart6_cts: uart6_cts {
+				st,pins {
+					CTS	= <&PIO3 0	IN 	ALT3 >;
+				};
+			};
+		};
+
+
+		mmc0 {
+			padcfg_mmc0: mmc0 {
+				st,pins {
+					MMCCLK = <&PIO13 4	BIDIR_PU	ALT4	NICLK	0	CLK_B>;
+					DATA0  = <&PIO14 4	BIDIR_PU	ALT4	BYPASS	0>;
+					DATA1  = <&PIO14 5	BIDIR_PU	ALT4	BYPASS	0>;
+					DATA2  = <&PIO14 6	BIDIR_PU	ALT4	BYPASS	0>;
+					DATA3  = <&PIO14 7	BIDIR_PU	ALT4	BYPASS	0>;
+
+					CMD    = <&PIO15 1	BIDIR_PU	ALT4	BYPASS	0>;
+					WP     = <&PIO15 3	IN		ALT4>;
+
+					DATA4  = <&PIO16 4	BIDIR_PU	ALT4	BYPASS	0>;
+					DATA5  = <&PIO16 5	BIDIR_PU	ALT4	BYPASS	0>;
+					DATA6  = <&PIO16 6	BIDIR_PU	ALT4	BYPASS	0>;
+					DATA7  = <&PIO16 7	BIDIR_PU	ALT4	BYPASS	0>;
+
+					PWR    = <&PIO17 1	OUT		ALT4>;	/* MMC Card PWR */
+					CD     = <&PIO17 2	IN		ALT4>;	/* MMC Card Detect */
+					LED    = <&PIO17 3	OUT		ALT4>;	/* MMC LED on */
+
+				};
+			};
+		};
+
+		mmc1 {
+			padcfg_mmc1: mmc1 {
+				st,pins {
+					MMCCLK = <&PIO15 0	BIDIR_PU	ALT3	NICLK	0	CLK_B>;
+					DATA0  = <&PIO13 7	BIDIR_PU	ALT3	BYPASS	0>;
+					DATA1  = <&PIO14 1	BIDIR_PU	ALT3	BYPASS	0>;
+					DATA2  = <&PIO14 2	BIDIR_PU	ALT3	BYPASS	0>;
+					DATA3  = <&PIO14 3	BIDIR_PU	ALT3	BYPASS	0>;
+
+					CMD    = <&PIO15 4	BIDIR_PU	ALT3	BYPASS	0>;
+
+					DATA4  = <&PIO15 6	BIDIR_PU	ALT3	BYPASS	0>;
+					DATA5  = <&PIO15 7	BIDIR_PU	ALT3	BYPASS	0>;
+					DATA6  = <&PIO16 0	BIDIR_PU	ALT3	BYPASS	0>;
+					DATA7  = <&PIO16 1	BIDIR_PU	ALT3	BYPASS	0>;
+
+					PWR    = <&PIO16 2	OUT		ALT3>;	/* MMC Card PWR */
+					NRESET = <&PIO13 6	IN		ALT3>;	/* MMC RESET */
+
+				};
+			};
+		};
+
+		usb0 {
+			padcfg_usb0: usb0 {
+				st,pins {
+					usb-oc-detect	= <&PIO9 4	IN	ALT1>;
+					usb-pwr-enable	= <&PIO9 5	OUT	ALT1>;
+				};
+			};
+		};
+		usb1 {
+			padcfg_usb1: usb1 {
+				st,pins {
+					usb-oc-detect	= <&PIO18 0	IN	ALT1>;
+					usb-pwr-enable	= <&PIO18 1	OUT	ALT1>;
+				};
+			};
+		};
+		usb2 {
+			padcfg_usb2: usb2 {
+				st,pins {
+					usb-oc-detect	= <&PIO18 2	IN	ALT1>;
+					usb-pwr-enable	= <&PIO18 3	OUT	ALT1>;
+				};
+			};
+		};
+
+		usb3 {
+			padcfg_usb3: usb3 {
+				st,pins {
+					usb-oc-detect	= <&PIO40 0	IN	ALT1>;
+					usb-pwr-enable	= <&PIO40 1	OUT	ALT1>;
+				};
+			};
+		};
+
+		fsm {
+			padcfg_fsm: fsm {
+				st,pins {
+					spi-fsm-clk	= <&PIO12 2	OUT	ALT1>;
+					spi-fsm-cs	= <&PIO12 3	OUT	ALT1>;
+					spi-fsm-mosi	= <&PIO12 4	OUT	ALT1>;
+					spi-fsm-miso	= <&PIO12 5	IN 	ALT1>;
+					spi-fsm-hol	= <&PIO12 6	OUT	ALT1>;
+					spi-fsm-wp	= <&PIO12 7	OUT	ALT1>;
+				};
+			};
+		};
+
+		i2c0 {
+			/* routing sclk */
+			padcfg_i2c0_sclk_pio9_2: i2c0_sclk_pio9_2 {
+				st,pins {
+					SCL	= <&PIO9 2	BIDIR	ALT1>;
+				};
+			};
+
+			padcfg_i2c0_sclk_pio12_5: i2c0_sclk_pio12_5 {
+				st,pins {
+					SCL	= <&PIO12 5	BIDIR	ALT2>;
+				};
+			};
+
+			/* sda routing */
+			padcfg_i2c0_sda_pio9_3: i2c0_sda_pio9_3 {
+				st,pins {
+					SDA	= <&PIO9 3	BIDIR	ALT1>;
+				};
+			};
+
+			padcfg_i2c0_sda_pio12_6: i2c0_sda_pio12_6 {
+				st,pins {
+					SDA	= <&PIO12 6	BIDIR	ALT2>;
+				};
+			};
+
+		};
+
+		i2c1 {
+			padcfg_i2c1: i2c1 {
+				st,pins {
+					SCL	= <&PIO12 0	BIDIR	ALT1>;
+					SDA	= <&PIO12 1	BIDIR	ALT1>;
+				};
+			};
+		};
+
+		i2c2 {
+			padcfg_i2c2_sclk_pio7_6: i2c2_sclk_pio7_6 {
+				st,pins {
+					SCL	= <&PIO7 6	BIDIR	ALT2>;
+				};
+			};
+
+			padcfg_i2c2_sclk_pio8_6: i2c2_sclk_pio8_6 {
+				st,pins {
+					SCL	= <&PIO8 6	BIDIR	ALT5>;
+				};
+			};
+
+			padcfg_i2c2_sda_pio7_7: i2c2_sda_pio7_7 {
+				st,pins {
+					SDA	= <&PIO7 7	BIDIR	ALT2>;
+				};
+			};
+
+			padcfg_i2c2_sda_pio8_7: i2c2_sda_pio8_7 {
+				st,pins {
+					SDA	= <&PIO7 7	BIDIR	ALT2>;
+				};
+			};
+		};
+		i2c3 {
+			padcfg_i2c3: i2c3 {
+				st,pins {
+					SCL	= <&PIO13 0	BIDIR	ALT1>;
+					SDA	= <&PIO13 1	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c4 {
+			padcfg_i2c4_sclk_pio10_5: i2c4_sclk_pio10_5 {
+				st,pins {
+					SCL	= <&PIO10 5	BIDIR	ALT4>;
+				};
+			};
+
+			padcfg_i2c4_sclk_pio31_4: i2c4_sclk_pio31_4 {
+				st,pins {
+					SCL	= <&PIO31 4	BIDIR	ALT2>;
+				};
+			};
+
+			padcfg_i2c4_sda_pio10_6: i2c2_sda_pio10_6 {
+				st,pins {
+					SDA	= <&PIO10 6	BIDIR	ALT4>;
+				};
+			};
+
+			padcfg_i2c2_sda_pio31_5: i2c2_sda_pio31_5 {
+				st,pins {
+					SDA	= <&PIO31 5	BIDIR	ALT2>;
+				};
+			};
+		};
+
+		i2c5 {
+			padcfg_i2c5_sclk_pio14_1: i2c4_sclk_pio14_1 {
+				st,pins {
+					SCL	= <&PIO14 1	BIDIR	ALT4>;
+				};
+			};
+
+			padcfg_i2c5_sclk_pio14_4: i2c4_sclk_pio14_4 {
+				st,pins {
+					SCL	= <&PIO14 4	BIDIR	ALT3>;
+				};
+			};
+
+			padcfg_i2c5_sda_pio14_2: i2c2_sda_pio14_2 {
+				st,pins {
+					SDA	= <&PIO14 2	BIDIR	ALT4>;
+				};
+			};
+
+			padcfg_i2c5_sda_pio14_5: i2c2_sda_pio14_5 {
+				st,pins {
+					SDA	= <&PIO14 5	BIDIR	ALT3>;
+				};
+			};
+		};
+		i2c6 {
+			padcfg_i2c6: i2c6 {
+				st,pins {
+					SCL	= <&PIO17 1	BIDIR	ALT3>;
+					SDA	= <&PIO17 2	BIDIR	ALT3>;
+				};
+			};
+		};
+		i2c7 {
+			padcfg_i2c7: i2c7 {
+				st,pins {
+					SCL	= <&PIO6 2	BIDIR	ALT2>;
+					SDA	= <&PIO6 3	BIDIR	ALT2>;
+				};
+			};
+		};
+		sbc_i2c0 {
+			padcfg_sbc_i2c0: sbc_i2c0 {
+				st,pins {
+					SCL	= <&PIO4 5	BIDIR	ALT1>;
+					SDA	= <&PIO4 6	BIDIR	ALT1>;
+				};
+			};
+		};
+		sbc_i2c1 {
+			padcfg_sbc_i2c1: sbc_i2c1 {
+				st,pins {
+					SCL	= <&PIO3 2	BIDIR	ALT2>;
+					SDA	= <&PIO3 1	BIDIR	ALT2>;
+				};
+			};
+		};
+		sbc_i2c2 {
+			padcfg_sbc_i2c2: sbc_i2c2 {
+				st,pins {
+					SCL	= <&PIO3 7	BIDIR	ALT2>;
+					SDA	= <&PIO3 6	BIDIR	ALT2>;
+				};
+			};
+		};
+
+		/* SAS PWM MODULE */
+		pwm0{
+			padcfg_pwm0_chan0: chan0 {
+				st,pins {
+					gpio-0	= <&PIO9 7	OUT	ALT2>;
+				};
+			};
+
+			padcfg_pwm0_chan1: chan1 {
+				st,pins {
+					gpio-0	= <&PIO13 2	OUT	ALT2>;
+				};
+			};
+			padcfg_pwm0_chan2: chan2 {
+				st,pins {
+					gpio-0	= <&PIO15 2	OUT	ALT4>;
+				};
+			};
+			padcfg_pwm0_chan3: chan3 {
+				st,pins {
+					gpio-0	= <&PIO17 4	OUT	ALT1>;
+				};
+			};
+		};
+
+		/* SBC PWM MODULE */
+		pwm1{
+			padcfg_pwm1_chan0: chan0 {
+				st,pins {
+					gpio-0	= <&PIO3 0	OUT	ALT1>;
+				};
+			};
+
+			padcfg_pwm1_chan1: chan1 {
+				st,pins {
+					gpio-0	= <&PIO4 4	OUT	ALT1>;
+				};
+			};
+			padcfg_pwm1_chan2: chan2 {
+				st,pins {
+					gpio-0	= <&PIO4 6	OUT	ALT3>;
+				};
+			};
+			padcfg_pwm1_chan3: chan3 {
+				st,pins {
+					gpio-0	= <&PIO4 7	OUT	ALT3>;
+				};
+			};
+		};
+
+		rc{
+			padcfg_ir: ir0 {
+				st,pins {
+					ir	= <&PIO4 0	IN	ALT2>;
+				};
+			};
+			padcfg_uhf: uhf {
+				st,pins {
+					gpio-1	= <&PIO4 1	IN	ALT2>;
+				};
+			};
+			padcfg_tx: tx {
+				st,pins {
+					gpio-2	= <&PIO4 2	IN	ALT2>;
+				};
+			};
+			padcfg_tx_od: tx_od {
+				st,pins {
+					gpio-3	= <&PIO4 3	IN	ALT2>;
+				};
+			};
+		};
+
+		gmac0{
+			padcfg_mii0: mii0 {
+				st,pins {
+					 mdint =	<&PIO13  6	IN 	ALT2	BYPASS	0>;
+					 txen =		<&PIO13  7	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+
+					 txd0  =	<&PIO14  0	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 txd1  =	<&PIO14  1	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 txd2  =	<&PIO14  2	OUT 	ALT2	SE_NICLK_IO	0 	CLK_B>;
+					 txd3  =	<&PIO14  3	OUT 	ALT2	SE_NICLK_IO	0 	CLK_B>;
+
+					 txclk =	<&PIO15  0	IN 	ALT2	NICLK		0	CLK_A>;
+					 txer =		<&PIO15  1	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 crs =		<&PIO15  2	IN 	ALT2	BYPASS 		1000>;
+					 col =		<&PIO15  3	IN 	ALT2	BYPASS		1000>;
+
+					 mdio=		<&PIO15  4	OUT 	ALT2	BYPASS		1500>;
+					 mdc =		<&PIO15  5	OUT 	ALT2	NICLK		0	CLK_B>;
+
+					 rxd0  =	<&PIO16  0	IN 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 rxd1  =	<&PIO16  1	IN 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 rxd2  =	<&PIO16  2	IN 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 rxd3  =	<&PIO16  3	IN 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 rxdv =		<&PIO15  6	IN 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 rx_er =	<&PIO15  7	IN 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+
+					 rxclk =	<&PIO17  0	IN 	ALT2	NICLK		0	CLK_A>;
+				};
+			};
+			padcfg_mii0_phyclk: mii0_phyclk {
+				st,pins {
+					 phyclk =	<&PIO13  5	IGNR 	ALT2	NICLK	0	CLK_B>;
+				};
+			};
+			padcfg_mii0_phyclk_ext: mii0_phyclk_ext {
+				st,pins {
+					 phyclk =	<&PIO13  5	OUT 	ALT2	NICLK	0	CLK_B>;
+				};
+			};
+
+			padcfg_gmii0: gmii0 {
+				st,pins {
+					 phyclk =	<&PIO13  5	OUT 	ALT4	NICLK		0	CLK_B>;
+					 mdint =	<&PIO13  6	IN 	ALT2	BYPASS		0>;
+					 txen =		<&PIO13  7	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+
+					 txd0  =	<&PIO14  0	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 txd1  =	<&PIO14  1	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 txd2  =	<&PIO14  2	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_B>;
+					 txd3  =	<&PIO14  3	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_B>;
+					 txd4  =	<&PIO14  4	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_B>;
+					 txd5  =	<&PIO14  5	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_B>;
+					 txd6  =	<&PIO14  6	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_B>;
+					 txd7  =	<&PIO14  7	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_B>;
+
+					 txclk =	<&PIO15  0	IN 	ALT2	NICLK		0	CLK_A>;
+					 txer =		<&PIO15  1	OUT 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 crs =		<&PIO15  2	IN 	ALT2	BYPASS		500>;
+					 col =		<&PIO15  3	IN 	ALT2	BYPASS		500>;
+
+					 mdio=		<&PIO15  4	OUT 	ALT2	BYPASS		1500>;
+					 mdc =		<&PIO15  5	OUT 	ALT2	NICLK		0	CLK_B>;
+
+					 rxdv =		<&PIO15  6	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rx_er =	<&PIO15  7	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+
+
+					 rxd0  =	<&PIO16  0	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd1  =	<&PIO16  1	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd2  =	<&PIO16  2	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd3  =	<&PIO16  3	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd4  =	<&PIO16  4	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd5  =	<&PIO16  5	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd6  =	<&PIO16  6	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd7  =	<&PIO16  7	IN 	ALT2	SE_NICLK_IO	1500 	CLK_A>;
+
+					 rxclk =	<&PIO17  0	IN 	ALT2	NICLK		0	CLK_A>;
+					 clk125 =	<&PIO17  6	IN 	ALT1	NICLK		0	CLK_A>;
+				};
+			};
+
+			padcfg_gmii0_phyclk: gmii0_phyclk {
+				st,pins {
+					};
+			};
+			padcfg_gmii0_phyclk_ext: gmii0_phyclk_ext {
+				st,pins {
+					};
+			};
+
+			padcfg_rgmii0: rgmii0 {
+				st,pins {
+					 phyclk =	<&PIO13  5	OUT 	ALT4	NICLK	0	CLK_B>;
+
+					 txen =		<&PIO13  7	OUT 	ALT2	DE_IO	0 	CLK_A>;
+
+					 txd0  =	<&PIO14  0	OUT 	ALT2	DE_IO	500 	CLK_A>;
+					 txd1  =	<&PIO14  1	OUT 	ALT2	DE_IO	500 	CLK_A>;
+					 txd2  =	<&PIO14  2	OUT 	ALT2	DE_IO	500 	CLK_B>;
+					 txd3  =	<&PIO14  3	OUT 	ALT2	DE_IO	500 	CLK_B>;
+
+					 mdio=		<&PIO15  4	OUT 	ALT2	BYPASS	0>;
+					 mdc =		<&PIO15  5	OUT 	ALT2	NICLK	0	CLK_B>;
+
+					 txclk =	<&PIO15  0	IN 	ALT2	NICLK	0	CLK_A>;
+					 rxdv =		<&PIO15  6	IN 	ALT2	DE_IO	500	CLK_A>;
+
+					 rxd0  =	<&PIO16  0	IN 	ALT2	DE_IO	500	CLK_A>;
+					 rxd1  =	<&PIO16  1	IN 	ALT2	DE_IO	500	CLK_A>;
+					 rxd2  =	<&PIO16  2	IN 	ALT2	DE_IO	500	CLK_A>;
+					 rxd3  =	<&PIO16  3	IN 	ALT2	DE_IO	500	CLK_A>;
+
+					 rxclk =	<&PIO17  0	IN 	ALT2	NICLK	0	CLK_A>;
+					 clk125=	<&PIO17  6	IN 	ALT1	NICLK	0	CLK_A>;
+				};
+			};
+
+			padcfg_rgmii0_phyclk: rgmii0_phyclk {
+				st,pins ;
+			};
+			padcfg_rgmii0_phyclk_ext: rgmii0_phyclk_ext {
+				st,pins {
+				};
+			};
+
+			padcfg_rmii0: rmii0 {
+				st,pins {
+					 mdint =	<&PIO13  6	IN 	ALT2	BYPASS		0>;
+					 txen =		<&PIO13  7	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 txd0  =	<&PIO14  0	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 txd1  =	<&PIO14  1	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+
+					 mdio=		<&PIO15  4	OUT 	ALT2	BYPASS		0>;
+					 mdc =		<&PIO15  5	OUT 	ALT2	NICLK		0	CLK_B>;
+
+					 rxclk=		<&PIO15  6	IN 	ALT2	SE_NICLK_IO	0 	CLK_B>;
+					 rx_er =	<&PIO15  7	IN 	ALT2	SE_NICLK_IO	1500 	CLK_B>;
+					 rxd.0 =	<&PIO16  0	IN 	ALT2	SE_NICLK_IO	0 	CLK_B>;
+					 rxd.1 =	<&PIO16  1	IN 	ALT2	SE_NICLK_IO	0 	CLK_B>;
+				};
+			};
+			padcfg_rmii0_phyclk: rmii0_phyclk {
+				st,pins {
+					 phyclk =	<&PIO13  5	OUT 	ALT2	NICLK	0	CLK_B>;
+				};
+			};
+
+			padcfg_rmii0_phyclk_ext: rmii0_phyclk_ext {
+				st,pins {
+					 phyclk =	<&PIO13  5	IN 	ALT3	NICLK	0	CLK_A>;
+				};
+			};
+
+			padcfg_revmii0: revmii0 {
+				st,pins {
+					 txd0  =	<&PIO14  0	OUT 	ALT2	BYPASS		0>;
+					 txd1  =	<&PIO14  1	OUT 	ALT2	BYPASS		0>;
+					 txd2  =	<&PIO14  2	OUT 	ALT2	BYPASS		0>;
+					 txd3  =	<&PIO14  3	OUT 	ALT2	BYPASS		0>;
+					 txer =		<&PIO15  1	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 txen =		<&PIO13  7	OUT 	ALT2	SE_NICLK_IO	0 	CLK_A>;
+					 txclk =	<&PIO15  0	IN 	ALT2	NICLK		0	CLK_A>; /* FIXME */
+
+					 col =		<&PIO15  3	OUT 	ALT3	BYPASS		0>;
+					 mdio=		<&PIO15  4	OUT 	ALT2	BYPASS		500>;
+					 mdc =		<&PIO15  5	OUT 	ALT3	NICLK		0	CLK_A>;
+					 crs =		<&PIO15  2	OUT 	ALT3	BYPASS		0>;
+
+					 mdint =	<&PIO13  6	IN 	ALT2	BYPASS		0>;
+					 rxd0  =	<&PIO16  0	IN 	ALT2	SE_NICLK_IO	500 	CLK_A>;
+					 rxd1  =	<&PIO16  1	IN 	ALT2	SE_NICLK_IO	500 	CLK_A>;
+					 rxd2  =	<&PIO16  2	IN 	ALT2	SE_NICLK_IO	500 	CLK_A>;
+					 rxd3  =	<&PIO16  3	IN 	ALT2	SE_NICLK_IO	500 	CLK_A>;
+					 rxdv =		<&PIO15  6	IN 	ALT2	SE_NICLK_IO	500 	CLK_A>;
+					 rx_er =	<&PIO15  7	IN 	ALT2	SE_NICLK_IO	500 	CLK_A>;
+					 rxclk =	<&PIO17  0	IN 	ALT2	NICLK		0	CLK_A>; /* FIXME */
+					 phyclk =	<&PIO13  5	IGNR 	ALT2	NICLK		0	CLK_A>;
+				};
+			};
+
+		};
+
+		gmac1{
+			padcfg_mii1: mii1 {
+				st,pins {
+					 txd0  =	<&PIO0  0	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txd1  =	<&PIO0  1	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txd2  =	<&PIO0  2	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txd3  =	<&PIO0  3	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txer =		<&PIO0  4	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txen =		<&PIO0  5	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txclk =	<&PIO0  6	IN 	ALT1	NICLK		0	CLK_A>;
+					 col =		<&PIO0  7	IN 	ALT1	BYPASS 		1000>;
+
+					 mdio =		<&PIO1  0	OUT 	ALT1	BYPASS		1500>;
+					 mdc =		<&PIO1  1	OUT 	ALT1	NICLK		0	CLK_A>;
+					 crs =		<&PIO1  2	IN 	ALT1	BYPASS		1000>;
+					 mdint =	<&PIO1  3	IN 	ALT1	BYPASS		0>;
+					 rxd0  =	<&PIO1  4	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rxd1  =	<&PIO1  5	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rxd2  =	<&PIO1  6	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rxd3  =	<&PIO1  7	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+
+					 rxdv =		<&PIO2  0	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rx_er =	<&PIO2  1	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rxclk =	<&PIO2  2	IN 	ALT1	NICLK		0	CLK_A>;
+
+				};
+			};
+
+			padcfg_mii1_phyclk: mii1_phyclk {
+				st,pins {
+					 phyclk =	<&PIO2  3	OUT 	ALT2	NICLK		0	CLK_A>;
+				};
+			};
+			padcfg_mii1_phyclk_ext: gmii_phyclk_ext {
+				st,pins {
+					 phyclk =	<&PIO2  3	IGNR 	ALT1	NICLK		0	CLK_A>;
+				};
+			};
+
+			padcfg_gmii1: gmii1 {
+					st,pins {
+					 txd0  =	<&PIO0  0	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
+					 txd1  =	<&PIO0  1	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
+					 txd2  =	<&PIO0  2	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
+					 txd3  =	<&PIO0  3	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
+					 txer =		<&PIO0  4	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
+					 txen =		<&PIO0  5	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
+					 txclk =	<&PIO0  6	IN 	ALT1	NICLK		0	CLK_A>;
+					 col =		<&PIO0  7	IN 	ALT1	BYPASS		500>;
+
+					 mdio =		<&PIO1  0	OUT 	ALT1	BYPASS		750>;
+					 mdc =		<&PIO1  1	OUT 	ALT1	NICLK		0	CLK_A>;
+
+					 crs =		<&PIO1  2	IN 	ALT1	BYPASS		500>;
+					 mdint =	<&PIO1  3	IN 	ALT1	BYPASS		0>;
+					 rxd0  =	<&PIO1  4	IN 	ALT1	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd1  =	<&PIO1  5	IN 	ALT1	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd2  =	<&PIO1  6	IN 	ALT1	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd3  =	<&PIO1  7	IN 	ALT1	SE_NICLK_IO	1500 	CLK_A>;
+
+					 rxdv =		<&PIO2  0	IN 	ALT1	SE_NICLK_IO	1500 	CLK_A>;
+					 rx_er =	<&PIO2  1	IN 	ALT1	SE_NICLK_IO	1500 	CLK_A>;
+					 rxclk =	<&PIO2  2	IN 	ALT1	NICLK		0	CLK_A>;
+
+					 phyclk =	<&PIO2  3	OUT	ALT4	NICLK		0	CLK_B>;
+
+					 txd4  =	<&PIO2  6	OUT 	ALT4	SE_NICLK_IO	750 	CLK_A>;
+					 txd5  =	<&PIO2  7	OUT 	ALT4	SE_NICLK_IO	750 	CLK_A>;
+
+					 rxd4  =	<&PIO3  0	IN 	ALT4	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd5  =	<&PIO3  1	IN 	ALT4	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd6  =	<&PIO3  2	IN 	ALT4	SE_NICLK_IO	1500 	CLK_A>;
+					 rxd7  =	<&PIO3  3	IN 	ALT4	SE_NICLK_IO	1500 	CLK_A>;
+
+					 clk125 =	<&PIO3  7	IN 	ALT4	NICLK		0	CLK_A>;
+
+					 txd6  =	<&PIO4  1	OUT 	ALT4	SE_NICLK_IO	750 	CLK_A>;
+					 txd7  =	<&PIO4  2	OUT 	ALT4	SE_NICLK_IO	750 	CLK_A>;
+				};
+			};
+			padcfg_gmii1_phyclk: gmii1_phyclk {
+				st,pins {
+				};
+			};
+			padcfg_gmii1_phyclk_ext: gmii1_phyclk_ext {
+				st,pins {
+				};
+			};
+
+			padcfg_rgmii1: rgmii1-0 {
+				st,pins {
+
+					 txd0  =	<&PIO0  0	OUT 	ALT1	DE_IO	500 	CLK_A>;
+					 txd1  =	<&PIO0  1	OUT 	ALT1	DE_IO	500 	CLK_A>;
+					 txd2  =	<&PIO0  2	OUT 	ALT1	DE_IO	500 	CLK_A>;
+					 txd3  =	<&PIO0  3	OUT 	ALT1	DE_IO	500 	CLK_A>;
+					 txen =		<&PIO0  5	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txclk =	<&PIO0  6	IN 	ALT1	NICLK	0	CLK_A>;
+
+					 mdio =		<&PIO1  0	OUT 	ALT1	BYPASS	0>;
+					 mdc =		<&PIO1  1	OUT 	ALT1	NICLK	0	CLK_A>;
+
+					 rxd0  =	<&PIO1  4	IN 	ALT1	DE_IO	500 	CLK_A>;
+					 rxd1  =	<&PIO1  5	IN 	ALT1	DE_IO	500 	CLK_A>;
+					 rxd2  =	<&PIO1  6	IN 	ALT1	DE_IO	500 	CLK_A>;
+					 rxd3  =	<&PIO1  7	IN 	ALT1	DE_IO	500 	CLK_A>;
+
+					 rxdv =		<&PIO2  0	IN 	ALT1	DE_IO	500	CLK_A>;
+
+					 rxclk =	<&PIO2  2	IN 	ALT1	NICLK	0	CLK_A>;
+					 phyclk =	<&PIO2  3	OUT	ALT4	NICLK	0	CLK_B>;
+
+
+					 clk125=	<&PIO3  7	IN 	ALT4	NICLK	0	CLK_A>;
+				};
+			};
+			padcfg_rgmii1_phyclk: rgmii1_phyclk {
+				st,pins{
+				};
+			};
+
+			padcfg_rgmii1_phyclk_ext: rgmii1_phyclk_ext {
+				st,pins{
+				};
+			};
+
+			padcfg_rmii1: rmii1-0 {
+				st,pins {
+					 txd0  =	<&PIO0  0	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txd1  =	<&PIO0  1	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txen =		<&PIO0  5	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 mdio =		<&PIO1  0	OUT 	ALT1	BYPASS		0>;
+					 mdc =		<&PIO1  1	OUT 	ALT1	NICLK		0	CLK_A>;
+					 mdint =	<&PIO1  3	IN 	ALT1	BYPASS		0>;
+					 rxd0  =	<&PIO1  4	IN 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 rxd1  =	<&PIO1  5	IN 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 rxdv =		<&PIO2  0	IN 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 rx_er =	<&PIO2  1	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+				};
+			};
+
+			padcfg_rmii1_phyclk: rmii1_phyclk {
+				st,pins {
+					 phyclk =	<&PIO2  3	OUT 	ALT2	NICLK	0	CLK_A>;
+				};
+			};
+			padcfg_rmii1_phyclk_ext: rmii1_phyclk_ext {
+				st,pins {
+					 phyclk =	<&PIO2  3	OUT 	ALT1	NICLK	0	CLK_A>;
+				};
+			};
+			padcfg_revmii1: revmii1-0 {
+				st,pins {
+					 txd0  =	<&PIO0  0	OUT 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 txd1  =	<&PIO0  1	OUT 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 txd2  =	<&PIO0  2	OUT 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 txd3  =	<&PIO0  3	OUT 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 txer =		<&PIO0  4	OUT 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 txen =		<&PIO0  5	OUT 	ALT1	SE_NICLK_IO	0 	CLK_B>;
+					 txclk =	<&PIO0  6	IN 	ALT1	NICLK		0	CLK_A>; /* FIXME */
+					 col =		<&PIO0  7	OUT 	ALT2	BYPASS		0>;
+
+
+					 rxdv =		<&PIO2  0	IN 	ALT1	SE_NICLK_IO	500 	CLK_B>;
+					 rx_er =	<&PIO2  1	IN 	ALT1	SE_NICLK_IO	500 	CLK_B>;
+					 rxclk =	<&PIO2  2	IN 	ALT1	NICLK		0	CLK_A>; /* FIXME */
+					 phyclk =	<&PIO2  3	IGNR 	ALT1	NICLK		0	CLK_A>;
+
+					 mdio =		<&PIO1  0	OUT 	ALT1	BYPASS		500>;
+					 mdc =		<&PIO1  1	OUT 	ALT2	NICLK		0	CLK_B>;
+					 crs =		<&PIO1  2	OUT 	ALT2	BYPASS		0>;
+					 mdint =	<&PIO1  3	IN 	ALT1	BYPASS		0>;
+					 rxd0  =	<&PIO1  4	IN 	ALT1	SE_NICLK_IO	500 	CLK_B>;
+					 rxd1  =	<&PIO1  5	IN 	ALT1	SE_NICLK_IO	500 	CLK_B>;
+					 rxd2  =	<&PIO1  6	IN 	ALT1	SE_NICLK_IO	500 	CLK_B>;
+					 rxd3  =	<&PIO1  7	IN 	ALT1	SE_NICLK_IO	500 	CLK_B>;
+				};
+			};
+		};
+
+ };
+};
+
