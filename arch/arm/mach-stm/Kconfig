@@ -37,13 +37,21 @@ config MACH_STM_STIH415
 	help
 	  Include support for a generic STiH415 (Orly) platform.
 
+config MACH_STM_STIH415_BOARD
+	bool "Generic board support for STiH415 based boards via Device trees"
+	depends on OF
+	select MACH_STM_STIH415
+	help
+	Include support for a Generic Board based on device trees for
+	StiH415 (Orly-1)
+
 config MACH_STM_STIH416
 	def_bool n
 	select ARCH_HAS_CPUFREQ
 	select CPU_SUBTYPE_STIH416
 	select STM_HAS_MALI
 	help
-	  Include support for a generic STiH416 (Orly-2) platform.
+	 Include support for a generic STiH416 (Orly-2) platform.
 
 config MACH_STM_STIH416_BOARD
 	bool "Generic board support for STiH416 based boards via Device trees"
