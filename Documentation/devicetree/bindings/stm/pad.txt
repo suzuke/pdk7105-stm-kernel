@@ -1,0 +1,178 @@
+*******************************************************************************
+			STM PadConfig
+*******************************************************************************
+Padconfig takes care of configuring a particular set of pads in to specified
+configuration.
+This is done in very like the old style.
+Each driver takes a phandle called padcfg-0...N p
+
+
+Required properties:
+padcfg-0:	List of phandles, each pointing at a pin configuration
+		node. These referenced pin configuration nodes must define
+		list of pins to be configured. Multiple	entries may exist
+		in this list contributing part of the overall configuration.
+		See the next section of this document for details of the
+		format of these	pin configuration nodes.
+
+Optional properties:
+padcfg-1:	List of phandles, each pointing at a pin configuration
+...
+padcfg-n:	List of phandles, each pointing at a pin configuration
+padcfg-names:	The list of names to assign states. List entry 0 defines the
+		name for integer state ID 0, list entry 1 for state ID 1, and
+		so on.
+
+For example:
+
+	/* For a client device requiring named states */
+	device {
+		padcfg-names = "active", "idle";
+		padcfg-0 = <&state_0_node_a>;
+		padcfg-1 = <&state_1_node_a &state_1_node_b>;
+	};
+
+	/* For the same device if using state IDs */
+	device {
+		padcfg-0 = <&state_0_node_a>;
+		padcfg-1 = <&state_1_node_a &state_1_node_b>;
+	};
+
+	/*
+	 * For an IP block whose binding supports pin configuration,
+	 * but in use on an SoC that doesn't have any pin control hardware
+	 */
+	device {
+		padcfg-names = "active", "idle";
+		padcfg-0 = <>;
+		padcfg-1 = <>;
+	};
+
+
+
+Contents of padcfg node:
+----------------------
+
+Required properties:
+-st,pins:  Child node with list of pins with configuration:
+		below is the format of how each pin should look like.
+
+Every PIO is represented with 4-7 parameters depending on retime configuration.
+Each parameter is explained as below.
+
+Note that padconfig in device trees do not support specifying sysconfs.
+As controlling un-related sysconfs is not part of padconfiguration they should
+be configured either from stm-device or other intended infrastructure.
+
+-GPIO Bank	Bank to which this PIO belongs.
+	each bank in the soc specific device tree is represented as below
+	example with lable. This lable "PIO0" us used as phandle when
+	refering to this bank.
+
+		PIO0: PIO@febe0000 {
+			#gpio-cells = <1>;
+			compatible = "st,gpio";
+			reg = <0xfebe0000 0x100>;
+			bank-name = "PIO0";
+		};
+
+-Pin		Offset in the PIO bank.
+-Mode		Pad configuration is selected from one of the below values.
+
+	UNKWN
+	IN
+	IN_PU
+	OUT
+	BIDIR
+	BIDIR_PU
+	IGNR
+
+-Alternate-Function This could range from 0 to x, Generally 0 means its an PIO,
+		else its controlled by an IP.
+		pad config can't have altfunction 0, as altfun0 means a pio
+		mode which can be directly controlled by gpio i/f.
+		possible altfunction values:
+		-------
+		ALT1
+		ALT2
+		ATL3
+		ATL4
+		ATL5
+		ATL6
+		ATL7
+
+-Retime-Config	Retiming Configuration for the pin.
+		Possible retime configuration are:
+
+		-------		-------------
+		value		args
+		-------		-------------
+		NICLK		<delay> <clk>
+		ICLK_IO		<delay> <clk>
+		BYPASS		<delay>
+		DE_IO		<delay> <clk>
+		SE_ICLK_IO	<delay> <clk>
+		SE_NICLK_IO	<delay> <clk>
+
+- delay 	is retime delay in pico seconds.
+
+Possible values are:
+
+			0
+			300
+			500
+			750
+			1000
+			1250
+			1500
+			1750
+			2000
+			2250
+			2500
+			2750
+			3000
+
+
+- rt clk 	clk to be use for retime.
+
+Possible values are:
+		CLK_A
+		CLK_B
+		CLK_C
+		CLK_D
+
+Example:
+
+padcfg_mmc: mmc {
+	st,pins {
+		MMCCLK =	<&PIO13 4	BIDIR_PU	ALT4	NICLK	0 CLK_B>;
+		DATA0 =		<&PIO14 4	BIDIR_PU	ALT4	BYPASS	0>;
+		DATA1 =		<&PIO14 5	BIDIR_PU	ALT4	BYPASS	0>;
+		DATA2 =		<&PIO14 6	BIDIR_PU	ALT4	BYPASS	0>;
+		DATA3 =		<&PIO14 7	BIDIR_PU	ALT4	BYPASS	0>;
+
+		CMD =		<&PIO15 1	BIDIR_PU	ALT4	BYPASS	0>;
+		WP =		<&PIO15 3	IN		ALT4>;
+
+		DATA4 =		<&PIO16 4	BIDIR_PU	ALT4	BYPASS	0>;
+		DATA5 =		<&PIO16 5	BIDIR_PU	ALT4	BYPASS	0>;
+		DATA6 =		<&PIO16 6	BIDIR_PU	ALT4	BYPASS	0>;
+		DATA7 =		<&PIO16 7	BIDIR_PU	ALT4	BYPASS	0>;
+		PWR =		<&PIO17 1	OUT		ALT4>;	/* MMC Card PWR */
+		CD =		<&PIO17 2	IN		ALT4>;	/* MMC Card Detect */
+		LED =		<&PIO17 3	OUT		ALT4>;	/* MMC LED on */
+	};
+};
+
+
+stm_sdhci0:sdhci0 {
+	compatible	= "st,sdhci", "simple-bus";
+	status = "disabled";
+	reg	= <0xfe81e000  0x1000>;
+	interrupts	=  <0 145 0>;
+	interrupt-names = "mmcirq";
+
+	padcfg-0	= <&padcfg_mmc>;
+
+};
+

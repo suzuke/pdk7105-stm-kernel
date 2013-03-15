@@ -349,4 +349,207 @@ int stm_pad_config_add_gpio_named(struct stm_pad_config *config,
 	stm_pad_config_add_pio_named(config, port, pin, \
 			stm_pad_gpio_direction_bidir, -1, function, name)
 
+#ifdef CONFIG_OF
+
+/*
+ * Pinconf is represented in an opaque unsigned long variable.
+ * Below is the bit allocation details for each possible configuration.
+ * All the bit fields can be encapsulated into four variables
+ * (direction, retime-type, retime-clk, retime-delay)
+ *
+ *        +----------------+
+ *[31:28] |   reserved-3   |
+ *        +----------------+
+ *[27:25] |  direction	   |	[direction]
+ *        +----------------+
+ *[24]    |   reserved-2   |
+ *        +----------------+-------------
+ *[23]    |    retime      |		|
+ *        +----------------+		|
+ *[22]    | retime-invclk  |		|
+ *        +----------------+		v
+ *[21]    |retime-clknotdat|       [Retime-type	]
+ *        +----------------+		^
+ *[20]    |   retime-de    |		|
+ *        +----------------+-------------
+ *[19:18] | retime-clk     |------>[Retime-Clk	]
+ *        +----------------+
+ *[17:16] |  reserved-1    |
+ *        +----------------+
+ *[15..0] | retime-delay   |------>[Retime Delay]
+ *        +----------------+
+ */
+
+#define STM_PINCONF_UNPACK(conf, param) \
+				((conf >> STM_PINCONF_ ##param ##_SHIFT)\
+				& STM_PINCONF_ ##param ##_MASK)
+
+#define STM_PINCONF_PACK(conf, val, param)	{ conf |=  \
+				((val & STM_PINCONF_ ##param ##_MASK) << \
+					STM_PINCONF_ ##param ##_SHIFT) }
+
+/* Output enable */
+#define STM_PINCONF_OE_MASK		0x1
+#define STM_PINCONF_OE_SHIFT		27
+#define STM_PINCONF_OE			(1 << STM_PINCONF_OE_SHIFT)
+#define STM_PINCONF_UNPACK_OE(conf)	STM_PINCONF_UNPACK(conf, OE)
+#define STM_PINCONF_PACK_OE(conf, val)	STM_PINCONF_PACK(conf, val, OE)
+
+/* Pull Up */
+#define STM_PINCONF_PU_MASK		0x1
+#define STM_PINCONF_PU_SHIFT		26
+#define STM_PINCONF_PU			(1 << STM_PINCONF_PU_SHIFT)
+#define STM_PINCONF_UNPACK_PU(conf)	STM_PINCONF_UNPACK(conf, PU)
+#define STM_PINCONF_PACK_PU(conf, val)	STM_PINCONF_PACK(conf, val, PU)
+
+/* Open Drain */
+#define STM_PINCONF_OD_MASK		0x1
+#define STM_PINCONF_OD_SHIFT		25
+#define STM_PINCONF_OD			(1 << STM_PINCONF_OD_SHIFT)
+#define STM_PINCONF_UNPACK_OD(conf)	STM_PINCONF_UNPACK(conf, OD)
+#define STM_PINCONF_PACK_OD(conf, val)	STM_PINCONF_PACK(conf, val, OD)
+
+
+#define STM_PINCONF_RT_MASK		0x1
+#define STM_PINCONF_RT_SHIFT		23
+#define STM_PINCONF_RT			(1 << STM_PINCONF_RT_SHIFT)
+#define STM_PINCONF_UNPACK_RT(conf)	STM_PINCONF_UNPACK(conf, RT)
+#define STM_PINCONF_PACK_RT(conf, val)	STM_PINCONF_PACK(conf, val, RT)
+
+#define STM_PINCONF_RT_INVERTCLK_MASK	0x1
+#define STM_PINCONF_RT_INVERTCLK_SHIFT	22
+#define STM_PINCONF_RT_INVERTCLK	(1 << STM_PINCONF_RT_INVERTCLK_SHIFT)
+#define STM_PINCONF_UNPACK_RT_INVERTCLK(conf) \
+				STM_PINCONF_UNPACK(conf, RT_INVERTCLK)
+#define STM_PINCONF_PACK_RT_INVERTCLK(conf, val) \
+				STM_PINCONF_PACK(conf, val, RT_INVERTCLK)
+
+
+#define STM_PINCONF_RT_CLKNOTDATA_MASK	0x1
+#define STM_PINCONF_RT_CLKNOTDATA_SHIFT	21
+#define STM_PINCONF_RT_CLKNOTDATA	(1 << STM_PINCONF_RT_CLKNOTDATA_SHIFT)
+#define STM_PINCONF_UNPACK_RT_CLKNOTDATA(conf)	\
+					STM_PINCONF_UNPACK(conf, RT_CLKNOTDATA)
+#define STM_PINCONF_PACK_RT_CLKNOTDATA(conf, val) \
+				STM_PINCONF_PACK(conf, val, RT_CLKNOTDATA)
+
+#define STM_PINCONF_RT_DOUBLE_EDGE_MASK	 0x1
+#define STM_PINCONF_RT_DOUBLE_EDGE_SHIFT 20
+#define STM_PINCONF_RT_DOUBLE_EDGE	(1 << STM_PINCONF_RT_DOUBLE_EDGE_SHIFT)
+#define STM_PINCONF_UNPACK_RT_DOUBLE_EDGE(conf)	\
+				STM_PINCONF_UNPACK(conf, RT_DOUBLE_EDGE)
+#define STM_PINCONF_PACK_RT_DOUBLE_EDGE(conf, val) \
+				STM_PINCONF_PACK(conf, val, RT_DOUBLE_EDGE)
+
+#define STM_PINCONF_RT_CLK_MASK		0x3
+#define STM_PINCONF_RT_CLK_SHIFT	18
+#define STM_PINCONF_RT_CLK_A		(0 << STM_PINCONF_RT_CLK_SHIFT)
+#define STM_PINCONF_RT_CLK_B		(1 << STM_PINCONF_RT_CLK_SHIFT)
+#define STM_PINCONF_RT_CLK_C		(2 << STM_PINCONF_RT_CLK_SHIFT)
+#define STM_PINCONF_RT_CLK_D		(3 << STM_PINCONF_RT_CLK_SHIFT)
+
+#define STM_PINCONF_UNPACK_RT_CLK(conf)	STM_PINCONF_UNPACK(conf, RT_CLK)
+#define STM_PINCONF_PACK_RT_CLK(conf, val) \
+					STM_PINCONF_PACK(conf, val, RT_CLK)
+
+
+/* RETIME_DELAY in Pico Secs */
+#define STM_PINCONF_RT_DELAY_MASK		0xffff
+#define STM_PINCONF_RT_DELAY_SHIFT	0
+#define	STM_PINCONF_RT_DELAY_0		(0 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_300	(300 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_500	(500 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_750	(750 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_1000	(1000 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_1250	(1250 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_1500	(1500 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_1750	(1750 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_2000	(2000 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_2250	(2250 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_2500	(2500 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_2750	(2750 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_3000	(3000 << STM_PINCONF_RT_DELAY_SHIFT)
+#define	STM_PINCONF_RT_DELAY_3250	(3250 << STM_PINCONF_RT_DELAY_SHIFT)
+
+#define STM_PINCONF_UNPACK_RT_DELAY(conf) \
+				STM_PINCONF_UNPACK(conf, RT_DELAY)
+#define STM_PINCONF_PACK_RT_DELAY(conf, val) \
+				STM_PINCONF_PACK(conf, val, RT_DELAY)
+
+
+
+#define STM_PINCONF_RT_TYPE_DEF		(0x0)
+/*
+ * B Mode
+ * Bypass retime with optional delay parameter
+ */
+#define STM_PINCONF_RT_TYPE_BYPASS	(0)
+/*
+ * R0, R1, R0D, R1D modes
+ * single-edge data non inverted clock, retime data with clk
+ */
+#define STM_PINCONF_RT_TYPE_SE_NICLK_IO	(STM_PINCONF_RT)
+/*
+ * RIV0, RIV1, RIV0D, RIV1D modes
+ * single-edge data inverted clock, retime data with clk
+ */
+#define STM_PINCONF_RT_TYPE_SE_ICLK_IO	(STM_PINCONF_RT | \
+					STM_PINCONF_RT_INVERTCLK)
+/*
+ * R0E, R1E, R0ED, R1ED modes
+ * double-edge data, retime data with clk
+ */
+#define STM_PINCONF_RT_TYPE_DE_IO	(STM_PINCONF_RT | \
+					STM_PINCONF_RT_DOUBLE_EDGE)
+/*
+ * CIV0, CIV1 modes with inverted clock
+ * Retiming the clk pins will park clock & reduce the noise within the core.
+ */
+#define STM_PINCONF_RT_TYPE_ICLK	(STM_PINCONF_RT | \
+					STM_PINCONF_RT_CLKNOTDATA | \
+					STM_PINCONF_RT_INVERTCLK)
+/*
+ * CLK0, CLK1 modes with non-inverted clock
+ * Retiming the clk pins will park clock & reduce the noise within the core.
+ */
+#define STM_PINCONF_RT_TYPE_NICLK \
+				(STM_PINCONF_RT | STM_PINCONF_RT_CLKNOTDATA)
+
+
+struct stm_pad_config *stm_of_get_pad_config(struct device *dev);
+struct stm_pad_config *stm_of_get_pad_config_index(struct device *dev,
+				int index);
+struct stm_pad_config *stm_of_get_pad_config_from_node(struct device *dev,
+				struct device_node *np, int index);
+
+void stm_of_pad_config_fixup(struct device *dev,
+		struct device_node *fixup_np, struct stm_pad_state *state);
+
+#else /* CONFIG_OF */
+
+static inline struct stm_pad_config *stm_of_get_pad_config(struct device *dev)
+{
+	return NULL;
+}
+
+static inline struct stm_pad_config *stm_of_get_pad_config_index(
+		struct device *dev, int index)
+{
+	return NULL;
+}
+
+static inline struct stm_pad_config *stm_of_get_pad_config_from_node(
+		struct device *dev, struct device_node *np, int index)
+{
+	return NULL;
+}
+
+
+static inline void stm_of_pad_config_fixup(struct device *dev,
+		struct device_node *fixup_np, struct stm_pad_state *state)
+{
+	return;
+}
+#endif /* CONFIG_OF */
+
 #endif
