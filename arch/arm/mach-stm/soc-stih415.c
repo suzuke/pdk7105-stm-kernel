@@ -122,5 +122,8 @@ static struct map_desc stih415_io_desc[] __initdata = {
 
 void __init stih415_map_io(void)
 {
+#ifdef CONFIG_SMP
+	scu_base_addr = ((void __iomem *) IO_ADDRESS(MPE41_SCU_BASE));
+#endif
 	iotable_init(stih415_io_desc, ARRAY_SIZE(stih415_io_desc));
 }

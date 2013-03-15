@@ -16,6 +16,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/irq.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/pad.h>
@@ -34,6 +35,12 @@
 #ifdef CONFIG_SUPERH
 #include <asm/irq-ilc.h>
 #endif
+
+
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 
 #include "pio-control.h"
 
@@ -968,6 +975,8 @@ static struct platform_device stih415_sysconf_devices[] = {
 	},
 };
 
+#endif /* CONFIG_OF */
+
 /* Keyscan resources -------------------------------------------------------*/
 
 static struct stm_pad_config stih415_keyscan_pad_config = {
@@ -1028,12 +1037,31 @@ void stih415_configure_keyscan(const struct stm_keyscan_config *config)
 /* Utility functions  ------------------------------------------------------*/
 
 void stih415_reset(char mode, const char *cmd)
+#ifndef CONFIG_OF
 {
 	struct sysconf_field *sc = sysconf_claim(SYSCONF(11),
 							0, 0, "LPM_SW_RST_N");
 	sysconf_write(sc, 0);
 }
+#else
+{
+	struct device_node *np;
+	struct sysconf_field *sc;
+	np = of_find_node_by_path("/soc");
+	if (np) {
+		sc = stm_of_sysconf_claim(np, "reset");
+		sysconf_write(sc, 0);
+		sysconf_release(sc);
+		of_node_put(np);
+	}
+}
+#endif
 
+
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 /* Early initialisation-----------------------------------------------------*/
 
 /* Initialise devices which are required early in the boot process. */
@@ -1168,6 +1196,7 @@ static struct platform_device stih415_lpc_device = {
 		.force_clk_rate = 300000,
 	}
 };
+#endif /* CONFIG_OF */
 
 /* System Trace Module resources------------------------------------------- */
 
@@ -1199,6 +1228,7 @@ static struct platform_device stih415_systrace_device = {
 /* Late initialisation ---------------------------------------------------- */
 
 static struct platform_device *stih415_devices[] __initdata = {
+#ifndef CONFIG_OF
 	&stih415_mpe_fdma_devices[0],
 	&stih415_mpe_fdma_devices[1],
 	&stih415_mpe_fdma_devices[2],
@@ -1210,6 +1240,7 @@ static struct platform_device *stih415_devices[] __initdata = {
 	&stih415_temp_device[1],
 	&stih415_devhwrandom_device,
 	&stih415_lpc_device,
+#endif /* CONFIG_OF */
 	&stih415_systrace_device,
 };
 

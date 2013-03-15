@@ -8,6 +8,10 @@
  * published by the Free Software Foundation.
  */
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 
 
 #include <linux/init.h>
@@ -126,3 +130,4 @@ void __init stih415_configure_pcie(struct stih415_pcie_config *config)
 	platform_device_register(&stih415_pcie_device);
 }
 
+#endif /* CONFIG_OF */

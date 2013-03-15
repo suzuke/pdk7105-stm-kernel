@@ -7,6 +7,10 @@
  * published by the Free Software Foundation.
  */
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 
 
 #include <linux/init.h>
@@ -246,3 +250,4 @@ void __init stih415_configure_usb(int port)
 	BUG_ON(configured[port]++);
 	platform_device_register(&stih415_usb_devices[port]);
 }
+#endif /* CONFIG_OF */
