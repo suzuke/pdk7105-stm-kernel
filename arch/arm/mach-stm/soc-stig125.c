@@ -28,6 +28,7 @@
 #include <mach/soc-stig125.h>
 #include <mach/hardware.h>
 #include <mach/irqs.h>
+#include "core.h"
 
 static struct map_desc stig125_io_desc[] __initdata = {
 	{
@@ -145,6 +146,9 @@ static struct map_desc stig125_io_desc[] __initdata = {
 
 void __init stig125_map_io(void)
 {
+#ifdef CONFIG_SMP
+	scu_base_addr = ((void __iomem *) IO_ADDRESS(STIG125_SCU_BASE));
+#endif
 	iotable_init(stig125_io_desc, ARRAY_SIZE(stig125_io_desc));
 }
 
@@ -187,6 +191,3 @@ struct sys_timer stig125_timer = {
 	.init	= stig125_timer_init,
 };
 
-#ifdef CONFIG_SMP
-void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(STIG125_SCU_BASE));
-#endif

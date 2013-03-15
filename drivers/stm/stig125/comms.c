@@ -21,6 +21,10 @@
 #include <mach/hardware.h>
 #endif
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 /*
  * - 3 SSCs in the SBC
  * - 2 SSCs standalone @ 0xFE2A8000
@@ -339,3 +343,4 @@ void __init stig125_configure_pwm(struct stig125_pwm_config *config)
 	platform_device_register(&stig125_pwm_devices);
 }
 
+#endif /* CONFIG_OF */

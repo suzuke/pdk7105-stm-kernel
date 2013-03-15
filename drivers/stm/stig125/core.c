@@ -23,6 +23,10 @@
 #include <mach/soc-stig125.h>
 #include <mach/hardware.h>
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 #include "../pio-control.h"
 
 /* EMI resources ---------------------------------------------------------- */
@@ -1030,6 +1034,7 @@ static struct platform_device stig125_temp_device = {
 		}
 	},
 };
+#endif /* CONFIG_OF */
 
 /* Keyscan resources -------------------------------------------------------*/
 static struct stm_pad_config stig125_keyscan_pad_config = {
@@ -1086,6 +1091,10 @@ void stig125_configure_keyscan(const struct stm_keyscan_config *config)
 	platform_device_register(&stig125_keyscan_device);
 }
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 /*
  * FDMA resources --------------------------------
  */
@@ -1202,3 +1211,4 @@ static int __init stig125_devices_setup(void)
 			ARRAY_SIZE(stig125_devices));
 }
 device_initcall(stig125_devices_setup);
+#endif /* CONFIG_OF */
