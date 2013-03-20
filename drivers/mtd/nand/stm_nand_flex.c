@@ -978,7 +978,7 @@ static void flex_print_regs(struct stm_nand_flex_controller *flex)
 }
 #endif /* CONFIG_MTD_DEBUG */
 
-static void flex_init_controller_hw(struct stm_nand_flex_controller *flex)
+static void flex_init_controller(struct stm_nand_flex_controller *flex)
 {
 
 	/* Disable boot_not_flex */
@@ -1005,7 +1005,7 @@ static void flex_init_controller_hw(struct stm_nand_flex_controller *flex)
 }
 
 static struct stm_nand_flex_controller * __devinit
-flex_init_controller(struct platform_device *pdev)
+flex_init_resources(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
 	struct resource *resource;
@@ -1067,14 +1067,13 @@ flex_init_controller(struct platform_device *pdev)
 		goto out4;
 	}
 
-	flex->current_csn = -1;
-
 	/* Initialise 'controller' structure */
 	spin_lock_init(&flex->hwcontrol.lock);
-
 	init_waitqueue_head(&flex->hwcontrol.wq);
 
-	flex_init_controller_hw(flex);
+	flex->current_csn = -1;
+
+	flex_init_controller(flex);
 
 #ifdef CONFIG_MTD_DEBUG
 	flex_print_regs(flex);
@@ -1320,7 +1319,7 @@ static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 	int n;
 
 
-	flex = flex_init_controller(pdev);
+	flex = flex_init_resources(pdev);
 	if (IS_ERR(flex)) {
 		dev_err(&pdev->dev, "Failed to initialise NAND Controller.\n");
 		err = PTR_ERR(flex);
@@ -1377,7 +1376,9 @@ static int stm_nand_flex_restore(struct device *dev)
 {
 	struct stm_nand_flex_controller *flex = dev_get_drvdata(dev);
 
-	flex_init_controller_hw(flex);
+	flex->current_csn = -1;
+	flex_init_controller(flex);
+
 	return 0;
 }
 

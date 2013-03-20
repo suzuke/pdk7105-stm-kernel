@@ -2730,13 +2730,13 @@ nandi_init_resources(struct platform_device *pdev)
 	return nandi;
 }
 
-static void __devexit nandi_exit_controller(struct nandi_controller *nandi)
+static void nandi_exit_controller(struct nandi_controller *nandi)
 {
 
 }
 
-static void __devinit nandi_init_controller(struct nandi_controller *nandi,
-					    int emi_bank)
+static void nandi_init_controller(struct nandi_controller *nandi,
+				  int emi_bank)
 {
 	nandi_init_bch(nandi, emi_bank);
 	nandi_init_hamming(nandi, emi_bank);

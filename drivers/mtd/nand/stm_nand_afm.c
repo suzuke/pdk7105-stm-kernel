@@ -707,7 +707,7 @@ static void afm_calc_timing_registers(struct nand_timing_spec *spec,
 		       (n_ren_off & 0xff) << 8);
 }
 
-static void afm_init_boot(struct stm_nand_afm_controller *afm)
+static void afm_init_controller(struct stm_nand_afm_controller *afm)
 {
 	/* Stop AFM Controller, in case it's still running! */
 	afm_writereg(0x00000000, NANDHAM_AFM_SEQ_CFG);
@@ -738,7 +738,7 @@ static void afm_init_boot(struct stm_nand_afm_controller *afm)
 
 /* Initialise the AFM NAND controller */
 static struct stm_nand_afm_controller * __devinit
-afm_init_controller(struct platform_device *pdev)
+afm_init_resources(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
 	struct stm_nand_afm_controller *afm;
@@ -821,9 +821,10 @@ afm_init_controller(struct platform_device *pdev)
 
 	init_completion(&afm->rbn_completed);
 	init_completion(&afm->seq_completed);
+
 	afm->current_csn = -1;
 
-	afm_init_boot(afm);
+	afm_init_controller(afm);
 
 	platform_set_drvdata(pdev, afm);
 
@@ -3066,7 +3067,7 @@ static int __devinit stm_afm_probe(struct platform_device *pdev)
 	int n;
 	int err = 0;
 
-	afm = afm_init_controller(pdev);
+	afm = afm_init_resources(pdev);
 	if (IS_ERR(afm)) {
 		dev_err(&pdev->dev, "failed to initialise NAND Controller.\n");
 		err = PTR_ERR(afm);
@@ -3123,7 +3124,8 @@ static int stm_afm_nand_restore(struct device *dev)
 {
 	struct stm_nand_afm_controller *afm = dev_get_drvdata(dev);
 
-	afm_init_boot(afm);
+	afm->current_csn = -1;
+	afm_init_controller(afm);
 
 	return 0;
 }
