@@ -13,21 +13,14 @@
 
 @ registers setting on stm_suspend_exec_table call:
 @ r0 = __pa(&eram_data)
-@ r1 = __pa(suspend_pgd)
-@ r2 = va_2_pa
+@ r1 = va_2_pa
 
 	.balign 4
 	.pushsection    .idmap.text, "ax"
 ENTRY(stm_suspend_exec_table)
 	stmfd   sp!, {r4-r12, lr}
 	dmb
-	mov	r9, r2                  @ r9 = va_2_pa offset
-
-	@ install suspend_pgd
-	mcr     p15, 0, r0, c8, c7, 0
-	mcr     p15, 0, r1, c2, c0, 0           @ set TTBR 0
-	mcr     p15, 0, r1, c2, c0, 1           @ set TTBR 1
-	mcr     p15, 0, r0, c8, c7, 0
+	mov	r9, r1                  @ r9 = va_2_pa offset
 
 	@ jump on __pa(suspend_mmu_off) code
 	adr	r1, suspend_mmu_off     @ r1 = __va(suspend_mmu_off)

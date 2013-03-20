@@ -90,7 +90,7 @@ struct stm_suspend_eram_data {
 };
 
 void stm_suspend_exec_table(struct stm_suspend_eram_data *pa_eram_data,
-		void *suspend_pgd, unsigned long va_2_pa);
+		unsigned long va_2_pa);
 
 int stm_suspend_on_eram(void);
 extern unsigned long stm_suspend_on_eram_sz;

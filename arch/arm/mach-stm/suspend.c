@@ -25,6 +25,7 @@
 #include <linux/stm/pm_notify.h>
 #include <linux/stm/poke_table.h>
 
+#include <asm/mmu_context.h>
 #include <asm/idmap.h>
 #include <asm/io.h>
 #include <asm-generic/sections.h>
@@ -129,12 +130,16 @@ stm_again_suspend:
 		stm_prepare_eram(platform_suspend, &eram_data);
 
 		flush_cache_all();
-		flush_tlb_all();
 		outer_flush_all();
+		cpu_switch_mm(idmap_pgd, &init_mm);
+		local_flush_tlb_all();
 
 		stm_suspend_exec_table(
 			(struct stm_suspend_eram_data *)__pa(&eram_data),
-			(void *)__pa(idmap_pgd), va_2_pa);
+			va_2_pa);
+		cpu_switch_mm(current->mm->pgd, current->mm);
+		enter_lazy_tlb(current->mm, current);
+		local_flush_tlb_all();
 	} else {
 		pr_info("Using standalone WFI\n");
 		__asm__ __volatile__("wfi\n" : : : "memory");
