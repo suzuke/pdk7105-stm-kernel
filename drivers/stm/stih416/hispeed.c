@@ -1399,6 +1399,18 @@ static struct platform_device stih416_miphy_devices[2] = {
 	MIPHY(1, 0xfe38a000, 0xfe804000),
 };
 
+static struct stm_amba_bridge_config stih416_amba_sata_config = {
+	.type = stm_amba_type2,
+	.chunks_in_msg = 1,
+	.packets_in_chunk = 1,
+	.write_posting = stm_amba_write_posting_enabled,
+	.max_opcode = stm_amba_opc_LD64_ST64,
+	.type2.threshold = 128,
+	.type2.sd_config_missing = 1,
+	.type2.trigger_mode = stm_amba_stbus_threshold_based,
+	.type2.read_ahead = stm_amba_read_ahead_enabled,
+};
+
 void stih416_configure_miphy(struct stih416_miphy_config *config)
 {
 
@@ -1479,6 +1491,7 @@ static struct stm_plat_ahci_data stm_ahci_plat_data[2] = {
 					},
 			},
 		},
+		.amba_config = &stih416_amba_sata_config,
 		.miphy_num = 0,
 	}, {
 		.device_config = &(struct stm_device_config){
@@ -1502,6 +1515,7 @@ static struct stm_plat_ahci_data stm_ahci_plat_data[2] = {
 					},
 			},
 		},
+		.amba_config = &stih416_amba_sata_config,
 		.miphy_num = 1,
 	},
 };
@@ -1512,10 +1526,12 @@ static u64 stih416_ahci_dmamask = DMA_BIT_MASK(32);
 {								\
 	.name = "ahci_stm",					\
 	.id = _id,						\
-	.num_resources  = 2,					\
+	.num_resources = 3,					\
 	.resource = (struct resource[]) {			\
 		STM_PLAT_RESOURCE_MEM_NAMED("ahci", _iomem,	\
 				 0x1000),			\
+		STM_PLAT_RESOURCE_MEM_NAMED("ahci-amba",	\
+				 _iomem + 0x3000, 0x1000),	\
 		STIH416_RESOURCE_IRQ_NAMED("ahci", _irq),	\
 	},							\
 	.dev = {						\
