@@ -1479,6 +1479,7 @@ static struct stm_plat_ahci_data stm_ahci_plat_data[2] = {
 					},
 			},
 		},
+		.miphy_num = 0,
 	}, {
 		.device_config = &(struct stm_device_config){
 			.power = stih416_ahci_power,
@@ -1501,6 +1502,7 @@ static struct stm_plat_ahci_data stm_ahci_plat_data[2] = {
 					},
 			},
 		},
+		.miphy_num = 1,
 	},
 };
 

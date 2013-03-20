@@ -34,7 +34,7 @@ static int stm_ahci_init(struct device *dev, void __iomem *mmio)
 	writel(0x8204080C, mmio + AHCI_OOBR);
 	writel(0x0204080C, mmio + AHCI_OOBR);
 
-	stm_miphy_claim(pdev->id, SATA_MODE, dev);
+	stm_miphy_claim(pdata->miphy_num, SATA_MODE, ahci_dev);
 
 	return 0;
 };
