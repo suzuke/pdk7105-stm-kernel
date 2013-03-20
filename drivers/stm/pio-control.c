@@ -110,7 +110,7 @@ static unsigned long stm_pio_control_delay_to_bit(unsigned int delay,
 		const struct stm_pio_control_retime_params *retime_params,
 		enum stm_pad_gpio_direction direction)
 {
-	unsigned int *delay_times;
+	const unsigned int *delay_times;
 	int num_delay_times;
 	int i;
 	unsigned int closest_divergence = UINT_MAX;
