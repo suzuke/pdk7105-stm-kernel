@@ -21,6 +21,8 @@
 struct ahci_stm_drv_data {
 	struct clk *clk;
 	struct stm_device_state *device_state;
+	struct stm_amba_bridge *amba_bridge;
+	void __iomem *amba_base;
 	struct platform_device *ahci;
 	struct stm_miphy *miphy;
 };
@@ -30,6 +32,7 @@ static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
 	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
 	struct stm_plat_ahci_data *pdata = dev_get_platdata(&pdev->dev);
+	struct resource *res;
 	int ret;
 
 	drv_data->clk = devm_clk_get(ahci_dev, "ahci_clk");
@@ -54,12 +57,49 @@ static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 		goto fail_clk_disable;
 	}
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ahci-amba");
+	if ((res && !pdata->amba_config) || (!res && pdata->amba_config)) {
+		ret = -EINVAL;
+		goto fail_miphy_release;
+	}
+
+	if (pdata->amba_config) {
+		unsigned long phys_base, phys_size;
+
+		phys_base = res->start;
+		phys_size = resource_size(res);
+
+		if (!devm_request_mem_region(ahci_dev, phys_base,
+			phys_size, "ahci-amba")) {
+			ret = -EBUSY;
+			goto fail_miphy_release;
+		}
+
+		drv_data->amba_base = devm_ioremap(ahci_dev, phys_base,
+			phys_size);
+		if (!drv_data->amba_base) {
+			ret = -ENOMEM;
+			goto fail_miphy_release;
+		}
+
+		drv_data->amba_bridge = stm_amba_bridge_create(ahci_dev,
+			drv_data->amba_base, pdata->amba_config);
+		if (!drv_data->amba_bridge) {
+			ret = -ENOMEM;
+			goto fail_miphy_release;
+		}
+
+		stm_amba_bridge_init(drv_data->amba_bridge);
+	}
+
 	writel(0x80000000, mmio + AHCI_OOBR);
 	writel(0x8204080C, mmio + AHCI_OOBR);
 	writel(0x0204080C, mmio + AHCI_OOBR);
 
 	return 0;
 
+fail_miphy_release:
+	stm_miphy_release(drv_data->miphy);
 fail_clk_disable:
 	clk_disable_unprepare(drv_data->clk);
 	return ret;
@@ -94,6 +134,8 @@ static int ahci_stm_resume(struct device *ahci_dev)
 
 	clk_prepare_enable(drv_data->clk);
 	stm_device_power(drv_data->device_state, stm_device_power_on);
+	if (drv_data->amba_bridge)
+		stm_amba_bridge_init(drv_data->amba_bridge);
 
 	return 0;
 }
@@ -112,12 +154,14 @@ static int __devinit ahci_stm_driver_probe(struct platform_device *pdev)
 {
 	struct ahci_stm_drv_data *drv_data;
 	struct device *dev = &pdev->dev;
+	struct resource ahci_resource[2];
+	struct resource *res;
 	struct platform_device_info ahci_info = {
 		.parent = dev,
 		.name = "ahci",
 		.id = pdev->id,
-		.res = pdev->resource,
-		.num_res = pdev->num_resources,
+		.res = ahci_resource,
+		.num_res = 2,
 		.data = &ahci_stm_platform_data,
 		.size_data = sizeof(ahci_stm_platform_data),
 		.dma_mask = *dev->dma_mask,
@@ -128,6 +172,16 @@ static int __devinit ahci_stm_driver_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	platform_set_drvdata(pdev, drv_data);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ahci");
+	if (!res)
+		return -EINVAL;
+	ahci_resource[0] = *res;
+
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (!res)
+		return -EINVAL;
+	ahci_resource[1] = *res;
 
 	drv_data->ahci = platform_device_register_full(&ahci_info);
 	if (IS_ERR(drv_data->ahci))

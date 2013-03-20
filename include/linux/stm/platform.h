@@ -317,6 +317,7 @@ struct stm_plat_sata_data {
 
 struct stm_plat_ahci_data {
 	struct stm_device_config *device_config;
+	struct stm_amba_bridge_config *amba_config;
 	int miphy_num;
 };
 /*** PIO platform data ***/
