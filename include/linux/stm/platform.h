@@ -317,10 +317,6 @@ struct stm_plat_sata_data {
 
 struct stm_plat_ahci_data {
 	struct stm_device_config *device_config;
-	/* the driver has a default ahci_pdata
-	 * therefore the ahci_pdata can be NULL on several chips
-	 */
-	struct ahci_platform_data *ahci_pdata;
 	int miphy_num;
 };
 /*** PIO platform data ***/
