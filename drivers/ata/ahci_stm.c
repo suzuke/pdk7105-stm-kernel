@@ -13,7 +13,6 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/ahci_platform.h>
-#include <linux/pm_clock.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
 
@@ -26,22 +25,91 @@ struct ahci_stm_drv_data {
 	struct stm_miphy *miphy;
 };
 
-static int ahci_stm_init(struct device *dev, void __iomem *mmio)
+static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 {
+	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
+	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
+	struct stm_plat_ahci_data *pdata = dev_get_platdata(&pdev->dev);
+	int ret;
+
+	drv_data->clk = devm_clk_get(ahci_dev, "ahci_clk");
+	if (IS_ERR(drv_data->clk))
+		return PTR_ERR(drv_data->clk);
+
+	ret = clk_prepare_enable(drv_data->clk);
+	if (ret)
+		return ret;
+
+	drv_data->device_state =
+		devm_stm_device_init(ahci_dev, pdata->device_config);
+	if (!drv_data->device_state) {
+		ret = -EBUSY;
+		goto fail_clk_disable;
+	}
+
+	drv_data->miphy = stm_miphy_claim(pdata->miphy_num, SATA_MODE,
+		ahci_dev);
+	if (!drv_data->miphy) {
+		ret = -EBUSY;
+		goto fail_clk_disable;
+	}
+
 	writel(0x80000000, mmio + AHCI_OOBR);
 	writel(0x8204080C, mmio + AHCI_OOBR);
 	writel(0x0204080C, mmio + AHCI_OOBR);
 
 	return 0;
+
+fail_clk_disable:
+	clk_disable_unprepare(drv_data->clk);
+	return ret;
 };
+
+static void ahci_stm_exit(struct device *ahci_dev)
+{
+	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
+	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
+
+	stm_miphy_release(drv_data->miphy);
+	stm_device_power(drv_data->device_state, stm_device_power_off);
+	clk_disable_unprepare(drv_data->clk);
+}
+
+#ifdef CONFIG_PM
+static int ahci_stm_suspend(struct device *ahci_dev)
+{
+	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
+	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
+
+	stm_device_power(drv_data->device_state, stm_device_power_off);
+	clk_disable_unprepare(drv_data->clk);
+
+	return 0;
+}
+
+static int ahci_stm_resume(struct device *ahci_dev)
+{
+	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
+	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
+
+	clk_prepare_enable(drv_data->clk);
+	stm_device_power(drv_data->device_state, stm_device_power_on);
+
+	return 0;
+}
+#endif
 
 static struct ahci_platform_data ahci_stm_platform_data = {
 	.init = ahci_stm_init,
+	.exit = ahci_stm_exit,
+#ifdef CONFIG_PM
+	.suspend = ahci_stm_suspend,
+	.resume = ahci_stm_resume,
+#endif
 };
 
 static int __devinit ahci_stm_driver_probe(struct platform_device *pdev)
 {
-	struct stm_plat_ahci_data *pdata = dev_get_platdata(&pdev->dev);
 	struct ahci_stm_drv_data *drv_data;
 	struct device *dev = &pdev->dev;
 	struct platform_device_info ahci_info = {
@@ -54,88 +122,23 @@ static int __devinit ahci_stm_driver_probe(struct platform_device *pdev)
 		.size_data = sizeof(ahci_stm_platform_data),
 		.dma_mask = *dev->dma_mask,
 	};
-	int ret;
 
 	drv_data = devm_kzalloc(dev, sizeof(*drv_data), GFP_KERNEL);
 	if (!drv_data)
 		return -ENOMEM;
 
-	drv_data->clk = devm_clk_get(dev, "ahci_clk");
-	if (IS_ERR(drv_data->clk))
-		return PTR_ERR(drv_data->clk);
-
-	pm_clk_init(dev);
-	pm_clk_add(dev, "ahci_clk");
-
-	ret = clk_prepare_enable(drv_data->clk);
-	if (ret)
-		goto fail_pm_cleanup;
-
-	drv_data->device_state =
-		devm_stm_device_init(&pdev->dev, pdata->device_config);
-	if (!drv_data->device_state) {
-		ret = -EBUSY;
-		goto fail_clk_disable;
-	}
-
-	drv_data->miphy = stm_miphy_claim(pdata->miphy_num, SATA_MODE, dev);
-	if (!drv_data->miphy) {
-		ret = -EBUSY;
-		goto fail_clk_disable;
-	}
-
 	platform_set_drvdata(pdev, drv_data);
 
 	drv_data->ahci = platform_device_register_full(&ahci_info);
-	if (IS_ERR(drv_data->ahci)) {
-		ret = PTR_ERR(drv_data->ahci);
-		goto fail_free_miphy;
-	}
-
-	return 0;
-
-fail_free_miphy:
-	stm_miphy_release(drv_data->miphy);
-fail_clk_disable:
-	clk_disable_unprepare(drv_data->clk);
-fail_pm_cleanup:
-	pm_clk_destroy(&pdev->dev);
-	return ret;
-}
-
-#ifdef CONFIG_PM
-static int ahci_stm_suspend(struct device *dev)
-{
-	struct ahci_stm_drv_data *drv_data = dev_get_drvdata(dev);
-
-	stm_device_power(drv_data->device_state, stm_device_power_off);
-	pm_clk_suspend(dev);
+	if (IS_ERR(drv_data->ahci))
+		return PTR_ERR(drv_data->ahci);
 
 	return 0;
 }
-
-static int ahci_stm_resume(struct device *dev)
-{
-	struct ahci_stm_drv_data *drv_data = dev_get_drvdata(dev);
-
-	pm_clk_resume(dev);
-	stm_device_power(drv_data->device_state, stm_device_power_on);
-
-	return 0;
-}
-#endif
-
-static SIMPLE_DEV_PM_OPS(ahci_stm_pm_ops, ahci_stm_suspend, ahci_stm_resume);
 
 static int ahci_stm_remove(struct platform_device *pdev)
 {
-	struct ahci_stm_drv_data *drv_data = dev_get_drvdata(&pdev->dev);
-
-	stm_miphy_release(drv_data->miphy);
-
-	pm_clk_destroy(&pdev->dev);
-
-	stm_device_power(drv_data->device_state, stm_device_power_off);
+	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
 
 	platform_device_unregister(drv_data->ahci);
 
@@ -145,7 +148,6 @@ static int ahci_stm_remove(struct platform_device *pdev)
 static struct platform_driver ahci_stm_driver = {
 	.driver.name = "ahci_stm",
 	.driver.owner = THIS_MODULE,
-	.driver.pm = &ahci_stm_pm_ops,
 	.probe = ahci_stm_driver_probe,
 	.remove = ahci_stm_remove,
 };
