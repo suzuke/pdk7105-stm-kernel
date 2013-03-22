@@ -68,7 +68,6 @@ static void __init b2044_init(void)
 			.id = 1,
 			.mode = SATA_MODE,
 			.iface = UPORT_IF,
-			.tx_pol_inv = 1,
 			});
 
 	sti125_configure_sata(1);
