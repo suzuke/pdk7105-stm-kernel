@@ -1,0 +1,194 @@
+/*
+ * Copyright (C) 2011 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+/dts-v1/;
+#include "stih415.dtsi"
+/ {
+	model = "Stih415 B2020";
+	compatible = "st,stih415", "st,stih415-b2020";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	memory{ /* set from start up targetpack */
+                device_type = "memory";
+		reg = <0x00000000 0x00000000>;
+	};
+
+	chosen {
+		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                                         ";
+		linux,stdout-path = &sbc_uart1;
+	};
+
+        aliases {
+                ttyAS0 = &sbc_uart1;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &sbc_i2c0;
+		i2c3 = &sbc_i2c1;
+		usb0 = &usb0;
+		usb1 = &usb1;
+		usb2 = &usb2;
+		mmc0 = &sdhci0;
+        };
+	soc {
+		nandbch: nandbch@fe901000{
+			/* Most of the properities inherited from stih415.dtsi */
+			st,rbn-flex-connected;
+			status = "okay";
+			st,nand-banks = <&nand_banks>;
+		};
+
+		nand_banks: nand-banks {
+			bank0 {
+				/* NAND_BBT_USE_FLASH */
+				nand-on-flash-bbt;
+				nand-no-autoincr;
+				st,nand-csn		= <0>;
+				st,nand-timing-data	= <&nand_timing0>;
+				partitions {
+					#address-cells = <1>;
+			                #size-cells = <1>;
+					partition@0{
+						label = "NAND Flash 1";
+						reg = <0x00000000 0x00800000>;
+					};
+					partition@800000{
+						label = "NAND Flash 2";
+						reg = <0x00800000 0x3f800000>;
+					};
+				};
+			};
+		};
+
+		nand_timing0: nand-timing {
+			sig-setup	= <10>;
+			sig-hold	= <10>;
+			CE-deassert	= <0>;
+			WE-to-RBn	= <100>;
+			wr-on		= <10>;
+			wr-off		= <30>;
+			rd-on		= <10>;
+			rd-off		= <30>;
+			chip-delay	= <30>;		/* delay in us */
+		};
+
+
+		spifsm:	spifsm@fe902000{
+			status		= "okay";
+			flash-name	= "m25p128";
+			partitions	= <&b2020_fsm_partitions>;
+
+			b2020_fsm_partitions: partitions-b2020 {
+		                #address-cells = <1>;
+			        #size-cells = <1>;
+				partition@0 {
+					label = "Serial Flash 1";
+					reg = <0x00000000 0x00200000>;
+				};
+				partition@200000{
+					label = "Serial Flash 2";
+					reg = <0x00200000 0x00e00000>;
+				};
+			};
+		};
+
+		/* USB's */
+
+		usb0: usb@fe1000000{
+			status = "okay";
+		};
+
+		usb1: usb@fe200000{
+			status = "okay";
+		};
+
+		usb2: usb@fe300000{
+			status = "okay";
+		};
+
+		/* SBC PWM */
+		pwm0: pwm@fed100000{
+			/* status = "okay";  Conflicts with eth reset line */
+			st,channel-enable = <1 0 0 0>;
+		};
+
+		leds {
+			compatible	= "gpio-leds";
+			red {
+				#gpio-cells = <1>;
+				label	= "Front Panel LED";
+				gpios	= <&PIO4 1>;
+				linux,default-trigger	= "heartbeat";
+			};
+			green {
+				gpios	= <&PIO4 7>;
+				default-state = "off";
+			};
+		};
+
+		lirc: lirc@fe5180000 {
+			status = "okay";
+		};
+
+		/* SSC0 to STV6440 (AV Buffer), PCIe connector (SMB) and NIM SCL1/SDA1 */
+		i2c0: i2c@fed40000{
+			status = "okay";
+		};
+
+		/* SSC1 to HDMI (via HDMI2C1_5DIJ) */
+		i2c1: i2c@fed41000{
+			status = "okay";
+		};
+
+		/* SSC10 to M24256-BWMN6 eeprom and NIM SCL2/SDA2 */	
+		sbc_i2c0: i2c@fe540000{
+			status = "okay";
+		};
+
+		/* SSC11 to J36 TFT interface */
+		sbc_i2c1: i2c@fe541000{
+			status = "okay";
+		};
+
+		sbc_uart1: uart@fe531000 {
+			status = "okay";
+		};
+
+		sdhci0:sdhci@fe81e000 {
+			status = "okay";
+			/* st,mmc-non-removable;  for eMMC on boards */
+		};
+
+		pcie0: pcie@fe800000{
+			status = "okay";
+		};
+
+		ethernet1: ethernet@fef08000 {
+			status = "okay";
+			phy-mode	= "rgmii-id";
+			snps,phy-bus-name = "stmmac";
+			snps,phy-bus-id = <0>;
+			snps,phy-addr = <0x1>;
+
+			snps,reset-gpio = <&PIO3 0>;
+			snps,reset-active-low;
+			snps,reset-delays-us = <0 10000 10000>;
+			device-config = <&rgmii1_ext_clk_dev_config>;
+
+		};
+
+		miphy: miphy@fe804000 {
+			status = "okay";
+			miphy-modes	= "sata", "pcie";
+		};
+
+		sata0: sata@fe818000{
+			status = "okay";
+		};
+	};
+};
