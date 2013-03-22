@@ -130,6 +130,13 @@ module_param(eee_timer, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(eee_timer, "LPI tx expiration time in msec");
 #define STMMAC_LPI_TIMER(x) (jiffies + msecs_to_jiffies(x))
 
+/* By default the driver will use the ring mode to manage tx and rx descriptors
+ * but passing this value so user can force to use the chain instead of the ring
+ */
+static unsigned int chain_mode;
+module_param(chain_mode, int, S_IRUGO);
+MODULE_PARM_DESC(chain_mode, "To use chain instead of ring mode");
+
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id);
 
 #ifdef CONFIG_STMMAC_DEBUG_FS
@@ -515,17 +522,15 @@ static void init_dma_desc_rings(struct net_device *dev)
 	struct sk_buff *skb;
 	unsigned int txsize = priv->dma_tx_size;
 	unsigned int rxsize = priv->dma_rx_size;
-	unsigned int bfsize;
+	unsigned int bfsize = 0;
 	int dis_ic = 0;
-	int des3_as_data_buf = 0;
 
 	/* Set the max buffer size according to the DESC mode
 	 * and the MTU. Note that RING mode allows 16KiB bsize. */
-	bfsize = priv->hw->ring->set_16kib_bfsize(dev->mtu);
+	if (priv->mode == STMMAC_RING_MODE)
+		bfsize = priv->hw->ring->set_16kib_bfsize(dev->mtu);
 
-	if (bfsize == BUF_SIZE_16KiB)
-		des3_as_data_buf = 1;
-	else
+	if (bfsize < BUF_SIZE_16KiB)
 		bfsize = stmmac_set_bfsize(dev->mtu, priv->dma_buf_sz);
 
 	DBG(probe, INFO, "stmmac: txsize %d, rxsize %d, bfsize %d\n",
@@ -572,7 +577,9 @@ static void init_dma_desc_rings(struct net_device *dev)
 
 		p->des2 = priv->rx_skbuff_dma[i];
 
-		priv->hw->ring->init_desc3(des3_as_data_buf, p);
+		if ((priv->mode == STMMAC_RING_MODE) &&
+		    (bfsize == BUF_SIZE_16KiB))
+			priv->hw->ring->init_desc3(p);
 
 		DBG(probe, INFO, "[%p]\t[%p]\t[%x]\n", priv->rx_skbuff[i],
 			priv->rx_skbuff[i]->data, priv->rx_skbuff_dma[i]);
@@ -590,17 +597,20 @@ static void init_dma_desc_rings(struct net_device *dev)
 
 	/* In case of Chained mode this sets the des3 to the next
 	 * element in the chain */
-	priv->hw->ring->init_dma_chain(priv->dma_rx, priv->dma_rx_phy, rxsize);
-	priv->hw->ring->init_dma_chain(priv->dma_tx, priv->dma_tx_phy, txsize);
-
+	if (priv->mode == STMMAC_CHAIN_MODE) {
+		priv->hw->chain->init_dma_chain(priv->dma_rx, priv->dma_rx_phy,
+						rxsize);
+		priv->hw->chain->init_dma_chain(priv->dma_tx, priv->dma_tx_phy,
+						txsize);
+	}
 	priv->dirty_tx = 0;
 	priv->cur_tx = 0;
 
 	if (priv->use_riwt)
 		dis_ic = 1;
 	/* Clear the Rx/Tx descriptors */
-	priv->hw->desc->init_rx_desc(priv->dma_rx, rxsize, dis_ic);
-	priv->hw->desc->init_tx_desc(priv->dma_tx, txsize);
+	priv->hw->desc->init_rx_desc(priv->dma_rx, rxsize, dis_ic, priv->mode);
+	priv->hw->desc->init_tx_desc(priv->dma_tx, txsize, priv->mode);
 
 	if (netif_msg_hw(priv)) {
 		pr_info("RX descriptor ring:\n");
@@ -727,14 +737,15 @@ static void stmmac_tx_clean(struct stmmac_priv *priv)
 			dma_unmap_single(priv->device, p->des2,
 					 priv->hw->desc->get_tx_len(p),
 					 DMA_TO_DEVICE);
-		priv->hw->ring->clean_desc3(p);
+		if (priv->mode == STMMAC_RING_MODE)
+			priv->hw->ring->clean_desc3(p);
 
 		if (likely(skb != NULL)) {
 			dev_kfree_skb(skb);
 			priv->tx_skbuff[entry] = NULL;
 		}
 
-		priv->hw->desc->release_tx_desc(p);
+		priv->hw->desc->release_tx_desc(p, priv->mode);
 
 		priv->dirty_tx++;
 	}
@@ -779,7 +790,8 @@ static void stmmac_tx_err(struct stmmac_priv *priv)
 
 	priv->hw->dma->stop_tx(priv->ioaddr);
 	dma_free_tx_skbufs(priv);
-	priv->hw->desc->init_tx_desc(priv->dma_tx, priv->dma_tx_size);
+	priv->hw->desc->init_tx_desc(priv->dma_tx, priv->dma_tx_size,
+				     priv->mode);
 	priv->dirty_tx = 0;
 	priv->cur_tx = 0;
 	priv->hw->dma->start_tx(priv->ioaddr);
@@ -1187,7 +1199,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct stmmac_priv *priv = netdev_priv(dev);
 	unsigned int txsize = priv->dma_tx_size;
 	unsigned int entry;
-	int i, csum_insertion = 0;
+	int i, csum_insertion = 0, is_jumbo = 0;
 	int nfrags = skb_shinfo(skb)->nr_frags;
 	struct dma_desc *desc, *first;
 	unsigned int nopaged_len = skb_headlen(skb);
@@ -1233,15 +1245,27 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 #endif
 	priv->tx_skbuff[entry] = skb;
 
-	if (priv->hw->ring->is_jumbo_frm(skb->len, priv->plat->enh_desc)) {
-		entry = priv->hw->ring->jumbo_frm(priv, skb, csum_insertion);
-		desc = priv->dma_tx + entry;
+	/* To program the descriptors according to the size of the frame */
+	if (priv->mode == STMMAC_RING_MODE) {
+		is_jumbo = priv->hw->ring->is_jumbo_frm(skb->len,
+							priv->plat->enh_desc);
+		if (unlikely(is_jumbo))
+			entry = priv->hw->ring->jumbo_frm(priv, skb,
+							  csum_insertion);
 	} else {
+		is_jumbo = priv->hw->chain->is_jumbo_frm(skb->len,
+							priv->plat->enh_desc);
+		if (unlikely(is_jumbo))
+			entry = priv->hw->chain->jumbo_frm(priv, skb,
+							   csum_insertion);
+	}
+	if (likely(!is_jumbo)) {
 		desc->des2 = dma_map_single(priv->device, skb->data,
 					nopaged_len, DMA_TO_DEVICE);
 		priv->hw->desc->prepare_tx_desc(desc, 1, nopaged_len,
-						csum_insertion);
-	}
+						csum_insertion, priv->mode);
+	} else
+		desc = priv->dma_tx + entry;
 
 	for (i = 0; i < nfrags; i++) {
 		const skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
@@ -1254,7 +1278,8 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		desc->des2 = skb_frag_dma_map(priv->device, frag, 0, len,
 					      DMA_TO_DEVICE);
 		priv->tx_skbuff[entry] = NULL;
-		priv->hw->desc->prepare_tx_desc(desc, 0, len, csum_insertion);
+		priv->hw->desc->prepare_tx_desc(desc, 0, len, csum_insertion,
+						priv->mode);
 		wmb();
 		priv->hw->desc->set_tx_owner(desc);
 		wmb();
@@ -1335,7 +1360,8 @@ static inline void stmmac_rx_refill(struct stmmac_priv *priv)
 
 			(p + entry)->des2 = priv->rx_skbuff_dma[entry];
 
-			if (unlikely(priv->plat->has_gmac))
+			if (unlikely((priv->mode == STMMAC_RING_MODE) &&
+				     (priv->plat->has_gmac)))
 				priv->hw->ring->refill_desc3(bfsize, p + entry);
 
 			RX_DBG(KERN_INFO "\trefill entry #%d\n", entry);
@@ -1881,11 +1907,19 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 
 	priv->hw = mac;
 
-	/* To use the chained or ring mode */
-	priv->hw->ring = &ring_mode_ops;
-
 	/* Get and dump the chip ID */
 	priv->synopsys_id = stmmac_get_synopsys_id(priv);
+
+	/* To use the chained or ring mode */
+	if (chain_mode)	{
+		priv->hw->chain = &chain_mode_ops;
+		pr_info(" Chain mode enabled\n");
+		priv->mode = STMMAC_CHAIN_MODE;
+	} else {
+		priv->hw->ring = &ring_mode_ops;
+		pr_info(" Ring mode enabled\n");
+		priv->mode = STMMAC_RING_MODE;
+	}
 
 	/* Get the HW capability (new GMAC newer than 3.50a) */
 	priv->hw_cap_support = stmmac_get_hw_features(priv);
@@ -2115,8 +2149,9 @@ int stmmac_suspend(struct net_device *ndev)
 	priv->hw->dma->stop_rx(priv->ioaddr);
 	/* Clear the Rx/Tx descriptors */
 	priv->hw->desc->init_rx_desc(priv->dma_rx, priv->dma_rx_size,
-				     dis_ic);
-	priv->hw->desc->init_tx_desc(priv->dma_tx, priv->dma_tx_size);
+				     dis_ic, priv->mode);
+	priv->hw->desc->init_tx_desc(priv->dma_tx, priv->dma_tx_size,
+				     priv->mode);
 
 	/* Enable Power down mode by programming the PMT regs */
 	if (device_may_wakeup(priv->device))
@@ -2260,6 +2295,9 @@ static int __init stmmac_cmdline_opt(char *str)
 				goto err;
 		} else if (!strncmp(opt, "eee_timer:", 10)) {
 			if (kstrtoint(opt + 10, 0, &eee_timer))
+				goto err;
+		} else if (!strncmp(opt, "chain_mode:", 11)) {
+			if (kstrtoint(opt + 11, 0, &chain_mode))
 				goto err;
 		}
 	}
