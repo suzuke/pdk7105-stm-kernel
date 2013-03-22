@@ -9,9 +9,11 @@
  */
 
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/export.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/ahci_platform.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
@@ -27,11 +29,26 @@ struct ahci_stm_drv_data {
 	struct stm_miphy *miphy;
 };
 
+static u64 stm_ahci_dma_mask = DMA_BIT_MASK(32);
+static void *ahci_stm_get_platdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_ahci_data *data;
+	if (!np)
+		return dev_get_platdata(&pdev->dev);
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	of_property_read_u32(np, "miphy-num", (u32 *)&data->miphy_num);
+	data->device_config = stm_of_get_dev_config(&pdev->dev);
+	pdev->dev.platform_data = data;
+	return data;
+}
+
 static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 {
 	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
 	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
-	struct stm_plat_ahci_data *pdata = dev_get_platdata(&pdev->dev);
+	struct stm_plat_ahci_data *pdata = ahci_stm_get_platdata(pdev);
 	struct resource *res;
 	int ret;
 
@@ -164,8 +181,14 @@ static int __devinit ahci_stm_driver_probe(struct platform_device *pdev)
 		.num_res = 2,
 		.data = &ahci_stm_platform_data,
 		.size_data = sizeof(ahci_stm_platform_data),
-		.dma_mask = *dev->dma_mask,
 	};
+
+	if (dev->of_node) {
+		ahci_info.id = 	of_alias_get_id(dev->of_node, "sata");
+		ahci_info.dma_mask = stm_ahci_dma_mask;
+	} else if (dev->dma_mask) {	
+		ahci_info.dma_mask = *dev->dma_mask;
+	}
 
 	drv_data = devm_kzalloc(dev, sizeof(*drv_data), GFP_KERNEL);
 	if (!drv_data)
@@ -199,9 +222,21 @@ static int ahci_stm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_ahci_match[] = {
+	{
+		.compatible = "st,ahci",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_ahci_match);
+#endif
+
 static struct platform_driver ahci_stm_driver = {
 	.driver.name = "ahci_stm",
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(stm_ahci_match),
 	.probe = ahci_stm_driver_probe,
 	.remove = ahci_stm_remove,
 };
