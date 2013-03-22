@@ -210,8 +210,7 @@ static void stmmac_ethtool_getdrvinfo(struct net_device *dev,
 		strlcpy(info->driver, MAC100_ETHTOOL_NAME,
 			sizeof(info->driver));
 
-	strcpy(info->version, DRV_MODULE_VERSION);
-	info->fw_version[0] = '\0';
+	strlcpy(info->version, DRV_MODULE_VERSION, sizeof(info->version));
 }
 
 static int stmmac_ethtool_getsettings(struct net_device *dev,
@@ -624,10 +623,9 @@ static const struct ethtool_ops stmmac_ethtool_ops = {
 	.get_eee = stmmac_ethtool_op_get_eee,
 	.set_eee = stmmac_ethtool_op_set_eee,
 	.get_sset_count	= stmmac_get_sset_count,
+	.get_ts_info = ethtool_op_get_ts_info,
 	.get_coalesce = stmmac_get_coalesce,
 	.set_coalesce = stmmac_set_coalesce,
-	.get_ts_info = ethtool_op_get_ts_info,
-
 };
 
 void stmmac_set_ethtool_ops(struct net_device *netdev)

@@ -531,28 +531,21 @@ static void init_dma_desc_rings(struct net_device *dev)
 	DBG(probe, INFO, "stmmac: txsize %d, rxsize %d, bfsize %d\n",
 	    txsize, rxsize, bfsize);
 
-	priv->rx_skbuff_dma = kmalloc(rxsize * sizeof(dma_addr_t), GFP_KERNEL);
-	priv->rx_skbuff =
-	    kmalloc(sizeof(struct sk_buff *) * rxsize, GFP_KERNEL);
-	priv->dma_rx =
-	    (struct dma_desc *)dma_alloc_coherent(priv->device,
-						  rxsize *
-						  sizeof(struct dma_desc),
-						  &priv->dma_rx_phy,
-						  GFP_KERNEL);
-	priv->tx_skbuff = kmalloc(sizeof(struct sk_buff *) * txsize,
-				       GFP_KERNEL);
-	priv->dma_tx =
-	    (struct dma_desc *)dma_alloc_coherent(priv->device,
-						  txsize *
-						  sizeof(struct dma_desc),
-						  &priv->dma_tx_phy,
-						  GFP_KERNEL);
+	priv->rx_skbuff_dma = kmalloc_array(rxsize, sizeof(dma_addr_t),
+					    GFP_KERNEL);
+	priv->rx_skbuff = kmalloc_array(rxsize, sizeof(struct sk_buff *),
+					GFP_KERNEL);
+	priv->dma_rx = dma_alloc_coherent(priv->device,
+					  rxsize * sizeof(struct dma_desc),
+					  &priv->dma_rx_phy, GFP_KERNEL);
+	priv->tx_skbuff = kmalloc_array(txsize, sizeof(struct sk_buff *),
+					GFP_KERNEL);
+	priv->dma_tx = dma_alloc_coherent(priv->device,
+					  txsize * sizeof(struct dma_desc),
+					  &priv->dma_tx_phy, GFP_KERNEL);
 
-	if ((priv->dma_rx == NULL) || (priv->dma_tx == NULL)) {
-		pr_err("%s:ERROR allocating the DMA Tx/Rx desc\n", __func__);
+	if ((priv->dma_rx == NULL) || (priv->dma_tx == NULL))
 		return;
-	}
 
 	DBG(probe, INFO, "stmmac (%s) DMA desc: virt addr (Rx %p, "
 	    "Tx %p)\n\tDMA phy addr (Rx 0x%08x, Tx 0x%08x)\n",
@@ -737,18 +730,7 @@ static void stmmac_tx_clean(struct stmmac_priv *priv)
 		priv->hw->ring->clean_desc3(p);
 
 		if (likely(skb != NULL)) {
-			/*
-			 * If there's room in the queue (limit it to size)
-			 * we add this skb back into the pool,
-			 * if it's the right size.
-			 */
-			if ((skb_queue_len(&priv->rx_recycle) <
-				priv->dma_rx_size) &&
-				skb_recycle_check(skb, priv->dma_buf_sz))
-				__skb_queue_head(&priv->rx_recycle, skb);
-			else
-				dev_kfree_skb(skb);
-
+			dev_kfree_skb(skb);
 			priv->tx_skbuff[entry] = NULL;
 		}
 
@@ -1121,7 +1103,6 @@ static int stmmac_open(struct net_device *dev)
 	}
 
 	napi_enable(&priv->napi);
-	skb_queue_head_init(&priv->rx_recycle);
 	netif_start_queue(dev);
 
 	return 0;
@@ -1165,7 +1146,6 @@ static int stmmac_release(struct net_device *dev)
 	netif_stop_queue(dev);
 
 	napi_disable(&priv->napi);
-	skb_queue_purge(&priv->rx_recycle);
 
 	del_timer_sync(&priv->txtimer);
 
@@ -1343,10 +1323,7 @@ static inline void stmmac_rx_refill(struct stmmac_priv *priv)
 		if (likely(priv->rx_skbuff[entry] == NULL)) {
 			struct sk_buff *skb;
 
-			skb = __skb_dequeue(&priv->rx_recycle);
-			if (skb == NULL)
-				skb = netdev_alloc_skb_ip_align(priv->dev,
-								bfsize);
+			skb = netdev_alloc_skb_ip_align(priv->dev, bfsize);
 
 			if (unlikely(skb == NULL))
 				break;
