@@ -626,6 +626,7 @@ static const struct ethtool_ops stmmac_ethtool_ops = {
 	.get_sset_count	= stmmac_get_sset_count,
 	.get_coalesce = stmmac_get_coalesce,
 	.set_coalesce = stmmac_set_coalesce,
+	.get_ts_info = ethtool_op_get_ts_info,
 
 };
 
