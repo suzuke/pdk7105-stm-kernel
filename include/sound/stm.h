@@ -26,6 +26,7 @@
 
 #include <linux/i2c.h>
 #include <linux/stm/pad.h>
+#include <linux/stm/dma.h>
 #include <sound/core.h>
 
 
@@ -346,6 +347,79 @@ struct snd_stm_uniperif_player_info {
 	struct stm_pad_config *pad_config;
 };
 
+
+/*
+ * Uniperipheral TDM description (platform data)
+ */
+
+struct snd_stm_telss_handset_info {
+	unsigned int fsync;
+	unsigned int slot1;
+	unsigned int slot2;
+	unsigned int slot2_valid:1;
+	unsigned int duplicate:1;
+	unsigned int data16:1;
+	unsigned int cnb:1;
+	unsigned int lnb:1;
+	unsigned int cwb:1;
+	unsigned int lwb:1;
+};
+
+#define SND_STM_TELSS_HANDSET_INFO(fs, s1, s2, v, dup, dat, cn, ln, cw, lw)\
+	{ \
+		.fsync = fs, \
+		.slot1 = s1, \
+		.slot2 = s2, \
+		.slot2_valid = v, \
+		.duplicate = dup, \
+		.data16 = dat, \
+		.cnb = cn, \
+		.lnb = ln, \
+		.cwb = cw, \
+		.lwb = lw, \
+	}
+
+struct snd_stm_telss_word_pos_info {
+	unsigned int msb;
+	unsigned int lsb;
+};
+
+struct snd_stm_telss_timeslot_info {
+	int word_num;
+	struct snd_stm_telss_word_pos_info *word_pos;
+};
+
+struct snd_stm_uniperif_tdm_info {
+	const char *name;
+	int ver;
+	int card_device;
+
+	const char *fdma_name;
+	unsigned int fdma_channel;
+	unsigned char fdma_initiator;
+	enum dma_transfer_direction fdma_direction;
+	unsigned int fdma_direct_conn;
+	unsigned int fdma_request_line;
+
+	struct stm_pad_config *pad_config;
+
+	unsigned int rising_edge;		/* Data on rising edge */
+	unsigned long clk_rate;			/* Clock rate in Hz */
+	unsigned long pclk_rate;		/* PCLK rate in Hz */
+	unsigned long fs01_rate;		/* fs01/fs ref rate in Hz */
+	unsigned int timeslots;			/* Time slots per fs ref */
+	unsigned long fs02_rate;		/* fs02 rate in Hz */
+	unsigned int fs02_delay_clock;		/* fs02 delay from fs01 */
+	unsigned int fs02_delay_timeslot;	/* fs02 delay from fs01 */
+	unsigned int msbit_start;		/* Timeslot start position */
+	struct snd_stm_telss_timeslot_info *timeslot_info;
+
+	unsigned int endian_swap;		/* Swap endian of data */
+	unsigned int frame_size;		/* In 32-bit words */
+	unsigned int frame_count;		/* Frames per period */
+	unsigned int handset_count;		/* One per I2S: 2/4/6/8/10 */
+	struct snd_stm_telss_handset_info *handset_info;
+};
 
 
 #endif

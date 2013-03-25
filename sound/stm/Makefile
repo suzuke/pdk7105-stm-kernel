@@ -21,6 +21,9 @@ snd-stm-uniperif-player-y := uniperif_player.o
 obj-$(CONFIG_SND_STM_UNIPERIF_READER) += snd-stm-uniperif-reader.o
 snd-stm-uniperif-reader-y := uniperif_reader.o
 
+obj-$(CONFIG_SND_STM_UNIPERIF_TDM) += snd-stm-uniperif-tdm.o
+snd-stm-uniperif-tdm-y := uniperif_tdm.o
+
 obj-$(CONFIG_SND_STM_CONV_I2S_TO_SPDIF) += snd-stm-conv-i2sspdif.o
 snd-stm-conv-i2sspdif-y := conv_i2sspdif.o
 

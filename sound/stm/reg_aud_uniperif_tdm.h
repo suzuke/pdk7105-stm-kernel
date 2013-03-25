@@ -1,0 +1,626 @@
+#ifndef __SND_STM_AUD_UNIPERIF_TDM_H
+#define __SND_STM_AUD_UNIPERIF_TDM_H
+
+
+/*
+ * Normal uniperipheral regsiters.
+ */
+
+#include "reg_aud_uniperif.h"
+
+
+/*
+ * AUD_UNIPERIF_TDM_ENABLE
+ */
+
+#define offset__AUD_UNIPERIF_TDM_ENABLE(ip) 0x0118
+#define get__AUD_UNIPERIF_TDM_ENABLE(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_ENABLE(ip))
+#define set__AUD_UNIPERIF_TDM_ENABLE(ip, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_TDM_ENABLE(ip))
+
+/* TDM_ENABLE */
+#define shift__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip) 0x1
+#define get__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_ENABLE(ip), \
+		shift__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip), \
+		mask__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip))
+#define set__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_ENABLE(ip), \
+		shift__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip), \
+		mask__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip), 1)
+#define set__AUD_UNIPERIF_TDM_ENABLE__TDM_DISABLE(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_ENABLE(ip), \
+		shift__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip), \
+		mask__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(ip), 0)
+
+
+/*
+ * AUD_UNIPERIF_TDM_FS_REF_FREQ
+ */
+
+#define offset__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip) 0x011c
+#define get__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip))
+#define set__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip))
+
+/* REF_FREQ */
+#define shift__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip) 0x0
+#define value__AUD_UNIPERIF_TDM_FS_REF_FREQ__8KHZ(ip) 0
+#define value__AUD_UNIPERIF_TDM_FS_REF_FREQ__16KHZ(ip) 1
+#define value__AUD_UNIPERIF_TDM_FS_REF_FREQ__32KHZ(ip) 2
+#define mask__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip) 0x3
+#define get__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip))
+#define set__AUD_UNIPERIF_TDM_FS_REF_FREQ__8KHZ(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip), \
+		value__AUD_UNIPERIF_TDM_FS_REF_FREQ__8KHZ(ip))
+#define set__AUD_UNIPERIF_TDM_FS_REF_FREQ__16KHZ(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip), \
+		value__AUD_UNIPERIF_TDM_FS_REF_FREQ__16KHZ(ip))
+#define set__AUD_UNIPERIF_TDM_FS_REF_FREQ__32KHZ(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS_REF_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS_REF_FREQ__REF_FREQ(ip), \
+		value__AUD_UNIPERIF_TDM_FS_REF_FREQ__32KHZ(ip))
+
+
+/*
+ * AUD_UNIPERIF_TDM_FS_REF_DIV
+ */
+
+#define offset__AUD_UNIPERIF_TDM_FS_REF_DIV(ip) 0x0120
+#define get__AUD_UNIPERIF_TDM_FS_REF_DIV(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_FS_REF_DIV(ip))
+#define set__AUD_UNIPERIF_TDM_FS_REF_DIV(ip, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_TDM_FS_REF_DIV(ip))
+
+/* NUM_TIMESLOT */
+#define shift__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip) 0xff
+#define get__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS_REF_DIV(ip), \
+		shift__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip), \
+		mask__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip))
+#define set__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS_REF_DIV(ip), \
+		shift__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip), \
+		mask__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(ip), value)
+
+
+/*
+ * AUD_UNIPERIF_TDM_FS01_FREQ
+ */
+
+#define offset__AUD_UNIPERIF_TDM_FS01_FREQ(ip) 0x0124
+#define get__AUD_UNIPERIF_TDM_FS01_FREQ(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_FS01_FREQ(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_FREQ(ip, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_TDM_FS01_FREQ(ip))
+
+/* FS01_FREQ */
+#define shift__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip) 0x0
+#define value__AUD_UNIPERIF_TDM_FS01_FREQ__8KHZ(ip) 0
+#define value__AUD_UNIPERIF_TDM_FS01_FREQ__16KHZ(ip) 1
+#define mask__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip) 0x1
+#define get__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_FREQ__8KHZ(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip), \
+		value__AUD_UNIPERIF_TDM_FS01_FREQ__8KHZ(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_FREQ__16KHZ(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_FREQ__FS01_FREQ(ip), \
+		value__AUD_UNIPERIF_TDM_FS01_FREQ__16KHZ(ip))
+
+
+/*
+ * AUD_UNIPERIF_TDM_FS01_WIDTH
+ */
+
+#define offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip) 0x0128
+#define get__AUD_UNIPERIF_TDM_FS01_WIDTH(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_WIDTH(ip, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip))
+
+/* FS01_WIDTH */
+#define shift__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip) 0x0
+#define value__AUD_UNIPERIF_TDM_FS01_WIDTH__I2S(ip) 0
+#define value__AUD_UNIPERIF_TDM_FS01_WIDTH__1BIT(ip) 1
+#define value__AUD_UNIPERIF_TDM_FS01_WIDTH__8BIT(ip) 2
+#define value__AUD_UNIPERIF_TDM_FS01_WIDTH__16BIT(ip) 3
+#define value__AUD_UNIPERIF_TDM_FS01_WIDTH__32BIT(ip) 4
+#define mask__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip) 0x7
+#define get__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_WIDTH__I2S(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS01_WIDTH__I2S(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_WIDTH__1BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS01_WIDTH__1BIT(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_WIDTH__8BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS01_WIDTH__8BIT(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_WIDTH__16BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS01_WIDTH__16BIT(ip))
+#define set__AUD_UNIPERIF_TDM_FS01_WIDTH__32BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS01_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS01_WIDTH__FS01_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS01_WIDTH__32BIT(ip))
+
+
+/*
+ * AUD_UNIPERIF_TDM_FS02_FREQ
+ */
+
+#define offset__AUD_UNIPERIF_TDM_FS02_FREQ(ip) 0x012c
+#define get__AUD_UNIPERIF_TDM_FS02_FREQ(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_FS02_FREQ(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_FREQ(ip, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_TDM_FS02_FREQ(ip))
+
+/* FS02_FREQ */
+#define shift__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip) 0x0
+#define value__AUD_UNIPERIF_TDM_FS02_FREQ__8KHZ(ip) 0
+#define value__AUD_UNIPERIF_TDM_FS02_FREQ__16KHZ(ip) 1
+#define mask__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip) 0x1
+#define get__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_FREQ__8KHZ(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip), \
+		value__AUD_UNIPERIF_TDM_FS02_FREQ__8KHZ(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_FREQ__16KHZ(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_FREQ(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_FREQ__FS02_FREQ(ip), \
+		value__AUD_UNIPERIF_TDM_FS02_FREQ__16KHZ(ip))
+
+
+/*
+ * AUD_UNIPERIF_TDM_FS02_WIDTH
+ */
+
+#define offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip) 0x0130
+#define get__AUD_UNIPERIF_TDM_FS02_WIDTH(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_WIDTH(ip, value) \
+	writel(value, ip->base + offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip))
+
+/* FS02_WIDTH */
+#define shift__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip) 0x0
+#define value__AUD_UNIPERIF_TDM_FS02_WIDTH__I2S(ip) 0
+#define value__AUD_UNIPERIF_TDM_FS02_WIDTH__1BIT(ip) 1
+#define value__AUD_UNIPERIF_TDM_FS02_WIDTH__8BIT(ip) 2
+#define value__AUD_UNIPERIF_TDM_FS02_WIDTH__16BIT(ip) 3
+#define value__AUD_UNIPERIF_TDM_FS02_WIDTH__32BIT(ip) 4
+#define mask__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip) 0x7
+#define get__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_WIDTH__I2S(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS02_WIDTH__I2S(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_WIDTH__1BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS02_WIDTH__1BIT(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_WIDTH__8BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS02_WIDTH__8BIT(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_WIDTH__16BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS02_WIDTH__16BIT(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_WIDTH__32BIT(ip) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_WIDTH(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_WIDTH__FS02_WIDTH(ip), \
+		value__AUD_UNIPERIF_TDM_FS02_WIDTH__32BIT(ip))
+
+
+/*
+ * AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY
+ */
+
+#define offset__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip) 0x0134
+#define get__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip, value) \
+	writel(value, ip->base + \
+		offset__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip))
+
+/* PCM_CLOCK */
+#define shift__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip) 0xf
+#define get__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__PCM_CLOCK(ip), \
+		value)
+
+/* TIMESLOT */
+#define shift__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip) 0x4
+#define mask__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip) 0xff
+#define get__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip))
+#define set__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY(ip), \
+		shift__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip), \
+		mask__AUD_UNIPERIF_TDM_FS02_TIMESLOT_DELAY__TIMESLOT(ip), \
+		value)
+
+
+/*
+ * AUD_UNIPERIF_TDM_DATA_MSBIT_START
+ */
+
+#define offset__AUD_UNIPERIF_TDM_DATA_MSBIT_START(ip) 0x0138
+#define get__AUD_UNIPERIF_TDM_DATA_MSBIT_START(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_DATA_MSBIT_START(ip))
+#define set__AUD_UNIPERIF_TDM_DATA_MSBIT_START(ip, value) \
+	writel(value, ip->base + \
+		offset__AUD_UNIPERIF_TDM_DATA_MSBIT_START(ip))
+
+/* DELAY */
+#define shift__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip) 0x7
+#define get__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_DATA_MSBIT_START(ip), \
+		shift__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip), \
+		mask__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip))
+#define set__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_DATA_MSBIT_START(ip), \
+		shift__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip), \
+		mask__AUD_UNIPERIF_TDM_DATA_MSBIT_START__DELAY(ip), value)
+
+
+/*
+ * AUD_UNIPERIF_TDM_WORD_POS_1_2
+ */
+
+#define offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip) 0x013c
+#define get__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip, value) \
+	writel(value, ip->base + \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip))
+
+/* TS_1_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_MSB(ip), value)
+
+/* TS_1_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip) 0x8
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_1_LSB(ip), value)
+
+/* TS_2_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip) 0x10
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_MSB(ip), value)
+
+/* TS_2_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip) 0x18
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_1_2(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_1_2__TS_2_LSB(ip), value)
+
+
+/*
+ * AUD_UNIPERIF_TDM_WORD_POS_3_4
+ */
+
+#define offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip) 0x0140
+#define get__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip, value) \
+	writel(value, ip->base + \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip))
+
+/* TS_3_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_MSB(ip), value)
+
+/* TS_3_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip) 0x8
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_3_LSB(ip), value)
+
+/* TS_4_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip) 0x10
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_MSB(ip), value)
+
+/* TS_4_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip) 0x18
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_3_4(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_3_4__TS_4_LSB(ip), value)
+
+
+/*
+ * AUD_UNIPERIF_TDM_WORD_POS_5_6
+ */
+
+#define offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip) 0x0144
+#define get__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip, value) \
+	writel(value, ip->base + \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip))
+
+/* TS_5_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_MSB(ip), value)
+
+/* TS_5_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip) 0x8
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_5_LSB(ip), value)
+
+/* TS_6_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip) 0x10
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_MSB(ip), value)
+
+/* TS_6_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip) 0x18
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_5_6(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_5_6__TS_6_LSB(ip), value)
+
+
+/*
+ * AUD_UNIPERIF_TDM_WORD_POS_7_8
+ */
+
+#define offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip) 0x0148
+#define get__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip) \
+	readl(ip->base + offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip, value) \
+	writel(value, ip->base + \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip))
+
+/* TS_7_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip) 0x0
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_MSB(ip), value)
+
+/* TS_7_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip) 0x8
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_7_LSB(ip), value)
+
+/* TS_8_MSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip) 0x10
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(ip), value)
+
+/* TS_8_LSB */
+#define shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip) 0x18
+#define mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip) 0x7f
+#define get__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip))
+#define set__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip, value) \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_TDM_WORD_POS_7_8(ip), \
+		shift__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip), \
+		mask__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(ip), value)
+
+
+#endif

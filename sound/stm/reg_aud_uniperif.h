@@ -891,20 +891,24 @@
 /* MEMORY_FMT */
 #define shift__AUD_UNIPERIF_CONFIG__MEM_FMT(ip) 5
 #define mask__AUD_UNIPERIF_CONFIG__MEM_FMT(ip) 0x1
+#define value__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(ip) 0
+#define value__AUD_UNIPERIF_CONFIG__MEM_FMT_16_16(ip) 1
 #define get__AUD_UNIPERIF_CONFIG__MEM_FMT(ip) \
 	get__AUD_UNIPERIF_REG(ip, \
 		offset__AUD_UNIPERIF_CONFIG(ip), \
 		shift__AUD_UNIPERIF_CONFIG__MEM_FMT(ip), \
 		mask__AUD_UNIPERIF_CONFIG__MEM_FMT(ip))
-#define set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(ip)   \
+#define set__AUD_UNIPERIF_CONFIG__MEM_FMT(ip, value)	\
 	set__AUD_UNIPERIF_REG(ip, \
 		offset__AUD_UNIPERIF_CONFIG(ip), \
 		shift__AUD_UNIPERIF_CONFIG__MEM_FMT(ip), \
-		mask__AUD_UNIPERIF_CONFIG__MEM_FMT(ip), 0)
+		mask__AUD_UNIPERIF_CONFIG__MEM_FMT(ip), value)
+#define set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(ip)   \
+	set__AUD_UNIPERIF_CONFIG__MEM_FMT(ip, \
+		value__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(ip))
 #define set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_16(ip) \
-	set__AUD_UNIPERIF_REG(ip, offset__AUD_UNIPERIF_CONFIG(ip), \
-		shift__AUD_UNIPERIF_CONFIG__MEM_FMT(ip),  \
-		mask__AUD_UNIPERIF_CONFIG__MEM_FMT(ip), 1)
+	set__AUD_UNIPERIF_CONFIG__MEM_FMT(ip, \
+		value__AUD_UNIPERIF_CONFIG__MEM_FMT_16_16(ip))
 
 /* REPEAT_CHL_STS */
 #define shift__AUD_UNIPERIF_CONFIG__REPEAT_CHL_STS(ip) 6
@@ -953,7 +957,8 @@
 		shift__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(ip), \
 		mask__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(ip))
 #define set__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(ip, value) \
-	set__AUD_UNIPERIF_REG(ip, offset__AUD_UNIPERIF_CONFIG(ip), \
+	set__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_CONFIG(ip), \
 		shift__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(ip), \
 		mask__AUD_UNIPERIF_CONFIG__FDMA_TRIGGER_LIMIT(ip), value)
 

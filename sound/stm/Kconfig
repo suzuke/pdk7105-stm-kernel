@@ -228,3 +228,21 @@ config SND_STM_CONV_I2C
 
 		If compiled as module, it will be called
 		snd-stm-conv-i2c.ko.
+
+menuconfig SND_STM_TELSS
+	tristate "STMicroelectronics ALSA for TELSS support"
+	depends on SND
+	depends on STM_DRIVERS
+	select SND_PCM
+	select DMADEVICES
+	select STM_FDMA
+	help
+		Say Y here for ALSA support for STMicroelectronics TELSS.
+
+comment "Hardware drivers"
+	depends on SND_STM_TELSS
+
+config SND_STM_UNIPERIF_TDM
+	tristate "Uniperipheral TDM driver"
+	depends on SND_STM_TELSS
+	default y
