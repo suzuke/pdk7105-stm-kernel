@@ -1638,6 +1638,9 @@ static int bch_mtd_read_oob(struct mtd_info *mtd, loff_t from,
 		(ops->oobbuf ? ops->ooblen : 0),
 		mtd_oob_mode_strs[ops->mode]);
 
+	if (!ops->oobbuf && ops->mode != MTD_OPS_RAW)
+		return mtd_read(mtd, from, ops->len, &ops->retlen, ops->datbuf);
+
 	ops->oobretlen = 0;
 	ops->retlen = 0;
 
@@ -1707,6 +1710,9 @@ static int bch_mtd_write_oob(struct mtd_info *mtd, loff_t to,
 		(ops->datbuf ? ops->len : 0),
 		(ops->oobbuf ? ops->ooblen : 0),
 		mtd_oob_mode_strs[ops->mode]);
+
+	if (!ops->oobbuf && ops->mode != MTD_OPS_RAW)
+		return mtd_write(mtd, to, ops->len, &ops->retlen, ops->datbuf);
 
 	ops->oobretlen = 0;
 	ops->retlen = 0;
