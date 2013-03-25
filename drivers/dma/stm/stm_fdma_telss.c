@@ -31,7 +31,6 @@
 #define TELSS_CONTROL_DREQ_MASK		0x00001f00
 #define TELSS_CONTROL_DREQ_SHIFT	8
 #define TELSS_CONTROL_SECURE		0x00008000
-#define TELSS_CONTROL_ENDIAN_SWAP_DIS	0x20000000
 #define TELSS_CONTROL_COMP_PAUSE	0x40000000
 #define TELSS_CONTROL_COMP_IRQ		0x80000000
 
@@ -71,7 +70,6 @@
  */
 
 struct stm_fdma_telss {
-	bool endian_swap;
 	u32 frame_count;
 	u32 frame_size;
 	u32 handset_count;
@@ -169,7 +167,6 @@ int stm_fdma_telss_alloc_chan_resources(struct stm_fdma_chan *fchan)
 	}
 
 	/* Save all the telss configuration in the one place */
-	telss->endian_swap = config->endian_swap;
 	telss->frame_count = config->frame_count;
 	telss->frame_size = config->frame_size;
 	telss->handset_count = config->handset_count;
@@ -368,8 +365,6 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		fdesc->llu->control |= TELSS_CONTROL_TYPE_TELSS;
 		fdesc->llu->control |= fchan->dreq->request_line <<
 				TELSS_CONTROL_DREQ_SHIFT;
-		if (!telss->endian_swap)
-			fdesc->llu->control |= TELSS_CONTROL_ENDIAN_SWAP_DIS;
 		fdesc->llu->control |= TELSS_CONTROL_COMP_IRQ;
 
 		fdesc->llu->nbytes = period_len;
