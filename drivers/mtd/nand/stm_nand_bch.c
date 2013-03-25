@@ -722,7 +722,7 @@ static void flex_command_lp(struct mtd_info *mtd, unsigned int command,
 		flex_addr(nandi, column,
 			  (command == NAND_CMD_READID) ? 1 : 2);
 	if (page != -1)
-		flex_addr(nandi, page, (chip->chipsize > (128 << 20)) ? 3 : 2);
+		flex_addr(nandi, page, nandi->extra_addr ? 3 : 2);
 
 	/* Complete 'READ0' command */
 	if (command == NAND_CMD_READ0)
