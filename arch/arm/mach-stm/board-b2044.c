@@ -19,6 +19,21 @@
 #include <mach/soc-stig125.h>
 #include <mach/hardware.h>
 
+
+/* SPI support for TELSS */
+static unsigned int spi_core_data;
+
+static struct spi_board_info spi_core[] =  {
+	{
+		.modalias = "spicore",
+		.bus_num = 0,
+		.chip_select = 0,
+		.max_speed_hz = 4000000,
+		.platform_data = &spi_core_data,
+		.mode = SPI_MODE_3,
+	},
+};
+
 static struct platform_device b2044_leds = {
 	.name = "leds-gpio",
 	.id = -1,
@@ -81,7 +96,11 @@ static void __init b2044_init(void)
 	stig125_configure_pcie(1);
 	stig125_configure_pcie(2);
 
-	stig125_configure_ssc_i2c(STIG125_TELSS_SSC, 100);
+	/* SPI support for TELSS */
+	stig125_configure_ssc_spi(STIG125_TELSS_SSC,
+			&(struct stig125_ssc_config) {.spi_chipselect = NULL});
+	spi_register_board_info(spi_core, ARRAY_SIZE(spi_core));
+
 	stig125_configure_ssc_i2c(STIG125_HDMI_SSC, 100);
 	stig125_configure_ssc_i2c(STIG125_FE_SSC, 100);
 	stig125_configure_ssc_i2c(STIG125_BE_SSC, 100);

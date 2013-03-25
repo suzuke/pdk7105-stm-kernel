@@ -75,6 +75,25 @@ static struct stm_pad_config stig125_ssc_i2c_pad_configs[SSC_NUMBER] = {
 		},							\
 	}
 
+/*
+ * Pad configuration for TELSS SPI mode.
+ * - Bi-directional ports are unable to supply required signal strength so
+ *   uni-directional ports are used.
+ */
+#define SPI_PAD_TELSS(_id, scl_port, scl_pin, scl_alt,			\
+	sda_port, sda_pin, sda_alt, sdo_port, sdo_pin, sdo_alt)		\
+	[_id] = {							\
+		.gpios_num = 3,						\
+		.gpios = (struct stm_pad_gpio []) {			\
+			STM_PAD_PIO_OUT_NAMED(scl_port, scl_pin,	\
+				scl_alt, "SCL"),			\
+			STM_PAD_PIO_OUT_NAMED(sda_port, sda_pin,	\
+				sda_alt, "SDA"),			\
+			STM_PAD_PIO_IN_NAMED(sdo_port, sdo_pin,	\
+				sdo_alt, "SDO"),			\
+		},							\
+	}
+
 static struct stm_pad_config stig125_ssc_spi_pad_configs[SSC_NUMBER] = {
 	SPI_PAD(0, 5, 5, 3, 5, 4, 3, 5, 3, 3),
 	SPI_PAD(1, 6, 3, 2, 6, 4, 2, 6, 5, 3),
@@ -91,7 +110,7 @@ static struct stm_pad_config stig125_ssc_spi_pad_configs[SSC_NUMBER] = {
 	SPI_PAD(11, 24, 5, 2, 24, 4, 2, 24, 3, 2),
 	SPI_PAD(12, 25, 2, 2, 25, 1, 2, 24, 7, 2),
 	/* NO SPI mode on SSC_12 */
-	SPI_PAD(STIG125_TELSS_SSC, 16, 0, 1, 16, 1, 1, 16, 2, 1),
+	SPI_PAD_TELSS(STIG125_TELSS_SSC, 16, 0, 1, 16, 1, 1, 16, 2, 1),
 };
 
 #define SSC_DEVICE(id, base, irq)					\
