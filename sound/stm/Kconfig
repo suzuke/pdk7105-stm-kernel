@@ -246,3 +246,8 @@ config SND_STM_UNIPERIF_TDM
 	tristate "Uniperipheral TDM driver"
 	depends on SND_STM_TELSS
 	default y
+
+config SND_STM_TELSS_GLUE
+       tristate "TELSS Top Glue driver"
+       depends on SND_STM_TELSS
+       default y

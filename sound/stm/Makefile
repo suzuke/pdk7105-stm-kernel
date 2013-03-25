@@ -1,6 +1,7 @@
 ccflags-$(CONFIG_SND_DEBUG)  := -DDEBUG
 ccflags-$(CONFIG_SND_DEBUG_VERBOSE) += -DVERBOSE_DEBUG
 
+
 # Core
 
 obj-$(CONFIG_SND_STM) += snd-stm-core.o
@@ -32,7 +33,6 @@ snd-stm-conv-dac-mem-y := conv_dac_mem.o
 
 obj-$(CONFIG_SND_STM_CONV_DAC_SYSCONF) += snd-stm-conv-dac-sc.o
 snd-stm-conv-dac-sc-y := conv_dac_sc.o
-
 
 
 # SOCs
@@ -75,3 +75,9 @@ snd-stm-conv-i2c-y := conv_i2c.o
 
 obj-$(CONFIG_SND_STM_CONV_SPDIF_RX) += snd-stm-conv-spdif-rx.o
 snd-stm-conv-spdif-rx-y := conv_spdif_rx.o
+
+
+# TELSS glue
+
+obj-$(CONFIG_SND_STM_TELSS_GLUE) += snd-stm-telss-glue.o
+snd-stm-telss-glue-y := telss_glue.o

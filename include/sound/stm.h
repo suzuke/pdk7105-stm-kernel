@@ -422,4 +422,23 @@ struct snd_stm_uniperif_tdm_info {
 };
 
 
+/*
+ * TELSS Glue description (platform data)
+ */
+
+enum snd_stm_telss_glue_mode {
+	SND_STM_TELSS_GLUE_MODE_DECT,
+	SND_STM_TELSS_GLUE_MODE_LANTIQ,
+	SND_STM_TELSS_GLUE_MODE_ZSI
+};
+
+struct snd_stm_telss_glue_info {
+	const char *name;			/* Driver name */
+	int ver;				/* IP version */
+
+	enum snd_stm_telss_glue_mode mode;	/* TELSS operating mode */
+	unsigned int loopback;			/* Loop back UniP into UniR */
+};
+
+
 #endif

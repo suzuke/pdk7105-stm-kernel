@@ -149,12 +149,35 @@ static struct platform_device stig125_uniperif_tdm_reader = {
 
 
 /*
+ * TELSS Glue setup
+ */
+
+static struct snd_stm_telss_glue_info stig125_telss_glue_info = {
+	.name = "TELSS Glue",			/* Device name */
+	.ver = 0,				/* Currently unused */
+	.mode = SND_STM_TELSS_GLUE_MODE_LANTIQ,	/* Lantiq mode */
+	.loopback = 0,				/* Disable loopback mode */
+};
+
+static struct platform_device stig125_telss_glue = {
+	.name = "snd_telss_glue",
+	.id = -1,
+	.num_resources = 1,
+	.resource = (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfeba8000, 0x1000),
+	},
+	.dev.platform_data = &stig125_telss_glue_info,
+};
+
+
+/*
  * Devices
  */
 
 static struct platform_device *stig125_telss_devices[] __initdata = {
 	&stig125_uniperif_tdm_player,
 	&stig125_uniperif_tdm_reader,
+	&stig125_telss_glue,
 };
 
 static int __init stig125_telss_devices_setup(void)
