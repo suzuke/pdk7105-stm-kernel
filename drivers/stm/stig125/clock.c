@@ -42,7 +42,10 @@ int __init plat_clk_alias_init(void)
 	/* FDMA clocks */
 	clk_add_alias("fdma_slim_clk", "stm-fdma.0", "CLK_S_A0_FDMA_0", NULL);
 	clk_add_alias("fdma_slim_clk", "stm-fdma.1", "CLK_S_A0_FDMA_1", NULL);
+	clk_add_alias("fdma_slim_clk", "stm-fdma.2", "CLK_S_D_FDMA_TEL", NULL);
+	clk_add_alias("fdma_hi_clk", "stm-fdma.2", "CLK_S_A1_IC_LP_ETH", NULL);
 	clk_add_alias("fdma_hi_clk", NULL, "CLK_S_A1_IC_LP_HD", NULL);
+	clk_add_alias("fdma_low_clk", "stm-fdma.2", "CLK_S_A0_IC_ROUTER", NULL);
 	clk_add_alias("fdma_low_clk", NULL, "CLK_S_A1_IC_DMA", NULL);
 	clk_add_alias("fdma_ic_clk", NULL, "CLK_S_A1_IC_LP_HD", NULL);
 
@@ -64,6 +67,12 @@ int __init plat_clk_alias_init(void)
 			NULL);
 	clk_add_alias("uni_player_clk", "snd_uni_player.4", "CLK_S_C_PCM3",
 			NULL);
+
+	/* Uniperipheral TDM clocks */
+	clk_add_alias("uniperif_tdm_clk", "snd_uniperif_tdm.0",
+			"CLK_S_D_ZSI", NULL);
+	clk_add_alias("uniperif_tdm_pclk", "snd_uniperif_tdm.0",
+			"CLK_S_D_TEL_ZSI_APPL", NULL);
 
 	return 0;
 }

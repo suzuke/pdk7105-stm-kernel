@@ -92,6 +92,12 @@ static void __init b2044_init(void)
 			.uni_player_4_spdif_enabled = 1,
 			.uni_reader_0_pcm_mode =
 				stig125_uni_reader_0_pcm_2_channels });
+
+#ifdef CONFIG_SND_STM_TELSS
+	stig125_configure_telss(&(struct stig125_telss_config) {
+			.uniperif_tdm_player_enabled = 1,
+			.uniperif_tdm_reader_enabled = 1,});
+#endif
 }
 
 static void __init b2044_init_early(void)

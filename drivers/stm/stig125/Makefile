@@ -7,4 +7,4 @@ obj-y +=	hispeed.o
 obj-y +=	stmfp_infra.o
 obj-y +=	audio.o
 obj-y +=	pcie.o
-
+obj-y +=	telss.o

@@ -150,4 +150,10 @@ struct stig125_audio_config {
 };
 void stig125_configure_audio(struct stig125_audio_config *config);
 
+struct stig125_telss_config {
+	int uniperif_tdm_player_enabled;
+	int uniperif_tdm_reader_enabled;
+};
+void stig125_configure_telss(struct stig125_telss_config *config);
+
 #endif

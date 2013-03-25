@@ -1157,13 +1157,19 @@ static struct platform_device stig125_fdma_devices[] = {
 			STIG125_RESOURCE_IRQ(2), /* or 3? */
 		},
 		.dev.platform_data = &stig125_fdma_platform_data,
+	}, {
+		.name = "stm-fdma",
+		.id = 2,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfeb80000, 0x20000),
+			STIG125_RESOURCE_IRQ(4), /* or 5? */
+		},
+		.dev.platform_data = &stig125_fdma_platform_data,
 	}
-	/*
-	 * TVOUT_FDMA ?
-	 */
 };
 
-/* FDMA_MUX */
+/* FDMA_MUX (Only connected to FDMAs 0/1) */
 static struct platform_device stig125_fdma_xbar_device = {
 	.name = "stm-fdma-xbar",
 	.id = 0,
@@ -1192,6 +1198,7 @@ static struct platform_device *stig125_devices[] __initdata = {
 	&stig125_temp_device,
 	&stig125_fdma_devices[0],
 	&stig125_fdma_devices[1],
+	&stig125_fdma_devices[2],
 	&stig125_fdma_xbar_device,
 	&stig125_devhwrandom_device,
 };
