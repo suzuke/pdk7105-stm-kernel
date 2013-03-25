@@ -239,7 +239,7 @@ static int flex_rbn(struct mtd_info *mtd)
 	struct stm_nand_flex_controller *flex = mtd_to_flex(mtd);
 
 	/* Apply a small delay before sampling RBn signal */
-	ndelay(100);
+	ndelay(200);
 	return (flex_readreg(NANDHAM_RBN_STA) & (0x4)) ? 1 : 0;
 }
 
