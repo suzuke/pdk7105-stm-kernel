@@ -72,8 +72,7 @@ static int dwmac100_rx_ipc_enable(void __iomem *ioaddr)
 	return 0;
 }
 
-static int dwmac100_irq_status(void __iomem *ioaddr,
-			       struct stmmac_extra_stats *x)
+static int dwmac100_irq_status(void __iomem *ioaddr)
 {
 	return 0;
 }
