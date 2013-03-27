@@ -3155,9 +3155,7 @@ static int nand_flash_detect_onfi(struct mtd_info *mtd, struct nand_chip *chip,
 	if (le16_to_cpu(p->features) & 1)
 		*busw = NAND_BUSWIDTH_16;
 
-	/* Build up chip options */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
-	chip->options |= (NAND_NO_AUTOINCR | NAND_NO_READRDY);
+	chip->options |= NAND_NO_READRDY | NAND_NO_AUTOINCR;
 
 	features = le16_to_cpu(p->features);
 

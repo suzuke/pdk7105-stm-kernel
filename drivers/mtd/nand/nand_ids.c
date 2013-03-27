@@ -368,8 +368,7 @@ static int nand_decode_id_2(struct mtd_info *mtd,
 		mtd->erasesize = type->erasesize;
 
 	/* Get chip options from table */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
-	chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
+	chip->options |= type->options;
 	chip->options |= NAND_NO_AUTOINCR;
 	if (mtd->writesize > 512)
 		chip->options |= NAND_NO_READRDY;
@@ -394,9 +393,6 @@ static int nand_decode_id_ext(struct mtd_info *mtd,
 		       __func__, id_len);
 		return 1;
 	}
-
-	/* Clear chip options */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
 
 	/* ID4: Planes/Chip Size */
 	if (id[0] == NAND_MFR_HYNIX && id_len == 5 && id[4] == 0 &&
@@ -621,7 +617,6 @@ static int nand_decode_id_6(struct mtd_info *mtd,
 	}
 
 	/* Some default 'chip' options */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
 	chip->options |= NAND_NO_AUTOINCR;
 	if (chip->planes_per_chip > 1)
 		chip->options |= NAND_MULTIPLANE_READ;

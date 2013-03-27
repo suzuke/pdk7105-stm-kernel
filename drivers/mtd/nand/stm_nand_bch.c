@@ -2092,7 +2092,7 @@ static void nandi_dump_device(struct nandi_controller *nandi,
 	pr_info("\t%-20s: 0x%012llx [%uMiB]\n", "Device Size",
 		mtd->size, (unsigned int)(mtd->size >> 20));
 	pr_info("\t%-20s: 0x%08x (%s)\n", "Chip Options",
-		chip->options & NAND_CHIPOPTIONS_MSK,
+		chip->options,
 		chip->options & NAND_BUSWIDTH_16 ? "x16" : "x8");
 	pr_info("\t%-20s: 0x%08x\n", "BBM Scheme", chip->bbm);
 	pr_info("\t%-20s: %u (bits per cell = %d)\n", "cellinfo",
