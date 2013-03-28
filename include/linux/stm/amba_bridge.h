@@ -123,4 +123,15 @@ void stm_amba_bridge_init(struct stm_amba_bridge *plug);
 	.packets_in_chunk 	=	4,				\
 	.type1.req_timeout	=	0
 
+#ifdef CONFIG_OF
+struct stm_amba_bridge_config *stm_of_get_amba_config(struct device *dev);
+#else
+
+static inline struct stm_amba_bridge_config *stm_of_get_amba_config(
+		struct device *dev)
+{
+	return NULL;
+}
+#endif /* CONFIG_OF */
+
 #endif /* _STM_AMBA_BRIDGE_H */

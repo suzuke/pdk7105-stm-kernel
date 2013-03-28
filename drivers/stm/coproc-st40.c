@@ -1,6 +1,7 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/delay.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
 
@@ -116,13 +117,39 @@ struct coproc_fns coproc_st40_fns = {
 	.mode = coproc_st40_mode,
 };
 
+#ifdef CONFIG_OF
+void *coproc_st40_get_pdata(struct platform_device *pdev)
+{
+	struct plat_stm_st40_coproc_data *data;
+	struct device_node *np = pdev->dev.of_node;
+	data = dev_get_platdata(&pdev->dev);
+
+	if (!data)
+		data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	of_property_read_string(np, "proc-name", &data->name);
+
+	data->device_config = stm_of_get_dev_config(&pdev->dev);
+	data->id = of_alias_get_id(np, "coproc-st40");
+
+	return data;
+}
+#else
+void *coproc_st40_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 static int coproc_st40_driver_probe(struct platform_device *pdev)
 {
 	struct plat_stm_st40_coproc_data *cop_data;
 	struct coproc_st40 *cop_st40;
 	int result;
 
-	cop_data = dev_get_platdata(&pdev->dev);
+	if (pdev->dev.of_node)
+		cop_data = coproc_st40_get_pdata(pdev);
+	else
+		cop_data = dev_get_platdata(&pdev->dev);
 
 	cop_st40 = devm_kzalloc(&pdev->dev, sizeof(*cop_st40), GFP_KERNEL);
 	if (!cop_st40) {
@@ -163,9 +190,16 @@ static int coproc_st40_driver_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id coproc_st40_match[] = {
+	{
+		.compatible = "st,coproc-st40",
+	},
+	{},
+};
 static struct platform_driver coproc_st40_driver = {
 	.driver.name = DRIVER_NAME,
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(coproc_st40_match),
 	.probe = coproc_st40_driver_probe,
 	.remove = coproc_st40_driver_remove,
 };

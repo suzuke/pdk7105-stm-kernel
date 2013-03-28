@@ -1,0 +1,1717 @@
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+#include "stm-mpe41.dtsi"
+#include "stih415-eth.dtsi"
+#include "stih415-padcfg.dtsi"
+/ {
+	compatible = "st,stih415";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		cpu@0 {
+			compatible = "arm,cortex-a9";
+		};
+		cpu@1 {
+			compatible = "arm,cortex-a9";
+		};
+	};
+
+	intc: interrupt-controller@fffe1000 {
+		compatible = "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0xfffe1000 0x1000>,
+		      <0xfffe0100 0x100>;
+	};
+
+	timers {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&intc>;
+		compatible = "simple-bus";
+		ranges;
+
+		timer@fffe0600 {
+			compatible = "arm,cortex-a9-twd-timer";
+			reg = <0xfffe0600 0x100>;
+			interrupts = <1 13 0x04>;
+		};
+
+		timer@fffe0200 {
+			compatible = "arm,cortex-a9-global-timer";
+			reg = <0xfffe0200 0x100>;
+			interrupts = <1 11 0x04>;
+		};
+	};
+
+	L2: cache-controller {
+		compatible = "arm,pl310-cache";
+	        reg = <0xfffe2000 0x1000>;
+	        arm,data-latency = <3 2 2>;
+		arm,tag-latency = <1 1 1>;
+		cache-unified;
+		cache-level = <2>;
+	};
+
+	pmu {
+		arm-pmu {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			#interrupt-cells = <3>;
+			interrupt-parent = <&intc>;
+			compatible = "arm,cortex-a9-pmu";
+			interrupts = <1 31 0x04>;
+			st,device-config = <&st_pmu_device_config>;
+		};
+	};
+
+	st_pmu_device_config: pmu-dev-config {
+		#stm-sysconf-cells = <4>;
+		device-seqs = <&pmu_dev_seqs>;
+		sysconfs{
+			A9_IRQ_EN = <&stih415_sysconf 642 0 5>;
+			IRQ0_N_SEL = <&stih415_sysconf 642 14 16>;
+			IRQ1_N_SEL = <&stih415_sysconf 642 17 19>;
+		};
+	};
+
+	pmu_dev_seqs: pmu-dev-seqs{
+		init-seq{
+			step0 {
+				A9_IRQ_EN = <0xc>;
+				type = "sysconf";
+			};
+			step1 {
+				IRQ0_N_SEL = <0x5>;
+				type = "sysconf";
+			};
+			step2 {
+				IRQ1_N_SEL = <0x6>;
+				type = "sysconf";
+			};
+		};
+	};
+
+        aliases {
+		fdma0 = &fdma0_mpe;
+		fdma1 = &fdma1_mpe;
+		fdma2 = &fdma2_mpe;
+		fdma3 = &fdma0_sas;
+		fdma4 = &fdma1_sas;
+		fdmaxbar0 = &fdma_xbar_mpe;
+		fdmaxbar1 = &fdma_xbar_sas;
+	};
+
+	gpio-controllers {
+                 #address-cells = <1>;
+                 #size-cells = <1>;
+                 gpio-controller;
+                 ranges;
+                 PIO0: PIO@fe610000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe610000 0x100>;
+			 bank-name  = "PIO0";
+		};
+                 PIO1: PIO@fe611000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe611000 0x100>;
+			 bank-name  = "PIO1";
+		};
+                 PIO2: PIO@fe612000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe612000 0x100>;
+			 bank-name  = "PIO2";
+		};
+                 PIO3: PIO@fe613000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe613000 0x100>;
+			 bank-name  = "PIO3";
+		};
+                 PIO4: PIO@fe614000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe614000 0x100>;
+			 bank-name  = "PIO4";
+		};
+                 /* 5-12: PIO_FRONT */
+                 PIO5: PIO@fee00000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee00000 0x100>;
+			 bank-name  = "PIO5";
+		};
+                 PIO6: PIO@fee01000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee01000 0x100>;
+			 bank-name  = "PIO6";
+		};
+                 PIO7: PIO@fee02000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee02000 0x100>;
+			 bank-name  = "PIO7";
+		};
+                 PIO8: PIO@fee03000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee03000 0x100>;
+			 bank-name  = "PIO8";
+		};
+                 PIO9: PIO@fee04000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee04000 0x100>;
+			 bank-name  = "PIO9";
+		};
+                 PIO10: PIO@fee05000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee05000 0x100>;
+			 bank-name  = "PIO10";
+		};
+                 PIO11: PIO@fee06000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee06000 0x100>;
+			 bank-name  = "PIO11";
+		};
+                 PIO12: PIO@fee07000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfee07000 0x100>;
+			 bank-name  = "PIO12";
+		};
+                 /* 13-18: PIO_REAR */
+                 PIO13: PIO@fe820000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe820000 0x100>;
+			 bank-name  = "PIO13";
+		};
+                 PIO14: PIO@fe821000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe821000 0x100>;
+			 bank-name  = "PIO14";
+		};
+                 PIO15: PIO@fe822000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe822000 0x100>;
+			 bank-name  = "PIO15";
+		};
+                 PIO16: PIO@fe823000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe823000 0x100>;
+			 bank-name  = "PIO16";
+		};
+                 PIO17: PIO@fe824000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe824000 0x100>;
+			 bank-name  = "PIO17";
+		};
+                 PIO18: PIO@fe825000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe825000 0x100>;
+			 bank-name  = "PIO18";
+		};
+                 /* MPE */
+                 /* 100-102: PIO_RIGHT (aka MPE_PIO) */
+                 PIO100: PIO@fd6b0000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd6b0000 0x100>;
+			 bank-name  = "PIO100";
+		};
+                 PIO101: PIO@fd6b1000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd6b1000 0x100>;
+			 bank-name  = "PIO101";
+                 };
+                 PIO102: PIO@fd6b2000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd6b2000 0x100>;
+			 bank-name  = "PIO102";
+                 };
+                 /* 103-107: PIO_LEFT (aka PIO_1_MPE) */
+                 PIO103: PIO@fd330000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd330000 0x100>;
+			 bank-name  = "PIO103";
+                 };
+                 PIO104: PIO@fd331000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd331000 0x100>;
+			 bank-name  = "PIO104";
+                 };
+                 PIO105: PIO@fd332000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd332000 0x100>;
+			 bank-name  = "PIO105";
+                 };
+                 PIO106: PIO@fd333000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd333000 0x100>;
+			 bank-name  = "PIO106";
+                 };
+                 PIO107: PIO@fd334000 {
+                         #gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfd334000 0x100>;
+			 bank-name  = "PIO107";
+                 };
+         };
+
+	/* start end group  */
+	lpm_sysconf: lpmsysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0 10 6>;
+		sysconf-names  = "LPM_CFG_REGS";
+	};
+
+	stih415_sysconf: stih415sysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0    44 0>,
+				 <100 200 1>,
+				 <300 399 2>,
+				 <400 429 3>,
+				 <500 595 4>,
+				 <600 686 5>;
+
+		sysconf-names  = "SYSCFG_SBC",
+				 "SYSCFG_FRONT",
+				 "SYSCFG_REAR",
+				 "SYSCFG_LEFT",
+				 "SYSCFG_RIGHT",
+				 "SYSCFG_SYSTEM";
+	};
+
+	sysconfs {
+                #address-cells = <1>;
+                #size-cells = <1>;
+		ranges;
+		compatible	= "simple-bus";
+		sysconf@fe600000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfe600000 0xb4>;
+			group@0{
+				group	= <0>;
+				offset	= <0>;
+				start	= <0>;
+				group-name	=  "SYSCFG_SBC";
+			};
+		};
+		sysconf@fee10000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfee10000 0x194>;
+			group@0{
+				group	= <1>;
+				offset	= <0>;
+				start	= <100>;
+				group-name	=  "SYSCFG_FRONT";
+			};
+		};
+		sysconf@fe830000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfe830000 0x190>;
+			group@0 {
+				group	= <2>;
+				offset	= <0>;
+				start	= <300>;
+				group-name	=  "SYSCFG_REAR";
+			};
+		};
+		/* MPE */
+		sysconf@fd690000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfd690000 0x78>;
+			group@0 {
+				group	= <3>;
+				offset	= <0>;
+				start	= <400>;
+				group-name	=  "SYSCFG_LEFT";
+			};
+		};
+		sysconf@fd320000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfd320000 0x180>;
+			group@0{
+				group	= <4>;
+				offset	= <0>;
+				start	= <500>;
+				group-name	=  "SYSCFG_RIGHT";
+			};
+		};
+		sysconf@fdde0000  {
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfdde0000 0x15c>;
+			group@0{
+				group	= <5>;
+				offset	= <0>;
+				start	= <600>;
+				group-name	=  "SYSCFG_SYSTEM";
+			};
+		};
+		sysconf@fe4b5100{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfe4b5100 0x54>;
+			group@0 {
+				group	= <6>;
+				offset	= <0>;
+				start	= <0>;
+				group-name	=  "LPM_CFG_REGS";
+			};
+		};
+	};
+
+	/* Same as stih415_sysconf but to avoid some duplication
+	in mep41 devices we define mpe_sysconf here */
+	mpe_sysconf: mpesysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0    44 0>,
+				 <100 200 1>,
+				 <300 399 2>,
+				 <400 429 3>,
+				 <500 595 4>,
+				 <600 686 5>;
+
+		sysconf-names  = "SYSCFG_SBC",
+				 "SYSCFG_FRONT",
+				 "SYSCFG_REAR",
+				 "SYSCFG_LEFT",
+				 "SYSCFG_RIGHT",
+				 "SYSCFG_SYSTEM";
+	};
+
+/* pio control */
+
+	pio_retime_offset: pio-retime-offset {
+		clk1notclk0	= <0>;
+		delay-lsb	= <2>;
+		delay-msb	= <3>;
+		invertclk	= <4>;
+		retime		= <5>;
+		clknotdata	= <6>;
+		double-edge	= <7>;
+	};
+
+	pio-controls {
+		#retime-delay-cells = <4>;
+		retime-offset = <&pio_retime_offset>;
+		retime-in-delay = <0 500 1000 1500>;
+		retime-out-delay = <0 1000 2000 3000>;
+
+		pio-control@0 {
+			alt-control = <&stih415_sysconf 0 0 31>;
+			oe-control = <&stih415_sysconf 5  0 7>;
+			pu-control = <&stih415_sysconf 7  0 7>;
+			od-control = <&stih415_sysconf 9  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 16 0 31>;
+			retime-control1 = <&stih415_sysconf 17 0 31>;
+		};
+		pio-control@1{
+			alt-control = <&stih415_sysconf 1 0 31>;
+			oe-control = <&stih415_sysconf 5  8 15>;
+			pu-control = <&stih415_sysconf 7  8 15>;
+			od-control = <&stih415_sysconf 9  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 18 0 31>;
+			retime-control1 = <&stih415_sysconf 19 0 31>;
+		};
+		pio-control@2{
+			alt-control = <&stih415_sysconf 2 0 31>;
+			oe-control = <&stih415_sysconf 5  16 23>;
+			pu-control = <&stih415_sysconf 7  16 23>;
+			od-control = <&stih415_sysconf 9  16 23>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 20 0 31>;
+			retime-control1 = <&stih415_sysconf 21 0 31>;
+		};
+		pio-control@3{
+			alt-control = <&stih415_sysconf 3 0 31>;
+			oe-control = <&stih415_sysconf 5  24 31>;
+			pu-control = <&stih415_sysconf 7  24 31>;
+			od-control = <&stih415_sysconf 9  24 31>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 22 0 31>;
+			retime-control1 = <&stih415_sysconf 23 0 31>;
+
+		};
+		pio-control@4{
+			alt-control = <&stih415_sysconf 4 0 31>;
+			oe-control = <&stih415_sysconf 6  0 7>;
+			pu-control = <&stih415_sysconf 8  0 7>;
+			od-control = <&stih415_sysconf 10  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 24 0 31>;
+			retime-control1 = <&stih415_sysconf 25 0 31>;
+
+		};
+		pio-control@5{
+			alt-control = <&stih415_sysconf 100 0 31>;
+			oe-control = <&stih415_sysconf 108  0 7>;
+			pu-control = <&stih415_sysconf 110  0 7>;
+			od-control = <&stih415_sysconf 112  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 116 0 31>;
+			retime-control1 = <&stih415_sysconf 117 0 31>;
+		};
+		pio-control@6{
+			alt-control = <&stih415_sysconf 101 0 31>;
+			oe-control = <&stih415_sysconf 108  8 15>;
+			pu-control = <&stih415_sysconf 110  8 15>;
+			od-control = <&stih415_sysconf 112  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 118 0 31>;
+			retime-control1 = <&stih415_sysconf 119 0 31>;
+		};
+		pio-control@7{
+			alt-control = <&stih415_sysconf 102 0 31>;
+			oe-control = <&stih415_sysconf 108  16 23>;
+			pu-control = <&stih415_sysconf 110  16 23>;
+			od-control = <&stih415_sysconf 112  16 23>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 120 0 31>;
+			retime-control1 = <&stih415_sysconf 121 0 31>;
+		};
+		pio-control@8{
+			alt-control = <&stih415_sysconf 103 0 31>;
+			oe-control = <&stih415_sysconf 108  24 31>;
+			pu-control = <&stih415_sysconf 110  24 31>;
+			od-control = <&stih415_sysconf 112  24 31>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 122 0 31>;
+			retime-control1 = <&stih415_sysconf 123 0 31>;
+
+		};
+		pio-control@9{
+			alt-control = <&stih415_sysconf 104 0 31>;
+			oe-control = <&stih415_sysconf 109  0 7>;
+			pu-control = <&stih415_sysconf 111  0 7>;
+			od-control = <&stih415_sysconf 113  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 124 0 31>;
+			retime-control1 = <&stih415_sysconf 125 0 31>;
+		};
+		pio-control@10{
+			alt-control = <&stih415_sysconf 105 0 31>;
+			oe-control = <&stih415_sysconf 109  8 15>;
+			pu-control = <&stih415_sysconf 111  8 15>;
+			od-control = <&stih415_sysconf 113  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 126 0 31>;
+			retime-control1 = <&stih415_sysconf 127 0 31>;
+		};
+		pio-control@11{
+			alt-control = <&stih415_sysconf 106 0 31>;
+			oe-control = <&stih415_sysconf 109  16 23>;
+			pu-control = <&stih415_sysconf 111  16 23>;
+			od-control = <&stih415_sysconf 113  16 23>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 128 0 31>;
+			retime-control1 = <&stih415_sysconf 129 0 31>;
+		};
+		pio-control@12{
+			alt-control = <&stih415_sysconf 107 0 31>;
+			oe-control = <&stih415_sysconf 109  24 31>;
+			pu-control = <&stih415_sysconf 111  24 31>;
+			od-control = <&stih415_sysconf 113  24 31>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 130 0 31>;
+			retime-control1 = <&stih415_sysconf 131 0 31>;
+		};
+		pio-control@13{
+			alt-control = <&stih415_sysconf 300 0 31>;
+			oe-control = <&stih415_sysconf 306  0 7>;
+			pu-control = <&stih415_sysconf 308  0 7>;
+			od-control = <&stih415_sysconf 310  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 338 0 31>;
+			retime-control1 = <&stih415_sysconf 339 0 31>;
+		};
+		pio-control@14{
+			alt-control = <&stih415_sysconf 301 0 31>;
+			oe-control = <&stih415_sysconf 306  8 15>;
+			pu-control = <&stih415_sysconf 308  8 15>;
+			od-control = <&stih415_sysconf 310  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 340 0 31>;
+			retime-control1 = <&stih415_sysconf 341 0 31>;
+		};
+		pio-control@15{
+			alt-control = <&stih415_sysconf 302 0 31>;
+			oe-control = <&stih415_sysconf 306  16 23>;
+			pu-control = <&stih415_sysconf 308  16 23>;
+			od-control = <&stih415_sysconf 310  16 23>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 342 0 31>;
+			retime-control1 = <&stih415_sysconf 343 0 31>;
+		};
+		pio-control@16{
+			alt-control = <&stih415_sysconf 303 0 31>;
+			oe-control = <&stih415_sysconf 306  24 31>;
+			pu-control = <&stih415_sysconf 308  24 31>;
+			od-control = <&stih415_sysconf 310  24 31>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 344 0 31>;
+			retime-control1 = <&stih415_sysconf 345 0 31>;
+
+		};
+		pio-control@17{
+			alt-control = <&stih415_sysconf 304 0 31>;
+			oe-control = <&stih415_sysconf 307  0 7>;
+			pu-control = <&stih415_sysconf 309  0 7>;
+			od-control = <&stih415_sysconf 311  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 346 0 31>;
+			retime-control1 = <&stih415_sysconf 347 0 31>;
+
+		};
+		pio-control@18{
+			alt-control = <&stih415_sysconf 305 0 31>;
+			oe-control = <&stih415_sysconf 307  8 15>;
+			pu-control = <&stih415_sysconf 309  8 15>;
+			od-control = <&stih415_sysconf 311  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 348 0 31>;
+			retime-control1 = <&stih415_sysconf 349 0 31>;
+
+		};
+		pio-control@19{
+			alt-control = <&stih415_sysconf 400 0 31>;
+			oe-control = <&stih415_sysconf 403  0 7>;
+			pu-control = <&stih415_sysconf 404  0 7>;
+			od-control = <&stih415_sysconf 405  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 406 0 31>;
+			retime-control1 = <&stih415_sysconf 407 0 31>;
+
+		};
+		pio-control@20{
+			alt-control = <&stih415_sysconf 401 0 31>;
+			oe-control = <&stih415_sysconf 403  8 15>;
+			pu-control = <&stih415_sysconf 404  8 15>;
+			od-control = <&stih415_sysconf 405  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 408 0 31>;
+			retime-control1 = <&stih415_sysconf 409 0 31>;
+
+		};
+		pio-control@21{
+			alt-control = <&stih415_sysconf 402 0 31>;
+			oe-control = <&stih415_sysconf 403  16 23>;
+			pu-control = <&stih415_sysconf 404  16 23>;
+			od-control = <&stih415_sysconf 405  16 23>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 410 0 31>;
+			retime-control1 = <&stih415_sysconf 411 0 31>;
+
+		};
+		pio-control@22{
+			alt-control = <&stih415_sysconf 500 0 31>;
+			oe-control = <&stih415_sysconf 505  0 7>;
+			pu-control = <&stih415_sysconf 507  0 7>;
+			od-control = <&stih415_sysconf 509  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 511 0 31>;
+			retime-control1 = <&stih415_sysconf 512 0 31>;
+		};
+		pio-control@23{
+			alt-control = <&stih415_sysconf 501 0 31>;
+			oe-control = <&stih415_sysconf 505  8 15>;
+			pu-control = <&stih415_sysconf 507  8 15>;
+			od-control = <&stih415_sysconf 509  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 513 0 31>;
+			retime-control1 = <&stih415_sysconf 514 0 31>;
+		};
+		pio-control@24{
+			alt-control = <&stih415_sysconf 502 0 31>;
+			oe-control = <&stih415_sysconf 505  16 23>;
+			pu-control = <&stih415_sysconf 507  16 23>;
+			od-control = <&stih415_sysconf 509  16 23>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 515 0 31>;
+			retime-control1 = <&stih415_sysconf 516 0 31>;
+		};
+		pio-control@25{
+			alt-control = <&stih415_sysconf 503 0 31>;
+			oe-control = <&stih415_sysconf 505  24 31>;
+			pu-control = <&stih415_sysconf 507  24 31>;
+			od-control = <&stih415_sysconf 509  24 31>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 517 0 31>;
+			retime-control1 = <&stih415_sysconf 518 0 31>;
+
+		};
+		pio-control@26{
+			alt-control = <&stih415_sysconf 504 0 31>;
+			oe-control = <&stih415_sysconf 506  0 7>;
+			pu-control = <&stih415_sysconf 508  0 7>;
+			od-control = <&stih415_sysconf 510  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 519 0 31>;
+			retime-control1 = <&stih415_sysconf 520 0 31>;
+		};
+	};
+
+	gpio-irqmux {
+		#interrupt-cells = <3>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+		interrupt-parent = <&intc>;
+		ranges;
+		/*PIO0-4: SBC_PIO (aka pio_sas_sbc, PIO_SBC) */
+		gpio-irqmux@fe61f080{
+			compatible	= "st,gpio-irqmux", "simple-bus";
+			reg =	<0xfe61f080 0x4>;
+			interrupts = <0 180 0x0>;
+			first-port = <0>;
+			ports = <5>;
+		};
+
+		/*PIO5-12: PIO_FRONT (aka pio_sas_front) */
+		gpio-irqmux@fee0f080{
+			compatible	= "st,gpio-irqmux", "simple-bus";
+			reg =	<0xfee0f080 0x4>;
+			interrupts = <0 181 0x0>;
+			first-port = <5>;
+			ports = <8>;
+		};
+
+		/*PIO13-18: PIO_REAR (aka pio_sas_rear) */
+		gpio-irqmux@fe82f080{
+			compatible	= "st,gpio-irqmux", "simple-bus";
+			reg =	<0xfe82f080 0x4>;
+			interrupts = <0 182 0x0>;
+			first-port = <13>;
+			ports = <6>;
+		};
+
+		/*PIO100-102: PIO_RIGHT (aka MPE_PIO, PIO0_MPE) */
+		gpio-irqmux@fd6bf080{
+			compatible	= "st,gpio-irqmux", "simple-bus";
+			reg =	<0xfd6bf080 0x4>;
+			interrupts = <0 113 0x0>;
+			first-port = <19>;
+			ports = <3>;
+		};
+
+		/*PIO103-107: PIO_LEFT (aka PIO1_MPE) */
+		gpio-irqmux@fd33f080{
+			compatible	= "st,gpio-irqmux", "simple-bus";
+			reg =	<0xfd33f080 0x4>;
+			interrupts = <0 114 0x0>;
+			first-port = <22>;
+			ports = <5>;
+		};
+	};
+
+	soc {
+	        #address-cells = <1>;
+	        #size-cells = <1>;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&intc>;
+		ranges;
+		compatible	= "simple-bus";
+		id		= <&stih415_sysconf 427 0 31>;
+		reset		= <&stih415_sysconf 11 0 0>;
+		emis{
+		        #address-cells = <1>;
+		        #size-cells = <1>;
+			#interrupt-cells = <3>;
+			interrupt-parent = <&intc>;
+			ranges;
+			emi {
+				compatible	= "st,emi", "simple-bus";
+				reg		=	<0 0x10000000>,
+							<0xfe900000 0x874>,
+							<0xfef01000 0x80>;
+				reg-names = "emi memory", "emi4 config", "emiss config";
+				device-config = <&emi_dev_config>;
+				emi_dev_config: emi-dev-config {
+					#stm-sysconf-cells = <4>;
+					device-seqs = <&emi_dev_seqs>;
+					sysconfs{
+						EMI_PWR = <&stih415_sysconf 114 0 0>;
+						EMI_ACK = <&stih415_sysconf 187 0 0>;
+					};
+				};
+
+				emi_dev_seqs: emi-dev-seqs{
+					power-on-seq{
+						step0 {
+							EMI_PWR = <0>;
+							type = "sysconf";
+						};
+						step1{
+							EMI_ACK = <0>;
+							type = "sysconf-feedback";
+						};
+					};
+					power-off-seq{
+						step0 {
+							EMI_PWR = <1>;
+							type = "sysconf";
+						};
+						step1{
+							EMI_ACK = <1>;
+							type = "sysconf-feedback";
+						};
+					};
+				};
+			};
+		};
+		nandafm: nandafm@fe901000{
+			compatible	= "st,nand-afm", "simple-bus";
+			reg =	<0xfe901000 0x1000>, <0xfef00800 0x0800>;
+			reg-names = "nand_mem", "nand_dma";
+			interrupts = <0 146 0x0>;
+			interrupt-names = "nand_irq";
+			status = "disabled";
+		};
+
+		nandbch: nandbch@fe901000{
+			compatible	= "st,nand-bch", "simple-bus";
+			reg =	<0xfe901000 0x1000>, <0xfef00800 0x0800>;
+			reg-names = "nand_mem", "nand_dma";
+			interrupts = <0 146 0x0>;
+			interrupt-names = "nand_irq";
+			status = "disabled";
+			st,bch-ecc-mode	= "auto";
+		};
+
+
+		/* FSM */
+		spifsm:	spifsm@fe902000{
+	                #stm-pad-cells = <1>;
+			compatible	= "st,spi-fsm", "simple-bus";
+			status		= "disabled";
+			reg =	<0xfe902000 0x1000>;
+			reg-names = "spi-fsm";
+			padcfg-0 = <&padcfg_fsm>;
+			caps-handle = <&fsm_caps>;
+
+			fsm_caps: fsm-caps {
+				no-read-repeat;
+				no-write-repeat;
+				read-status-bug;
+				dual-mode;		/* DUAL mode */
+				quad-mode;		/* QUAD mode */
+			};
+		};
+
+		usb0_dev_seqs: usb0-dev-seqs{
+			init-seq{
+				step0 {
+					USB_TRIPLE_PHY = <1>;
+					type = "sysconf";
+				};
+				step1 {
+					USB_IN_DC_SHIFT = <0>;
+					type = "sysconf";
+				};
+				step2 {
+					USB_IN_EDGE_CTRL = <1>;
+					type = "sysconf";
+				};
+			};
+			power-on-seq{
+				step0 {
+					USB_HOST_PWR = <0>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <0>;
+					type = "sysconf-feedback";
+				};
+			};
+			power-off-seq{
+				step0 {
+					USB_HOST_PWR = <1>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <1>;
+					type = "sysconf-feedback";
+				};
+			};
+		};
+
+		usb_dev_seqs: usb-dev-seqs{
+			init-seq{
+				step0 {
+					USB_IN_DC_SHIFT = <0>;
+					type = "sysconf";
+				};
+				step1 {
+					USB_IN_EDGE_CTRL = <1>;
+					type = "sysconf";
+				};
+			};
+			power-on-seq{
+				step0 {
+					USB_HOST_PWR = <0>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <0>;
+					type = "sysconf-feedback";
+				};
+			};
+			power-off-seq{
+				step0 {
+					USB_HOST_PWR = <1>;
+					type = "sysconf";
+				};
+				step1{
+					USB_PWR_ACK = <1>;
+					type = "sysconf-feedback";
+				};
+			};
+		};
+
+		usb_amba_config: usbambaconfig {
+			bridge_type2;
+			sd_config_missing;
+			complete_on_error;
+			read_ahead;
+			max_opcode_LD32_ST32;
+
+			chunks_in_msg	=	<0>;
+			packets_in_chunk	=	<8>;
+			threshold		=	<128>;
+		};
+
+		usb0: usb@fe1000000{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe100000 0x100>,
+						<0xfe1ffc00 0x100>,
+						<0xfe1ffe00 0x100>,
+						<0xfe1fff00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+
+			interrupts	=  <0 155 0>, <0 156 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb0_dev_config>;
+			usb0_dev_config: usb_dev_config-0 {
+				#stm-sysconf-cells = <4>;
+				padcfg-0 = <&padcfg_usb0>;
+				device-seqs = <&usb0_dev_seqs>;
+				sysconfs{
+					USB_TRIPLE_PHY = <&stih415_sysconf 332 6 6>;
+					USB_HOST_PWR = <&stih415_sysconf 336 0 0>;
+					USB_PWR_ACK = <&stih415_sysconf 384 0 0>;
+					USB_IN_DC_SHIFT = <&stih415_sysconf 332 0 0>;
+					USB_IN_EDGE_CTRL = <&stih415_sysconf 332 3 3>;
+				};
+			};
+
+		};
+
+		usb1: usb@fe200000{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe200000 0x100>,
+						<0xfe2ffc00 0x100>,
+						<0xfe2ffe00 0x100>,
+						<0xfe2fff00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+			interrupts	=  <0 157 0>, <0 158 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb1_dev_config>;
+			usb1_dev_config: usb_dev_config-1 {
+				#stm-sysconf-cells = <4>;
+				padcfg-0 = <&padcfg_usb1>;
+				device-seqs = <&usb_dev_seqs>;
+				sysconfs{
+					USB_HOST_PWR = <&stih415_sysconf 336 1 1>;
+					USB_PWR_ACK = <&stih415_sysconf 384 1 1>;
+					USB_IN_DC_SHIFT = <&stih415_sysconf 332 1 1>;
+					USB_IN_EDGE_CTRL = <&stih415_sysconf 332 4 4>;
+				};
+			};
+
+		};
+
+		usb2: usb@fe300000{
+			compatible	= "st,usb", "simple-bus";
+			status = "disabled";
+			amba-config		= <&usb_amba_config>;
+			strap-8bit;
+			reg		=	<0xfe300000 0x100>,
+						<0xfe3ffc00 0x100>,
+						<0xfe3ffe00 0x100>,
+						<0xfe3fff00 0x100>;
+			reg-names = "wrapper", "ohci", "ehci", "protocol";
+
+			interrupts	=  <0 159 0>, <0 160 0>;
+			interrupt-names = "ehci","ohci";
+			device-config = <&usb2_dev_config>;
+
+			usb2_dev_config: usb_dev_config-2 {
+				#stm-sysconf-cells = <4>;
+				padcfg-0 = <&padcfg_usb2>;
+				device-seqs = <&usb_dev_seqs>;
+				sysconfs{
+					USB_HOST_PWR = <&stih415_sysconf 336 2 2>;
+					USB_PWR_ACK = <&stih415_sysconf 384 2 2>;
+					USB_IN_DC_SHIFT = <&stih415_sysconf 332 2 2>;
+					USB_IN_EDGE_CTRL = <&stih415_sysconf 332 5 5>;
+				};
+			};
+		};
+
+		/* SAS PWM MODULE */
+		pwm0: pwm@fed100000{
+			compatible	= "st,pwm", "simple-bus";
+			reg		= <0xfed10000 0x68>;
+			interrupts	=  <0 200 0>;
+			status = "disabled";
+			padcfg-names = "chan0", "chan1";
+			padcfg-0 = <&padcfg_pwm0_chan0>;
+			padcfg-1 = <&padcfg_pwm0_chan1>;
+		};
+
+		/* SBC PWM MODULE */
+		pwm1: pwm@fe4100000{
+			compatible	= "st,pwm", "simple-bus";
+			reg		= <0xfe410000 0x68>;
+			interrupts	=  <0 202 0>;
+			status = "disabled";
+			padcfg-names = "chan0", "chan1";
+			padcfg-0 = <&padcfg_pwm1_chan0>;
+			padcfg-1 = <&padcfg_pwm1_chan1>;
+		};
+
+		lirc: lirc@fe5180000 {
+			compatible	= "st,lirc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe518000 0x234>;
+			interrupts	=  <0 203 0>;
+			sys-clk	= "sbc_comms_clk";
+			irb-clock		= <0>;
+			irb-clkdiv		= <0>;
+			irb-period-mult	= <0>;
+			irb-period-div	= <0>;
+			irb-ontime-mult	= <0>;
+			irb-ontime-div	= <0>;
+			irb-rxmax-period	= <0x5000>;
+			irb-version		= <0>;
+			sys-clkdiv		= <1>;
+			rx-polarity		= <1>;
+			sub-carrwidth	= <0>;
+			device-config = <&lirc_ir_device_config>;
+
+			lirc_ir_device_config: lirc-ir-dev-config {
+				padcfg-0	= <&padcfg_ir>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+
+			lirc_uhf_device_config: lirc-uhf-dev-config {
+				padcfg-0	= <&padcfg_ir &padcfg_uhf>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+
+			lirc_tx_device_config: lirc-tx-dev-config {
+				padcfg-0	= <&padcfg_ir &padcfg_tx>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+			lirc_tx_od_device_config: lirc-tx-od-dev-config {
+				padcfg-0	= <&padcfg_ir &padcfg_tx_od>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+			lirc_dev_seqs: lirc-dev-seqs{
+				init-seq{
+					step0 {
+						irb-enabled = <1>;
+						type = "sysconf";
+					};
+					step1 {
+						irb-normal-mode = <0>;
+						type = "sysconf";
+					};
+				};
+			};
+		};
+
+		i2c0: i2c@fed40000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed40000 0x110>;
+			interrupts	=  <0 187 0>;
+
+			padcfg-0 = <&padcfg_i2c0>;
+		};
+
+		i2c1: i2c@fed41000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed41000 0x110>;
+			interrupts	=  <0 188 0>;
+
+			padcfg-0 = <&padcfg_i2c1>;
+		};
+
+		i2c2: i2c@fed42000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed42000 0x110>;
+			interrupts	=  <0 189 0>;
+
+			padcfg-0 = <&padcfg_i2c2>;
+		};
+
+		i2c3: i2c@fed43000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed43000 0x110>;
+			interrupts	=  <0 190 0>;
+
+			padcfg-0 = <&padcfg_i2c3>;
+		};
+
+		i2c4: i2c@fed44000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed44000 0x110>;
+			interrupts	=  <0 191 0>;
+
+			padcfg-0 = <&padcfg_i2c4>;
+		};
+
+		i2c5: i2c@fed45000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed45000 0x110>;
+			interrupts	=  <0 192 0>;
+
+			padcfg-0 = <&padcfg_i2c5>;
+		};
+
+		i2c6: i2c@fed46000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed46000 0x110>;
+			interrupts	=  <0 193 0>;
+
+			padcfg-0 = <&padcfg_i2c6>;
+			st,dev-clk	= "sbc_comms_clk";
+		};
+
+		/* SBC SSC0 */
+		sbc_i2c0: i2c@fe540000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe540000 0x110>;
+			interrupts	=  <0 206 0>;
+
+			padcfg-0 = <&padcfg_i2c7>;
+			st,dev-clk	= "sbc_comms_clk";
+		};
+
+		/* SBC SSC1 */
+		sbc_i2c1: i2c@fe541000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe541000 0x110>;
+			interrupts	=  <0 207 0>;
+
+			padcfg-0 = <&padcfg_i2c8>;
+			st,dev-clk	= "sbc_comms_clk";
+		};
+
+		/* SBC SSC2 */
+		sbc_i2c2: i2c@fe542000{
+			compatible	= "st,i2c", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe542000 0x110>;
+			interrupts	=  <0 208 0>;
+
+			padcfg-0 = <&padcfg_i2c9>;
+			st,dev-clk	= "sbc_comms_clk";
+		};
+
+		stm_spi0: spi-stm0{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed40000 0x110>;
+			interrupts	=  <0 187 0>;
+
+			padcfg-0 = <&padcfg_spi0>;
+		};
+
+		stm_spi1: spi-stm1{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed41000 0x110>;
+			interrupts	=  <0 188 0>;
+
+			padcfg-0 = <&padcfg_spi1>;
+		};
+
+		stm_spi2: spi-stm2{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed43000 0x110>;
+			interrupts	=  <0 189 0>;
+
+			padcfg-0 = <&padcfg_spi2>;
+		};
+
+		stm_spi3: spi-stm3{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed43000 0x110>;
+			interrupts	=  <0 190 0>;
+
+			padcfg-0 = <&padcfg_spi3>;
+		};
+
+		stm_spi4: spi-stm4{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed44000 0x110>;
+			interrupts	=  <0 191 0>;
+
+			padcfg-0 = <&padcfg_spi4>;
+		};
+
+		stm_spi5: spi-stm5{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed45000 0x110>;
+			interrupts	=  <0 192 0>;
+
+			padcfg-0 = <&padcfg_spi5>;
+		};
+
+		stm_spi6: spi-stm6{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed46000 0x110>;
+			interrupts	=  <0 193 0>;
+
+			padcfg-0 = <&padcfg_spi6>;
+		};
+
+		/* SBC SSC0 */
+		stm_spi7: spi-stm7{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe540000 0x110>;
+			interrupts	=  <0 206 0>;
+			st,dev-clk	= "sbc_comms_clk";
+
+			padcfg-0 = <&padcfg_spi7>;
+		};
+
+		/* SBC SSC1 */
+		stm_spi8: spi-stm8{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe541000 0x110>;
+			interrupts	=  <0 207 0>;
+			st,dev-clk	= "sbc_comms_clk";
+
+			padcfg-0 = <&padcfg_spi8>;
+		};
+
+		/* SBC SSC2 */
+		stm_spi9: spi-stm9{
+			compatible	= "st,spi", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe542000 0x110>;
+			interrupts	=  <0 208 0>;
+			st,dev-clk	= "sbc_comms_clk";
+
+			padcfg-0 = <&padcfg_spi9>;
+		};
+
+	/* Note: NO support to IORESOURCE_DMA */
+		uart0: uart@fed30000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed30000 0x2c>;
+			interrupts	=  <0 195 0>;
+		};
+
+		uart1: uart@fed31000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed31000 0x2c>;
+			interrupts	=  <0 196 0>;
+		};
+
+		uart2: uart@fed32000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed32000 0x2c>;
+			interrupts	=  <0 197 0>;
+
+			padcfg-0 = <&padcfg_uart2>;
+		};
+
+		uart3: uart@fed33000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfed33000 0x2c>;
+			interrupts	=  <0 198 0>;
+
+		};
+
+		/* SBC comms block ASCs in SASG1 */
+		sbc_uart0: uart@fe5300000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe530000 0x2c>;
+			interrupts	=  <0 209 0>;
+			st,clk-id	= "sbc_comms_clk";
+			padcfg-0 	= <&padcfg_sbc_uart0>;
+		};
+
+		sbc_uart1: uart@fe531000 {
+			compatible	= "st,asc", "simple-bus";
+			status = "disabled";
+			reg		= <0xfe531000 0x2c>;
+			interrupts	=  <0 210 0>;
+			st,clk-id	= "sbc_comms_clk";
+			padcfg-0	= <&padcfg_sbc_uart1>;
+		};
+
+		sdhci0:sdhci@fe81e000 {
+			compatible	= "st,sdhci", "simple-bus";
+			status = "disabled";
+			reg	= <0xfe81e000  0x1000>;
+			interrupts	=  <0 145 0>;
+			interrupt-names = "mmcirq";
+			padcfg-0	= <&padcfg_mmc>;
+
+		};
+
+		/* Ethernet */
+
+		ethernet0: ethernet@fe810000 {
+			device_type = "network";
+			compatible	= "snps,dwmac", "simple-bus";
+			status = "disabled";
+
+			reg = <0xfe810000 0x8000>;
+			interrupts = <0 147 0>;
+			interrupt-names = "macirq";
+
+
+			snps,enh-desc;
+			snps,bugged-jumbo;
+			snps,force-sf-dma-mode;
+			snps,pbl = <32>;
+			snps,mixed-burst;
+
+			amba-config	= <&ethernet_amba_bridge_config>;
+			st,phy-clk-name = "CLKS_GMAC0_PHY";
+			st,fix-mac-speed = <&gmac_speed_fixups>;
+		};
+
+		ethernet1: ethernet@fef08000 {
+			device_type = "network";
+			compatible	= "snps,dwmac", "simple-bus";
+			status = "disabled";
+
+			reg = <0xfef08000 0x8000>;
+			interrupts = <0 150 0>;
+			interrupt-names = "macirq";
+
+			snps,enh-desc;
+			snps,bugged-jumbo;
+			snps,force-sf-dma-mode;
+			snps,pbl = <32>;
+			snps,mixed-burst;
+
+			amba-config	= <&ethernet_amba_bridge_config>;
+			st,phy-clk-name = "CLKS_ETH1_PHY";
+			st,fix-mac-speed = <&gmac_speed_fixups>;
+
+		};
+
+		ethernet_amba_bridge_config: stm-eth-amba-bridge {
+			reg-offset		= <0x1ffc>;
+			bridge_type2;
+			chunks_in_msg	=	<1>;
+			packets_in_chunk	=	<2>;
+			write_posting;
+			max_opcode_LD64_ST64;
+			threshold		=	<512>;
+			sd_config_missing;
+			read_ahead;
+		};
+
+		miphy: miphy@fe804000 {
+			compatible	= "st,miphy-mp", "simple-bus";
+			reg		= <0xfe804000 0xff>;
+			reg-names = 	"pcie-uport";
+			status		= "disabled";
+			device-config	= <&miphy_dev_config>;
+			miphy-start	= <0>;
+			miphy-modes	= "sata", "pcie";
+			style	= "MiPHY3-65";
+
+			miphy_dev_config: miphy-dev-config {
+				#stm-sysconf-cells = <4>;
+				sysconfs {
+					SATA0_SOFT_RESET =	<&stih415_sysconf 377 7  7>;
+					SATA1_SOFT_RESET =	<&stih415_sysconf 377 3  3>;
+					MIPHY0_SOFT_RESET =	<&stih415_sysconf 376 18 18>;
+					MIPHY1_SOFT_RESET =	<&stih415_sysconf 376 19 19>;
+					SELECT_SATA =		<&stih415_sysconf 333 1  1>;
+					MIPHY_SELECT =		<&stih415_sysconf 335 0  0>;
+					SATAPHY1_OSC_FORCE_EXT= <&stih415_sysconf 333 2  2>;
+				};
+			};
+		};
+
+		sata_dev_seqs: sata-dev-seqs{
+			power-on-seq{
+				step0 {
+					SATA_HC_PWR = <0>;
+					type = "sysconf";
+				};
+				step1{
+					SATA_ACK = <0>;
+					type = "sysconf-feedback";
+				};
+			};
+			power-off-seq{
+				step0 {
+					SATA_HC_PWR = <1>;
+					type = "sysconf";
+				};
+				step1{
+					SATA_ACK = <1>;
+					type = "sysconf-feedback";
+				};
+			};
+		};
+
+		sata0: sata@fe818000{
+			compatible	= "st,sata", "simple-bus";
+			reg		= <0xfe818000 0x1000>;
+			interrupts	=  <0 161 0>, <0 162 0>;
+			interrupt-names = "hostc", "dmac";
+			status		= "disabled";
+
+			device-config = <&sata0_dev_config>;
+			amba-config = <&sata_amba_config>;
+
+			st,oob_wa;
+			st,port = <0>;
+			st,miphy-num = <0>;
+
+			sata0_dev_config: sata0-dev-config {
+				#stm-sysconf-cells = <4>;
+				device-seqs = <&sata_dev_seqs>;
+				sysconfs {
+					SATA_ACK =	<&stih415_sysconf 384 3 3>;
+					SATA_HC_PWR =	<&stih415_sysconf 336 3 3>;
+				};
+			};
+		};
+
+		sata1: sata@fe819000{
+			compatible	= "st,sata", "simple-bus";
+			reg		= <0xfe819000 0x1000>;
+			interrupts	=  <0 164 0>, <0 165 0>;
+			interrupt-names = "hostc", "dmac";
+			status		= "disabled";
+
+			device-config = <&sata1_dev_config>;
+			amba-config = <&sata_amba_config>;
+
+			st,oob_wa;
+			st,port = <1>;
+			st,miphy-num = <1>;
+
+			sata1_dev_config: sata1-dev-config {
+				#stm-sysconf-cells = <4>;
+				device-seqs = <&sata_dev_seqs>;
+				sysconfs {
+					SATA_ACK =	<&stih415_sysconf 384 4 4>;
+					SATA_HC_PWR =	<&stih415_sysconf 336 4 4>;
+				};
+			};
+		};
+
+		sata_amba_config: sata-amba-config {
+			bridge_type2;
+			chunks_in_msg	=	<1>;
+			packets_in_chunk	=	<2>;
+			max_opcode_LD64_ST64;
+			threshold		=	<128>;
+			sd_config_missing;
+			read_ahead;
+		};
+
+		pcie0: pcie@fe800000{
+			compatible	= "st,pcie", "simple-bus";
+			reg		= <0xfe800000 0x1000>, <0xfe808000 0x8>, <0x3fff0000 0x10000>;
+			reg-names	= "pcie cntrl", "pcie ahb","pcie config";
+
+			interrupts	=  <0 166 0>, <0 171 0>, <0 167 0>;
+			interrupt-names = "pcie inta", "pcie syserr", "msi mux";
+			status		= "disabled";
+
+			device-config = <&pcie_dev_config>;
+			st,pcie-window = <0x20000000  0x1fff0000>;
+			st,mem-window	= <0x40000000  0x80000000>;
+
+			st,reset-gpio = <&PIO106 5>;
+			st,ahb-fixup	= <0x264207>;
+			st,miphy-num	= <1>;
+		};
+
+		pcie_dev_config: pcie-dev-config {
+			#stm-sysconf-cells = <4>;
+			sysconfs {
+				PCIE_SOFT_RST	=	<&stih415_sysconf 377 2 2>;
+				PCIE_SYS_INT	=	<&stih415_sysconf 334 5 5>;
+				PCIE_P1_SSC_EN	=	<&stih415_sysconf 334 4 4>;
+				PCIE_APP_REQ_RETRY_EN	= <&stih415_sysconf 334 3 3>;
+				PCIE_APP_LTSSM_ENABLE	= <&stih415_sysconf 334 2 2>;
+				PCIE_APP_INIT_RST =	<&stih415_sysconf 334 1 1>;
+				PCIE_DEVICE_TYPE =	<&stih415_sysconf 334 0 0>;
+			};
+		};
+
+	/* temp */
+		temp_pwr_seqs: temp-pwr-seqs{
+			power-on-seq{
+				step0 {
+					TEMP_PWR = <1>;
+					type = "sysconf";
+				};
+			};
+			power-off-seq{
+				step0 {
+					TEMP_PWR = <0>;
+					type = "sysconf";
+				};
+			};
+		};
+
+		temp0_dev_config: temp0-dev-config {
+			#stm-sysconf-cells = <4>;
+			device-seqs = <&temp_pwr_seqs>;
+			sysconfs {
+				TEMP_PWR = <&stih415_sysconf 178 9 9>;
+				DCORRECT = <&stih415_sysconf 178 4 8>;
+				OVERFLOW = <&stih415_sysconf 198 8 8>;
+				DATA = <&stih415_sysconf 198 10 16>;
+			};
+		};
+
+		temp1_dev_config: temp1-dev-config {
+			#stm-sysconf-cells = <4>;
+			device-seqs = <&temp_pwr_seqs>;
+			sysconfs {
+				TEMP_PWR = <&stih415_sysconf 607 8 8>;
+				DCORRECT = <&stih415_sysconf 607 3 7>;
+				OVERFLOW = <&stih415_sysconf 667 9 9>;
+				DATA = <&stih415_sysconf 667 11 18>;
+			};
+		};
+
+	/* Internal temperature sensor resources ---------------------------------- */
+		temp0{
+			compatible    = "st,temp", "simple-bus";
+		        status = "okay";
+			device-config = <&temp0_dev_config>;
+		};
+
+		temp1 {
+			compatible    = "st,temp", "simple-bus";
+		        status = "okay";
+			device-config = <&temp1_dev_config>;
+		};
+
+		/* FDMA */
+
+		fdma_fw_regs: fdma-fw-regs{
+			fw-rev-id    = <0x10000>;
+			fw-cmd-statn = <0x10200>;
+			fw-req-ctln  = <0x10240>;
+			fw-ptrn      = <0x10800>;
+			fw-cntn      = <0x10808>;
+			fw-saddrn    = <0x1080c>;
+			fw-daddrn    = <0x10810>;
+			fw-node-size = <128>;
+		};
+
+		fdma_hw_config: fdma-hw-config {
+			slim-reg-id       = <0x0>;
+			slim-reg-ver      = <0x4>;
+			slim-reg-en       = <0x8>;
+			slim-reg-clk-gate = <0xc>;
+
+			dmem-offset = <0x10000>;
+			dmem-size   = <0x3000>;
+
+			periph-reg-sync-reg = <0x17f88>;
+			periph-reg-cmd-sta  = <0x17fc0>;
+			periph-reg-cmd-set  = <0x17fc4>;
+			periph-reg-cmd-clr  = <0x17fc8>;
+			periph-reg-cmd-mask = <0x17fcc>;
+			periph-reg-int-sta  = <0x17fd0>;
+			periph-reg-int-set  = <0x17fd4>;
+			periph-reg-int-clr  = <0x17fd8>;
+			periph-reg-int-mask = <0x17fdc>;
+
+			imem-offset = <0x18000>;
+			imem-size   = <0x6000>;
+		};
+
+		/* FDMA_0_MPE: */
+		fdma0_mpe:fdma-mpe@0{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfd600000 0x20000>;
+			interrupts	=  <0 10 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <0>;
+
+		};
+
+		/* FDMA_1_MPE: */
+		fdma1_mpe:fdma-mpe@1{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfd620000 0x20000>;
+			interrupts	=  <0 18 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <0>;
+		};
+
+		/* FDMA_2_MPE: */
+		fdma2_mpe:fdma-mpe@2{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfd640000 0x20000>;
+			interrupts	=  <0 26 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar	= <0>;
+		};
+
+		fdma_xbar_mpe: fdma-xbar-mpe {
+			compatible	= "st,fdma-xbar", "simple-bus";
+			reg		= <0xfd6df000 0x1000>;
+			first-fdma	= <0>;
+			last-fdma	= <2>;
+		};
+
+		fdma_xbar_sas: fdma-xbar-sas {
+			compatible	= "st,fdma-xbar", "simple-bus";
+			reg		= <0xfee61000 0x1000>;
+			first-fdma	= <3>;
+			last-fdma	= <4>;
+		};
+
+		/* FDMA_100: SAS FDMA 0 */
+		fdma0_sas:fdma-sas@0{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfea00000 0x20000>;
+			interrupts	=  <0 121 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar = <1>;
+		};
+
+		/* FDMA_101: SAS FDMA 1 */
+		fdma1_sas:fdma-sas@1{
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfea20000 0x20000>;
+			interrupts	=  <0 129 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar = <1>;
+		};
+
+		/* stm-rtc */
+		rtc@0 {
+		        compatible = "st,rtc", "simple-bus";
+		        interrupts = <0 118 0>;
+		        reg = <0xfde05000 0x1000>;
+			need-wdt-reset;
+			irq-edge-rising;
+			clk-rate	= <300000>;
+		 };
+	};
+};

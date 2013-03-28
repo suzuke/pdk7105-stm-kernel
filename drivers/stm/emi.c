@@ -13,11 +13,13 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/err.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/device.h>
 #include <linux/clk.h>
+#include <linux/stm/clk.h>
 
 #define EMISS_CONFIG				0x0000
 #define EMISS_CONFIG_PCI_CLOCK_MASTER		(0x1 << 0)
@@ -511,15 +513,26 @@ static int __devinit remap_named_resource(struct platform_device *pdev,
 	return 0;
 }
 
+static void *emi_driver_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	if (!np)
+		return pdev->dev.platform_data;
+
+	return stm_of_get_dev_config(&pdev->dev);
+}
+
 static int __devinit emi_driver_probe(struct platform_device *pdev)
 {
 	struct resource	*res;
 	int err;
+	void *pdata;
 
 	BUG_ON(emi_initialised);
+	pdata = emi_driver_get_pdata(pdev);
 
 	emi_device_state = devm_stm_device_init(&pdev->dev,
-		(struct stm_device_config *)pdev->dev.platform_data);
+		(struct stm_device_config *)pdata);
 
 	if (!emi_device_state)
 		return -EBUSY;
@@ -547,9 +560,21 @@ static int __devinit emi_driver_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_emi_match[] = {
+	{
+		.compatible = "st,emi",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_emi_match);
+#endif
+
 static struct platform_driver emi_driver = {
 	.driver.name = "emi",
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(stm_emi_match),
 #ifdef CONFIG_PM
 	.driver.pm = &emi_pm_ops,
 #endif

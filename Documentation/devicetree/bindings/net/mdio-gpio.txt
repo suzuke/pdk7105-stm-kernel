@@ -10,7 +10,11 @@ MDC, MDIO.
 
 Example:
 
-mdio {
+aliases {
+	mdio-gpio0 = <&mdio0>;
+};
+
+mdio0: mdio {
 	compatible = "virtual,mdio-gpio";
 	#address-cells = <1>;
 	#size-cells = <0>;

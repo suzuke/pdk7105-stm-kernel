@@ -9,6 +9,12 @@ config CPU_SUBTYPE_FLI7610
 config CPU_SUBTYPE_STIH415
        def_bool n
 
+config CPU_SUBTYPE_STIH416
+       def_bool n
+
+config CPU_SUBTYPE_STIG125
+       def_bool n
+
 config MACH_STM_FLI7610
 	def_bool n
 	select CPU_SUBTYPE_FLI7610
@@ -19,8 +25,17 @@ config MACH_STM_FLI7610
 config MACH_STM_STIG125
 	def_bool n
 	select STM_IRQ_MUX
+	select CPU_SUBTYPE_STIG125
 	help
 	  Include support for a generic STiG125 (Barcelona) platform.
+
+config MACH_STM_STIG125_BOARD
+	bool "Generic board support for StiG125 based boards via Device trees"
+	depends on OF
+	select MACH_STM_STIG125
+	help
+	Include support for a Generic Board based on device trees for
+	StiG125
 
 config MACH_STM_STIH415
 	def_bool n
@@ -30,12 +45,29 @@ config MACH_STM_STIH415
 	help
 	  Include support for a generic STiH415 (Orly) platform.
 
+config MACH_STM_STIH415_BOARD
+	bool "Generic board support for STiH415 based boards via Device trees"
+	depends on OF
+	select MACH_STM_STIH415
+	help
+	Include support for a Generic Board based on device trees for
+	StiH415 (Orly-1)
+
 config MACH_STM_STIH416
 	def_bool n
 	select ARCH_HAS_CPUFREQ
+	select CPU_SUBTYPE_STIH416
 	select STM_HAS_MALI
 	help
-	  Include support for a generic STiH416 (Orly-2) platform.
+	 Include support for a generic STiH416 (Orly-2) platform.
+
+config MACH_STM_STIH416_BOARD
+	bool "Generic board support for STiH416 based boards via Device trees"
+	depends on OF
+	select MACH_STM_STIH416
+	help
+	Include support for a Generic Board based on device trees for
+	StiH416 (Orly-2)
 
 config MACH_STM_B2000
 	bool "Support B2000 - STiH415/STiH416 (Orly/Orly-2) MBoard"

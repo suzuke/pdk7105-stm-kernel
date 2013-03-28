@@ -1,0 +1,30 @@
+* AHCI SATA Controller on STM SOC's
+
+Required properties:
+- compatible        : should be "st,ahci"
+- interrupts        : <interrupt mapping for SATA IRQ>
+- reg               : <registers mapping>
+- miphy-num	: MiPHY number to use.
+- device-config : phandle to device config.
+
+Example:
+
+	sata0: ahci@fefb0000 {
+                #address-cells = <1>;
+                #size-cells = <1>;
+		compatible	= "st,ahci", "simple-bus";
+		reg		= <0xfefb0000 0x1000>;
+		interrupts	=  <0 84 0>;
+		interrupt-names = "ahci";
+		status		= "disabled";
+		miphy_num	= <0>;
+		device-config = <&sata0_dev_config>;
+		sata0_dev_config: sata_dev_config-0 {
+			#stm-sysconf-cells = <4>;
+			device-seqs = <&sata0_dev_seqs>;
+			sysconfs{
+				AHCI_HOST_PWR =	<&sysconf 266 0 0>;
+				AHCI_HOST_PWR_ACK = <&sysconf 281 0 0>;
+			};
+		};
+	};

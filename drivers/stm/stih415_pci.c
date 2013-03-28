@@ -8,6 +8,10 @@
  * published by the Free Software Foundation.
  */
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 
 
 #include <linux/init.h>
@@ -30,9 +34,14 @@
 
 #define PCIE_DEFAULT_VAL	(PCIE_SOFT_RST_N_PCIE | PCIE_DEVICE_TYPE)
 
-static void stih415_pcie_init(void *handle)
+static void *stih415_pcie_init(struct platform_device *pdev)
 {
-	struct sysconf_field *sc = (struct sysconf_field *) handle;
+	static struct sysconf_field *sc;
+
+	if (!sc)
+		sc = sysconf_claim(SYSCONF(334), 0, 6, "pcie");
+
+	BUG_ON(!sc);
 
 	/* Drive RST_N low, set device type */
 	sysconf_write(sc, PCIE_DEVICE_TYPE);
@@ -40,6 +49,7 @@ static void stih415_pcie_init(void *handle)
 	sysconf_write(sc, PCIE_DEFAULT_VAL);
 
 	mdelay(1);
+	return sc;
 }
 
 static void stih415_pcie_enable_ltssm(void *handle)
@@ -110,13 +120,6 @@ static struct platform_device stih415_pcie_device = {
 
 void __init stih415_configure_pcie(struct stih415_pcie_config *config)
 {
-	struct sysconf_field *sc;
-
-	sc = sysconf_claim(SYSCONF(334), 0, 6, "pcie");
-
-	BUG_ON(!sc);
-
-	stih415_plat_pcie_config.ops_handle = sc;
 	stih415_plat_pcie_config.reset_gpio = config->reset_gpio;
 	stih415_plat_pcie_config.reset = config->reset;
 	/* There is only one PCIe controller on the orly and it is hardwired
@@ -127,3 +130,4 @@ void __init stih415_configure_pcie(struct stih415_pcie_config *config)
 	platform_device_register(&stih415_pcie_device);
 }
 
+#endif /* CONFIG_OF */

@@ -1,0 +1,31 @@
+
+ ST RTC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Required properties:
+  - compatible : Should be "st,rtc"
+  - reg, reg-names, interrupts, interrupt-names : Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+
+Optional properties:
+  - no-hw-req		iomen in sys/serv 5197
+  - need-wdt-reset	Workaround on 7141
+  - clk-id		clk id for rtc.
+  - clk-rate		clk rate to set.
+  - irq-edge-rising	if irq type is raising edge
+  - irq-edge-falling	if irq type is falling edge
+
+Example:
+
+	rtc@0 {
+		#interrupt-cells = <3>;
+		#address-cells = <1>;
+        #size-cells = <1>;
+		interrupt-parent = <&intc>;
+	    compatible = "st,rtc";
+	    interrupts = <0 118 0>;
+	    reg = <0xfde05000 0x1000>;
+		need-wdt-reset;
+		irq-edge-rising;
+	 };

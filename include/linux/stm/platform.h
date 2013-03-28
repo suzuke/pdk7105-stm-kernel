@@ -102,6 +102,7 @@
 
 /*** ASC platform data ***/
 
+extern struct platform_device *stm_asc_console_device;
 struct stm_plat_asc_data {
 	int hw_flow_control:1;
 	int txfifo_bug:1;
@@ -156,7 +157,7 @@ struct stm_plat_lirc_data {
 					 * waveform square after passing
 					 * through the 555-based threshold
 					 * detector on ST boards */
-	struct stm_pad_config *pads;	/* pads to be claimed */
+	struct stm_device_config *dev_config;	/* pads to be claimed */
 	unsigned int rxuhfmode:1;	/* RX UHF mode enabled */
 	unsigned int txenabled:1;	/* TX operation is possible */
 };
@@ -225,9 +226,6 @@ struct plat_stm_st40_coproc_data {
 /*** Temperature sensor data ***/
 
 struct plat_stm_temp_data {
-	struct {
-		int group, num, lsb, msb;
-	} dcorrect, overflow, data;
 	struct stm_device_config *device_config;
 	int calibrated:1;
 	int calibration_value;
@@ -282,12 +280,15 @@ struct stm_plat_tap_data {
 struct stm_plat_pcie_mp_data {
 	int miphy_first, miphy_count;
 	enum miphy_mode *miphy_modes;
-	void (*mp_select)(int port);
-	unsigned int tx_pol_inv:1; /* invert polarity of TXN/TXP differential outputs */
-	unsigned int rx_pol_inv:1; /* invert polarity of RXN/RXP differential inputs */
-	unsigned int ten_bit_symbols:1; /* Change to 10 bit symbols for PCIE */
+	void (*mp_select)(void *data, int port);
+	void * (*init)(struct platform_device *pdev);
+	void (*exit)(struct platform_device *pdev);
+	int tx_pol_inv:1; /* invert polarity of TXN/TXP differential outputs */
+	int rx_pol_inv:1; /* invert polarity of RXN/RXP differential inputs */
+	int ten_bit_symbols:1; /* Change to 10 bit symbols for PCIE */
 	enum miphy_sata_gen sata_gen; /* What generation of sata we want */
 	char *style_id;
+	void *priv_data;
 };
 
 
@@ -579,7 +580,7 @@ struct stm_plat_pci_config {
  */
 
 struct stm_plat_pcie_ops {
-	void (*init)(void *handle);
+	void  *(*init)(struct platform_device *pdev);
 	void (*enable_ltssm)(void *handle);
 	void (*disable_ltssm)(void *handle);
 };
@@ -630,7 +631,7 @@ struct stm_plat_irq_mux_data {
 	char *name;
 	unsigned short num_input;
 	unsigned char num_output;
-	int (*custom_mapping)(struct stm_plat_irq_mux_data const *pdata,
+	int (*custom_mapping)(struct device *dev,
 			      long input, long *enable,
 			      long *output, long *inv);
 };

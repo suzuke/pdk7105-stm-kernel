@@ -18,6 +18,7 @@
 #include <linux/device.h>
 #include <linux/dmapool.h>
 #include <linux/platform_device.h>
+#include <linux/of.h>
 
 #include <linux/stm/platform.h>
 #include <linux/clk.h>
@@ -1071,21 +1072,77 @@ static void stm_fdma_issue_pending(struct dma_chan *chan)
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 }
 
+void stm_fdma_parse_dt(struct platform_device *pdev,
+		struct stm_fdma_device *fdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_fdma_hw *hw;
+	struct stm_plat_fdma_fw_regs *fw;
+	struct device_node *fwnp, *hwnp;
+	u32 xbar;
+	fw = devm_kzalloc(&pdev->dev, sizeof(*fw), GFP_KERNEL);
+	hw = devm_kzalloc(&pdev->dev, sizeof(*hw), GFP_KERNEL);
+	fdev->fw = fw;
+	fdev->hw = hw;
 
+	of_property_read_u32(np, "xbar", &xbar);
+	fdev->xbar = xbar;
+
+	/* fw */
+	fwnp = of_parse_phandle(np, "fw-regs", 0);
+	of_property_read_u32(fwnp, "fw-rev-id", (u32 *)&fw->rev_id);
+	of_property_read_u32(fwnp, "fw-cmd-statn", (u32 *)&fw->cmd_statn);
+	of_property_read_u32(fwnp, "fw-req-ctln", (u32 *)&fw->req_ctln);
+	of_property_read_u32(fwnp, "fw-ptrn", (u32 *)&fw->ptrn);
+	of_property_read_u32(fwnp, "fw-cntn", (u32 *)&fw->cntn);
+	of_property_read_u32(fwnp, "fw-saddrn", (u32 *)&fw->saddrn);
+	of_property_read_u32(fwnp, "fw-daddrn", (u32 *)&fw->daddrn);
+	of_property_read_u32(fwnp, "fw-node-size", (u32 *)&fw->node_size);
+	/* hw */
+	hwnp = of_parse_phandle(np, "hw-conf", 0);
+	of_property_read_u32(hwnp, "slim-reg-id", (u32 *)&hw->slim_regs.id);
+	of_property_read_u32(hwnp, "slim-reg-ver", (u32 *)&hw->slim_regs.ver);
+	of_property_read_u32(hwnp, "slim-reg-en", (u32 *)&hw->slim_regs.en);
+	of_property_read_u32(hwnp, "slim-reg-clk-gate",
+				(u32 *)&hw->slim_regs.clk_gate);
+
+	of_property_read_u32(hwnp, "dmem-offset", (u32 *)&hw->dmem.offset);
+	of_property_read_u32(hwnp, "dmem-size", (u32 *)&hw->dmem.size);
+
+	of_property_read_u32(hwnp, "periph-reg-sync-reg",
+				(u32 *)&hw->periph_regs.sync_reg);
+	of_property_read_u32(hwnp, "periph-reg-cmd-sta",
+				(u32 *)&hw->periph_regs.cmd_sta);
+	of_property_read_u32(hwnp, "periph-reg-cmd-set",
+				(u32 *)&hw->periph_regs.cmd_set);
+	of_property_read_u32(hwnp, "periph-reg-cmd-clr",
+				(u32 *)&hw->periph_regs.cmd_clr);
+	of_property_read_u32(hwnp, "periph-reg-cmd-mask",
+				(u32 *)&hw->periph_regs.cmd_mask);
+	of_property_read_u32(hwnp, "periph-reg-int-sta",
+				(u32 *)&hw->periph_regs.int_sta);
+	of_property_read_u32(hwnp, "periph-reg-int-set",
+				(u32 *)&hw->periph_regs.int_set);
+	of_property_read_u32(hwnp, "periph-reg-int-clr",
+				(u32 *)&hw->periph_regs.int_clr);
+	of_property_read_u32(hwnp, "periph-reg-int-mask",
+				(u32 *)&hw->periph_regs.int_mask);
+
+	of_property_read_u32(hwnp, "imem-offset", (u32 *)&hw->imem.offset);
+	of_property_read_u32(hwnp, "imem-size", (u32 *)&hw->imem.size);
+}
 /*
  * Platform driver initialise.
  */
 
 static int __devinit stm_fdma_probe(struct platform_device *pdev)
 {
-	struct stm_plat_fdma_data *pdata;
+	struct stm_plat_fdma_data *pdata = pdev->dev.platform_data;
 	struct stm_fdma_device *fdev;
 	struct resource *iores;
 	int result;
 	int irq;
 	int i;
-
-	pdata = pdev->dev.platform_data;
 
 	/* Allocate FDMA device structure */
 	fdev = devm_kzalloc(&pdev->dev, sizeof(*fdev), GFP_KERNEL);
@@ -1097,9 +1154,15 @@ static int __devinit stm_fdma_probe(struct platform_device *pdev)
 	/* Initialise structures */
 	fdev->dev = &pdev->dev;
 	fdev->pdev = pdev;
-	fdev->fw = pdata->fw;
-	fdev->hw = pdata->hw;
-	fdev->xbar = pdata->xbar;
+
+	if (!pdev->dev.of_node) {
+		fdev->fw = pdata->fw;
+		fdev->hw = pdata->hw;
+		fdev->xbar = pdata->xbar;
+	} else {
+		stm_fdma_parse_dt(pdev, fdev);
+	}
+
 	spin_lock_init(&fdev->lock);
 
 	/* Retrieve FDMA platform memory resource */
@@ -1410,6 +1473,16 @@ static const struct dev_pm_ops stm_fdma_pm_ops = {
 };
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_fdma_match[] = {
+	{
+		.compatible = "st,fdma",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_fdma_match);
+#endif
 
 /*
  * Module initialisation
@@ -1417,6 +1490,7 @@ static const struct dev_pm_ops stm_fdma_pm_ops = {
 
 static struct platform_driver stm_fdma_platform_driver = {
 	.driver.name	= "stm-fdma",
+	.driver.of_match_table = of_match_ptr(stm_fdma_match),
 #ifdef CONFIG_PM
 	.driver.pm	= &stm_fdma_pm_ops,
 #endif

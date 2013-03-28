@@ -1,0 +1,74 @@
+
+*******************************************************************************
+			Sysconf
+*******************************************************************************
+Each sysconf bank is represented in soc device trees at two places.
+First on to define the sysconf itself.
+		sysconf@febf0000{
+			compatible= "st,sysconf", "simple-bus";
+			reg = <0xfebf0000 0xe4>;
+			group@0 {
+				group = <0>;
+				offset = <0>;
+				start	= <0>;
+				group-name = "SYSCFG_WEST";
+			};
+		};
+
+Required properties:
+
+- compatible : should be "st,sysconf".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- group		: Should be sysconf group number.
+- offset	: Should be the offset in the current sysconf.
+- start		: Should be the start sysconf number in the current bank.
+- group-name	: Should be name of the sysconf, will be used in debugfs.
+
+
+Second entry adds a reverse lookup table, this node is used as phandle when
+refering to a sysconf.
+
+	sysconf: sysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0    56 0>,
+				 <200 283 1>,
+				 <400 430 2>,
+				 <705 769 3>,
+				 <800 813 4>,
+				 <900 944 5>;
+
+		sysconf-names  = "SYSCFG_WEST",
+				 "SYSCFG_SOUTH",
+				 "SYSCFG_NORTH",
+				 "SYSCFG_CPU",
+				 "SYSCFG_DDR",
+				 "SYSCFG_HD";
+	};
+
+Typical usage example:
+in pio-control:
+
+		pio-control@0 {
+			alt-control = <&sysconf 0 0 31>;
+			oe-control = <&sysconf 10 0 7>;
+			pu-control = <&sysconf 13 0 7>;
+			od-control = <&sysconf 16 0 7>;
+			retime-style = "none";
+
+		};
+or in device config
+
+		sata1_dev_config: sata_dev_config-0 {
+			#stm-sysconf-cells = <4>;
+			device-seqs = <&sata1_dev_seqs>;
+			sysconfs{
+				SATA_SELECT	= <&sysconf 267 9 9>;
+				SATA_USE_30MHZ	= <&sysconf 268 0 0>;
+				AHCI_HOST_PWR =	<&sysconf 267 8 8>;
+				AHCI_HOST_PWR_ACK = <&sysconf 281 5 5>;
+			};
+		};
+
+Usage is verymuch inline with the old style.

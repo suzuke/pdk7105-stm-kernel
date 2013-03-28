@@ -11,6 +11,10 @@ obj-y					+= device.o
 obj-y					+= clk.o
 obj-y					+= clocks/
 
+obj-$(CONFIG_OF)		+= stm_devices_of.o
+obj-$(CONFIG_OF)		+= mpe41_of_devices.o
+obj-$(CONFIG_OF)		+= core_of.o
+
 obj-$(CONFIG_STM_MIPHY)			+= miphy.o
 obj-$(CONFIG_STM_MIPHY365X)		+= miphy365x.o
 obj-$(CONFIG_STM_MIPHYA40X)		+= miphya40x.o

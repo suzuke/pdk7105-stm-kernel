@@ -36,7 +36,7 @@
  * and in the clock-SAS file to be able to compile
  * both the file __without__ any include chip_based
  */
-struct sysconf_field *platform_sys_claim(int _nr, int _lsb, int _msb)
+struct sysconf_field *fli7610_platform_sys_claim(int _nr, int _lsb, int _msb)
 {
 	return sysconf_claim(MPE_SYSCONFG_GROUP(_nr),
 		MPE_SYSCONF_OFFSET(_nr), _lsb, _msb, "Clk lla");
@@ -103,12 +103,12 @@ static clk_t clk_clocks[] = {
 		  CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
 };
 /* ========================================================================
-   Name:        plat_clk_init()
+   Name:        fli7610_plat_clk_init()
    Description: SOC specific LLA initialization
    Returns:     'clk_err_t' error code.
    ======================================================================== */
 
-int __init plat_clk_init(void)
+int __init fli7610_plat_clk_init(void)
 {
 	clk_t *clk_main = NULL, *clk_aux = NULL;
 
@@ -116,6 +116,7 @@ int __init plat_clk_init(void)
 
 	clk_register_table(ism_clks, ARRAY_SIZE(ism_clks), 0);
 
+	platform_sys_claim = fli7610_platform_sys_claim;
 	/* Connecting inter-dies clocks */
 	clk_main = &ism_clks[0];
 	clk_aux = &clk_clocks[CLK_PIX_AUX];

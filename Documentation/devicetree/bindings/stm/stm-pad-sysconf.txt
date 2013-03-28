@@ -1,0 +1,203 @@
+*******************************************************************************
+			STM Pio and Sysconfs
+*******************************************************************************
+
+Every PIO is represented with below parameters.
+
+-GPIO Bank	Bank to which this PIO belongs.
+	each bank in the soc specific device tree is represented as below
+	example with lable. This lable "gpio_bank0" us used as phandle when
+	refering to this bank.
+
+		gpio_bank0: gpio-bank@febe0000 {
+			#gpio-cells = <1>;
+			compatible = "st,gpio";
+			reg = <0xfebe0000 0x100>;
+			bank-name = "PIO0";
+		};
+
+
+- compatible : Should be "st,gpio".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- bank-name	Should be the name of the bank, which is used in debugfs.
+
+-Pin		Offset in the PIO bank.
+-Mode		Pad configuration is selected from one of the below phandles.
+
+	input		Means pin in is Input
+	input_pu	Pin is Input Pull-Up
+	out_pp		Pin is Output Push-pull
+	bidir		Pin is Bidir or O/P with OD
+	bidir_pu	Pin is Bidir with Pull-Up
+
+
+-Alternate-Fun	This could range from 0 to x, Generally 0 means its an PIO,
+		else its controlled by an IP.
+		pad config can't have altfunction 0, as altfun0 means a pio
+		mode which can be directly controlled by gpio i/f.
+		possible altfunction phandles:
+		-------
+		phanlde
+		-------
+		altfun_1
+		altfun_2
+		altfun_3
+		altfun_4
+		altfun_5
+		altfun_6
+		altfun_7
+
+-Retime-Config	Retiming Configuration for the pin.
+		Possible retime configuration are:
+
+		-------		-------------
+		phandle		args
+		-------		-------------
+		ni_clk		<delay> <clk>
+		ic_clk		<delay> <clk>
+		bypass		<delay>
+		de_io		<delay> <clk>
+		se_iclk_io	<delay> <clk>
+		se_niclk_io	<delay> <clk>
+
+
+-Condition	is a reference to phandle which should have st,enable property
+		to select this pin as part of pad-config
+		hw_flow_ctrl: flow-ctrl{
+			enable = <0>;
+		};
+
+
+
+Typical structure of pad look:
+
+<&bank &pin &mode &altFun &retime &cond>
+
+Supported configurations:
+
+
+If Pin is non PIO mode, meaning not in altfunction 0 it can take up and of the below models.
+
+Model-1:
+	#stm-pad-cells = <5>;
+	<&bank &pin &mode &altFun_x &retime <retime-args> >
+
+	Example:
+		CTS	= <&gpio_bank2 6 &input_pu &altfun_3 &se_niclk 0>;
+
+
+Model-2:
+	#stm-pad-cells = <6>;
+	<&bank &pin &mode &altFun_x &retime <retime-args> &cond>
+
+	Example:
+		CTS	= <&gpio_bank2 6 &input_pu &altfun_3 &se_niclk 0 &hw_flow_ctrl>;
+
+Model-3:
+	#stm-pad-cells = <5>;
+	<&bank &pin &mode &altFun_x &cond>
+
+	Example:
+		CTS	= <&gpio_bank2 6 &input_pu &altfun_3 &hw_flow_ctrl>;
+
+Model-4:
+	#stm-pad-cells = <4>;
+	<&bank &pin &mode &altFun_x>
+
+	Example:
+		CTS	= <&gpio_bank2 6 &input_pu &altfun_3>;
+
+
+For Dynamically updating a Pad config, a named entry should be used
+Example:
+	ext-clk {
+		gpios {
+			phyclk = <&dir_in &altfun_3>;
+		};
+		sysconfs {
+			INT_NOEXT_PHYCLK = <0>;
+		};
+	};
+
+each gpio can take all the variable parameters except the gpio number and conditional variable.
+So it just takes direction, altfunc and retime configuration.
+Typical examples are:
+		CTS	= <&input_pu &altfun_3 &se_niclk 0>;
+		CTS	= <&input_pu &altfun_3>;
+
+
+*******************************************************************************
+			Sysconf
+*******************************************************************************
+Each sysconf bank is represented in soc device trees at two places.
+First on to define the sysconf itself.
+		sysconf@febf0000{
+			compatible= "st,sysconf", "simple-bus";
+			reg = <0xfebf0000 0xe4>;
+			group@0 {
+				group = <0>;
+				offset = <0>;
+				start	= <0>;
+				group-name = "SYSCFG_WEST";
+			};
+		};
+
+Required properties:
+
+- compatible : should be "st,sysconf".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- group		: Should be sysconf group number.
+- offset	: Should be the offset in the current sysconf.
+- start		: Should be the start sysconf number in the current bank.
+- group-name	: Should be name of the sysconf, will be used in debugfs.
+
+
+Second entry adds a reverse lookup table, this node is used as phandle when
+refering to a sysconf.
+
+	sysconf: sysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0    56 0>,
+				 <200 283 1>,
+				 <400 430 2>,
+				 <705 769 3>,
+				 <800 813 4>,
+				 <900 944 5>;
+
+		sysconf-names  = "SYSCFG_WEST",
+				 "SYSCFG_SOUTH",
+				 "SYSCFG_NORTH",
+				 "SYSCFG_CPU",
+				 "SYSCFG_DDR",
+				 "SYSCFG_HD";
+	};
+
+Typical usage example:
+in pio-control:
+
+		pio-control@0 {
+			alt-control = <&sysconf 0 0 31>;
+			oe-control = <&sysconf 10 0 7>;
+			pu-control = <&sysconf 13 0 7>;
+			od-control = <&sysconf 16 0 7>;
+			retime-style = "none";
+
+		};
+or in device config
+
+		sata1_dev_config: sata_dev_config-0 {
+			#stm-sysconf-cells = <4>;
+			device-seqs = <&sata1_dev_seqs>;
+			sysconfs{
+				SATA_SELECT	= <&sysconf 267 9 9>;
+				SATA_USE_30MHZ	= <&sysconf 268 0 0>;
+				AHCI_HOST_PWR =	<&sysconf 267 8 8>;
+				AHCI_HOST_PWR_ACK = <&sysconf 281 5 5>;
+			};
+		};
+
+Usage is verymuch inline with the oldway.

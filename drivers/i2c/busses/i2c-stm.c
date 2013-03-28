@@ -82,6 +82,7 @@
 #include <linux/wait.h>
 #include <linux/errno.h>
 #include <linux/err.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/ssc.h>
 
@@ -1162,12 +1163,48 @@ static ssize_t iic_bus_store_speed(struct device *dev,
 static DEVICE_ATTR(speed, S_IRUGO | S_IWUSR, iic_bus_show_speed,
 		   iic_bus_store_speed);
 
+
+#ifdef CONFIG_OF
+
+static void *stm_iic_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_ssc_data *data;
+	const char *clk_name;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	if (!of_property_read_string(np, "st,dev-clk", &clk_name))
+		clk_add_alias(NULL, pdev->name, (char *)clk_name, NULL);
+
+	pdev->id = of_alias_get_id(np, "i2c");
+
+	data->pad_config = stm_of_get_pad_config(&pdev->dev);
+	if (of_property_read_bool(np, "st,i2c-fastmode"))
+		data->i2c_speed = 400;
+	else
+		data->i2c_speed = 100;
+
+	return data;
+}
+#else
+static void *stm_iic_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 static int iic_stm_probe(struct platform_device *pdev)
 {
-	struct stm_plat_ssc_data *plat_data = pdev->dev.platform_data;
+	struct stm_plat_ssc_data *plat_data;
 	struct iic_ssc *i2c_stm;
 	struct resource *res;
 	int err;
+
+
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_iic_dt_get_pdata(pdev);
+
+	plat_data = pdev->dev.platform_data;
 
 	i2c_stm = devm_kzalloc(&pdev->dev, sizeof(struct iic_ssc), GFP_KERNEL);
 
@@ -1336,6 +1373,16 @@ static int iic_stm_resume(struct device *dev)
 #define iic_stm_resume NULL
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_i2c_match[] = {
+	{
+		.compatible = "st,i2c",
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(of, stm_i2c_match);
+#endif
+
 static struct dev_pm_ops stm_i2c_pm_ops = {
 	.suspend = iic_stm_suspend,
 	.resume = iic_stm_resume,
@@ -1350,6 +1397,7 @@ static struct platform_driver i2c_stm_driver = {
 		.name = "i2c-stm",
 		.owner = THIS_MODULE,
 		.pm = &stm_i2c_pm_ops,
+		.of_match_table = of_match_ptr(stm_i2c_match),
 	},
 	.probe = iic_stm_probe,
 	.remove = iic_stm_remove,

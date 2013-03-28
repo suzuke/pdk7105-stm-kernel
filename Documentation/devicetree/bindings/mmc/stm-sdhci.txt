@@ -1,0 +1,15 @@
+* STMicroElectronics Secure Digital Host Controller
+
+
+Required properties:
+- compatible : Should be "st,sdhci"
+- reg : Should contain SD/MMC registers location and length
+- interrupts : Should contain SD/MMC interrupt
+
+Example:
+
+sdhci@c8000200 {
+	compatible = "st,sdhci";
+	reg = <0xc8000200 0x200>;
+	interrupts = <47>;
+};

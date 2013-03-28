@@ -16,6 +16,7 @@
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/err.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <asm/io.h>
 
@@ -150,7 +151,33 @@ stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
 
 	return sysfs_create_group(&pdev->dev.kobj, &stm_pwm_attr_group);
 }
+#ifdef CONFIG_OF
+static void *stm_pwm_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_pwm_data  *data;
+	int  i = 0;
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 
+
+	of_property_read_u32_array(np, "st,channel-enable",
+		(u32 *)&data->channel_enabled, STM_PLAT_PWM_NUM_CHANNELS);
+
+	for (i = 0; i < STM_PLAT_PWM_NUM_CHANNELS; i++) {
+		if (data->channel_enabled[i]) {
+			data->channel_pad_config[i] =
+				stm_of_get_pad_config_index(&pdev->dev, i);
+		}
+
+	}
+	return data;
+}
+#else
+static void *stm_pwm_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 static int stm_pwm_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -162,6 +189,9 @@ static int stm_pwm_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	memset(pwm, 0, sizeof(*pwm));
+
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_pwm_dt_get_pdata(pdev);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
         if (!res) {
@@ -245,9 +275,20 @@ static const struct dev_pm_ops stm_pwm_pm_ops = {
 };
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_pwm_match[] = {
+	{
+		.compatible = "st,pwm",
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(of, stm_pwm_match);
+#endif
+
 static struct platform_driver stm_pwm_driver = {
 	.driver = {
 		.name		= "stm-pwm",
+		.of_match_table = of_match_ptr(stm_pwm_match),
 #ifdef CONFIG_HIBERNATION
 		.pm		= &stm_pwm_pm_ops,
 #endif

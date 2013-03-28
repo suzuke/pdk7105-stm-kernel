@@ -25,7 +25,6 @@
 #include <asm/mach/time.h>
 #include <mach/mpe42.h>
 #include <mach/hardware.h>
-#include <mach/irqs.h>
 
 #include <linux/stm/stih416.h>
 #include <linux/stm/mpe42-periphs.h>
@@ -89,6 +88,7 @@ void __init mpe42_map_io(void)
 	iotable_init(mpe42_io_desc, ARRAY_SIZE(mpe42_io_desc));
 }
 
+#ifndef CONFIG_OF
 /* Setup th GIC */
 void __init mpe42_gic_init_irq(void)
 {
@@ -115,8 +115,8 @@ static void __init mpe42_twd_init(void)
 /* Setup the Global Timer */
 static void __init mpe42_timer_init(void)
 {
-	plat_clk_init();
-	plat_clk_alias_init();
+	stih416_plat_clk_init();
+	stih416_plat_clk_alias_init();
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(MPE42_GLOBAL_TIMER_BASE),
@@ -129,10 +129,6 @@ static void __init mpe42_timer_init(void)
 struct sys_timer mpe42_timer = {
 	.init		= mpe42_timer_init,
 };
-
-#ifdef CONFIG_SMP
-void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(MPE42_SCU_BASE));
-#endif
 
 #ifdef CONFIG_HW_PERF_EVENTS
 
@@ -174,3 +170,4 @@ static int __init mpe42_configure_pmu(void)
 device_initcall(mpe42_configure_pmu);
 
 #endif /* CONFIG_HW_PERF_EVENTS */
+#endif /* CONFIG_OF */

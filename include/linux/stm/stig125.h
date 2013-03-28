@@ -156,4 +156,8 @@ struct stig125_telss_config {
 };
 void stig125_configure_telss(struct stig125_telss_config *config);
 
+/* Clk Stuff */
+int stig125_plat_clk_init(void);
+int stig125_plat_clk_alias_init(void);
+
 #endif

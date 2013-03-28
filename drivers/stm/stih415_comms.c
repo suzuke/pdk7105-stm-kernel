@@ -9,6 +9,10 @@
  */
 
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -424,7 +428,9 @@ void __init stih415_configure_lirc(struct stih415_lirc_config *config)
 	BUG_ON(!pad_config);
 
 	plat_data->txenabled = config->tx_enabled || config->tx_od_enabled;
-	plat_data->pads = pad_config;
+	plat_data->dev_config = kzalloc(sizeof(struct stm_device_config),
+					 GFP_KERNEL);
+	plat_data->dev_config->pad_config = pad_config;
 
 	/* IRB Enabled */
 	stm_pad_config_add_sysconf(pad_config, LPM_SYSCONF_BANK,
@@ -545,3 +551,4 @@ void __init stih415_configure_pwm(struct stih415_pwm_config *config)
 
 	platform_device_register(&stih415_pwm_devices[pwm]);
 }
+#endif /* CONFIG_OF */

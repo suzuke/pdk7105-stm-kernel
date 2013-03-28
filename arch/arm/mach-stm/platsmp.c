@@ -29,6 +29,7 @@
 
 #include "core.h"
 
+void __iomem *scu_base_addr;
 extern void stm_secondary_startup(void);
 
 /*

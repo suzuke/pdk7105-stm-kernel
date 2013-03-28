@@ -1,0 +1,220 @@
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+/dts-v1/;
+#include "stih416.dtsi"
+
+/ {
+	model = "Stih416 Orly B2000";
+	compatible = "st,stih416", "st,stih416-b2000";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	memory{ /* Updated from targetpack */
+                device_type = "memory";
+		reg = <0x00000000 0x00000000>;
+	};
+
+	chosen {
+		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                                                 ";
+		linux,stdout-path = &uart2;
+	};
+
+        aliases {
+                ttyAS0 = &uart2;
+		i2c0 = &i2c1;
+		i2c1 = &i2c3;
+		i2c2 = &sbc_i2c0;
+		usb0 = &usb0;
+		usb1 = &usb1;
+		usb2 = &usb2;
+		usb3 = &usb3;
+		mmc0 = &sdhci0;
+        };
+
+	soc {
+		power-on-gpio	= <&PIO4 3>;
+
+		nandafm: nand-afm{
+			status = "okay";
+			nand-no-autoincr;
+			nand-on-flash-bbt;
+			st,rbn-flex-connected;
+			st,nand-banks = <&nand_banks>;
+			st,nand-csn = <0>;
+		};
+
+		nand_banks: nand-banks {
+			bank0 {
+				/* NAND_BBT_USE_FLASH */
+				nand-on-flash-bbt;
+				nand-no-autoincr;
+				st,nand-csn		= <0>;
+				st,nand-timing-data	= <&nand_timing0>;
+				partitions {
+					#address-cells = <1>;
+			                #size-cells = <1>;
+					partition@0{
+						label = "NAND Flash 1";
+						reg = <0x00000000 0x00800000>;
+					};
+					partition@800000{
+						label = "NAND Flash 2";
+						reg = <0x00800000 0x3f800000>;
+					};
+				};
+			};
+		};
+
+		nand_timing0: nand-timing {
+			sig-setup	= <10>;
+			sig-hold	= <10>;
+			CE-deassert	= <0>;
+			WE-to-RBn	= <100>;
+			wr-on		= <10>;
+			wr-off		= <30>;
+			rd-on		= <10>;
+			rd-off		= <30>;
+			chip-delay	= <30>;		/* delay in us */
+		};
+
+		spifsm:	spifsm@fe902000{
+			status		= "okay";
+			flash-name	= "n25q128";
+			partitions	= <&b2000_fsm_partitions>;
+			b2000_fsm_partitions: partitions-b2000 {
+		                #address-cells = <1>;
+			        #size-cells = <1>;
+				partition@0 {
+					label = "Serial Flash 1";
+					reg = <0x00000000 0x00200000>;
+				};
+				partition@200000{
+					label = "Serial Flash 2";
+					reg = <0x00200000 0x00e00000>;
+				};
+			};
+		};
+		/* USB's */
+
+		usb0: usb@fe100000{
+			status = "okay";
+		};
+
+		usb1: usb@fe200000{
+			status = "okay";
+		};
+
+		usb2: usb@fe300000{
+			status = "okay";
+		};
+
+		usb3: usb@fe400000{
+			status = "okay";
+		};
+
+		/* SBC PWM */
+		pwm1: pwm-1{
+			status = "okay";
+			st,channel-enable = <1 0 0 0>;
+		};
+
+		leds {
+			compatible	= "gpio-leds";
+			fp_led {
+				#gpio-cells = <1>;
+				label	= "Front Panel LED";
+				gpios	= <&PIO105 7>;
+				linux,default-trigger	= "heartbeat";
+			};
+		};
+
+		lirc: lirc@fe518000 {
+			status = "okay";
+		};
+
+
+		/* HDMI */
+		i2c1: i2c@fed41000{
+			status = "okay";
+		};
+
+		/* Frontend I2C, make sure J17-J20 are configured accordingly */
+		i2c3: i2c@fed43000{
+			status = "okay";
+		};
+
+		/* Backend I2C, make sure J50, J51 are configured accordingly */
+		/* SBC SSC0 */
+		sbc_i2c0: i2c@fe540000{
+			status = "okay";
+		};
+
+		uart2: uart@fed32000{
+			status = "okay";
+		};
+
+		/* If B2048 has EMMC then set st,mmc-non-removable property */
+		sdhci0:sdhci@fe81e000 {
+			status = "okay";
+			/* st,mmc-non-removable;  for eMMC on boards */
+		};
+	/*
+
+	For each ethernet daughter board, change below properties in ethernet node respectively.
+	____________________________________________________________________________________________
+	|Ethernet Board and PHY Mode |	 phy-mode	| snps,phy-addr	| device-config(change 0 to|
+	|			     |	 (value)	|    (value)	| 1 for gmac1)             |
+	|____________________________|__________________|_______________|__________________________|
+	| B2032 in mii Mode	     |	"mii"		|    <0x1>	|&mii0_ext_clk_dev_config  |
+	|____________________________|__________________|_______________|__________________________|
+	| B2032 in GBit mode	     |	"gmii"		|    <0x1>	|&gmii0_ext_clk_dev_config |
+	|____________________________|__________________|_______________|__________________________|
+	| B2032 in RGMII mode	     |	"rgmii-id"	|    <0x1>	|&rgmii0_ext_clk_dev_config|
+	|____________________________|__________________|_______________|__________________________|
+	|____________________________|__________________|_______________|__________________________|
+	| B2035 in RMII mode	     |	"rmii"		|    <0x9>	|&rmii0_dev_config         |
+	|____________________________|__________________|_______________|__________________________|
+
+	Example:
+	For B2032: in MII Mode:
+			phy-mode	= "mii";
+			snps,phy-addr = <0x1>;
+			device-config = <&mii0_ext_clk_dev_config>;
+
+	Also update the status property for enabling appropriate ethernet.
+	*/
+
+		ethernet0:ethernet@fe810000 {
+			status = "okay";
+			phy-mode	= "mii";
+			snps,phy-bus-name = "stmmac";
+			snps,phy-bus-id = <0>;
+			snps,phy-addr = <0x1>;
+			device-config = <&mii0_ext_clk_dev_config>;
+
+			snps,reset-gpio = <&PIO106 2>;
+			snps,reset-active-low;
+			snps,reset-delays-us = <0 10000 10000>;
+		};
+
+		ethernet1:ethernet@fef08000 {
+//			status = "okay";
+			phy-mode	= "rgmii";
+			snps,phy-bus-name = "stmmac";
+			snps,phy-bus-id = <0>;
+			snps,phy-addr = <0x1>;
+			device-config = <&rgmii1_ext_clk_dev_config>;
+
+			snps,reset-gpio = <&PIO4 7>;
+			snps,reset-active-low;
+			snps,reset-delays-us = <0 10000 10000>;
+		};
+
+	};
+};

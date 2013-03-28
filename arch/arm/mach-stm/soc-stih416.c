@@ -87,4 +87,7 @@ void __init stih416_map_io(void)
 {
 	iotable_init(stih416_io_desc, ARRAY_SIZE(stih416_io_desc));
 	mpe42_map_io();
+#ifdef CONFIG_SMP
+	scu_base_addr = ((void __iomem *) IO_ADDRESS(MPE42_SCU_BASE));
+#endif
 }

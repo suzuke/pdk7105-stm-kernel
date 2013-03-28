@@ -112,9 +112,6 @@ static struct platform_device stx7108_asc_devices[] = {
 	},
 };
 
-/* the serial console device */
-struct platform_device *stm_asc_console_device;
-
 /* Platform devices to register */
 unsigned int __initdata stm_asc_configured_devices_num = 0;
 struct platform_device __initdata
@@ -603,7 +600,9 @@ void __init stx7108_configure_lirc(struct stx7108_lirc_config *config)
 	BUG_ON(!pad_config);
 
 	plat_data->txenabled = config->tx_enabled || config->tx_od_enabled;
-	plat_data->pads = pad_config;
+	plat_data->dev_config = kzalloc(sizeof(struct stm_device_config),
+					 GFP_KERNEL);
+	plat_data->dev_config->pad_config = pad_config;
 
 	switch (config->rx_mode) {
 	case stx7108_lirc_rx_disabled:

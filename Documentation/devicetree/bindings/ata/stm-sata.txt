@@ -1,0 +1,73 @@
+
+===============================================================================
+				st,sata
+===============================================================================
+
+Required properties:
+- compatible : "st,sata".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+
+- st,port		interger defining the port number to associate with.
+- st,phy-init		32 bit Initial value for PHYCR register.
+- st,pc-glue		32 bit value of SATA PC_GLUE logic register.
+- st,oob_wa		to enable/disable OOB workaround to pass OOB-06(a)
+			certification.
+- st,miphy-num		interger defining miphy lane to be associated with.
+- st,dev-config	STM standard way to pass device resources.
+			look in Documentation/devicetree/bindings/stm-dev-config.txt
+			and
+			Documentation/devicetree/bindings/stm-pad.txt
+
+Example:
+	sata0: sata@fe818000{
+		#interrupt-cells = <3>;
+                #address-cells = <1>;
+                #size-cells = <1>;
+		interrupt-parent = <&intc>;
+		compatible	= "st,sata", "simple-bus";
+		reg		= <0xfe818000 0x1000>;
+		interrupts	=  <0 161 0>, <0 162 0>;
+		interrupt-names = "hostc", "dmac";
+		status		= "disabled";
+
+		device-config = <&sata0_dev_config>;
+		amba-config = <&sata_amba_config>;
+
+		st,oob_wa;
+		st,port = <0>;
+		stm.miphy = <0>;
+
+		sata0_dev_config: sata0-dev-config {
+			#stm-sysconf-cells = <4>;
+			device-seqs = <&sata_dev_seqs>;
+			sysconfs {
+				SATA_ACK =	<&stih415_sysconf 384 3 3>;
+				SATA_HC_PWR =	<&stih415_sysconf 336 3 3>;
+			};
+		};
+	};
+
+	sata_dev_seqs: sata-dev-seqs{
+		power-on-seq{
+			step0 {
+				SATA_HC_PWR = <0>;
+				type = "sysconf";
+			};
+			step1{
+				SATA_ACK = <0>;
+				type = "sysconf-feedback";
+			};
+		};
+		power-off-seq{
+			step0 {
+				SATA_HC_PWR = <1>;
+				type = "sysconf";
+			};
+			step1{
+				SATA_ACK = <1>;
+				type = "sysconf-feedback";
+			};
+		};
+	};

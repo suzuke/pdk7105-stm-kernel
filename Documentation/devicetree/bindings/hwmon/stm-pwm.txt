@@ -1,0 +1,25 @@
+===============================================================================
+			stm pwm
+===============================================================================
+
+Required properties:
+- compatible : "pwm".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+
+Required properties(Per Channel):
+- padcfg	Standard way to pass pad config to the drivers.
+- st,channel-enable : Boolean flag for each pwm channel of four.
+
+Example:
+	pwm {
+		compatible	= "st,pwm", "simple-bus";
+		reg		= <0xfed10000 0x68>;
+		interrupts	=  <0 200 0>;
+		st,channel-enable = <1 0 0 0>;
+		status = "disabled";
+		padcfg-names = "chan0", "chan1";
+		padcfg-0 = <&padcfg_pwm0_chan0>;
+		padcfg-1 = <&padcfg_pwm0_chan1>;
+	}

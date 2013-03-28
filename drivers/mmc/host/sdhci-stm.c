@@ -19,6 +19,7 @@
  */
 
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/mmc/host.h>
@@ -241,11 +242,23 @@ const struct dev_pm_ops sdhci_stm_pmops = {
 #define SDHCI_STM_PMOPS NULL
 #endif /* CONFIG_PM */
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_sdhci_match[] = {
+	{
+		.compatible = "st,sdhci",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_asc_match);
+#endif
+
 static struct platform_driver sdhci_stm_driver = {
 	.driver = {
 		   .name = "sdhci-stm",
 		   .owner = THIS_MODULE,
 		   .pm = SDHCI_STM_PMOPS,
+			.of_match_table = of_match_ptr(stm_sdhci_match),
 		   },
 	.probe = sdhci_stm_probe,
 	.remove = __devexit_p(sdhci_stm_remove),

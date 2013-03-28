@@ -94,6 +94,7 @@
 #include <linux/clk.h>
 #include <media/lirc.h>
 #include <linux/err.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <media/rc-core.h>
 #include "stm_ir.h"
@@ -1036,6 +1037,53 @@ static void stm_ir_close(struct rc_dev *rdev)
 
 }
 
+#ifdef CONFIG_OF
+
+static void *stm_ir_dt_get_pdata(struct platform_device *pdev)
+{
+
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *child;
+	struct stm_plat_lirc_data *data;
+	const char *clk_name;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	if (of_property_read_string(np, "sys-clk", &clk_name) == 0)
+		clk_add_alias(NULL, pdev->name, (char *)clk_name, NULL);
+
+	of_property_read_u32(np, "irb-clock", &data->irbclock);
+	of_property_read_u32(np, "irb-clkdiv", &data->irbclkdiv);
+	of_property_read_u32(np, "irb-period-mult", &data->irbperiodmult);
+	of_property_read_u32(np, "irb-period-div", &data->irbperioddiv);
+	of_property_read_u32(np, "irb-ontime-mult", &data->irbontimemult);
+	of_property_read_u32(np, "irb-ontime-div", &data->irbontimediv);
+	of_property_read_u32(np, "irb-rxmax-period", &data->irbrxmaxperiod);
+	of_property_read_u32(np, "irb-version", &data->irbversion);
+	of_property_read_u32(np, "sys-clkdiv", &data->sysclkdiv);
+	of_property_read_u32(np, "rx-polarity", &data->rxpolarity);
+	of_property_read_u32(np, "sub-carrwidth", &data->subcarrwidth);
+
+	child = of_get_child_by_name(np, "rx-uhfmode");
+	if (of_property_read_bool(child, "enable"))
+			data->rxuhfmode = 1;
+	else
+			data->rxuhfmode = 0;
+
+	child = of_get_child_by_name(np, "tx-enabled");
+	if (of_property_read_bool(child, "enable"))
+			data->txenabled = 1;
+
+	data->dev_config  = stm_of_get_dev_config(&pdev->dev);
+
+	return data;
+}
+#else
+static void *stm_ir_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 static int ir_stm_probe(struct platform_device *pdev)
 {
 	int ret = -EINVAL;
@@ -1052,6 +1100,9 @@ static int ir_stm_probe(struct platform_device *pdev)
 		       ": probe failed. Check kernel SoC config.\n");
 		return -ENODEV;
 	}
+
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_ir_dt_get_pdata(pdev);
 
 	ir_dev = devm_kzalloc(dev, sizeof(struct stm_ir_device), GFP_KERNEL);
 	rdev = rc_allocate_device();
@@ -1119,11 +1170,10 @@ static int ir_stm_probe(struct platform_device *pdev)
 		       " in %s mode\n", irb_irq,
 		       ir_dev->pdata->rxuhfmode ? "UHF" : "IR");
 
-		ir_dev->pad_state = devm_stm_pad_claim(dev,
-			ir_dev->pdata->pads, IR_STM_NAME);
-		if (!ir_dev->pad_state) {
-			pr_err(IR_STM_NAME ": Failed to claim "
-			       "pads!\n");
+		ir_dev->dev_state = devm_stm_device_init(dev,
+					ir_dev->pdata->dev_config);
+		if (!ir_dev->dev_state) {
+			pr_err(IR_STM_NAME ": Failed to claim devconfig!\n");
 			return -EIO;
 		}
 
@@ -1267,7 +1317,7 @@ static int ir_stm_restore(struct device *dev)
 	if (!device_may_wakeup(dev))
 		clk_prepare_enable(ir_dev->sys_clock);
 
-	stm_pad_setup(ir_dev->pad_state);
+	stm_device_setup(ir_dev->dev_state);
 
 	ir_stm_hardware_init(ir_dev);
 	/* enable interrupts and receiver */
@@ -1287,10 +1337,22 @@ static struct dev_pm_ops stm_ir_pm_ops = {
 };
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_ir_match[] = {
+	{
+		.compatible = "st,lirc",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_ir_match);
+#endif
+
 static struct platform_driver stm_ir_device_driver = {
 	.driver = {
 		.name = IR_STM_NAME,
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(stm_ir_match),
 #ifdef CONFIG_PM
 		.pm     = &stm_ir_pm_ops,
 #endif

@@ -1,0 +1,108 @@
+
+*******************************************************************************
+			STM device config
+*******************************************************************************
+device config takes care of configuring a particular set of sysconfs/clocks
+during intialization or powerup or powerdown setups.
+
+This is done in very like the old style.
+Each driver takes a phandle via device-config property.
+
+
+Required properties:
+device-config:	phandles pointing at a device configuration node.
+		These referenced dev configuration nodes must define
+		list of sysconfs, clocks be configured.
+		Format of these	configuration is detailed below.
+
+For example:
+
+	/* For a client device requiring named states */
+	device {
+		device-config	= <&miphy_dev_config>;
+	};
+
+Contents of device config node:
+----------------------
+
+Required properties:
+- sysconfs: 	child node with list of sysconfs.
+- device-seqs: node which contain list of named child nodes
+		with sequences to be executed.
+		Each sequence has to be specified as a step node,
+		and each step has to contain a type property.
+
+	-type: type property can take only types of clk, sysconf,
+		and sysconf-feedback.
+
+Typical sequence node looks like:
+
+	xxx-seq{
+		step0{
+			val = <xyz>;
+			type = "xxxx";
+		};
+		step1{
+			...
+		};
+		...
+	};
+
+There are four different types of sequences are currently
+supported in stm-device config.
+
+1. power-on-seq: List of sequences from step0...stepN to power up the IP.
+2. power-down-seq: List of sequences from step0...stepN to power down IP.
+3. init-seq: List of sequences from step0...stepN while initializing the IP.
+4. exit-seq: List of sequences from step0...stepN to be performed
+		while exiting the driver.
+
+example:
+
+stm_sata0: sata@fe818000{
+	compatible	= "st,sata", "simple-bus";
+	reg		= <0xfe818000 0x1000>;
+	interrupts	=  <0 161 0>, <0 162 0>;
+	interrupt-names = "hostc", "dmac";
+	status		= "disabled";
+
+	device-config = <&sata0_dev_config>;
+	amba-config = <&sata_amba_config>;
+
+	st,oob_wa;
+	st,port = <0>;
+	stm.miphy = <0>;
+
+	sata0_dev_config: sata0-dev-config {
+		#stm-sysconf-cells = <4>;
+		device-seqs = <&sata_dev_seqs>;
+		sysconfs {
+			SATA_ACK =	<&stih415_sysconf 384 3 3>;
+			SATA_HC_PWR =	<&stih415_sysconf 336 3 3>;
+		};
+	};
+};
+
+sata_dev_seqs: sata-dev-seqs{
+	power-on-seq{
+		step0 {
+			SATA_HC_PWR = <0>;
+			type = "sysconf";
+		};
+		step1{
+			SATA_ACK = <0>;
+			type = "sysconf-feedback";
+		};
+	};
+	power-off-seq{
+		step0 {
+			SATA_HC_PWR = <1>;
+			type = "sysconf";
+		};
+		step1{
+			SATA_ACK = <1>;
+			type = "sysconf-feedback";
+		};
+	};
+};
+

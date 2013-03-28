@@ -38,6 +38,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/gpio.h>
 #include <linux/err.h>
+#include <linux/of.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
 #include <linux/stm/platform.h>
@@ -343,15 +344,44 @@ static int spi_stm_txrx_bufs(struct spi_device *spi, struct spi_transfer *t)
 	return t->len;
 
 }
+#ifdef CONFIG_OF
+static void *stm_spi_dt_get_pdata(struct platform_device *pdev)
+{
+
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_ssc_data *data;
+	const char *clk_name;
+
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	if (!of_property_read_string(np, "st,dev-clk", &clk_name))
+		clk_add_alias(NULL, pdev->name, (char *)clk_name, NULL);
+
+	pdev->id = of_alias_get_id(np, "spi");
+
+	data->pad_config = stm_of_get_pad_config(&pdev->dev);
+	return data;
+}
+#else
+static void *stm_spi_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
 
 static int spi_stm_probe(struct platform_device *pdev)
 {
-	struct stm_plat_ssc_data *plat_data = pdev->dev.platform_data;
+	struct stm_plat_ssc_data *plat_data;
 	struct spi_master *master;
 	struct resource *res;
 	struct spi_stm *spi_stm;
 	u32 reg;
 	int status = 0;
+
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_spi_dt_get_pdata(pdev);
+
+	plat_data = pdev->dev.platform_data;
 
 	master = spi_alloc_master(&pdev->dev, sizeof(struct spi_stm));
 	if (!master) {
@@ -548,10 +578,22 @@ static struct dev_pm_ops spi_stm_pm = {
 static struct dev_pm_ops spi_stm_pm;
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_spi_match[] = {
+	{
+		.compatible = "st,spi",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_spi_match);
+#endif
+
 static struct platform_driver spi_stm_driver = {
 	.driver.name = NAME,
 	.driver.owner = THIS_MODULE,
 	.driver.pm = &spi_stm_pm,
+	.driver.of_match_table = of_match_ptr(stm_spi_match),
 	.probe = spi_stm_probe,
 	.remove = spi_stm_remove,
 };

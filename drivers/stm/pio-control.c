@@ -16,6 +16,8 @@
  */
 
 #include <linux/stm/sysconf.h>
+#include <linux/bootmem.h>
+#include <linux/of.h>
 #include "pio-control.h"
 
 
@@ -308,6 +310,152 @@ static int stm_pio_control_report_retime_dedicated(
 }
 
 #endif /* CONFIG_DEBUG_FS */
+
+void of_get_retime_params(struct device_node *np,
+		struct stm_pio_control_retime_params *params)
+{
+	const __be32 *ip;
+	struct device_node *offset_np;
+	struct stm_pio_control_retime_offset *rt_offset;
+	int delay_count = 0;
+
+	ip = of_get_property(np, "#retime-delay-cells", NULL);
+	if (ip)
+		delay_count = be32_to_cpup(ip);
+
+	params->num_delay_times_out = delay_count;
+	params->num_delay_times_in = delay_count;
+	params->delay_times_in = alloc_bootmem(sizeof(u32) * delay_count);
+	params->delay_times_out = alloc_bootmem(sizeof(u32) * delay_count);
+
+	of_property_read_u32_array(np, "retime-in-delay",
+				(u32 *)params->delay_times_in, delay_count);
+	of_property_read_u32_array(np, "retime-out-delay",
+				(u32 *)params->delay_times_out, delay_count);
+
+	offset_np = of_parse_phandle(np, "retime-offset", 0);
+
+	if (offset_np) {
+		rt_offset = alloc_bootmem(sizeof(*rt_offset));
+		params->retime_offset = rt_offset;
+		WARN_ON(of_property_read_u32(offset_np, "retime",
+					&rt_offset->retime_offset));
+		WARN_ON(of_property_read_u32(offset_np, "clk1notclk0",
+					&rt_offset->clk1notclk0_offset));
+		WARN_ON(of_property_read_u32(offset_np, "clknotdata",
+					&rt_offset->clknotdata_offset));
+		WARN_ON(of_property_read_u32(offset_np, "double-edge",
+					&rt_offset->double_edge_offset));
+		WARN_ON(of_property_read_u32(offset_np, "invertclk",
+					&rt_offset->invertclk_offset));
+		WARN_ON(of_property_read_u32(offset_np, "delay-lsb",
+					&rt_offset->delay_lsb_offset));
+		WARN_ON(of_property_read_u32(offset_np, "delay-msb",
+					&rt_offset->delay_msb_offset));
+
+	}
+	return;
+}
+#ifdef CONFIG_OF
+struct stm_pio_control *of_stm_pio_control_init(void)
+{
+	struct stm_pio_control_config *config;
+	struct stm_pio_control_retime_params *retime_params;
+	struct stm_pio_control *pio_control;
+	u32 retime_pin_mask;
+	int num = 0;
+	unsigned int i = 0, j;
+	char name[20];
+	const char *style;
+	struct device_node *np, *child = NULL;
+
+	np = of_find_node_by_path("/pio-controls");
+	if (!np)
+		return NULL;
+
+	for_each_child_of_node(np, child)
+		num++;
+
+	pio_control = alloc_bootmem(sizeof(*pio_control) * num);
+	retime_params = alloc_bootmem(sizeof(*retime_params));
+	of_get_retime_params(np, retime_params);
+
+	for_each_child_of_node(np, child) {
+		config = alloc_bootmem(sizeof(*config));
+		pio_control[i].config = config;
+		config->retime_params = retime_params;
+
+		pio_control[i].alt = stm_of_sysconf_claim(child, "alt-control");
+		if (!pio_control[i].alt)
+			goto failed;
+
+		pio_control[i].oe = stm_of_sysconf_claim(child, "oe-control");
+		if (!pio_control[i].oe)
+			goto failed;
+
+		pio_control[i].pu = stm_of_sysconf_claim(child, "pu-control");
+		if (!pio_control[i].pu)
+			goto failed;
+
+		pio_control[i].od = stm_of_sysconf_claim(child, "od-control");
+		if (!pio_control[i].od)
+			goto failed;
+
+		of_property_read_u32(child, "retime-pin-mask",
+				&retime_pin_mask);
+		config->retime_pin_mask = retime_pin_mask;
+
+		of_property_read_string(child, "retime-style", &style);
+		if (strcmp(style, "packed") == 0)
+			config->retime_style =
+				stm_pio_control_retime_style_packed;
+		else if (strcmp(style, "dedicated") == 0)
+			config->retime_style =
+				stm_pio_control_retime_style_dedicated;
+		else if (strcmp(style, "node") == 0)
+			config->retime_style =
+				stm_pio_control_retime_style_none;
+
+		switch (config->retime_style) {
+		case stm_pio_control_retime_style_none:
+			break;
+		case stm_pio_control_retime_style_packed:
+			for (j = 0; j < 2; j++) {
+				sprintf(name, "retime-control%d", j);
+				pio_control[i].retiming[j] =
+					stm_of_sysconf_claim(child, name);
+				if (!pio_control[i].retiming[j])
+					goto failed;
+			}
+			break;
+		case stm_pio_control_retime_style_dedicated:
+			for (j = 0; j < 8; j++)
+				if ((1<<j) & config->retime_pin_mask) {
+					sprintf(name, "retime-control%d", j);
+					pio_control[i].retiming[j] =
+						stm_of_sysconf_claim(
+								child, name);
+					if (!pio_control[i].retiming[j])
+						goto failed;
+				}
+			break;
+		}
+		i++;
+	}
+
+	return pio_control;
+
+failed:
+	/* Can't do anything is early except panic */
+	panic("Unable to allocate PIO control sysconfs");
+}
+#else
+
+struct stm_pio_control *of_stm_pio_control_init(void)
+{
+	return NULL;
+}
+#endif
 
 void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 		struct stm_pio_control *pio_control, int num)

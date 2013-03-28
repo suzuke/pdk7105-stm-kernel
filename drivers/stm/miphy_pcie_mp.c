@@ -17,6 +17,7 @@
 #include <linux/err.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include <linux/stm/pio.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/miphy.h>
@@ -29,7 +30,8 @@ struct pcie_mp_device{
 	void __iomem *pcie_base; /* Base for uport connected to PCIE */
 	void __iomem *sata_base; /* Base for uport connected to SATA */
 	void __iomem *pipe_base; /* Pipe registers, standard for PCIe phy */ 
-	void (*mp_select)(int port);
+	void (*mp_select)(void *data, int port);
+	void *priv_data;
 };
 
 /*
@@ -79,7 +81,7 @@ static void stm_pcie_mp_register_write(struct stm_miphy *miphy,
 	base =  select_base_addr(mp_dev, miphy->mode);
 
 	/* Select the correct port, usually diddling a sysconf */
-	mp_dev->mp_select(miphy->port);
+	mp_dev->mp_select(mp_dev->priv_data, miphy->port);
 
 	writeb(data, base + address);
 }
@@ -96,7 +98,7 @@ static u8 stm_pcie_mp_register_read(struct stm_miphy *miphy, u8 address)
 
 	base =  select_base_addr(mp_dev, miphy->mode);
 
-	mp_dev->mp_select(miphy->port);
+	mp_dev->mp_select(mp_dev->priv_data, miphy->port);
 	data = readb(base + address);
 	return data;
 }
@@ -151,15 +153,65 @@ static u32 stm_pcie_mp_pipe_read(struct stm_miphy *miphy, u32 addr)
 
 	return data;
 }
+static char *miphy_modes[] = {
+		[UNUSED_MODE]	= "unused",
+		[SATA_MODE]	= "sata",
+		[PCIE_MODE]	= "pcie",
+};
+
+int stm_of_get_miphy_mode(struct device_node *np, int idx)
+{
+	const char *mode;
+	int k;
+	of_property_read_string_index(np, "miphy-modes", idx, &mode);
+	for (k = 0; k < ARRAY_SIZE(miphy_modes); k++)
+		if (!strcasecmp(mode, miphy_modes[k]))
+			return k;
+	return 0;
+}
+void *pcie_mp_of_get_pdata(struct platform_device *pdev)
+{
+	struct stm_plat_pcie_mp_data *data;
+	int i;
+	struct device_node *np = pdev->dev.of_node;
+	if (pdev->dev.platform_data) /* callbacks may be set via auxdata */
+		data = pdev->dev.platform_data;
+	else
+		data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	of_property_read_u32(np, "miphy-start", &data->miphy_first);
+	data->miphy_count = of_property_count_strings(np, "miphy-modes");
+	data->miphy_modes = devm_kzalloc(&pdev->dev,
+				sizeof(enum miphy_mode) * data->miphy_count,
+				GFP_KERNEL);
+	data->ten_bit_symbols = of_property_read_bool(np, "ten-bit-symbol");
+	for (i = 0; i < data->miphy_count; i++)
+		data->miphy_modes[i] = stm_of_get_miphy_mode(np, i);
+
+	if (of_get_property(np, "tx-pol-inv", NULL))
+		data->tx_pol_inv = 1;
+
+	if (of_get_property(np, "rx-pol-inv", NULL))
+		data->rx_pol_inv = 1;
+
+	of_property_read_string(np, "style",
+				(const char **)&data->style_id);
+
+	return data;
+}
 
 static int __devinit pcie_mp_probe(struct platform_device *pdev)
 {
 	struct pcie_mp_device *mp_dev;
-	struct resource *res;
 	struct stm_miphy_device *miphy_dev;
-	struct stm_plat_pcie_mp_data *data =
-			(struct stm_plat_pcie_mp_data *)pdev->dev.platform_data;
+	struct resource *res;
+	struct stm_plat_pcie_mp_data *data;
 	int result;
+
+	if (pdev->dev.of_node)
+		data = pcie_mp_of_get_pdata(pdev);
+	else
+		data = pdev->dev.platform_data;
 
 	mp_dev = devm_kzalloc(&pdev->dev,
 			sizeof(struct pcie_mp_device), GFP_KERNEL);
@@ -194,6 +246,9 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 
 	mp_dev->mp_select = data->mp_select;
 
+	if (data->init)
+		mp_dev->priv_data = data->init(pdev);
+
 	miphy_dev = &mp_dev->miphy_dev;
 	miphy_dev->type = UPORT_IF;
 	miphy_dev->miphy_first = data->miphy_first;
@@ -223,17 +278,32 @@ static int __devinit pcie_mp_probe(struct platform_device *pdev)
 static int pcie_mp_remove(struct platform_device *pdev)
 {
 	struct pcie_mp_device *mp_dev;
+	struct stm_plat_pcie_mp_data *data;
 
 	mp_dev = platform_get_drvdata(pdev);
-
+	data = pdev->dev.platform_data;
+	if (!data->exit)
+		data->exit(pdev);
 	miphy_unregister_device(&mp_dev->miphy_dev);
 
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id miphy_mp_match[] = {
+	{
+		.compatible = "st,miphy-mp",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, miphy_mp_match);
+#endif
+
 static struct platform_driver pcie_mp_driver = {
 	.driver.name = NAME,
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(miphy_mp_match),
 	.probe = pcie_mp_probe,
 	.remove = pcie_mp_remove,
 };

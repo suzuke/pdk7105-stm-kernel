@@ -175,4 +175,8 @@ void stx7108_configure_pcie(struct stx7108_pcie_config *config);
 
 void stx7108_configure_spifsm(struct stm_plat_spifsm_data *data);
 
+/* Clk Stuff */
+int stx7108_plat_clk_init(void);
+int stx7108_plat_clk_alias_init(void);
+
 #endif

@@ -9,6 +9,7 @@
  * published by the Free Software Foundation.
  *
  */
+#ifndef CONFIG_OF
 
 #include <linux/init.h>
 #include <linux/io.h>
@@ -102,3 +103,4 @@ static int __init stm_l2x0_init(void)
 }
 
 arch_initcall(stm_l2x0_init);
+#endif

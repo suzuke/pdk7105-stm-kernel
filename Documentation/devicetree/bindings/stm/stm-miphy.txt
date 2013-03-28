@@ -1,0 +1,49 @@
+===============================================================================
+		* st,miphy-mp, st,miphy-dummy
+===============================================================================
+
+Required properties:
+- compatible	Should be "st,miphy-mp"
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- st,miphy-modes	specifies miphy mode to be configured for each miphy
+			line values can be an array of strings with following
+			values.
+
+	"sata"		if SATA IP is connected.
+	"pcie"		if PCIE IP is connected.
+	"unused"	if driver should not configure this miphy lane.
+
+- st,style		Style id of the miphy device. possible values are
+	"MiPHYA40X"	if MiPHYA40x is used.
+	"MiPHY3-65"	if MiPHY3.65 is used.
+	"MiPHY-DUMMY"	if Dummy Miphy used.
+
+
+- device-config		standard way to specify device config.
+
+Example:
+
+	miphy: miphy@fe804000 {
+                #address-cells = <1>;
+                #size-cells = <1>;
+		compatible	= "st,miphy-mp", "simple-bus";
+		reg		= <0xfe804000 0xff>;
+
+		st,miphy-modes	= "sata", "pcie";
+		st,style	= "MiPHY3-65";
+
+		miphy_dev_config: miphy-dev-config {
+			#stm-sysconf-cells = <4>;
+			sysconfs {
+				SATA0_SOFT_RESET =	<&stih415_sysconf 377 7  7>;
+				SATA1_SOFT_RESET =	<&stih415_sysconf 377 3  3>;
+				MIPHY0_SOFT_RESET =		<&stih415_sysconf 376 18 18>;
+				MIPHY1_SOFT_RESET =		<&stih415_sysconf 376 19 19>;
+				SELECT_SATA =		<&stih415_sysconf 333 1  1>;
+				MIPHY_SELECT =		<&stih415_sysconf 335 0  0>;
+				SATAPHY1_OSC_FORCE_EXT= <&stih415_sysconf 333 2  2>;
+			};
+		};
+	};

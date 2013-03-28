@@ -109,5 +109,32 @@ void stm_device_power(struct stm_device_state *state,
 
 struct stm_pad_state* stm_device_get_pad_state(struct stm_device_state *state);
 struct stm_device_config* stm_device_get_config(struct stm_device_state *state);
+struct device *stm_device_get_dev(struct stm_device_state *state);
 
+#ifdef CONFIG_OF
+struct stm_device_config *stm_of_get_dev_config(struct device *dev);
+struct stm_device_config *stm_of_get_dev_config_from_node(struct device *dev,
+				struct device_node *np);
+void stm_of_dev_config_fixup(struct device *dev, struct device_node *fixup_np,
+				struct stm_device_state *dev_state);
+#else
+
+static inline struct stm_device_config *stm_of_get_dev_config(
+		struct device *dev)
+{
+	return NULL;
+}
+
+static inline struct stm_device_config *stm_of_get_dev_config_from_node(
+			struct device *dev, struct device_node *np)
+{
+	return NULL;
+}
+
+static inline void stm_of_dev_config_fixup(
+		struct device *dev, struct device_node *fixup_np,
+		struct stm_device_state *state)
+{
+}
+#endif
 #endif

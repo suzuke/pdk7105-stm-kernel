@@ -1,0 +1,71 @@
+
+===============================================================================
+			pio-control
+===============================================================================
+
+Required properties:
+- compatible		: not necessary as these properties are parsed at early init level.
+- #retime-delay-cells	: Should be number of possible retime delays.
+- retime-in-delay	: Should be array of delays in nsecs.
+- retime-out-delay	: Should be array of delays in nsecs.
+- retime-offset		: phandle to retime offsets in retime registers.
+			These might not be necessary for dedicated retime registers.
+	- clk1notclk0	: Should define offset for clk1not clk0 in retime register.
+	- delay-lsb	: Should define offset for delay-lsb in retime register.
+	- delay-msb	: Should define offset for delay msb in retime register.
+	- invertclk	: Should define offset for invertclk in retime register.
+	- retime	: Should define offset for retime in retime register.
+	- clknotdata	: Should define offset for clknotdata in retime register.
+	- double_edge	: Should define offset for double edge in retime register.
+- alt-control		: Should be sysconf to control alternate function on pio.
+- oe-control		: Should be sysconf to control Output enable on pio.
+- pu-control		: Should be sysconf to control pull up on pio.
+- od-control		: Should be sysconf to control open drain on pio.
+- retime-style		: Should indicate which type of retime is used.
+			possible values are "none", "packed" and "dedicated".
+- retime-pin-mask	: Should be mask to specify which pins can be retimed.
+- retime-control0	: Depending on retime-style the number of retime-controls vary.
+			incase of packed its 2 and in case of dedicated its 8.
+			This property points to sysconf which controls retime.
+
+
+Example:
+
+	pio_retime_offset: pio-retime-offset {
+		clk1notclk0	= <0>;
+		delay-lsb	= <2>;
+		delay-msb	= <3>;
+		invertclk	= <4>;
+		retime		= <5>;
+		clknotdata	= <6>;
+		double_edge	= <7>;
+	};
+
+	pio-controls {
+		#retime-delay-cells = <4>;
+		retime-offset = <&pio_retime_offset>;
+		retime-in-delay = <0 500 1000 1500>;
+		retime-out-delay = <0 1000 2000 3000>;
+
+		pio-control@0 {
+			alt-control = <&stih415_sysconf 0 0 31>;
+			oe-control = <&stih415_sysconf 5  0 7>;
+			pu-control = <&stih415_sysconf 7  0 7>;
+			od-control = <&stih415_sysconf 9  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 16 0 31>;
+			retime-control1 = <&stih415_sysconf 17 0 31>;
+		};
+		pio-control@1{
+			alt-control = <&stih415_sysconf 1 0 31>;
+			oe-control = <&stih415_sysconf 5  8 15>;
+			pu-control = <&stih415_sysconf 7  8 15>;
+			od-control = <&stih415_sysconf 9  8 15>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 18 0 31>;
+			retime-control1 = <&stih415_sysconf 19 0 31>;
+		};
+		...
+	};

@@ -1,0 +1,21 @@
+
+===============================================================================
+			stm fdma-xbar
+===============================================================================
+
+Required properties:
+- compatible : Should be "st,fdma-xbar".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- first-fdma	First fdma id.
+- last-fdma	Last fdma id.
+
+Example:
+
+	fdma_xbar_sas: fdma-xbar-sas {
+		compatible	= "st,fdma-xbar", "simple-bus";
+		reg		= <0xfee61000 0x1000>;
+		first-fdma	= <3>;
+		last-fdma	= <4>;
+	};

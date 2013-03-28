@@ -23,11 +23,17 @@
 #include <asm/hardware/gic.h>
 #include <asm/pmu.h>
 
+#ifdef CONFIG_CPU_SUBTYPE_STIH415
+#include <linux/stm/stih415.h>
+#endif
+#ifdef CONFIG_CPU_SUBTYPE_FLI7610
+#include <linux/stm/fli7610.h>
+#endif
+
 #include <asm/mach/map.h>
 #include <asm/mach/time.h>
 #include <mach/mpe41.h>
 #include <mach/hardware.h>
-#include <mach/irqs.h>
 
 #ifdef CONFIG_CPU_SUBTYPE_STIH415
 #include <linux/stm/stih415.h>
@@ -65,8 +71,19 @@ static void __init mpe41_twd_init(void)
 /* Setup the Global Timer */
 static void __init mpe41_timer_init(void)
 {
-	plat_clk_init();
-	plat_clk_alias_init();
+	struct clk *a9_clk;
+
+#ifdef CONFIG_CPU_SUBTYPE_FLI7610
+	fli7610_plat_clk_init();
+	fli7610_plat_clk_alias_init();
+#endif
+#ifdef CONFIG_CPU_SUBTYPE_STIH415
+	stih415_plat_clk_init();
+	stih415_plat_clk_alias_init();
+#endif
+	a9_clk = clk_get(NULL, "CLKM_A9");
+	if (IS_ERR(a9_clk))
+		panic("Unable to determine Cortex A9 clock frequency\n");
 
 #ifdef CONFIG_HAVE_ARM_GT
 	global_timer_init(__io_address(MPE41_GLOBAL_TIMER_BASE),
@@ -79,10 +96,6 @@ static void __init mpe41_timer_init(void)
 struct sys_timer mpe41_timer = {
 	.init		= mpe41_timer_init,
 };
-
-#ifdef CONFIG_SMP
-void __iomem *scu_base_addr = ((void __iomem *) IO_ADDRESS(MPE41_SCU_BASE));
-#endif
 
 #ifdef CONFIG_HW_PERF_EVENTS
 

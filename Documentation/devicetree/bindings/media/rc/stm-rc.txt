@@ -1,0 +1,96 @@
+
+===============================================================================
+				stm lirc
+===============================================================================
+
+Required properties:
+- compatible : should be "st,lirc".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- irb-clock		IRB block clock (set to 0 for auto)
+- irb-clkdiv        IRB block clock divison (set to 0 for auto)
+- irb-period-mult   manual setting period multiplier
+- irb-period-div    manual setting period divisor
+- irb-ontime-mult   manual setting pulse period multiplier
+- irb-ontime-div    manual setting pulse period divisor
+- irb-rxmax-period  maximum rx period in uS
+- irb-version       RB version type (1,2 or 3)
+- sys-clkdiv        factor to divide system bus clock by
+- rx-polarity       flag to set gpio rx polarity (usually set to 1)
+- sub-carrwidth     Subcarrier width in percent - this is used to make the
+			subcarrier waveform square after passing through the
+			555-based threshold detector on ST boards.
+- rx-uhfmode        RX UHF mode enabled
+- rx-ir-mode	RX IR Mode Enabled.
+- tx-od-enabled	If Open Drain enabled for TX.
+- device-config	to pass pad config to the drivers.
+- sys-clk	to specify device clk or alias clk.
+
+Example:
+lirc {
+	compatible	= "st,lirc", "simple-bus";
+	status = "disabled";
+	reg		= <0xfe518000 0x234>;
+	interrupts	=  <0 203 0>;
+	sys-clk	= "sbc_comms_clk";
+	irb-clock		= <0>;
+	irb-clkdiv		= <0>;
+	irb-period-mult	= <0>;
+	irb-period-div	= <0>;
+	irb-ontime-mult	= <0>;
+	irb-ontime-div	= <0>;
+	irb-rxmax-period	= <0x5000>;
+	irb-version		= <0>;
+	sys-clkdiv		= <1>;
+	rx-polarity		= <1>;
+	sub-carrwidth	= <0>;
+	device-config = <&lirc_ir_device_config>;
+
+	lirc_ir_device_config: lirc-ir-dev-config {
+		padcfg-0	= <&padcfg_ir>;
+		device-seqs = <&lirc_dev_seqs>;
+		sysconfs{
+			irb-enabled	= <&lpm_sysconf 1 6 6>;
+			irb-normal-mode = <&lpm_sysconf 1 7 7>;
+		};
+	};
+
+	lirc_uhf_device_config: lirc-uhf-dev-config {
+		padcfg-0	= <&padcfg_ir &padcfg_uhf>;
+		device-seqs = <&lirc_dev_seqs>;
+		sysconfs{
+			irb-enabled	= <&lpm_sysconf 1 6 6>;
+			irb-normal-mode = <&lpm_sysconf 1 7 7>;
+		};
+	};
+
+	lirc_tx_device_config: lirc-tx-dev-config {
+		padcfg-0	= <&padcfg_ir &padcfg_tx>;
+		device-seqs = <&lirc_dev_seqs>;
+		sysconfs{
+			irb-enabled	= <&lpm_sysconf 1 6 6>;
+			irb-normal-mode = <&lpm_sysconf 1 7 7>;
+		};
+	};
+	lirc_tx_od_device_config: lirc-tx-od-dev-config {
+		padcfg-0	= <&padcfg_ir &padcfg_tx_od>;
+		device-seqs = <&lirc_dev_seqs>;
+		sysconfs{
+			irb-enabled	= <&lpm_sysconf 1 6 6>;
+			irb-normal-mode = <&lpm_sysconf 1 7 7>;
+		};
+	};
+	lirc_dev_seqs: lirc-dev-seqs{
+		init-seq{
+			step0 {
+				irb-enabled = <1>;
+				type = "sysconf";
+			};
+			step1 {
+				irb-normal-mode = <0>;
+				type = "sysconf";
+			};
+		};
+	};
+};

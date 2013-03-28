@@ -8,6 +8,10 @@
  * published by the Free Software Foundation.
  */
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 
 
 #include <linux/init.h>
@@ -858,7 +862,7 @@ static struct sysconf_field *sc_pcie_mp_select;
 static struct sysconf_field *sc_miphy_reset[MAX_PORTS];
 
 
-static void stih415_pcie_mp_select(int port)
+static void stih415_pcie_mp_select(void *data, int port)
 {
 	BUG_ON(port < 0 || port > 1);
 	sysconf_write(sc_pcie_mp_select, port);
@@ -925,7 +929,7 @@ static int __init stih415_configure_miphy_uport(void)
 		/* Now switch to Phy interface to SATA HC not PCIe HC */
 		sysconf_write(sc_sata_pcie_sel, 1);
 		/* Select the Uport to use MiPHY1 */
-		stih415_pcie_mp_select(1);
+		stih415_pcie_mp_select(NULL, 1);
 		/* Take SATA1 HC out of reset - rst_per_n[30] */
 		sysconf_write(sc_sata1_hc_reset, 1);
 		/* MiPHY1 needs to be using the MiPHY0 reference clock */
@@ -978,7 +982,7 @@ static void stih415_restart_sata(int port)
 	sysconf_write(sc_miphy_reset[port], 0);
 
 	if (port == 1)
-		stih415_pcie_mp_select(1);
+		stih415_pcie_mp_select(NULL, 1);
 	msleep(1);
 	sysconf_write(sc_sata_hc_pwr[port], 0);
 	sysconf_write(sc_miphy_reset[port], 1);
@@ -1195,3 +1199,4 @@ void __init stih415_configure_mmc(int emmc)
 
 	platform_device_register(&stih415_mmc_device);
 }
+#endif /* CONFIG_OF */

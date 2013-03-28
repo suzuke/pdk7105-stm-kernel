@@ -82,6 +82,7 @@ int irq_to_gpio(unsigned irq);
 
 /* Early initialisation */
 void stm_gpio_early_init(struct platform_device pdevs[], int num, int irq_base);
+int of_stm_gpio_early_init(int irq_base);
 
 /* Pin direction control */
 #define STM_GPIO_DIRECTION_BIDIR 0x1

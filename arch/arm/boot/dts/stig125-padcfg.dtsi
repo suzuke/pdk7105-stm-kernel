@@ -1,0 +1,426 @@
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+#include "stm-padcfg.h"
+/ {
+	pad-configs {
+
+		uart0 {
+			padcfg_uart0: uart0-0 {
+				st,pins {
+					TX	= <&PIO0 0 OUT ALT2 >;
+					RX	= <&PIO0 1 IN  ALT2 >;
+				};
+			};
+			padcfg_uart0_rts: uart0_rts {
+				st,pins {
+					RTS	= <&PIO0 3 OUT ALT2 >;
+				};
+			};
+			padcfg_uart0_cts: uart0_cts {
+				st,pins {
+					CTS	= <&PIO0 2 IN  ALT2 >;
+				};
+			};
+		};
+		uart1 {
+			padcfg_uart1: uart1-0 {
+				st,pins {
+					TX	= <&PIO1 0 OUT ALT2 >;
+					RX	= <&PIO1 1 IN  ALT2 >;
+				};
+			};
+			padcfg_uart1_rts: uart1_rts {
+				st,pins {
+					RTS	= <&PIO1 3 OUT ALT2 >;
+				};
+			};
+			padcfg_uart1_cts: uart1_cts {
+				st,pins {
+					CTS	= <&PIO1 2 IN  ALT2 >;
+				};
+			};
+		};
+		uart7 {
+			padcfg_uart7: uart7-0 {
+				st,pins {
+					TX	= <&PIO24 7 OUT ALT1 >;
+					RX	= <&PIO25 0 IN  ALT1 >;
+				};
+			};
+			padcfg_uart7_rts: uart7_rts {
+				st,pins {
+					RTS	= <&PIO25 2 OUT ALT1 >;
+				};
+			};
+			padcfg_uart7_cts: uart7_cts {
+				st,pins {
+					CTS	= <&PIO25 1 IN  ALT1 >;
+				};
+			};
+		};
+		uart8 {
+			padcfg_uart8: uart8-0{
+				st,pins {
+					TX	= <&PIO24 1 OUT ALT3 >;
+					RX	= <&PIO24 2 IN  ALT3 >;
+				};
+			};
+			padcfg_uart8_cts: uart8_cts {
+				st,pins {
+					CTS	= <&PIO24 3 IN  ALT3 >;
+				};
+			};
+			padcfg_uart8_rts: uart8_rts {
+				st,pins {
+					RTS	= <&PIO24 4 OUT ALT3 >;
+				};
+			};
+		};
+		uart9 {
+			padcfg_uart9: uart9-0 {
+				st,pins {
+					TX	= <&PIO15 2 OUT ALT1 >;
+					RX	= <&PIO15 3 IN  ALT1 >;
+				};
+			};
+			padcfg_uart9_cts: uart9_cts {
+				st,pins {
+					CTS	= <&PIO15 0 IN  ALT1 >;
+				};
+			};
+			padcfg_uart9_rts: uart9_rts {
+				st,pins {
+					RTS	= <&PIO15 1 OUT ALT1 >;
+				};
+			};
+		};
+		mmc {
+			padcfg_mmc: mmc {
+				st,pins {
+					MMCDATA0 = <&PIO21 0 BIDIR_PU ALT1>;
+					MMCDATA1 = <&PIO21 1 BIDIR_PU ALT1>;
+					MMCDATA2 = <&PIO21 2 BIDIR_PU ALT1>;
+					MMCDATA3 = <&PIO21 3 BIDIR_PU ALT1>;
+					MMCDATA4 = <&PIO21 4 BIDIR_PU ALT1>;
+					MMCDATA5 = <&PIO21 5 BIDIR_PU ALT1>;
+					MMCDATA6 = <&PIO21 6 BIDIR_PU ALT1>;
+					MMCDATA7 = <&PIO21 7 BIDIR_PU ALT1>;
+					MMCCLK = <&PIO22 0 BIDIR_PU ALT1 NICLK 0 0>;
+					MMCCMD  = <&PIO22 1 BIDIR_PU ALT1>;
+					WP      = <&PIO22 2 IN ALT1>;
+					CD      = <&PIO22 3 IN ALT1>;	/* MMC Card Detect */
+					LED     = <&PIO22 4 OUT ALT1>;	/* MMC LED on */
+					PWR     = <&PIO22 5 OUT ALT1>;	/* MMC Card PWR */
+					BOOTERR = <&PIO22 6 OUT ALT1>;	/* MMC Boot Data error */
+				};
+			};
+		};
+		usb0 {
+			padcfg_usb0: usb0 {
+				st,pins {
+					usb-oc-detect	= <&PIO20 0 IN ALT1>;
+					usb-pwr-enable	= <&PIO20 1 OUT ALT1>;
+				};
+			};
+		};
+		usb1 {
+			padcfg_usb1: usb1 {
+				st,pins {
+					usb-oc-detect	= <&PIO19 4 IN ALT1>;
+					usb-pwr-enable	= <&PIO19 5 OUT ALT1>;
+				};
+			};
+		};
+		usb2 {
+			padcfg_usb2: usb2 {
+				st,pins {
+					usb-oc-detect	= <&PIO19 6 IN ALT1>;
+					usb-pwr-enable	= <&PIO19 7 OUT ALT1>;
+				};
+			};
+		};
+		i2c0 {
+			padcfg_i2c0: i2c0 {
+				st,pins {
+					SCL	= <&PIO5 5 BIDIR ALT3>;
+					SDA	= <&PIO5 4 BIDIR ALT3>;
+				};
+			};
+		};
+		i2c1 {
+			padcfg_i2c1: i2c1 {
+				st,pins {
+					SCL	= <&PIO6 3 BIDIR ALT2>;
+					SDA	= <&PIO6 4 BIDIR ALT2>;
+				};
+			};
+		};
+		i2c2 {
+			padcfg_i2c2: i2c2 {
+				st,pins {
+					SCL	= <&PIO7 0 BIDIR ALT1>;
+					SDA	= <&PIO7 1 BIDIR ALT1>;
+				};
+			};
+		};
+		i2c3 {
+			padcfg_i2c3: i2c3 {
+				st,pins {
+					SCL	= <&PIO6 1 BIDIR ALT3>;
+					SDA	= <&PIO6 0 BIDIR ALT3>;
+				};
+			};
+		};
+		i2c4 {
+			padcfg_i2c4: i2c4 {
+				st,pins {
+					SCL	= <&PIO2 3 BIDIR ALT3>;
+					SDA	= <&PIO2 2 BIDIR ALT3>;
+				};
+			};
+		};
+		i2c5 {
+			padcfg_i2c5: i2c5 {
+				st,pins {
+					SCL	= <&PIO19 0 BIDIR ALT1>;
+					SDA	= <&PIO19 1 BIDIR ALT1>;
+				};
+			};
+		};
+		i2c6 {
+			padcfg_i2c6: i2c6 {
+				st,pins {
+					SCL	= <&PIO19 2 BIDIR ALT1>;
+					SDA	= <&PIO19 3 BIDIR ALT1>;
+				};
+			};
+		};
+		i2c7 {
+			padcfg_i2c7: i2c7 {
+				st,pins {
+					SCL	= <&PIO13 0 BIDIR ALT2>;
+					SDA	= <&PIO13 1 BIDIR ALT2>;
+				};
+			};
+		};
+		i2c8 {
+			padcfg_i2c8: i2c8 {
+				st,pins {
+					SCL	= <&PIO13 3 BIDIR ALT2>;
+					SDA	= <&PIO13 4 BIDIR ALT2>;
+				};
+			};
+		};
+		i2c9 {
+			padcfg_i2c9: i2c9 {
+				st,pins {
+					SCL	= <&PIO14 0 BIDIR ALT2>;
+					SDA	= <&PIO14 1 BIDIR ALT2>;
+				};
+			};
+		};
+
+		i2c10 {
+			padcfg_i2c10: i2c10 {
+				st,pins {
+					SCL	= <&PIO26 0 BIDIR ALT1>;
+					SDA	= <&PIO26 1 BIDIR ALT1>;
+				};
+			};
+		};
+		i2c11 {
+			padcfg_i2c11: i2c11 {
+				st,pins {
+					SCL	= <&PIO24 5 BIDIR ALT2>;
+					SDA	= <&PIO24 4 BIDIR ALT2>;
+				};
+			};
+		};
+		i2c12 {
+			padcfg_i2c12: i2c12 {
+				st,pins {
+					SCL	= <&PIO25 5 BIDIR ALT2>;
+					SDA	= <&PIO25 1 BIDIR ALT2>;
+				};
+			};
+		};
+		i2c13 {
+			padcfg_i2c13: i2c13 {
+				st,pins {
+					SCL	= <&PIO16 0 BIDIR ALT1>;
+					SDA	= <&PIO16 1 BIDIR ALT1>;
+				};
+			};
+		};
+		/* SAS PWM MODULE */
+		pwm0{
+			padcfg_pwm0_chan0: chan0 {
+				st,pins {
+					gpio-0	= <&PIO24 3 OUT ALT1>;
+				};
+			};
+			padcfg_pwm0_chan1: chan1 {
+				st,pins {
+					gpio-0	= <&PIO25 7 OUT ALT1>;
+				};
+			};
+		};
+		spi0 {
+			padcfg_spi0: spi0 {
+				st,pins {
+					SCL = <&PIO5 5 BIDIR ALT3 >;
+					SDA = <&PIO5 4 BIDIR ALT3 >;
+					SDO = <&PIO5 3 BIDIR ALT3 >;
+				};
+			};
+		};
+		spi1 {
+			padcfg_spi1: spi1 {
+				st,pins {
+					SCL = <&PIO6 3 BIDIR ALT2 >;
+					SDA = <&PIO6 4 BIDIR ALT2 >;
+					SDO = <&PIO6 5 BIDIR ALT3 >;
+				};
+			};
+		};
+		spi2 {
+			padcfg_spi2: spi2 {
+				st,pins {
+					SCL = <&PIO7 0 BIDIR ALT1 >;
+					SDA = <&PIO7 1 BIDIR ALT1 >;
+					SDO = <&PIO7 2 BIDIR ALT1 >;
+				};
+			};
+		};
+		spi3 {
+			padcfg_spi3: spi3 {
+				st,pins {
+					SCL = <&PIO6 1 BIDIR ALT3 >;
+					SDA = <&PIO6 0 BIDIR ALT3 >;
+					SDO = <&PIO5 7 BIDIR ALT3 >;
+				};
+			};
+		};
+		spi4 {
+			padcfg_spi4: spi4 {
+				st,pins {
+					SCL = <&PIO2 3 BIDIR ALT3 >;
+					SDA = <&PIO2 2 BIDIR ALT3 >;
+					SDO = <&PIO2 1 BIDIR ALT3 >;
+				};
+			};
+		};
+		spi5 {
+			padcfg_spi5: spi5 {
+				st,pins {
+					SCL = <&PIO19 0 BIDIR ALT1 >;
+					SDA = <&PIO19 1 BIDIR ALT1 >;
+					SDO = <&PIO20 0 BIDIR ALT2 >;
+				};
+			};
+		};
+		spi6 {
+			padcfg_spi6: spi6 {
+				st,pins {
+					SCL = <&PIO19 2 BIDIR ALT1 >;
+					SDA = <&PIO19 3 BIDIR ALT1 >;
+					SDO = <&PIO20 1 BIDIR ALT2 >;
+				};
+			};
+		};
+		spi7 {
+			padcfg_spi7: spi7 {
+				st,pins {
+					SCL = <&PIO13 0 BIDIR ALT2 >;
+					SDA = <&PIO13 1 BIDIR ALT2 >;
+					SDO = <&PIO13 2 BIDIR ALT2 >;
+				};
+			};
+		};
+		spi8 {
+			padcfg_spi8: spi8 {
+				st,pins {
+					SCL = <&PIO13 3 BIDIR ALT2 >;
+					SDA = <&PIO13 4 BIDIR ALT2 >;
+					SDO = <&PIO13 5 BIDIR ALT2 >;
+				};
+			};
+		};
+		spi9 {
+			padcfg_spi9: spi9 {
+				st,pins {
+					SCL = <&PIO14 0 BIDIR ALT2 >;
+					SDA = <&PIO14 1 BIDIR ALT2 >;
+					SDO = <&PIO14 2 BIDIR ALT2 >;
+				};
+			};
+		};
+
+		spi10 {
+			padcfg_spi10: spi10 {
+				st,pins {
+					SCL = <&PIO26 0 BIDIR ALT1 >;
+					SDA = <&PIO26 1 BIDIR ALT1 >;
+					SDO = <&PIO26 2 BIDIR ALT1 >;
+				};
+			};
+		};
+		spi11 {
+			padcfg_spi11: spi11 {
+				st,pins {
+					SCL = <&PIO24 5 BIDIR ALT2 >;
+					SDA = <&PIO24 4 BIDIR ALT2 >;
+					SDO = <&PIO24 3 BIDIR ALT2 >;
+				};
+			};
+		};
+		spi12 {
+			padcfg_spi12: spi12 {
+				st,pins {
+					SCL = <&PIO25 2 BIDIR ALT2 >;
+					SDA = <&PIO25 1 BIDIR ALT2 >;
+					SDO = <&PIO24 7 BIDIR ALT2 >;
+				};
+			};
+		};
+		spi13 {
+			padcfg_spi13: spi13 {
+				st,pins {
+					SCL = <&PIO16 0 BIDIR ALT1 >;
+					SDA = <&PIO16 1 BIDIR ALT1 >;
+					SDO = <&PIO16 2 BIDIR ALT1 >;
+				};
+			};
+		};
+
+		rc{
+			padcfg_ir: ir0 {
+				st,pins {
+					gpio-0	= <&PIO25 3 IN ALT2 >;
+				};
+			};
+			padcfg_uhf: uhf {
+				st,pins {
+					gpio-1	= <&PIO25 4 IN ALT2 >;
+				};
+			};
+			padcfg_tx: tx {
+				st,pins {
+					gpio-2	= <&PIO25 5 IN ALT2 >;
+				};
+			};
+			padcfg_tx_od: tx_od {
+				st,pins {
+					gpio-3	= <&PIO25 6 IN ALT2 >;
+				};
+			};
+		};
+ 	};
+};
+

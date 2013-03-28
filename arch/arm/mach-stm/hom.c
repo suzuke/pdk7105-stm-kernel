@@ -21,6 +21,8 @@
 #include <linux/preempt.h>
 #include <linux/suspend.h>
 #include <linux/clk.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
 
 #include <linux/stm/platform.h>
 
@@ -282,23 +284,67 @@ static int __cpuinitdata stm_hom_enter(void)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+void stm_hom_parse_early_console(u32 *console_base,
+				const char **clk)
+{
+	struct device_node *np = NULL;
+	const char *name;
+	u64 size;
+	unsigned int flags;
+	const __be32 *addrp;
+	const char *clkname;
+	if (of_chosen) {
+		name = of_get_property(of_chosen, "linux,stdout-path", NULL);
+		if (name == NULL)
+			return;
+
+		np = of_find_node_by_path(name);
+		if (!np)
+			return;
+	}
+	addrp = of_get_address(np, 0, &size, &flags);
+	if (addrp)
+		*console_base = be32_to_cpu(*addrp);
+
+	if (!of_property_read_string(np, "st,clk-id",  &clkname))
+		*clk = clkname;
+	of_node_put(np);
+	return;
+}
+
+#else
+
+void stm_hom_parse_early_console(u32 *console_base,
+				const char **clk)
+{
+
+	struct stm_plat_asc_data *console_pdata =
+		stm_asc_console_device->dev.platform_data;
+	*console_base = stm_asc_console_device->resource[0].start;
+	*clk = console_pdata->clk_id;
+	return;
+}
+
+#endif
 static void __cpuinitdata
 stm_hom_early_console_setup(struct stm_mem_hibernation *platform)
 {
-	struct stm_plat_asc_data *console_pdata =
-		stm_asc_console_device->dev.platform_data;
 	struct clk *asc_clk;
-
+	const char *clkname = NULL;
+	u32 console_base;
+	stm_hom_parse_early_console(&console_base, &clkname);
 	/* setup the early console */
-	platform->early_console_base = (void *)ioremap(
-		stm_asc_console_device->resource[0].start, 0x1000);
+	platform->early_console_base = (void *)ioremap(console_base, 0x1000);
 
-	asc_clk = clk_get(NULL, console_pdata->clk_id ?
-		console_pdata->clk_id : "comms_clk");
+	asc_clk = clk_get(NULL, clkname ? : "comms_clk");
 
-	platform->early_console_rate = clk_get_rate(asc_clk);
+	if (IS_ERR(asc_clk))
+		pr_info("stm pm hom: Failed to get clk info:%s\n", clkname);
+	else
+		platform->early_console_rate = clk_get_rate(asc_clk);
 
-	pr_info("stm pm hom: early console: iobase: 0x%x; clk: %uMHz\n",
+	pr_info("stm pm hom: early console: iobase: 0x%x; clk: %luMHz\n",
 		(unsigned int) platform->early_console_base,
 		(unsigned long)platform->early_console_rate / 1000000);
 }

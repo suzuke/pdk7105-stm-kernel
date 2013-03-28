@@ -1,0 +1,391 @@
+
+-------------------------------------------------------------------------------
+		Adding new ST SOC and Board via Device trees.
+-------------------------------------------------------------------------------
+
+Contents:
+
+1. Directory structure:
+2. Terminology.
+3. Adding new SOC hw description.
+	3.1. Adding Generic IPs like CPU, Timers, Interrupt controller...
+	3.2. Adding ST Sysconfs.
+	3.3. Adding ST gpio controller, pio-controls.
+	3.4. Adding IP's which fit nicely with device trees.
+	3.5. Adding Ips which do not fit in device trees(back-door).
+
+4. Adding new Board:
+	4.1 What should board dts have?
+
+5. Build Environment.
+6. Running kernel with dtb.
+7. Useful tools.
+8. Conclusion.
+-------------------------------------------------------------------------------
+
+Below are the steps followed while adding device tree support for
+Stih415/Stig125/Fli76xx Socs and B2000/B2020/B2044/Fli76xxhdk01 boards to
+Stlinux 3.x. Similar steps can be followed while adding new SOCs/Boards.
+
+Note: This document is not full description of device tree technology,
+Please refer to http://devicetree.org/Main_Page for detailed information.
+
+1. Directory structure:
+======================
+Tree view of sh specific directories looks like
+.
+|-- arch
+|   `-- arm
+|      |`--mach-stm
+|      |    |--board-stih415-dt.c (stigh415 specfic device tree setup)
+|      |    |--board-stig125-dt.c
+|      |    |--common-dt.c (common code specific to device trees for st SOC's)
+|      |    |
+|      |    |
+|      |    | ... more SOC specific stuff here ...
+|      |
+|      |-- boot
+|      |    `-- dts
+|      |    |	|`-- All device tree files go here.
+|
+|-- drivers
+    `-- stm
+        |-- core_of.c (core for stm SOC's for early inits)
+        |-- stm_of.c (dt helper library for stm drivers)
+        |-- stm_device_of.c (common callbacks like ethernet or mmc ...)
+        |
+        |-- clock_xxx.c (soc specific clock aliases)
+        |
+        |-- clock
+        |   `-- SOC-specific clocks
+	|
+|-- drivers
+    `-- of
+        |-- xxx.c (generic dt helper functions.)
+|
+|-- include
+    `-- linux
+        |-- of.h
+
+
+2. Terminology.
+==============
+	● Device Tree - The device tree is a simple tree structure of nodes and
+			properties
+	● OpenFirmware (OF) Device Tree (DT) – Device representation exported
+			by Open Firmware
+	● Flattened Device Tree (FDT)  Firmware-independent device tree
+	● Device Tree Compiler (DTC)
+		– Convert between .dts and .dtb
+		– Device Tree Source (.dts)
+		– Device Tree Blob (.dtb)
+	● Binding Documentation of how the DT describes hardware.
+	● Node node may contain both properties and child node.
+	● Property A Name value pair to describe a device.
+	● pHandle Reference to a node.
+
+example:
+	device@xxxx{
+		compatible = "stm,xxxx";
+	};
+
+In the above example there is single node ("device") with single property
+"compatible".
+
+3. Adding new SOC hw descrption.
+===============================
+There are two classes of things that are required for basic SOC support
+	● CPU, Memory, timer, intc, cache controller description.
+	● Sysconfs, Gpios and Pio-controls.
+
+2.1. Adding Generic IPs like CPU, Timers, Interrupt controller...
+================================================================
+Most of these are ARM based IPs, so existing kernel already provides device
+tree support for them.
+Typical dt nodes look like the below.
+
+	cpus {
+		cpu@0 {
+			compatible = "arm,cortex-a9";
+		};
+		cpu@1 {
+			compatible = "arm,cortex-a9";
+		};
+	};
+
+	intc: interrupt-controller@fffe1000 {
+		compatible = "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0xfffe1000 0x1000>,
+		      <0xfffe0100 0x100>;
+	};
+
+	timers {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		#interrupt-cells = <3>;
+		interrupt-parent = <&intc>;
+		compatible = "simple-bus";
+		ranges;
+
+		timer@fffe0600 {
+			compatible = "arm,cortex-a9-twd-timer";
+			reg = <0xfffe0600 0x100>;
+			interrupts = <1 13 0x04>;
+		};
+
+		timer@fffe0200 {
+			compatible = "arm,cortex-a9-global-timer";
+			reg = <0xfffe0200 0x100>;
+			interrupts = <1 11 0x04>;
+		};
+	};
+
+	L2: cache-controller {
+		compatible = "arm,pl310-cache";
+	        reg = <0xfffe2000 0x1000>;
+	        arm,data-latency = <3 2 2>;
+		arm,tag-latency = <1 1 1>;
+		cache-unified;
+		cache-level = <2>;
+	};
+
+3.2. Adding ST Sysconfs.
+======================
+Sysconfs, gpios, pio-controls are traditionally setup at very init, this still
+is the same for device trees as well.
+However the description of this hw setup comes from device trees, so a generic
+SOC "core_of.c" code is introduced.
+
+For a new SOC, all of the possible sysconfs should be described in device-nodes
+like:
+
+		sysconf@fe600000{
+			compatible	= "st,sysconf", "simple-bus";
+			reg	=	<0xfe600000 0xb4>;
+			group@0{
+				group	= <0>;
+				offset	= <0>;
+				start	= <0>;
+				group-name	=  "SYSCFG_SBC";
+			};
+		};
+Description is very much similar to non-device tree style.
+There is an additional lookup take which is also necessary to go into
+device-tree.
+This lookup table is used to resolve group numbers dynamically at runtime.
+an example is:
+
+	stih415_sysconf: stih415sysconf{
+		#sysconf-group-cells	= <3>;
+		sysconf-groups = <0    44 0>,
+				 <100 200 1>,
+				 <300 399 2>,
+				 <400 429 3>,
+				 <500 595 4>,
+				 <600 686 5>;
+
+		sysconf-names  = "SYSCFG_SBC",
+				 "SYSCFG_FRONT",
+				 "SYSCFG_REAR",
+				 "SYSCFG_LEFT",
+				 "SYSCFG_RIGHT",
+				 "SYSCFG_SYSTEM";
+	};
+
+More information is available in bindings document
+Documentation/devicetree/bindings/stm/stm-pad-sysconf.txt
+
+3.3. Adding ST gpio controller, pio-controls.
+============================================
+All the gpio controller
+Similar to sysconfs gpios and pio-controls are setup at very early,
+In device trees, all the hardware descriptions are picked up from device nodes.
+An examples of gpio bank and pio-control looks like below:
+
+	gpio-controllers {
+                 #address-cells = <1>;
+                 #size-cells = <1>;
+                 gpio-controller;
+                 ranges;
+                 gpio_bank0: gpio-bank@fe610000 {
+			#gpio-cells = <1>;
+                         compatible = "st,gpio";
+                         reg = <0xfe610000 0x100>;
+			 bank-name  = "PIO0";
+		};
+		...
+	};
+
+	pio-controls {
+		#retime-delay-cells = <4>;
+		retime-offset = <&pio_retime_offset>;
+		retime-in-delay = <0 500 1000 1500>;
+		retime-out-delay = <0 1000 2000 3000>;
+
+		pio-control@0 {
+			alt-control = <&stih415_sysconf 0 0 31>;
+			oe-control = <&stih415_sysconf 5  0 7>;
+			pu-control = <&stih415_sysconf 7  0 7>;
+			od-control = <&stih415_sysconf 9  0 7>;
+			retime-style = "packed";
+			retime-pin-mask = <0xff>;
+			retime-control0 = <&stih415_sysconf 16 0 31>;
+			retime-control1 = <&stih415_sysconf 17 0 31>;
+		};
+		...
+	};
+More information is available in bindings document
+Documentation/devicetree/bindings/stm/stm-pad-sysconf.txt
+
+3.3. Adding Device tree support to new driver.
+=============================================
+Kernel support platform bus probing via Device trees, so the driver need
+a very trivial change to extract the platform data from device node.
+
+If the driver is probed from device tree "of_node" pointer of pdev->dev
+will be valid and pointing to the device node which matches the id table
+of the driver.
+
+Totally there are 3 trivial changes to the driver
+1. Add code to extract platform data from device node.
+2. Build id table with list of compatible node names.
+3. Add device tree in dts.
+
+an example for i2c driver:
+
+C code:
+static int iic_stm_probe(struct platform_device *pdev)
+{
+	struct stm_plat_ssc_data *plat_data;
+	if (pdev->dev.of_node)
+		plat_data = stm_iic_dt_get_pdata(pdev);
+...
+}
+...
+static struct of_device_id stm_i2c_match[] = {
+	{
+		.compatible = "st,i2c",
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(of, stm_i2c_match);
+...
+static struct platform_driver i2c_stm_driver = {
+	.driver = {
+		.name = "i2c-stm",
+		.of_match_table = of_match_ptr(stm_i2c_match),
+	},
+	.probe = iic_stm_probe,
+};
+...
+
+Device tree:
+	stm_i2c0: i2c-stm0{
+		compatible	= "st,i2c", "simple-bus";
+		...
+	};
+
+As result of device tree probe
+i2c driver will be probed with pdev->dev.of_node is set to "stm_i2c0".
+
+
+3.4. Adding IP's which fit nicely with device trees.
+===================================================
+When I mean fit nicely, I mean with out complex callbacks.
+Support to Simple callbacks like device config claims, init, power on,
+power-off are supported in stm_device_of infrastructure.
+
+It is fairly straight forward to add such devices following above 3.3 example.
+
+
+3.5. Adding Ips which do not fit in device trees(back-door).
+==========================================================
+Drivers like Ethernet which requires more complex callback support from each
+board level code do not fit very well for describing them in device trees.
+So for these type of drivers part of the platform data(callbacks) are
+populated via OF_DEV_AUXDATA. Example in arch/arm/mach-stm/stih415-dt.c
+
+4. Adding new Board:
+===================
+For new board support, you do not need to add any C code, only thing required
+ is new dts file, which should contains list of drivers which are required.
+
+4.1 What should board dts have?
+==============================
+A very basic Board support should contain a model name, memory, stdout-path
+and devices. A very simple Board support dts looks like
+
+	model = "Stih415 Orly B2000";
+
+	memory{ /* Updated from targetpack */
+                device_type = "memory";
+		reg = <0x00000000 0x00000000>;
+	};
+
+	chosen {
+		bootargs = "";
+		linux,stdout-path = &asc2;
+	};
+
+        aliases {
+                ttyAS0 = &asc2;
+	}
+	soc {
+		asc2:stm-asc2{
+			status = "okay";
+		};
+
+		stm_usb0: usb-0{
+			status = "okay";
+		};
+	};
+
+5. Build Environment.
+Linux kernel already has integrated device tree compiler, You can compile your
+device tree by specifying the blob name
+make ARCH=arm CROSS_COMPILE=armv7-linux- b2044.dtb
+
+6. Running kernel with dtb with arm gdb script.
+
+New stlinux_arm_boot take dsb parameter for device tree blob.
+
+Here is the details of ARM boot Entry with a flattened device-tree blobs
+which differs to traditional atags approach.
+
+User should load the physical address of the flattened device tree block
+(dtb) into r2, r1 is not used, but it is considered good practice to use
+a valid machine number as described in Documentation/arm/Booting.
+
+So the script should set.
+
+r0 : 0
+
+r1 : Valid machine type number.  When using a device tree, a single
+machine type number will often be assigned to represent a class or
+family of SoCs.
+
+r2 : physical pointer to the device-tree block in RAM.  Device tree can
+be located anywhere in system RAM, but it should be aligned on a 64 bit
+boundary.
+
+The kernel will differentiate between ATAGS and device tree booting by
+reading the memory pointed to by r2 and looking for either the flattened
+device tree block magic value (0xd00dfeed) or the ATAG_CORE value at
+offset 0x4 from r2 (0x54410001).
+
+
+Currently, stlinux_arm_boot script loads the dtb at High Address  - 128kBytes.
+Assuming device-tree blobs will never exceed 128K size.
+
+7. Usefull tools.
+
+dtc: device tree compiler.
+fdtput: To modify dtb properties.
+
+8. Conclusion.
+Single kernel can be used across all the boards and SOC's and Adding new board
+should be much convenient and easier then before, and require no recompiling of
+kernel.
+

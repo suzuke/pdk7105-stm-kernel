@@ -460,7 +460,7 @@ void __init stig125_configure_mmc(int emmc)
 /*
  * AHCI support
  */
-static void stig125_sata_mp_select(int port)
+static void stig125_sata_mp_select(void *data, int port)
 {
 }
 

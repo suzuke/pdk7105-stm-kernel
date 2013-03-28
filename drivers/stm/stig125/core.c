@@ -23,6 +23,10 @@
 #include <mach/soc-stig125.h>
 #include <mach/hardware.h>
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 #include "../pio-control.h"
 
 /* EMI resources ---------------------------------------------------------- */
@@ -309,9 +313,6 @@ static struct platform_device stig125_asc_devices[] = {
 		},
 	},
 };
-
-/* the serial console device */
-struct platform_device *stm_asc_console_device;
 
 /* Platform devices to register */
 unsigned int __initdata stm_asc_configured_devices_num;
@@ -1017,19 +1018,23 @@ static struct platform_device stig125_temp_device = {
 	.name = "stm-temp",
 	.id = 0,
 	.dev.platform_data = &(struct plat_stm_temp_data) {
-		.dcorrect = { SYSCONF(743), 2, 6 },
-		.overflow = { SYSCONF(767), 9, 9 },
-		.data = { SYSCONF(767), 11, 18 },
 		.device_config = &(struct stm_device_config) {
-			.sysconfs_num = 1,
+			.sysconfs_num = 4,
 			.power = stig125_temp_power,
 			.sysconfs = (struct stm_device_sysconf []){
 				STM_DEVICE_SYSCONF(SYSCONF(743),
 					7, 7, "TEMP_PWR"),
+				STM_DEVICE_SYSCONF(SYSCONF(743),
+					2, 6, "DCORRECT"),
+				STM_DEVICE_SYSCONF(SYSCONF(767),
+					9, 9, "OVERFLOW"),
+				STM_DEVICE_SYSCONF(SYSCONF(767),
+					11, 18, "DATA"),
 			},
 		}
 	},
 };
+#endif /* CONFIG_OF */
 
 /* Keyscan resources -------------------------------------------------------*/
 static struct stm_pad_config stig125_keyscan_pad_config = {
@@ -1086,6 +1091,10 @@ void stig125_configure_keyscan(const struct stm_keyscan_config *config)
 	platform_device_register(&stig125_keyscan_device);
 }
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 /*
  * FDMA resources --------------------------------
  */
@@ -1209,3 +1218,4 @@ static int __init stig125_devices_setup(void)
 			ARRAY_SIZE(stig125_devices));
 }
 device_initcall(stig125_devices_setup);
+#endif /* CONFIG_OF */

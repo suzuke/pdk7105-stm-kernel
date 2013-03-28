@@ -22,6 +22,11 @@
 #include <linux/stm/pad.h>
 #include <linux/stm/sysconf.h>
 #include <linux/module.h>
+#ifdef CONFIG_OF
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/stm/pio-control.h>
+#endif
 
 
 
@@ -1015,3 +1020,227 @@ int __init stm_pad_config_add_gpio_named(struct stm_pad_config *config,
 
 	return result;
 }
+#ifdef CONFIG_OF
+
+#define OF_STM_GPIO_ARGS_MIN	(4)
+static int stm_pinctrl_is_pin_property(struct property *pp)
+{
+	if (pp  && (pp->length/sizeof(u32)) >= OF_STM_GPIO_ARGS_MIN)
+		return 1;
+	return 0;
+}
+
+static struct stm_pio_control_pad_config *stm_of_get_pad_retime(
+		struct device *dev, u32 config)
+{
+	struct stm_pio_control_pad_config *pad_config;
+	struct stm_pio_control_retime_config *rt;
+
+
+	pad_config = devm_kzalloc(dev, sizeof(*pad_config),
+					GFP_KERNEL);
+	pad_config->retime = devm_kzalloc(dev, sizeof(*rt), GFP_KERNEL);
+	rt = pad_config->retime;
+
+	rt->retime = STM_PINCONF_UNPACK_RT(config);
+	rt->clknotdata = STM_PINCONF_UNPACK_RT_CLKNOTDATA(config);
+	rt->double_edge = STM_PINCONF_UNPACK_RT_DOUBLE_EDGE(config);
+	rt->invertclk = STM_PINCONF_UNPACK_RT_INVERTCLK(config);
+
+	rt->delay = STM_PINCONF_UNPACK_RT_DELAY(config);
+	rt->clk = STM_PINCONF_UNPACK_RT_CLK(config);
+	return pad_config;
+}
+
+/**
+ *	stm_of_get_pad_config_from_node - parse stm pad config from
+ *					a padconfig device node.
+ *	@np:	Node which is a pad config device node.
+ *
+ *	returns a pointer to newly allocated stm_pad_config.
+ *	User is responsible to freeing the pointer.
+ *
+ */
+struct stm_pad_config *stm_of_get_pad_config_from_node(struct device *dev,
+			struct device_node *np, int index)
+{
+	struct stm_pad_config *pad_config;
+	struct device_node *gpios, *pc_np;
+	struct stm_pad_gpio *gpio;
+	struct property *pp;
+	const __be32 *list, *pc_list, *old_pc_list;
+	int i = 0, k = 0, nr_gpios = 0, nr_props, size;
+	char padconf_name[16];
+	phandle phandle;
+
+	if (!np)
+		return NULL;
+
+	/*
+	 * Also padconf-names property available to read user friendly name.
+	 */
+	sprintf(padconf_name, "padcfg-%d", index);
+
+	pp = of_find_property(np, padconf_name, &size);
+	if (!pp)
+		return NULL;
+	pc_list = pp->value;
+	size =  pp->length/sizeof(u32);
+	old_pc_list = pc_list;
+
+	for (k = 0; k < size; k++) {
+		phandle = be32_to_cpup(pc_list++);
+
+		/* Look up the pin configuration node */
+		pc_np = of_find_node_by_phandle(phandle);
+		if (!pc_np)
+			continue;
+
+		gpios = of_get_child_by_name(pc_np, "st,pins");
+		if (!gpios)
+			continue;
+
+		for_each_property_of_node(gpios, pp) {
+			if (stm_pinctrl_is_pin_property(pp))
+				nr_gpios++;
+		}
+		of_node_put(pc_np);
+		of_node_put(gpios);
+	}
+
+	pad_config = devm_kzalloc(dev, sizeof(*pad_config), GFP_KERNEL);
+	pad_config->gpios_num = nr_gpios;
+	pad_config->gpios = devm_kzalloc(dev, (nr_gpios) * sizeof(*gpio),
+					GFP_KERNEL);
+	pc_list = old_pc_list;
+
+	for (k = 0; k < size; k++) {
+		phandle = be32_to_cpup(pc_list++);
+
+		/* Look up the pin configuration node */
+		pc_np = of_find_node_by_phandle(phandle);
+		if (!pc_np)
+			continue;
+
+		gpios = of_get_child_by_name(pc_np, "st,pins");
+		if (!gpios)
+			continue;
+
+		/* BANK OFFSET ALTFUNC DIR RT-TYPE DELAY CLK */
+		for_each_property_of_node(gpios, pp) {
+			if (!stm_pinctrl_is_pin_property(pp))
+				continue;
+
+			nr_props = pp->length/sizeof(u32);
+			list = pp->value;
+			gpio = &pad_config->gpios[i];
+
+			/* bank & pin */
+			list++;
+			list++;
+			gpio->gpio = of_get_named_gpio(gpios, pp->name, 0);
+			gpio->name = pp->name;
+
+			/* direction */
+			gpio->direction = be32_to_cpup(list++);
+			/* altfun_np */
+			gpio->function = be32_to_cpup(list++);
+			/* RT-TYPE, RT-DELAY, RT-CLK */
+			if (nr_props > OF_STM_GPIO_ARGS_MIN) {
+				u32 rt_config = 0;
+				/* RT-TYPE */
+				rt_config |= be32_to_cpup(list++);
+				/* RT_DELAY */
+				rt_config |= be32_to_cpup(list++);
+				/* RT_CLK */
+				if (nr_props > OF_STM_GPIO_ARGS_MIN + 2)
+					rt_config |= be32_to_cpup(list++);
+				gpio->priv = stm_of_get_pad_retime(dev,
+							rt_config);
+			}
+			i++;
+		}
+		of_node_put(gpios);
+		of_node_put(pc_np);
+	}
+
+	return pad_config;
+}
+EXPORT_SYMBOL(stm_of_get_pad_config_from_node);
+
+/**
+ *	stm_of_get_pad_config_index - parse stm pad config at
+ *			particular index from a device.
+ *
+ *	returns a pointer to newly allocated stm_pad_config.
+ *	User is responsible to freeing the pointer.
+ *
+ */
+struct stm_pad_config *stm_of_get_pad_config_index(struct device *dev,
+		int index)
+{
+	return stm_of_get_pad_config_from_node(dev, dev->of_node, index);
+}
+EXPORT_SYMBOL(stm_of_get_pad_config_index);
+/**
+ *	stm_of_get_pad_config - parse stm pad config from a device.
+ *
+ *	returns a pointer to newly allocated stm_pad_config.
+ *	User is responsible to freeing the pointer.
+ *
+ */
+struct stm_pad_config *stm_of_get_pad_config(struct device *dev)
+{
+	return stm_of_get_pad_config_from_node(dev, dev->of_node, 0);
+}
+EXPORT_SYMBOL(stm_of_get_pad_config);
+
+void stm_of_pad_config_fixup(struct device *dev,
+		struct device_node *fixup_np, struct stm_pad_state *state)
+{
+	struct stm_pio_control_pad_config *priv;
+	struct property *pp;
+	const __be32 *list;
+	phandle phandle;
+	struct device_node *gpios, *np;
+	int dir, altfun, nr_props;
+
+	if (!fixup_np)
+		return;
+
+	gpios = of_get_child_by_name(fixup_np, "gpios");
+
+	if (gpios) {
+		for_each_property_of_node(gpios, pp) {
+			nr_props = pp->length/sizeof(u32);
+			if (nr_props < 2)
+				continue;
+
+			list = pp->value;
+			/* direction */
+			dir = be32_to_cpup(list++);
+			/* altfun_np */
+			altfun = be32_to_cpup(list++);
+
+			priv = NULL;
+			if (nr_props > (OF_STM_GPIO_ARGS_MIN - 2)) {
+				u32 rt_config = 0;
+				/* RT-TYPE */
+				rt_config |= be32_to_cpup(list++);
+				/* RT_DELAY */
+				rt_config |= be32_to_cpup(list++);
+				/* RT_CLK */
+				if (nr_props > OF_STM_GPIO_ARGS_MIN + 2)
+					rt_config |= be32_to_cpup(list++);
+				priv = stm_of_get_pad_retime(dev, rt_config);
+			}
+			stm_pad_update_gpio(state, pp->name, dir, -1,
+						altfun, priv);
+		}
+	}
+	of_node_put(gpios);
+	return;
+}
+EXPORT_SYMBOL(stm_of_pad_config_fixup);
+
+#endif

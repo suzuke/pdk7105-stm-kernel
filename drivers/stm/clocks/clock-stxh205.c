@@ -260,7 +260,7 @@ static sysconf_base_t sysconf_base[] = {
 };
 
 /* ========================================================================
-   Name:        plat_clk_init()
+   Name:        stx205_plat_clk_init()
    Description: SOC specific LLA initialization
    Returns:     'clk_err_t' error code.
    ======================================================================== */
@@ -290,19 +290,19 @@ SYSCONF(0, 478, 14, 14);
 SYSCONF(0, 478, 15, 17);
 
 struct sysconf_field __init
-*platform_sys_claim(int nr, int lsb, int msb)
+*stxh205_platform_sys_claim(int nr, int lsb, int msb)
 {
 	return sysconf_claim(SYSCONFG_GROUP(nr), SYSCONF_OFFSET(nr),
 		lsb, msb, "clk");
 }
 
-int __init plat_clk_init(void)
+int __init stxh205_plat_clk_init(void)
 {
 	int ret;
 
 #define call_platform_sys_claim(_nr, _lsb, _msb)		\
 	sys_0_##_nr##_##_lsb##_##_msb =				\
-		platform_sys_claim(_nr, _lsb, _msb)
+		stxh205_platform_sys_claim(_nr, _lsb, _msb)
 
 	call_platform_sys_claim(406, 10, 13);
 	call_platform_sys_claim(406, 14, 14);

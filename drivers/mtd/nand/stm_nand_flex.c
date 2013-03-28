@@ -52,8 +52,10 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
+#include <linux/stm/emi.h>
 #include <linux/completion.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
@@ -62,6 +64,7 @@
 
 #include "stm_nand_regs.h"
 #include "stm_nand_bbt.h"
+#include "stm_nand_dt.h"
 
 
 #define NAME	"stm-nand-flex"
@@ -148,8 +151,6 @@ static struct stm_nand_flex_controller* mtd_to_flex(struct mtd_info *mtd)
 
 #define flex_writereg(val, reg)	iowrite32(val, flex->base_addr + (reg))
 #define flex_readreg(reg)	ioread32(flex->base_addr + (reg))
-
-static const char *part_probes[] = { "cmdlinepart", NULL };
 
 /*** FLEX mode control functions (cf nand_base.c) ***/
 
@@ -1108,18 +1109,24 @@ static void flex_exit_controller(struct platform_device *pdev)
 }
 
 static struct stm_nand_flex_device * __devinit
-flex_init_bank(struct stm_nand_flex_controller *flex,
+flex_init_bank(struct stm_nand_flex_controller *flex, int bank_nr,
 	       struct stm_nand_bank_data *bank,
-	       int rbn_connected, struct platform_device *pdev)
+	       int rbn_connected, struct device *dev)
 {
+	const char *name = dev_name(dev);
 	struct stm_nand_flex_device *data;
 	int res;
+	struct mtd_part_parser_data ppdata;
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
 	struct mtd_info *slave;
 	uint64_t slave_offset;
 	char *boot_part_name;
 #endif
+
+	if (dev->of_node)
+		ppdata.of_node = stm_of_get_partitions_node(
+						dev->of_node, bank_nr);
 
 	/* Allocate memory for the device structure (and zero it) */
 	data = kzalloc(sizeof(struct stm_nand_flex_device), GFP_KERNEL);
@@ -1134,10 +1141,10 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	data->chip.priv = data;
 	data->mtd.priv = &data->chip;
 	data->mtd.owner = THIS_MODULE;
-	data->mtd.dev.parent = &pdev->dev;
+	data->mtd.dev.parent = dev;
 
 	/* Assign more sensible name (default is string from nand_ids.c!) */
-	data->mtd.name = dev_name(&pdev->dev);
+	data->mtd.name = dev_name(dev);
 	data->csn = bank->csn;
 
 	/* Use hwcontrol structure to manage access to FLEX Controller */
@@ -1272,7 +1279,7 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 #endif
 
 	res = mtd_device_parse_register(&data->mtd,
-			part_probes, 0,
+			NULL, &ppdata,
 			bank->partitions, bank->nr_partitions);
 	if (res)
 		goto out3;
@@ -1309,15 +1316,39 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	return ERR_PTR(res);
 }
 
+#ifdef CONFIG_OF
+static void *stm_flex_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_nand_flex_data *data;
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+
+	emiss_nandi_select(STM_NANDI_HAMMING);
+
+	data->flex_rbn_connected = of_property_read_bool(np,
+					"st,rbn-flex-connected");
+	data->nr_banks = stm_of_get_nand_banks(&pdev->dev, np, &data->banks);
+	return data;
+}
+#else
+static void *stm_flex_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 {
-	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
+	struct stm_plat_nand_flex_data *pdata;
+	int res;
+	int n;
 	struct stm_nand_bank_data *bank;
 	struct stm_nand_flex_controller *flex;
 	struct stm_nand_flex_device *data;
 	int err;
-	int n;
-
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_flex_dt_get_pdata(pdev);
+	pdata = pdev->dev.platform_data;
 
 	flex = flex_init_resources(pdev);
 	if (IS_ERR(flex)) {
@@ -1328,8 +1359,8 @@ static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 
 	bank = pdata->banks;
 	for (n=0; n<pdata->nr_banks; n++) {
-		data = flex_init_bank(flex, bank, pdata->flex_rbn_connected,
-				      pdev);
+		data = flex_init_bank(flex, n, bank, pdata->flex_rbn_connected,
+					&pdev->dev);
 
 		if (IS_ERR(data)) {
 			err = PTR_ERR(data);
@@ -1390,6 +1421,17 @@ static struct dev_pm_ops stm_nand_flex_pm_ops = {
 static struct dev_pm_ops stm_nand_flex_pm_ops;
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id nand_flex_match[] = {
+	{
+		.compatible = "st,nand-flex",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, nand_flex_match);
+#endif
+
 static struct platform_driver stm_nand_flex_driver = {
 	.probe		= stm_nand_flex_probe,
 	.remove		= stm_nand_flex_remove,
@@ -1397,6 +1439,7 @@ static struct platform_driver stm_nand_flex_driver = {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
 		.pm	= &stm_nand_flex_pm_ops,
+		.of_match_table = of_match_ptr(nand_flex_match),
 	},
 };
 

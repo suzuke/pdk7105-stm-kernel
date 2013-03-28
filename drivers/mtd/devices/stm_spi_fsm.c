@@ -20,6 +20,7 @@
 #include <linux/platform_device.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
+#include <linux/of.h>
 
 #include "stm_spi_fsm.h"
 
@@ -2111,16 +2112,63 @@ static struct flash_info *__devinit fsm_jedec_probe(struct stm_spi_fsm *fsm)
 	return NULL;
 }
 
+#ifdef CONFIG_OF
+static void *stm_fsm_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_spifsm_data *data;
+	struct device_node *tp;
+	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	of_property_read_string(np, "flash-name",
+				(const char **)&data->name);
+	of_property_read_u32(np, "max-freq", &data->max_freq);
+
+	data->pads = stm_of_get_pad_config(&pdev->dev);
+
+	tp = of_parse_phandle(np, "caps-handle", 0);
+	data->capabilities.dual_mode = of_property_read_bool(tp, "dual-mode");
+
+	data->capabilities.quad_mode =	of_property_read_bool(tp, "quad-mode");
+	data->capabilities.addr_32bit = of_property_read_bool(tp, "addr-32bit");
+	data->capabilities.no_poll_mode_change =
+			of_property_read_bool(tp, "no-poll-mode-change");
+	data->capabilities.no_clk_div_4 =
+			of_property_read_bool(tp, "no-clk-div-4");
+	data->capabilities.no_sw_reset =
+			of_property_read_bool(tp, "no-sw-reset");
+	data->capabilities.dummy_on_write =
+			of_property_read_bool(tp, "dummy-on-write");
+	data->capabilities.no_read_repeat =
+			of_property_read_bool(tp, "no-read-repeat");
+	data->capabilities.no_write_repeat =
+			of_property_read_bool(tp, "no-write-repeat");
+	if (of_property_read_bool(tp, "no-read-status"))
+		data->capabilities.read_status_bug = spifsm_no_read_status;
+	if (of_property_read_bool(tp, "read-status-clkdiv4"))
+		data->capabilities.read_status_bug =
+					spifsm_read_status_clkdiv4;
+
+	return data;
+}
+#else
+static void *stm_fsm_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 /*
  * STM SPI FSM driver setup
  */
 static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 {
-	struct stm_plat_spifsm_data *data = pdev->dev.platform_data;
+	struct stm_plat_spifsm_data *data;
 	struct stm_spi_fsm *fsm;
 	struct resource *resource;
 	int ret = 0;
 	struct flash_info *info;
+	struct mtd_part_parser_data ppdata;
 
 	/* Allocate memory for the driver structure (and zero it) */
 	fsm = kzalloc(sizeof(struct stm_spi_fsm), GFP_KERNEL);
@@ -2130,6 +2178,11 @@ static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 	}
 
 	fsm->dev = &pdev->dev;
+
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_fsm_dt_get_pdata(pdev);
+
+	data = pdev->dev.platform_data;
 
 	/* Platform capabilities (Board/SoC/IP) */
 	fsm->capabilities = data->capabilities;
@@ -2261,7 +2314,10 @@ static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 		fsm->mtd.size = 16 * 1024 * 1024;
 	}
 
-	ret = mtd_device_parse_register(&fsm->mtd, NULL, NULL,
+	if (pdev->dev.of_node)
+		ppdata.of_node = of_parse_phandle(pdev->dev.of_node,
+							"partitions", 0);
+	ret = mtd_device_parse_register(&fsm->mtd, NULL, &ppdata,
 					data ? data->parts : NULL,
 					data ? data->nr_parts : 0);
 	if (!ret)
@@ -2301,6 +2357,16 @@ static int __devexit stm_spi_fsm_remove(struct platform_device *pdev)
 
 	return 0;
 }
+#ifdef CONFIG_OF
+static struct of_device_id spi_fsm_match[] = {
+	{
+		.compatible = "st,spi-fsm",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, spi_fsm_match);
+#endif
 
 #ifdef CONFIG_HIBERNATION
 static int stm_spi_fsm_restore(struct device *dev)
@@ -2326,6 +2392,7 @@ static struct platform_driver stm_spi_fsm_driver = {
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(spi_fsm_match),
 #ifdef CONFIG_HIBERNATION
 		.pm	= &stm_spi_fsm_pm_ops,
 #endif

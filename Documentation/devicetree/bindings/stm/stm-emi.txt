@@ -1,0 +1,33 @@
+
+===============================================================================
+			stm emi
+===============================================================================
+
+Required properties:
+- compatible : "st,emi".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- st,device-onfig	is the standard way to pass device config to drivers.
+
+
+Example:
+
+	emi {
+		#interrupt-cells = <3>;
+        #address-cells = <1>;
+        #size-cells = <1>;
+		compatible	= "st,emi";
+		reg		=	<0 0x10000000>,
+					<0xfea30000 0x874>;
+		reg-names = "emi memory", "emi4 config";
+		device-config = <&emi_dev_config>;
+		emi_dev_config: emi-dev-config {
+			#stm-sysconf-cells = <4>;
+			device-seqs = <&emi_dev_seqs>;
+			sysconfs{
+				EMI_PWR = <&sysconf 742 0 0>;
+				EMI_ACK = <&sysconf 766 0 0>;
+			};
+		};
+	};

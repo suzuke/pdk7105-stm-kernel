@@ -59,9 +59,18 @@ endif
 
 targets += $(dtb-y)
 
+dtc-tmp = $(subst $(comma),_,$(dot-target).dts)
+
+quiet_cmd_dtc_cpp = DTC+CPP $@
+cmd_dtc_cpp = $(CPP) $(cpp_flags) -D__DTS__ -undef -x assembler-with-cpp -o $(dtc-tmp) $< ; \
+	$(objtree)/scripts/dtc/dtc -O dtb -o $@ -b 0 $(DTC_FLAGS) $(dtc-tmp)
+
 # Rule to build device tree blobs
 $(obj)/%.dtb: $(src)/dts/%.dts FORCE
 	$(call if_changed_dep,dtc)
+
+$(obj)/%.dtb: $(src)/dts/%.dtsp FORCE
+	$(call if_changed_dep,dtc_cpp)
 
 $(obj)/dtbs: $(addprefix $(obj)/, $(dtb-y))
 

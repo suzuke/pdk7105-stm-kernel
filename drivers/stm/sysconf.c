@@ -10,6 +10,8 @@
 #include <linux/module.h>
 #include <linux/bootmem.h>
 #include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/list.h>
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>
@@ -41,6 +43,7 @@ struct sysconf_field {
 
 struct sysconf_group {
 	void __iomem *base;
+	int	start;
 	const char *name;
 	int (*reg_name)(char *name, int size, int group, int num);
 	struct sysconf_block *block;
@@ -50,6 +53,7 @@ struct sysconf_block {
 	void __iomem *base;
 	unsigned long size;
 	struct platform_device *pdev;
+	struct device_node *of_node;
 };
 
 static int sysconf_blocks_num;
@@ -431,7 +435,150 @@ subsys_initcall(sysconf_debugfs_init);
 
 #endif
 
+#ifdef CONFIG_OF
 
+static struct of_device_id stm_sysconf_match[] = {
+	{
+		.compatible = "st,sysconf",
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(of, stm_sysconf_match);
+
+static int of_get_sysconf_group(struct device_node *sysconf_groups,
+			int sysconf_num, int *group, int *num)
+{
+	const __be32 *ip, *list;
+	int k, group_cells;
+	struct property *sysconf_group;
+	int nr_groups = 0;
+
+	ip = of_get_property(sysconf_groups,
+				"#sysconf-group-cells", NULL);
+	group_cells = be32_to_cpup(ip);
+	sysconf_group = of_find_property(sysconf_groups,
+				"sysconf-groups", NULL);
+	nr_groups = sysconf_group->length/(sizeof(u32) * group_cells);
+	list = sysconf_group->value;
+	for (k = 0; k < nr_groups; k++) {
+		int start = be32_to_cpup(list++);
+		int end = be32_to_cpup(list++);
+		*group = be32_to_cpup(list++);
+		if (sysconf_num >= start && sysconf_num <= end) {
+			*num = sysconf_num - start;
+			return 0;
+		}
+	}
+	return -ENODATA;
+}
+
+#define STM_OF_SYCONF_CELLS	(5)
+struct sysconf_field *stm_of_sysconf_claim(struct device_node *np,
+				const char *prop)
+{
+	const __be32 *list;
+	const struct property *pp;
+	phandle phandle;
+	struct device_node *sysconf_groups;
+	int lsb, msb, group = 0, num = 0, sysconf_num;
+
+	pp = of_find_property(np, prop, NULL);
+	if (!pp)
+		return NULL;
+
+	if (pp->length != ((STM_OF_SYCONF_CELLS - 1) * sizeof(u32)))
+		return NULL;
+
+	list = pp ? pp->value : NULL;
+
+	/* sysconf group */
+	phandle = be32_to_cpup(list++);
+	sysconf_groups = of_find_node_by_phandle(phandle);
+	sysconf_num = be32_to_cpup(list++);
+	if (of_get_sysconf_group(sysconf_groups, sysconf_num, &group, &num))
+		return NULL;
+	lsb = be32_to_cpup(list++);
+	msb = be32_to_cpup(list++);
+
+	return sysconf_claim(group, num, lsb, msb, pp->name);
+}
+EXPORT_SYMBOL(stm_of_sysconf_claim);
+
+
+static int of_sysconf_reg_name(char *name, int size, int group, int num)
+{
+	return snprintf(name, size, "SYSCONF%d (%s)",
+		 sysconf_groups[group].start + num, sysconf_groups[group].name);
+}
+
+void __init of_sysconf_early_init()
+{
+	struct device_node *np, *child = NULL;
+	int i;
+	np = of_find_node_by_path("/sysconfs");
+	if (!np)
+		return;
+
+	for_each_child_of_node(np, child) {
+		if (of_match_node(stm_sysconf_match, child)) {
+			struct device_node *grp = NULL;
+			for_each_child_of_node(child, grp)
+				sysconf_groups_num++;
+			sysconf_blocks_num++;
+		}
+	}
+
+	sysconf_blocks = alloc_bootmem(sizeof(*sysconf_blocks) *
+			sysconf_blocks_num);
+	if (!sysconf_blocks)
+		panic("Failed to allocate memory for sysconf blocks!");
+
+	sysconf_groups = alloc_bootmem(sizeof(*sysconf_groups)
+							* sysconf_groups_num);
+	if (!sysconf_groups)
+		panic("Failed to allocate memory for sysconf groups!\n");
+
+	i = 0;
+	child = NULL;
+	for_each_child_of_node(np, child) {
+		struct resource res;
+		struct sysconf_block *block;
+		struct device_node *grp = NULL;
+
+		if (!of_match_node(stm_sysconf_match, child))
+			continue;
+
+		block = &sysconf_blocks[i++];
+		block->of_node = child;
+		of_address_to_resource(child, 0, &res);
+		block->size = resource_size(&res);
+		block->base = ioremap(res.start, block->size);
+		if (!block->base)
+			panic("Unable to ioremap %s registers!",
+			      dev_name(&block->pdev->dev));
+
+		for_each_child_of_node(child, grp) {
+			struct sysconf_group *group;
+			u32 group_nr, offset;
+			of_property_read_u32(grp, "group", &group_nr);
+			BUG_ON(group_nr < 0 || group_nr >= sysconf_groups_num);
+
+			of_property_read_u32(grp, "offset", &offset);
+
+			group = &sysconf_groups[group_nr];
+			BUG_ON(group->base != NULL);
+			group->base = block->base + offset;
+			of_property_read_u32(grp, "start",
+					&group->start);
+			of_property_read_string(grp, "group-name",
+					&group->name);
+			group->reg_name = of_sysconf_reg_name;
+			group->block = block;
+		}
+
+	}
+}
+#endif
 
 /* This is called early to allow board start up code to use sysconf
  * registers (in particular console devices). */
@@ -516,10 +663,17 @@ static int sysconf_probe(struct platform_device *pdev)
 
 	/* Confirm that the device has been initialized earlier */
 	for (i = 0; i < sysconf_blocks_num; i++) {
+#ifdef CONFIG_OF
+		if (sysconf_blocks[i].of_node == pdev->dev.of_node) {
+			result = 0;
+			break;
+		}
+#else
 		if (sysconf_blocks[i].pdev == pdev) {
 			result = 0;
 			break;
 		}
+#endif
 	}
 
 	if (result == 0) {
@@ -546,6 +700,7 @@ static struct platform_driver sysconf_driver = {
 	.driver	= {
 		.name	= DRIVER_NAME,
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(stm_sysconf_match),
 	},
 };
 

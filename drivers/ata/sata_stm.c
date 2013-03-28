@@ -35,6 +35,7 @@
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_transport.h>
 #include <linux/libata.h>
+#include <linux/of.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
 #include <linux/stm/miphy.h>
@@ -1178,9 +1179,32 @@ static int stm_sata_AHB_boot(struct device *dev)
 	return 0;
 }
 
+void *stm_sata_of_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_plat_sata_data *data;
+	if (!np)
+		return pdev->dev.platform_data;
+
+	data = pdev->dev.platform_data;
+	if (!data)
+		data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	data->device_config = stm_of_get_dev_config(&pdev->dev);
+	of_property_read_u32(np, "st,phy-init", &data->phy_init);
+	of_property_read_u32(np, "st,pc-glue", &data->pc_glue_logic_init);
+	of_property_read_u32(np, "st,port", &data->port_num);
+	of_property_read_u32(np, "st,miphy-num", &data->miphy_num);
+	data->oob_wa = of_get_property(np, "stm.oob-wa", NULL) ? 1 : 0;
+	data->amba_config = stm_of_get_amba_config(&pdev->dev);
+
+	pdev->dev.platform_data = data;
+	return data;
+}
+
 static int __devinit stm_sata_probe(struct platform_device *pdev)
 {
-	struct stm_plat_sata_data *sata_private_info = pdev->dev.platform_data;
+	struct stm_plat_sata_data *sata_private_info;
 	struct device *dev = &pdev->dev;
 	struct resource *mem_res;
 	unsigned long phys_base, phys_size;
@@ -1195,6 +1219,8 @@ static int __devinit stm_sata_probe(struct platform_device *pdev)
 
 
 	printk(KERN_DEBUG DRV_NAME " version " DRV_VERSION "\n");
+
+	sata_private_info = stm_sata_of_get_pdata(pdev);
 
 	host = ata_host_alloc_pinfo(dev, ppi, 1);
 	if (!host)
@@ -1483,11 +1509,23 @@ static struct dev_pm_ops stm_sata_pm = {
 static struct dev_pm_ops stm_sata_pm;
 #endif
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_sata_match[] = {
+	{
+		.compatible = "st,sata",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_sata_match);
+#endif
+
 static struct platform_driver stm_sata_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
 		.pm = &stm_sata_pm,
+		.of_match_table = of_match_ptr(stm_sata_match),
 	},
 	.probe = stm_sata_probe,
 	.remove = stm_sata_remove,

@@ -21,6 +21,10 @@
 #include <mach/hardware.h>
 #endif
 
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
 /*
  * - 3 SSCs in the SBC
  * - 2 SSCs standalone @ 0xFE2A8000
@@ -276,7 +280,9 @@ void __init stig125_configure_lirc(struct stig125_lirc_config *config)
 	BUG_ON(!pad_config);
 
 	plat_data->txenabled = config->tx_enabled || config->tx_od_enabled;
-	plat_data->pads = pad_config;
+	plat_data->dev_config = kzalloc(sizeof(struct stm_device_config),
+					 GFP_KERNEL);
+	plat_data->dev_config->pad_config = pad_config;
 
 	/* IRB Enabled */
 	stm_pad_config_add_sysconf(pad_config, LPM_SYSCONF_BANK,
@@ -356,3 +362,4 @@ void __init stig125_configure_pwm(struct stig125_pwm_config *config)
 	platform_device_register(&stig125_pwm_devices);
 }
 
+#endif /* CONFIG_OF */

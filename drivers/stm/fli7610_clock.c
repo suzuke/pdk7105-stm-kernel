@@ -10,7 +10,7 @@
 #include <linux/init.h>
 #include <linux/clk.h>
 
-int __init plat_clk_alias_init(void)
+int __init fli7610_plat_clk_alias_init(void)
 {
 	clk_add_alias("cpu_clk", NULL, "CLKM_A9", NULL);
 	clk_add_alias("gpu_clk", NULL, "CLKM_GPU", NULL);

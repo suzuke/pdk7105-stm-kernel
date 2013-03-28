@@ -368,18 +368,21 @@ static struct platform_device sth205_temp = {
 	.name	= "stm-temp",
 	.id	= 0,
 	.dev.platform_data = &(struct plat_stm_temp_data) {
-		.dcorrect = { SYSCONF(140), 4, 8 },
-		.overflow = { SYSCONF(148), 9, 9 },
-		.data = { SYSCONF(148), 11, 18 },
 		.device_config = &(struct stm_device_config) {
-			.sysconfs_num = 1,
+			.sysconfs_num = 4,
 			.power = stxh205_temp_power,
 			.sysconfs = (struct stm_device_sysconf []){
 				STM_DEVICE_SYSCONF(SYSCONF(140),
 					9, 9, "TEMP_PWR"),
-				},
+				STM_DEVICE_SYSCONF(SYSCONF(140),
+					4, 8, "DCORRECT"),
+				STM_DEVICE_SYSCONF(SYSCONF(148),
+					9, 9, "OVERFLOW"),
+				STM_DEVICE_SYSCONF(SYSCONF(148),
+					11, 18, "DATA"),
 			},
 		},
+	},
 };
 
 /* SPI FSM setup ---------------------------------------------------------- */

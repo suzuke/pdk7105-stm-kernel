@@ -266,4 +266,7 @@ struct stih416_pcie_config {
 
 void stih416_configure_pcie(struct stih416_pcie_config *config);
 
+/* Clk */
+int stih416_plat_clk_init(void);
+int stih416_plat_clk_alias_init(void);
 #endif

@@ -1,0 +1,20 @@
+
+===============================================================================
+				stm temp
+===============================================================================
+
+Required properties:
+- compatible : "st,pwm".
+- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
+			resources with names. look in
+			Documentation/devicetree/bindings/resource-names.txt
+- st,calibrated  bool flag to indicate if the sensor is already calibrated.
+- st, calibration-value should be integer calibration value.
+- device-config	Standard way to pass device config to the drivers.
+
+Example:
+temp0{
+        compatible    = "st,temp", "simple-bus";
+        status = "okay";
+        device-config = <&temp_device_config>;
+    };

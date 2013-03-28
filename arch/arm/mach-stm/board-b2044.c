@@ -3,21 +3,43 @@
  *
  * Author(s): Carmelo Amoroso <carmelo.amoroso@st.com>
  *            Francesco Virlinzi <francesco.virlinzi@st.com>
+ *	Srinivas Kandagatla <srinivas.kandagatla@st.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ *
+ *****************************************************************************
+ * NOTE: THIS FILEIS AN INTERMEDIATE TRANSISSION FROM NON-DEVICE TREES
+ * TO DEVICE TREES. IDEALLY THIS FILESHOULD NOT EXIST IN FULL DEVICE TREE
+ * SUPPORTED KERNEL.
+ *
+ * WITH THE ASSUMPTION THAT SDK2 WILL MOVE TO FULL DEVICE TREES AT
+ * SOME POINT, AT WHICH THIS FILEIS NOT REQUIRED ANYMORE
+ *
+ * ALSO BOARD SUPPORT WITH THIS APPROCH IS IS DONE IN TWO PLACES
+ * 1. IN THIS FILE
+ * 2. arch/arm/boot/dts/b2000.dtp
+ *	THIS FILECONFIGURES ALL THE DRIVERS WHICH SUPPORT DEVICE TREES.
+ *
+ * please do not optimize this file or try adding any level of abstraction
+ * due to reasons above.
+ *****************************************************************************
  */
 
-#include <linux/stm/platform.h>
+#include <linux/of_platform.h>
 #include <linux/stm/stig125.h>
+#include <linux/stm/soc.h>
 
-#include <asm/mach-types.h>
+#include <linux/stm/core_of.h>
+#include <linux/stm/stm_device_of.h>
+
 #include <asm/hardware/gic.h>
-#include <asm/hardware/cache-l2x0.h>
+#include <asm/mach/time.h>
 
-#include <mach/soc-stig125.h>
+#include <mach/common-dt.h>
 #include <mach/hardware.h>
+#include <mach/soc-stig125.h>
 
 
 /* SPI support for TELSS */
@@ -53,57 +75,33 @@ static struct platform_device *b2044_devices[] __initdata = {
 	&b2044_leds,
 };
 
-static void __init b2044_init(void)
+struct of_dev_auxdata stig125_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("st,fdma", 0xfe2c0000, "stm-fdma.0", NULL),
+	OF_DEV_AUXDATA("st,fdma", 0xfe2e0000, "stm-fdma.1", NULL),
+	OF_DEV_AUXDATA("st,sdhci", 0xfe96c000, "sdhci-stm.0",
+		 &mmc_platform_data),
+	OF_DEV_AUXDATA("st,miphy-mp", 0xfefb2000, "st,miphy-mp.0",
+		 &pcie_mp_platform_data),
+	OF_DEV_AUXDATA("st,miphy-mp", 0xfefb6000, "st,miphy-mp.1",
+		 &pcie_mp_platform_data),
+	{}
+};
+
+static void __init b2044_dt_init(void)
 {
-	platform_add_devices(b2044_devices, ARRAY_SIZE(b2044_devices));
 
-	stig125_configure_lirc(&(struct stig125_lirc_config) {
-			.rx_mode = stig125_lirc_rx_mode_ir, });
+	of_platform_populate(NULL, of_default_bus_match_table,
+				 stig125_auxdata_lookup, NULL);
 
-	stig125_configure_usb(0);
-	stig125_configure_usb(1);
-	stig125_configure_usb(2);
 	stig125_configure_fp();
-
-#ifdef CONFIG_MACH_STM_B2044_B2048_EMMC
-	stig125_configure_mmc(1);
-#elif defined(CONFIG_MACH_STM_B2044_B2048_SLOT)
-	stig125_configure_mmc(0);
-#endif
-
-	stig125_configure_miphy(&(struct stig125_miphy_config){
-			.id = 0,
-			.mode = SATA_MODE,
-			.iface = UPORT_IF,
-			});
-
-	sti125_configure_sata(0);
-
-	stig125_configure_miphy(&(struct stig125_miphy_config){
-			.id = 1,
-			.mode = SATA_MODE,
-			.iface = UPORT_IF,
-			});
-
-	sti125_configure_sata(1);
 
 	stig125_configure_miphy(&(struct stig125_miphy_config){
 			.id = 2,
 			.mode = PCIE_MODE,
 			.iface = UPORT_IF,
 			});
-
 	stig125_configure_pcie(1);
 	stig125_configure_pcie(2);
-
-	/* SPI support for TELSS */
-	stig125_configure_ssc_spi(STIG125_TELSS_SSC,
-			&(struct stig125_ssc_config) {.spi_chipselect = NULL});
-	spi_register_board_info(spi_core, ARRAY_SIZE(spi_core));
-
-	stig125_configure_ssc_i2c(STIG125_HDMI_SSC, 100);
-	stig125_configure_ssc_i2c(STIG125_FE_SSC, 100);
-	stig125_configure_ssc_i2c(STIG125_BE_SSC, 100);
 
 	stig125_configure_audio(&(struct stig125_audio_config) {
 			.uni_player_1_pcm_mode =
@@ -119,28 +117,30 @@ static void __init b2044_init(void)
 #endif
 }
 
-static void __init b2044_init_early(void)
+/* Setup the Timer */
+static void __init stig125_of_timer_init(void)
 {
-	printk(KERN_INFO "STMicroelectronics STiG125 (Barcelona) MBoard initialisation\n");
-
-	stig125_early_device_init();
-
-	stig125_configure_asc(STIG125_SBC_ASC(0), &(struct stig125_asc_config) {
-			.hw_flow_control = 0,
-			.is_console = 1,
-			.force_m1 = 1, });
+	stig125_plat_clk_init();
+	stig125_plat_clk_alias_init();
+	stm_of_timer_init();
 }
 
-MACHINE_START(STM_B2044, "STMicroelectronics B2044 - STiG125 board")
-	.atag_offset    = 0x100,
+struct sys_timer stig125_of_timer = {
+	.init	= stig125_of_timer_init,
+};
+
+
+static const char *stig125_dt_match[] __initdata = {
+	"st,stig125-b2044",
+	NULL
+};
+
+DT_MACHINE_START(STM, "StiG125 SoC with Flattened Device Tree")
 	.map_io		= stig125_map_io,
-#ifdef CONFIG_SPARSE_IRQ
-	.nr_irqs        = NR_IRQS_LEGACY,
-#endif
-	.init_early	= b2044_init_early,
-	.init_irq       = stig125_gic_init_irq,
-	.timer		= &stig125_timer,
+	.init_early	= core_of_early_device_init,
+	.timer		= &stig125_of_timer,
 	.handle_irq	= gic_handle_irq,
-	.init_machine	= b2044_init,
-	.restart        = stig125_reset,
+	.init_machine	= b2044_dt_init,
+	.init_irq	= stm_of_gic_init,
+	.dt_compat	= stig125_dt_match,
 MACHINE_END

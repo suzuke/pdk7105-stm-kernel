@@ -1,5 +1,6 @@
 obj-y				:= core.o
 obj-$(CONFIG_SMP)		+= platsmp.o headsmp.o
+obj-$(CONFIG_OF)		+= common-dt.o
 obj-$(CONFIG_MACH_STM_FLI7610)	+= soc-fli7610.o mpe41.o
 obj-$(CONFIG_MACH_STM_STIG125)	+= soc-stig125.o
 obj-$(CONFIG_MACH_STM_STIH415)	+= soc-stih415.o mpe41.o
@@ -13,6 +14,9 @@ ifdef CONFIG_MACH_STM_B2020
 obj-$(CONFIG_MACH_STM_STIH415)	+= board-b2020.o
 obj-$(CONFIG_MACH_STM_STIH416)	+= board-b2020_h416.o
 endif
+obj-$(CONFIG_MACH_STM_STIG125_BOARD)	+= board-stig125-dt.o
+obj-$(CONFIG_MACH_STM_STIH415_BOARD)	+= board-stih415-dt.o
+obj-$(CONFIG_MACH_STM_STIH416_BOARD)	+= board-stih416-dt.o
 obj-$(CONFIG_MACH_STM_B2044)	+= board-b2044.o
 obj-$(CONFIG_MACH_STM_B2078)	+= board-b2078.o
 obj-$(CONFIG_MACH_STM_B2092)	+= board-b2092.o

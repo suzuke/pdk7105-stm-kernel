@@ -1,0 +1,120 @@
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited.
+ * Author: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+/dts-v1/;
+#include "stig125.dtsi"
+
+/ {
+	model = "stig125 B2044";
+	compatible = "st,stig125", "st,stig125-b2044";
+	memory{
+                device_type = "memory";
+		reg = <0x00000000 0x00000000>;
+	};
+
+	chosen {
+		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                              ";
+		linux,stdout-path = &asc7;
+	};
+
+        aliases {
+                ttyAS0 = &asc7;
+
+		i2c0 = &stm_i2c13;
+		i2c1 = &stm_i2c7;
+		i2c2 = &stm_i2c1;
+		i2c3 = &stm_i2c8;
+
+		sata0 = &stm_ahci0;
+		sata1 = &stm_ahci1;
+
+		usb0 = &usb0;
+		usb1 = &usb1;
+		usb2 = &usb2;
+		mmc0 = &sdhci0;
+        };
+
+	soc {
+		/* USB's */
+
+		usb0: usb-0{
+			status = "okay";
+		};
+
+		usb1: usb-1{
+			status = "okay";
+		};
+
+		usb2: usb-2{
+			status = "okay";
+		};
+
+		leds {
+			compatible	= "gpio-leds";
+			fp_led {
+				#gpio-cells = <1>;
+				label	= "Front Panel LED";
+				gpios	= <&PIO25 2>;
+				linux,default-trigger	= "heartbeat";
+			};
+		};
+
+		lirc: lirc0 {
+			status = "okay";
+		};
+
+		asc7:stm-asc7{
+			status = "okay";
+		};
+
+		sdhci0:sdhci@fe96c000 {
+			status = "okay";
+			/* st,mmc-non-removable;  for eMMC on boards */
+		};
+
+		miphy0: miphy@fefb2000 {
+			status = "okay";
+			miphy-modes	= "sata";
+		};
+
+		miphy1: miphy@fefb6000 {
+			status = "okay";
+			miphy-modes	= "sata";
+		};
+
+		stm_ahci0: ahci@fefb0000 {
+			status = "okay";
+		};
+
+		stm_ahci1: ahci@fefb4000 {
+			status = "okay";
+		};
+
+		/* STIG125_FE_SSC */
+
+		stm_i2c1: i2c-stm1 {
+			status = "okay";
+		};
+
+		//STIG125_HDMI_SSC
+		stm_i2c7: i2c-stm7 {
+			status = "okay";
+		};
+
+		//STIG125_BE_SSC
+		stm_i2c8: i2c-stm8 {
+			status = "okay";
+		};
+
+		//STIG125_TELSIS_SSC
+		i2c13: i2c-stm13 {
+			status = "okay";
+		};
+
+	};
+};

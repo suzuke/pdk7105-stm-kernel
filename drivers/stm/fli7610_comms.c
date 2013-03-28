@@ -255,15 +255,17 @@ static struct platform_device fli7610_lirc_device = {
 		.irbrxmaxperiod = 0x5000,
 		.sysclkdiv	= 1,
 		.rxpolarity	= 1,
-		.pads = &(struct stm_pad_config) {
-			.gpios_num = 1,
-			.gpios = (struct stm_pad_gpio []) {
-				STM_PAD_PIO_IN(8, 2, 1),
-			},
-			.sysconfs_num = 2,
-			.sysconfs = (struct stm_pad_sysconf []) {
-				STM_PAD_SYSCONF(LPM_SYSCONF(1), 6, 6, 1),
-				STM_PAD_SYSCONF(LPM_SYSCONF(1), 7, 7, 0),
+		.dev_config = &(struct stm_device_config) {
+			.pad_config = &(struct stm_pad_config) {
+				.gpios_num = 1,
+				.gpios = (struct stm_pad_gpio []) {
+					STM_PAD_PIO_IN(8, 2, 1),
+				},
+				.sysconfs_num = 2,
+				.sysconfs = (struct stm_pad_sysconf []) {
+					STM_PAD_SYSCONF(LPM_SYSCONF(1), 6, 6, 1),
+					STM_PAD_SYSCONF(LPM_SYSCONF(1), 7, 7, 0),
+				},
 			},
 		},
 		.rxuhfmode = 0,

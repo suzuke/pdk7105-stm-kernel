@@ -13,6 +13,7 @@
 #include <linux/delay.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/of.h>
 #include <linux/stm/amba_bridge.h>
 
 struct stm_amba_bridge {
@@ -321,3 +322,89 @@ out:
 	return plug;
 }
 EXPORT_SYMBOL(stm_amba_bridge_create);
+
+#ifdef CONFIG_OF
+/**
+ *	stm_of_get_amba_config - parse amba config from a device pointer.
+ *
+ *	returns a pointer to newly allocated amba bridge config.
+ *	User is responsible to freeing the pointer.
+ *
+ */
+struct stm_amba_bridge_config *stm_of_get_amba_config(struct device *dev)
+{
+	struct device_node *np = dev->of_node;
+	struct device_node *cn = of_parse_phandle(np, "amba-config", 0);
+	struct stm_amba_bridge_config *config;
+	if (!cn)
+		return NULL;
+
+	config = devm_kzalloc(dev, sizeof(*config), GFP_KERNEL);
+
+	if (of_get_property(cn, "bridge_type2", NULL))
+		config->type = stm_amba_type2;
+	else
+		config->type = stm_amba_type1;
+
+	if (of_get_property(cn, "max_opcode_LD4_ST4", NULL))
+		config->max_opcode = stm_amba_opc_LD4_ST4;
+
+	if (of_get_property(cn, "max_opcode_LD8_ST8", NULL))
+		config->max_opcode = stm_amba_opc_LD8_ST8;
+
+	if (of_get_property(cn, "max_opcode_LD16_ST16", NULL))
+		config->max_opcode = stm_amba_opc_LD16_ST16;
+
+	if (of_get_property(cn, "max_opcode_LD32_ST32", NULL))
+		config->max_opcode = stm_amba_opc_LD32_ST32;
+
+	if (of_get_property(cn, "max_opcode_LD64_ST64", NULL))
+		config->max_opcode = stm_amba_opc_LD64_ST64;
+
+	of_property_read_u32(cn, "chunks_in_msg", &config->chunks_in_msg);
+
+	of_property_read_u32(cn, "packets_in_chunk",
+					&config->packets_in_chunk);
+
+	if (of_get_property(cn, "write_posting", NULL))
+		config->write_posting = stm_amba_write_posting_enabled;
+	else
+		config->write_posting = stm_amba_write_posting_disabled;
+
+	of_property_read_u32(cn, "req_timeout",
+					&config->type1.req_timeout);
+
+	if (of_get_property(cn, "sd_config_missing", NULL))
+		config->type2.sd_config_missing = 1;
+
+	of_property_read_u32(cn, "threshold", &config->type2.threshold);
+
+	if (of_get_property(cn, "req_notify_cell_based", NULL))
+		config->type2.req_notify = stm_amba_ahb_cell_based;
+	else
+		config->type2.req_notify = stm_amba_ahb_burst_based;
+
+	if (of_get_property(cn, "complete_on_error", NULL))
+		config->type2.cont_on_error = stm_amba_complete_transaction;
+	else
+		config->type2.cont_on_error = stm_amba_abort_transaction;
+
+	if (of_get_property(cn, "msg_merge", NULL))
+		config->type2.msg_merge = stm_amba_msg_merge_enabled;
+	else
+		config->type2.msg_merge = stm_amba_msg_merge_disabled;
+
+	if (of_get_property(cn, "cell_based_trigger", NULL))
+		config->type2.trigger_mode = stm_amba_stbus_cell_based;
+	else
+		config->type2.trigger_mode = stm_amba_stbus_threshold_based;
+
+	if (of_get_property(cn, "read_ahead", NULL))
+		config->type2.read_ahead = stm_amba_read_ahead_enabled;
+	else
+		config->type2.read_ahead = stm_amba_read_ahead_disabled;
+
+	return config;
+}
+EXPORT_SYMBOL(stm_of_get_amba_config);
+#endif

@@ -953,7 +953,7 @@ static enum miphy_mode stx7108_miphy_modes[2];
 static struct sysconf_field *sc_pcie_mp_select;
 static struct sysconf_field *sc_miphy_reset[MAX_PORTS];
 
-static void stx7108_pcie_mp_select(int port)
+static void stx7108_pcie_mp_select(void *data, int port)
 {
 	BUG_ON(port < 0 || port > 1);
 	sysconf_write(sc_pcie_mp_select, port);
@@ -1056,7 +1056,7 @@ static int __init stx7108_configure_miphy_uport(void)
 		/* Now switch to Phy interface to SATA HC not PCIe HC */
 		sysconf_write(sc_sata_pcie_sel, 1);
 		/* Select the Uport to use MiPHY1 */
-		stx7108_pcie_mp_select(1);
+		stx7108_pcie_mp_select(NULL, 1);
 		/* Take SATA1 HC out of reset - rst_per_n[30] */
 		sysconf_write(sc_sata1_hc_reset, 1);
 		/* MiPHY1 needs to be using the MiPHY0 reference clock */
@@ -1124,7 +1124,7 @@ static void stx7108_restart_sata(int port)
 	sysconf_write(sc_miphy_reset[port], 0);
 
 	if (port == 1)
-		stx7108_pcie_mp_select(1);
+		stx7108_pcie_mp_select(NULL, 1);
 
 	msleep(1);
 
