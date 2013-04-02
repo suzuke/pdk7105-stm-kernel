@@ -103,7 +103,7 @@
 		};
 		/* USB's */
 
-		usb0: usb@fe1000000{
+		usb0: usb@fe100000{
 			status = "okay";
 		};
 

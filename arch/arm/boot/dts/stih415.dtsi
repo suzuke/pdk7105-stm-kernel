@@ -933,7 +933,7 @@
 			threshold		=	<128>;
 		};
 
-		usb0: usb@fe1000000{
+		usb0: usb@fe100000{
 			compatible	= "st,usb", "simple-bus";
 			status = "disabled";
 			amba-config		= <&usb_amba_config>;
