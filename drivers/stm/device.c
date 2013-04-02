@@ -343,15 +343,18 @@ int stm_of_run_seq(struct stm_device_state *state, struct device_node *seq)
 					pclk = clk_get(NULL, pclk_name);
 					if (IS_ERR(pclk))
 						break;
-					if (!prate && clk_set_rate(pclk, prate))
-						break;
+
+					if (prate)
+						clk_set_rate(pclk, prate);
 
 					clk_set_parent(clk, pclk);
 					clk_prepare_enable(clk);
 					clk_put(pclk);
 				}
-				if (!rate && clk_set_rate(clk, rate))
-					break;
+
+				if (rate)
+					clk_set_rate(clk, rate);
+
 				clk_put(clk);
 			}
 		}
