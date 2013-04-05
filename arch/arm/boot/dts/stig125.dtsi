@@ -689,6 +689,7 @@
         aliases {
 		fdma0 = &fdma0;
 		fdma1 = &fdma1;
+		fdma2 = &fdma2;
 		fdmaxbar0 = &fdmaxbar;
 	};
 
@@ -933,6 +934,19 @@
 			xbar = <0>;
 		};
 
+		fdma2:fdma@feb80000{
+			#interrupt-cells = <3>;
+	                #address-cells = <1>;
+	                #size-cells = <1>;
+			interrupt-parent = <&intc>;
+			compatible	= "st,fdma", "simple-bus";
+			reg		= <0xfeb80000 0x20000>;
+			interrupts	=  <0 4 0>;
+			hw-conf = <&fdma_hw_config>;
+			fw-regs = <&fdma_fw_regs>;
+			xbar = <0>;
+		};
+
 		fdmaxbar: fdma-xbar@fe96a000{
 			#interrupt-cells = <3>;
 	                #address-cells = <1>;
@@ -940,7 +954,7 @@
 			compatible	= "st,fdma-xbar", "simple-bus";
 			reg		= <0xfe96a000 0x1000>;
 			first-fdma	= <0>;
-			last-fdma	= <1>;
+			last-fdma	= <2>;
 		};
 
 	/* temp */

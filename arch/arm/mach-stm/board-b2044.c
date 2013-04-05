@@ -78,6 +78,7 @@ static struct platform_device *b2044_devices[] __initdata = {
 struct of_dev_auxdata stig125_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("st,fdma", 0xfe2c0000, "stm-fdma.0", NULL),
 	OF_DEV_AUXDATA("st,fdma", 0xfe2e0000, "stm-fdma.1", NULL),
+	OF_DEV_AUXDATA("st,fdma", 0xfeb80000, "stm-fdma.2", NULL),
 	OF_DEV_AUXDATA("st,sdhci", 0xfe96c000, "sdhci-stm.0",
 		 &mmc_platform_data),
 	OF_DEV_AUXDATA("st,miphy-mp", 0xfefb2000, "st,miphy-mp.0",
