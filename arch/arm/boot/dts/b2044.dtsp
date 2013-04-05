@@ -37,6 +37,8 @@
 		usb1 = &usb1;
 		usb2 = &usb2;
 		mmc0 = &sdhci0;
+
+		spi0 = &telss_spi0;
         };
 
 	soc {
@@ -116,5 +118,8 @@
 			status = "okay";
 		};
 
+		telss_spi0: telss-spi0{
+			status = "okay";
+		};
 	};
 };

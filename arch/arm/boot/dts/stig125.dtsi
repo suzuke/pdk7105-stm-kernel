@@ -691,6 +691,7 @@
 		fdma1 = &fdma1;
 		fdma2 = &fdma2;
 		fdmaxbar0 = &fdmaxbar;
+
 	};
 
 	soc {
@@ -1686,44 +1687,45 @@
 		};
 
 		/* spi_on SBC */
-		spi10: spi-stm10{
+		sbc_spi0: sbc-spi0{
 			compatible	= "st,spi", "simple-bus";
 			status = "disabled";
 			reg		= <0xfed40000 0x110>;
 			interrupts	=  <0 139 0>;
 			st,dev-clk	= "sbc_comms_clk";
 			padcfg-names= "default";
-			padcfg-0 	= <&padcfg_spi10>;
+			padcfg-0 	= <&padcfg_sbc_spi0>;
 		};
 
-		spi11: spi-stm11{
+		sbc_spi1: sbc-spi1{
 			compatible	= "st,spi", "simple-bus";
 			status = "disabled";
 			reg		= <0xfed41000 0x110>;
 			interrupts	=  <0 140 0>;
 			st,dev-clk	= "sbc_comms_clk";
 			padcfg-names= "default";
-			padcfg-0 	= <&padcfg_spi11>;
+			padcfg-0 	= <&padcfg_sbc_spi1>;
 		};
 
-		spi12: spi-stm12{
+		sbc_spi2: sbc-spi2{
 			compatible	= "st,spi", "simple-bus";
 			status = "disabled";
-			reg		= <0xfeba7000 0x110>;
+			reg		= <0xfed42000 0x110>;
 			interrupts	=  <0 141 0>;
-			st,dev-clk	= "telsis_comms_clk";
+			st,dev-clk	= "sbc_comms_clk";
 			padcfg-names= "default";
-			padcfg-0 	= <&padcfg_spi12>;
+			padcfg-0 	= <&padcfg_sbc_spi2>;
 		};
 
 		/* spi in TELSIS */
-		spi13: spi-stm13{
+		telss_spi0: telss-spi0{
+			compatible	= "st,spi", "simple-bus";
 			status = "disabled";
-			reg		= <0xfe542000 0x110>;
-			interrupts	=  <0 208 0>;
-			st,dev-clk	= "sbc_comms_clk";
-			padcfg-names= "default";
-			padcfg-0 	= <&padcfg_spi13>;
+			reg		= <0xfeba7000 0x110>;
+			interrupts	=  <0 185 0>;
+			st,dev-clk	= "telsis_comms_clk";
+			padcfg-names	= "default";
+			padcfg-0 	= <&padcfg_telss_spi0>;
 		};
 
 		pwm0: pwm-0{

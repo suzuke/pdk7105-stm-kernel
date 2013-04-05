@@ -362,8 +362,8 @@
 			};
 		};
 
-		spi10 {
-			padcfg_spi10: spi10 {
+		sbc_spi0 {
+			padcfg_sbc_spi0: sbc_spi0 {
 				st,pins {
 					SCL = <&PIO26 0 BIDIR ALT1 >;
 					SDA = <&PIO26 1 BIDIR ALT1 >;
@@ -371,8 +371,8 @@
 				};
 			};
 		};
-		spi11 {
-			padcfg_spi11: spi11 {
+		sbc_spi1 {
+			padcfg_sbc_spi1: sbc_spi1 {
 				st,pins {
 					SCL = <&PIO24 5 BIDIR ALT2 >;
 					SDA = <&PIO24 4 BIDIR ALT2 >;
@@ -380,8 +380,8 @@
 				};
 			};
 		};
-		spi12 {
-			padcfg_spi12: spi12 {
+		sbc_spi2 {
+			padcfg_sbc_spi2: sbc_spi2 {
 				st,pins {
 					SCL = <&PIO25 2 BIDIR ALT2 >;
 					SDA = <&PIO25 1 BIDIR ALT2 >;
@@ -389,12 +389,12 @@
 				};
 			};
 		};
-		spi13 {
-			padcfg_spi13: spi13 {
+		telss_spi0 {
+			padcfg_telss_spi0: telss_spi0 {
 				st,pins {
-					SCL = <&PIO16 0 BIDIR ALT1 >;
-					SDA = <&PIO16 1 BIDIR ALT1 >;
-					SDO = <&PIO16 2 BIDIR ALT1 >;
+					SCL = <&PIO16 0 OUT ALT1 >;
+					SDA = <&PIO16 1 OUT ALT1 >;
+					SDO = <&PIO16 2 IN  ALT1 >;
 				};
 			};
 		};
