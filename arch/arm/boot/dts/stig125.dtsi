@@ -686,6 +686,12 @@
 		};
 	};
 
+        aliases {
+		fdma0 = &fdma0;
+		fdma1 = &fdma1;
+		fdmaxbar0 = &fdmaxbar;
+	};
+
 	soc {
 		#interrupt-cells = <3>;
 	        #address-cells = <1>;
@@ -866,12 +872,6 @@
 		};
 
 		/* FDMA */
-
-	        aliases {
-			fdma0 = &fdma0;
-			fdma1 = &fdma1;
-			fdmaxbar0 = &fdmaxbar;
-		};
 
 		fdma_fw_regs: fdma-fw-regs{
 			fw-rev-id    = <0x10000>;
