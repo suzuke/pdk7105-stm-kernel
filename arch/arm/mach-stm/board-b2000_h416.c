@@ -95,6 +95,9 @@ static void __init b2000_dt_init(void)
 		printk(KERN_ERR "Failed to claim HDMI-Hotplug pad!\n");
 #endif
 
+	stih416_configure_audio(&(struct stih416_audio_config) {
+			.uni_player_3_spdif_enabled = 1, });
+
 	stih416_configure_keyscan(&(struct stm_keyscan_config) {
 			.num_out_pads = 4,
 			.num_in_pads = 4,
