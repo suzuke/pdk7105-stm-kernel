@@ -114,6 +114,7 @@ struct stm_fdma_device {
 	struct platform_device *pdev;
 	struct device *dev;
 	struct dma_device dma_device;
+	u32 fdma_id;
 
 	struct clk *clks[STM_FDMA_CLKS];
 	struct resource *io_res;

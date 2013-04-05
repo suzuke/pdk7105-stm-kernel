@@ -84,7 +84,7 @@ struct stm_dma_dreq_config *stm_fdma_dreq_alloc(struct stm_fdma_chan *fchan,
 
 		/* Route the dreq through the crossbar */
 		result = router->route(router, config->request_line,
-				       fdev->pdev->id, request_line);
+				       fdev->fdma_id, request_line);
 		if (result) {
 			dev_err(fdev->dev, "Error routing request line!\n");
 			goto error_dreq_route;

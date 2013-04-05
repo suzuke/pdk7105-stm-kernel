@@ -1085,6 +1085,8 @@ void stm_fdma_parse_dt(struct platform_device *pdev,
 	fdev->fw = fw;
 	fdev->hw = hw;
 
+	fdev->fdma_id = of_alias_get_id(np, "fdma");
+
 	of_property_read_u32(np, "xbar", &xbar);
 	fdev->xbar = xbar;
 
@@ -1131,6 +1133,8 @@ void stm_fdma_parse_dt(struct platform_device *pdev,
 	of_property_read_u32(hwnp, "imem-offset", (u32 *)&hw->imem.offset);
 	of_property_read_u32(hwnp, "imem-size", (u32 *)&hw->imem.size);
 }
+
+
 /*
  * Platform driver initialise.
  */
@@ -1159,6 +1163,7 @@ static int __devinit stm_fdma_probe(struct platform_device *pdev)
 		fdev->fw = pdata->fw;
 		fdev->hw = pdata->hw;
 		fdev->xbar = pdata->xbar;
+		fdev->fdma_id = pdev->id;
 	} else {
 		stm_fdma_parse_dt(pdev, fdev);
 	}
