@@ -357,8 +357,6 @@ static void *stm_spi_dt_get_pdata(struct platform_device *pdev)
 	if (!of_property_read_string(np, "st,dev-clk", &clk_name))
 		clk_add_alias(NULL, pdev->name, (char *)clk_name, NULL);
 
-	pdev->id = of_alias_get_id(np, "spi");
-
 	data->pad_config = stm_of_get_pad_config(&pdev->dev);
 	return data;
 }
@@ -412,7 +410,12 @@ static int spi_stm_probe(struct platform_device *pdev)
 	 * limits number of GPIOs that can be used as a CS line. Sorry. */
 	master->num_chipselect =
 		sizeof(((struct spi_device *)0)->chip_select) * 256;
-	master->bus_num = pdev->id;
+
+	if (pdev->dev.of_node)
+		master->bus_num = of_alias_get_id(pdev->dev.of_node, "spi");
+	else
+		master->bus_num = pdev->id;
+
 	init_completion(&spi_stm->done);
 
 	/* Get resources */
