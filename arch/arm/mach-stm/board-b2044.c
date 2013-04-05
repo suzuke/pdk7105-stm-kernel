@@ -104,6 +104,8 @@ static void __init b2044_dt_init(void)
 	stig125_configure_pcie(1);
 	stig125_configure_pcie(2);
 
+	spi_register_board_info(spi_core, ARRAY_SIZE(spi_core));
+
 	stig125_configure_audio(&(struct stig125_audio_config) {
 			.uni_player_1_pcm_mode =
 				stig125_uni_player_1_pcm_8_channels,
