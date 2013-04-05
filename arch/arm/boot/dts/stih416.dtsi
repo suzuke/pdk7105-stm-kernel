@@ -1680,7 +1680,7 @@
 			periph-reg-int-mask = <0x17fdc>;
 
 			imem-offset = <0x18000>;
-			imem-size   = <0x6000>;
+			imem-size   = <0x8000>;
 		};
 
 		/* FDMA_0_MPE: */
