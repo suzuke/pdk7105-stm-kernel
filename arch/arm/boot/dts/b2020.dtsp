@@ -131,7 +131,7 @@
 			};
 		};
 
-		lirc: lirc@fe5180000 {
+		lirc: lirc@fe518000 {
 			status = "okay";
 		};
 
