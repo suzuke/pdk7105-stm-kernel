@@ -2720,7 +2720,7 @@ static int check_block_zero_pattern(uint8_t *buf)
 
 	return 0;
 }
-/workspace/repos/linux-3.x-srini/
+
 static int find_block_zero(struct mtd_info *mtd)
 {
 	struct stm_nand_afm_controller *afm = mtd_to_afm(mtd);
