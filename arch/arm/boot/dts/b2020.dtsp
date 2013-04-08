@@ -112,7 +112,7 @@
 		};
 
 		/* SBC PWM */
-		pwm0: pwm@fed100000{
+		pwm0: pwm@fed10000{
 			/* status = "okay";  Conflicts with eth reset line */
 			st,channel-enable = <1 0 0 0>;
 		};

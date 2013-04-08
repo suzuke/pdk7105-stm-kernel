@@ -1018,7 +1018,7 @@
 		};
 
 		/* SAS PWM MODULE */
-		pwm0: pwm@fed100000{
+		pwm0: pwm@fed10000{
 			compatible	= "st,pwm", "simple-bus";
 			reg		= <0xfed10000 0x68>;
 			interrupts	=  <0 200 0>;
@@ -1029,9 +1029,9 @@
 		};
 
 		/* SBC PWM MODULE */
-		pwm1: pwm@fe4100000{
+		pwm1: pwm@fe510000{
 			compatible	= "st,pwm", "simple-bus";
-			reg		= <0xfe410000 0x68>;
+			reg		= <0xfe510000 0x68>;
 			interrupts	=  <0 202 0>;
 			status = "disabled";
 			padcfg-names = "chan0", "chan1";

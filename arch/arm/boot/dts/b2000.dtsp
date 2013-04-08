@@ -116,7 +116,7 @@
 		};
 
 		/* SBC PWM */
-		pwm1: pwm@fe4100000{
+		pwm1: pwm@fe510000{
 			status = "okay";
 			st,channel-enable = <1 0 0 0>;
 		};
