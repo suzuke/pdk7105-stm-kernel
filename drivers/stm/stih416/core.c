@@ -818,8 +818,8 @@ static struct platform_device stih416_sysconf_devices[] = {
 void stih416_reset(char mode, const char *cmd)
 #ifndef CONFIG_OF
 {
-	struct sysconf_field *sc = sysconf_claim(SYSCONF(504),
-					0, 0, "LPM_SW_RST_N");
+	struct sysconf_field *sc = sysconf_claim(SYSCONF(500),
+					0, 0, "SBC_LPM_SW_RST_N");
 	sysconf_write(sc, 0);
 }
 #else

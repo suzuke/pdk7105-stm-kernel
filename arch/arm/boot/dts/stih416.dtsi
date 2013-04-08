@@ -1000,7 +1000,7 @@
 		ranges;
 		compatible	= "simple-bus";
 		id		= <&sysconf 9516 0 31>;
-		reset		= <&sysconf 504 0 0>;
+		reset		= <&sysconf 500 0 0>;
 		emis{
 		        #address-cells = <1>;
 		        #size-cells = <1>;
