@@ -81,6 +81,7 @@ struct of_dev_auxdata stih415_auxdata_lookup[] __initdata = {
 	{}
 };
 
+static b2000_power_on_gpio;
 static void __init b2000_dt_init(void)
 {
 	int power_on_gpio;
@@ -90,6 +91,7 @@ static void __init b2000_dt_init(void)
 		if (power_on_gpio > 0) {
 			gpio_request(power_on_gpio, "POWER_PIO");
 			gpio_direction_output(power_on_gpio, 1);
+			b2000_power_on_gpio = power_on_gpio;
 		}
 		of_node_put(np);
 	}
@@ -172,6 +174,7 @@ MACHINE_END
 
 static int b2000_hom_restore(struct stm_wakeup_devices *dev_wk)
 {
+	gpio_direction_output(b2000_power_on_gpio, 1);
 	return 0;
 }
 
