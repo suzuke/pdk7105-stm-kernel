@@ -83,9 +83,26 @@ static void mdiobus_release(struct device *d)
 	kfree(bus);
 }
 
+#ifdef CONFIG_HIBERNATION
+static int mdio_class_restore(struct device *dev)
+{
+	struct mii_bus *bus = to_mii_bus(dev);
+	if (bus->reset)
+		bus->reset(bus);
+	return 0;
+}
+
+const struct dev_pm_ops mdio_class_pm_ops = {
+	.restore = mdio_class_restore,
+};
+#endif
+
 static struct class mdio_bus_class = {
 	.name		= "mdio_bus",
 	.dev_release	= mdiobus_release,
+#ifdef CONFIG_HIBERNATION
+	.pm		= &mdio_class_pm_ops,
+#endif
 };
 
 /**
