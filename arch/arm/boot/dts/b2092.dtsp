@@ -39,6 +39,7 @@
 
 	soc {
 
+		power-on-gpio	= <&PIO4 3>;
 		spifsm:	spifsm@fe902000{
 			status		= "okay";
 			flash-name	= "n25q128";
