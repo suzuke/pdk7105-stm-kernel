@@ -32,4 +32,6 @@ enum stm_pm_notify_ret stm_pm_early_check(int irq_reason);
 
 int stm_register_pm_notify(struct stm_pm_notify *notify);
 
+int stm_unregister_pm_notify(struct stm_pm_notify *notify);
+
 #endif
