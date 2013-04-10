@@ -13,9 +13,9 @@
 	model = "Stih415 Orly B2000";
 	compatible = "st,stih415", "st,stih415-b2000";
 
-	memory{ /* Updated from targetpack */
+	memory{
                 device_type = "memory";
-		reg = <0x00000000 0x00000000>;
+		reg = <0x60000000 0x40000000>;
 	};
 
 	chosen {

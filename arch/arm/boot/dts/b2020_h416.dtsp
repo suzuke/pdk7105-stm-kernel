@@ -15,9 +15,9 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 
-	memory{ /* set from start up targetpack */
+	memory{
                 device_type = "memory";
-		reg = <0x00000000 0x00000000>;
+		reg = <0x40000000 0x80000000>;
 	};
 
 	chosen {
