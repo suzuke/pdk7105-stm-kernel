@@ -69,6 +69,7 @@ static struct stm_pad_config stih416_hdmi_hp_pad_config = {
 	},
 };
 
+static b2020_power_on_gpio = -EINVAL;
 static void __init b2020_dt_init(void)
 {
 	int power_on_gpio;
@@ -78,6 +79,7 @@ static void __init b2020_dt_init(void)
 		if (power_on_gpio > 0) {
 			gpio_request(power_on_gpio, "POWER_PIO");
 			gpio_direction_output(power_on_gpio, 1);
+			b2020_power_on_gpio = power_on_gpio;
 		}
 		of_node_put(np);
 	} else {
@@ -147,6 +149,7 @@ MACHINE_END
 
 static int b2020_hom_restore(struct stm_wakeup_devices *dev_wk)
 {
+	gpio_direction_output(b2020_power_on_gpio, 1);
 	return 0;
 }
 
