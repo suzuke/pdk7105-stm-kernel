@@ -1651,9 +1651,12 @@
 		/* FDMA */
 		fdma_fw_regs: fdma-fw-regs{
 			fw-rev-id    = <0x10000>;
+			fw-mchi-rx-nb-cur = <0x100c4>;
+			fw-mchi-rx-nb-all = <0x100c8>;
 			fw-cmd-statn = <0x10200>;
 			fw-req-ctln  = <0x10240>;
 			fw-ptrn      = <0x10800>;
+			fw-ctrln     = <0x10804>;
 			fw-cntn      = <0x10808>;
 			fw-saddrn    = <0x1080c>;
 			fw-daddrn    = <0x10810>;
@@ -1665,6 +1668,7 @@
 			slim-reg-ver      = <0x4>;
 			slim-reg-en       = <0x8>;
 			slim-reg-clk-gate = <0xc>;
+			slim-reg-slim-pc  = <0x20>;
 
 			dmem-offset = <0x10000>;
 			dmem-size   = <0x3000>;

@@ -1093,9 +1093,14 @@ void stm_fdma_parse_dt(struct platform_device *pdev,
 	/* fw */
 	fwnp = of_parse_phandle(np, "fw-regs", 0);
 	of_property_read_u32(fwnp, "fw-rev-id", (u32 *)&fw->rev_id);
+	of_property_read_u32(fwnp, "fw-mchi-rx-nb-cur",
+				(u32 *)&fw->mchi_rx_nb_cur);
+	of_property_read_u32(fwnp, "fw-mchi-rx-nb-all",
+				(u32 *)&fw->mchi_rx_nb_all);
 	of_property_read_u32(fwnp, "fw-cmd-statn", (u32 *)&fw->cmd_statn);
 	of_property_read_u32(fwnp, "fw-req-ctln", (u32 *)&fw->req_ctln);
 	of_property_read_u32(fwnp, "fw-ptrn", (u32 *)&fw->ptrn);
+	of_property_read_u32(fwnp, "fw-ctrln", (u32 *)&fw->ctrln);
 	of_property_read_u32(fwnp, "fw-cntn", (u32 *)&fw->cntn);
 	of_property_read_u32(fwnp, "fw-saddrn", (u32 *)&fw->saddrn);
 	of_property_read_u32(fwnp, "fw-daddrn", (u32 *)&fw->daddrn);
@@ -1107,6 +1112,8 @@ void stm_fdma_parse_dt(struct platform_device *pdev,
 	of_property_read_u32(hwnp, "slim-reg-en", (u32 *)&hw->slim_regs.en);
 	of_property_read_u32(hwnp, "slim-reg-clk-gate",
 				(u32 *)&hw->slim_regs.clk_gate);
+	of_property_read_u32(hwnp, "slim-reg-slim-pc",
+				(u32 *)&hw->slim_regs.slim_pc);
 
 	of_property_read_u32(hwnp, "dmem-offset", (u32 *)&hw->dmem.offset);
 	of_property_read_u32(hwnp, "dmem-size", (u32 *)&hw->dmem.size);
