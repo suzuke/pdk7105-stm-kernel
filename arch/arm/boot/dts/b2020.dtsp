@@ -36,6 +36,7 @@
 		mmc0 = &sdhci0;
         };
 	soc {
+		power-on-gpio	= <&PIO3 6>;
 		nandbch: nandbch@fe901000{
 			/* Most of the properities inherited from stih415.dtsi */
 			st,rbn-flex-connected;

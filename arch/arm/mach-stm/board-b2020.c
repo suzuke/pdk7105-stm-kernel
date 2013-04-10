@@ -73,6 +73,18 @@ struct of_dev_auxdata stih415_auxdata_lookup[] __initdata = {
 
 static void __init b2020_dt_init(void)
 {
+	int power_on_gpio;
+	struct device_node *np = of_find_node_by_path("/soc");
+	if (np) {
+		power_on_gpio = of_get_named_gpio(np, "power-on-gpio", 0);
+		if (power_on_gpio > 0) {
+			gpio_request(power_on_gpio, "POWER_PIO");
+			gpio_direction_output(power_on_gpio, 1);
+		}
+		of_node_put(np);
+	} else {
+		WARN_ON(!np);
+	}
 
 	of_platform_populate(NULL, of_default_bus_match_table,
 				 stih415_auxdata_lookup, NULL);
