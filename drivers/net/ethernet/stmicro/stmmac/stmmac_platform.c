@@ -121,27 +121,29 @@ static int stmmac_pltfr_probe(struct platform_device *pdev)
 		pr_err("%s: ERROR: memory mapping failed", __func__);
 		return -ENOMEM;
 	}
-	plat_dat = pdev->dev.platform_data;
 	if (pdev->dev.of_node) {
-		if (!plat_dat) {
-			/* no data from OF_DEV_AUXDATA */
-			plat_dat = devm_kzalloc(&pdev->dev,
-					sizeof(struct plat_stmmacenet_data),
-					GFP_KERNEL);
-			if (!plat_dat) {
-				pr_err("%s: ERROR: no memory", __func__);
-				return  -ENOMEM;
-			}
-		}
+		/* no data from OF_DEV_AUXDATA */
+		plat_dat = devm_kzalloc(&pdev->dev,
+				sizeof(struct plat_stmmacenet_data),
+				GFP_KERNEL);
+		if (!plat_dat)
+			return -ENOMEM;
+
+		if (pdev->dev.platform_data)
+			memcpy(plat_dat, pdev->dev.platform_data,
+			       sizeof(struct plat_stmmacenet_data));
 
 		ret = stmmac_probe_config_dt(pdev, plat_dat, &mac);
 		if (ret) {
 			pr_err("%s: main dt probe failed", __func__);
 			return ret;
 		}
-	}
+		if (pdev->dev.platform_data)
+			pdev->dev.platform_data = plat_dat;
+	} else
+		plat_dat = pdev->dev.platform_data;
 
-	/* Custom initialisation (if needed)*/
+	/* Custom initialisation (if needed) */
 	if (plat_dat->init) {
 		ret = plat_dat->init(pdev);
 		if (unlikely(ret))
