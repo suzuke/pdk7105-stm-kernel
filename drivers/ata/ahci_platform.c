@@ -214,7 +214,7 @@ static int __devexit ahci_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int ahci_suspend(struct device *dev)
+static int ahci_common_suspend(struct device *dev, struct pm_message pm)
 {
 	struct ahci_platform_data *pdata = dev_get_platdata(dev);
 	struct ata_host *host = dev_get_drvdata(dev);
@@ -222,6 +222,7 @@ static int ahci_suspend(struct device *dev)
 	void __iomem *mmio = hpriv->mmio;
 	u32 ctl;
 	int rc;
+	int (*fn)(struct device *dev) = NULL;
 
 	if (hpriv->flags & AHCI_HFLAG_NO_SUSPEND) {
 		dev_err(dev, "firmware update required for suspend/resume\n");
@@ -238,28 +239,48 @@ static int ahci_suspend(struct device *dev)
 	writel(ctl, mmio + HOST_CTL);
 	readl(mmio + HOST_CTL); /* flush */
 
-	rc = ata_host_suspend(host, PMSG_SUSPEND);
+	rc = ata_host_suspend(host, pm);
 	if (rc)
 		return rc;
 
-	if (pdata && pdata->suspend)
-		return pdata->suspend(dev);
+	if (pdata)
+		fn = (pm.event == PM_EVENT_SUSPEND) ? pdata->suspend : pdata->freeze;
+
+	if (fn)
+		return fn(dev);
+
 	return 0;
+}
+
+static int ahci_suspend(struct device *dev)
+{
+	return ahci_common_suspend(dev, PMSG_SUSPEND);
+}
+
+static int ahci_freeze(struct device *dev)
+{
+	return ahci_common_suspend(dev, PMSG_FREEZE);
 }
 
 static int ahci_resume(struct device *dev)
 {
 	struct ahci_platform_data *pdata = dev_get_platdata(dev);
 	struct ata_host *host = dev_get_drvdata(dev);
+	int (*fn)(struct device *dev) = NULL;
 	int rc;
 
-	if (pdata && pdata->resume) {
-		rc = pdata->resume(dev);
+	if (pdata)
+		fn = dev->power.power_state.event == PM_EVENT_SUSPEND ?
+			pdata->resume : pdata->restore;
+
+	if (fn) {
+		rc = fn(dev);
 		if (rc)
 			return rc;
 	}
 
-	if (dev->power.power_state.event == PM_EVENT_SUSPEND) {
+	if (dev->power.power_state.event == PM_EVENT_SUSPEND ||
+	    dev->power.power_state.event == PM_EVENT_HIBERNATE) {
 		rc = ahci_reset_controller(host);
 		if (rc)
 			return rc;
@@ -275,6 +296,9 @@ static int ahci_resume(struct device *dev)
 static struct dev_pm_ops ahci_pm_ops = {
 	.suspend		= &ahci_suspend,
 	.resume			= &ahci_resume,
+	.freeze			= &ahci_freeze,
+	.thaw			= &ahci_resume,
+	.restore		= &ahci_resume,
 };
 #endif
 

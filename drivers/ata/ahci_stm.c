@@ -32,6 +32,7 @@ struct ahci_stm_drv_data {
 	void __iomem *amba_base;
 	struct platform_device *ahci;
 	struct stm_miphy *miphy;
+	void __iomem *mmio;
 };
 
 static u64 stm_ahci_dma_mask = DMA_BIT_MASK(32);
@@ -136,6 +137,7 @@ static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 		stm_amba_bridge_init(drv_data->amba_bridge);
 	}
 
+	drv_data->mmio = mmio;
 	ahci_stm_configure_oob(mmio);
 
 	return 0;
@@ -181,6 +183,21 @@ static int ahci_stm_resume(struct device *ahci_dev)
 
 	return 0;
 }
+
+static int ahci_stm_restore(struct device *ahci_dev)
+{
+	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
+	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
+	int ret;
+
+	ret = ahci_stm_resume(ahci_dev);
+	if (ret)
+		return ret;
+
+	ahci_stm_configure_oob(drv_data->mmio);
+
+	return stm_miphy_start(drv_data->miphy);
+}
 #endif
 
 static struct ahci_platform_data ahci_stm_platform_data = {
@@ -189,6 +206,8 @@ static struct ahci_platform_data ahci_stm_platform_data = {
 #ifdef CONFIG_PM
 	.suspend = ahci_stm_suspend,
 	.resume = ahci_stm_resume,
+	.freeze = ahci_stm_suspend,
+	.restore = ahci_stm_restore,
 #endif
 };
 
