@@ -1250,7 +1250,7 @@
 			};
 		};
 
-		usb3: usb@fe400000{
+		usb3: usb@fe340000{
 			compatible	= "st,usb", "simple-bus";
 			status = "disabled";
 			amba-config		= <&usb_amba_config>;

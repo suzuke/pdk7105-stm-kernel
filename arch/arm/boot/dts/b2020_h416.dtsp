@@ -115,7 +115,7 @@
 			status = "okay";
 		};
 
-		usb3: usb@fe400000{
+		usb3: usb@fe340000{
 			status = "okay";
 		};
 
