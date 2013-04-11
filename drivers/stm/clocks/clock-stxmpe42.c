@@ -17,6 +17,12 @@
  */
 
 /* ----- Modification history (most recent first)----
+04/apr/13 Fabrice Charpentier
+	  clkgenax_enable() bug fix.
+19/mar/13 fabrice.charpentier@st.com
+	  Clockgen E Linux code bug fix for 'nsb'.
+07/feb/13 fabrice.charpentier@st.com
+	  Recalc bug fix for clockgens Ax, DDR & A9.
 13/dec/12 fabrice.charpentier@st.com
 	  Clockgen E & F FS set_rate fixes: wrong prog sequence
 16/nov/12 fabrice.charpentier@st.com
@@ -297,21 +303,21 @@ static int clkgenax_set_parent(struct clk *clk_p, struct clk *src_p)
 	case CLK_M_A0_PLL0:
 	case CLK_M_A1_PLL0:
 	case CLK_M_A2_PLL0:
+	case CLK_M_A0_PLL0_PHI0 ... CLK_M_A0_PLL0_PHI3:
+	case CLK_M_A1_PLL0_PHI0 ... CLK_M_A1_PLL0_PHI3:
+	case CLK_M_A2_PLL0_PHI0 ... CLK_M_A2_PLL0_PHI3:
 		clk_src = 1;
 		src_p = &clk_clocks[base_id + 3 + (idx / 8)];
 		break;
 	case CLK_M_A0_PLL1:
 	case CLK_M_A1_PLL1:
 	case CLK_M_A2_PLL1:
-		clk_src = 2;
-		src_p = &clk_clocks[base_id + 7 + (idx / 8)];
-		break;
-	case CLK_M_A0_PLL0_PHI0 ... CLK_M_A0_PLL0_PHI3:
-	case CLK_M_A1_PLL0_PHI0 ... CLK_M_A1_PLL0_PHI3:
-	case CLK_M_A2_PLL0_PHI0 ... CLK_M_A2_PLL0_PHI3:
 	case CLK_M_A0_PLL1_PHI0 ... CLK_M_A0_PLL1_PHI3:
 	case CLK_M_A1_PLL1_PHI0 ... CLK_M_A1_PLL1_PHI3:
 	case CLK_M_A2_PLL1_PHI0 ... CLK_M_A2_PLL1_PHI3:
+		clk_src = 2;
+		src_p = &clk_clocks[base_id + 7 + (idx / 8)];
+		break;
 	/* Fall in the default (error) case */
 	default:
 		return CLK_ERR_BAD_PARAMETER;
@@ -481,7 +487,7 @@ static int clkgenax_enable(struct clk *clk_p)
 	/* Enabling means there setting the parent clock instead of "off".
 	   If parent is undefined, let's select oscillator as default */
 	if (clk_p->parent)
-		return 0; /* Already ON */
+		return clkgenax_set_parent(clk_p, clk_p->parent);
 	parent_clk = (clk_p->id >= CLK_M_A2_REF) ? &clk_clocks[CLK_M_A2_REF]
 		      : (clk_p->id >= CLK_M_A1_REF) ?
 		      &clk_clocks[CLK_M_A1_REF] : &clk_clocks[CLK_M_A0_REF];
@@ -617,12 +623,16 @@ static int clkgenax_recalc(struct clk *clk_p)
 	case CLK_M_A1_PLL0:
 	case CLK_M_A2_PLL0:
 #if !defined(CLKLLA_NO_PLL)
-		pll.ndiv = CLK_READ(base_addr +
-			CKGA_PLLX_REGY_CFG(pll_id, 0)) & 0xff;
-		pll.idf = CLK_READ(base_addr +
-			CKGA_PLLX_REGY_CFG(pll_id, 1)) & 0x7;
-		err = stm_clk_pll_get_rate(clk_p->parent->rate,
-			&pll, &clk_p->rate);
+		data = CLK_READ(base_addr + CKGA_PLLX_REGY_CFG(pll_id, 0));
+		if (data & (1 << 31))
+			clk_p->rate = 0; /* PLL is powered DOWN */
+		else {
+			pll.ndiv = data & 0xff;
+			pll.idf = CLK_READ(base_addr +
+				CKGA_PLLX_REGY_CFG(pll_id, 1)) & 0x7;
+			err = stm_clk_pll_get_rate(clk_p->parent->rate,
+				&pll, &clk_p->rate);
+		}
 #endif
 		break;
 	case CLK_M_A0_PLL1_PHI0 ... CLK_M_A0_PLL1_PHI3:
@@ -1940,7 +1950,10 @@ static int clkgenddr_recalc(struct clk *clk_p)
 	case CLK_M_DDR_IC_LMI0:
 	case CLK_M_DDR_IC_LMI1:
 #if !defined(CLKLLA_NO_PLL)
-
+		if (SYSCONF_READ(0, 7502, 0, 0)) {
+			clk_p->rate = 0; /* PLL is powered down */
+			break;
+		}
 		pll.idf = SYSCONF_READ(0, 7502, 25, 27);
 		pll.ndiv = SYSCONF_READ(0, 7504, 0, 7);
 		err = stm_clk_pll_get_rate
@@ -1952,7 +1965,6 @@ static int clkgenddr_recalc(struct clk *clk_p)
 		if (odf == 0)
 			odf = 1;
 		clk_p->rate = vcoby2_rate / odf;
-
 #else
 		if (clk_p->nominal_rate)
 			clk_p->rate = clk_p->nominal_rate;
@@ -2082,15 +2094,16 @@ static int clkgena9_recalc(struct clk *clk_p)
 		if (SYSCONF_READ(0, 7556, 0, 0))
 			/* A9_PLL_PD=1 => PLL disabled */
 			clk_p->rate = 0;
-		else
+		else {
 			err = stm_clk_pll_get_rate
 				(clk_p->parent->rate, &pll, &vcoby2_rate);
 			if (err)
 				return CLK_ERR_BAD_PARAMETER;
-		odf = SYSCONF_READ(0, 7558, 8, 13);
-		if (odf == 0)
-			odf = 1;
-		clk_p->rate = vcoby2_rate / odf;
+			odf = SYSCONF_READ(0, 7558, 8, 13);
+			if (odf == 0)
+				odf = 1;
+			clk_p->rate = vcoby2_rate / odf;
+			}
 		}
 		break;
 	default:
@@ -2532,8 +2545,8 @@ _CLK(CLK_M_VID_DMU_1,	&clkgena0,    0, 0),
 _CLK(CLK_M_A9_EXT2F,	&clkgena0,    200000000,    0),
 _CLK_P(CLK_M_A9_EXT2F_DIV2,	&clkgena0,    30000000, CLK_ALWAYS_ENABLED, &clk_clocks[CLK_M_A9_EXT2F]),
 _CLK(CLK_M_ST40RT,	&clkgena0,    500000000,    0),
-_CLK(CLK_M_ST231_DMU_0,	&clkgena0,    500000000,    0),
-_CLK(CLK_M_ST231_DMU_1,	&clkgena0,    500000000,    0),
+_CLK(CLK_M_ST231_DMU_0,	&clkgena0,    600000000,    0),
+_CLK(CLK_M_ST231_DMU_1,	&clkgena0,    600000000,    0),
 _CLK(CLK_M_ST231_AUD,	&clkgena0,    600000000,    0),
 _CLK(CLK_M_ST231_GP_0,	&clkgena0,    600000000,    0),
 _CLK(CLK_M_ST231_GP_1,	&clkgena0,     600000000,    0),
