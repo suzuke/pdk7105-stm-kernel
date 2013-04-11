@@ -18,7 +18,12 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/device.h>
 
-#define AHCI_OOBR	0xbc
+#define AHCI_OOBR		0xbc
+#define AHCI_OOBR_WE		(1<<31)
+#define AHCI_OOBR_CWMIN_SHIFT	24
+#define AHCI_OOBR_CWMAX_SHIFT	16
+#define AHCI_OOBR_CIMIN_SHIFT	8
+#define AHCI_OOBR_CIMAX_SHIFT	0
 
 struct ahci_stm_drv_data {
 	struct clk *clk;
@@ -42,6 +47,21 @@ static void *ahci_stm_get_platdata(struct platform_device *pdev)
 	data->device_config = stm_of_get_dev_config(&pdev->dev);
 	pdev->dev.platform_data = data;
 	return data;
+}
+
+static void ahci_stm_configure_oob(void __iomem *mmio)
+{
+	unsigned long old_val, new_val;
+
+	new_val = (0x02 << AHCI_OOBR_CWMIN_SHIFT) |
+		  (0x04 << AHCI_OOBR_CWMAX_SHIFT) |
+		  (0x08 << AHCI_OOBR_CIMIN_SHIFT) |
+		  (0x0C << AHCI_OOBR_CIMAX_SHIFT);
+
+	old_val = readl(mmio + AHCI_OOBR);
+	writel(old_val | AHCI_OOBR_WE, mmio + AHCI_OOBR);
+	writel(new_val | AHCI_OOBR_WE, mmio + AHCI_OOBR);
+	writel(new_val, mmio + AHCI_OOBR);
 }
 
 static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
@@ -109,9 +129,7 @@ static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 		stm_amba_bridge_init(drv_data->amba_bridge);
 	}
 
-	writel(0x80000000, mmio + AHCI_OOBR);
-	writel(0x8204080C, mmio + AHCI_OOBR);
-	writel(0x0204080C, mmio + AHCI_OOBR);
+	ahci_stm_configure_oob(mmio);
 
 	return 0;
 
