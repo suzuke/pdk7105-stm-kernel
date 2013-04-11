@@ -43,6 +43,9 @@ static void *ahci_stm_get_platdata(struct platform_device *pdev)
 		return dev_get_platdata(&pdev->dev);
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return data;
+
 	of_property_read_u32(np, "miphy-num", (u32 *)&data->miphy_num);
 	data->device_config = stm_of_get_dev_config(&pdev->dev);
 	pdev->dev.platform_data = data;
@@ -68,9 +71,13 @@ static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 {
 	struct platform_device *pdev = to_platform_device(ahci_dev->parent);
 	struct ahci_stm_drv_data *drv_data = platform_get_drvdata(pdev);
-	struct stm_plat_ahci_data *pdata = ahci_stm_get_platdata(pdev);
+	struct stm_plat_ahci_data *pdata;
 	struct resource *res;
 	int ret;
+
+	pdata = ahci_stm_get_platdata(pdev);
+	if (!pdata)
+		return -ENOMEM;
 
 	drv_data->clk = devm_clk_get(ahci_dev, "ahci_clk");
 	if (IS_ERR(drv_data->clk))
