@@ -42,10 +42,18 @@
 
 static int stm_usb_boot(struct platform_device *pdev)
 {
-	struct stm_plat_usb_data *pl_data = pdev->dev.platform_data;
 	struct drv_usb_data *usb_data = platform_get_drvdata(pdev);
 	void *wrapper_base = usb_data->ahb2stbus_wrapper_glue_base;
+	struct stm_plat_usb_data *pl_data  = NULL;
 	unsigned long reg;
+
+	if (usb_data)
+		pl_data = usb_data->plat_data;
+
+	if (!pl_data) {
+		dev_err(&pdev->dev, "No platform data found\n");
+		return 0;
+	}
 
 	if (pl_data->flags &
 		(STM_PLAT_USB_FLAGS_STRAP_8BIT |
@@ -129,6 +137,11 @@ static void *stm_hcd_dt_get_pdata(struct platform_device *pdev)
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 
+	if (!data) {
+		dev_err(&pdev->dev, "Unable to allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
 	if (of_property_read_bool(np, "strap-8bit"))
 		data->flags = STM_PLAT_USB_FLAGS_STRAP_8BIT;
 	else if (of_property_read_bool(np, "strap-16bit"))
@@ -146,12 +159,6 @@ static void *stm_hcd_dt_get_pdata(struct platform_device *pdev)
 
 	data->device_config = stm_of_get_dev_config(&pdev->dev);
 	data->amba_config = stm_of_get_amba_config(&pdev->dev);
-	pdev->id = of_alias_get_id(np, "usb");
-	/*
-	 * Some of the clock aliases are per device, so maintain
-	 * same names while using device trees aswell
-	 */
-	dev_set_name(&pdev->dev, "%s.%d", "stm-usb", pdev->id);
 	return data;
 }
 #else
@@ -167,7 +174,7 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 	struct drv_usb_data *dr_data;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
-	int i;
+	int i, id;
 	static __devinitdata char *usb_clks_n[] = {
 		"usb_48_clk",
 		"usb_ic_clk",
@@ -176,15 +183,31 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 	resource_size_t len;
 	void __iomem *amba_base;
 
+	if (pdev->dev.of_node) {
+		plat_data = stm_hcd_dt_get_pdata(pdev);
+		id = of_alias_get_id(pdev->dev.of_node, "usb");
+	} else {
+		plat_data = pdev->dev.platform_data;
+		id = pdev->id;
+	}
 
-	if (pdev->dev.of_node)
-		pdev->dev.platform_data = stm_hcd_dt_get_pdata(pdev);
-	plat_data = pdev->dev.platform_data;
+	if (!plat_data || IS_ERR(plat_data)) {
+		dev_err(&pdev->dev, "No platform data found\n");
+		return -ENODEV;
+	}
+
+	if (id < 0) {
+		dev_err(&pdev->dev,
+			"No ID specified via pdev->id or in DT alias\n");
+		return -ENODEV;
+	}
+
 	dgb_print("\n");
 	dr_data = devm_kzalloc(dev, sizeof(*dr_data), GFP_KERNEL);
 	if (!dr_data)
 		return -ENOMEM;
 
+	dr_data->plat_data = plat_data;
 	platform_set_drvdata(pdev, dr_data);
 
 	pm_clk_init(dev);
@@ -248,7 +271,7 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ehci");
 	if (res) {
 		dr_data->ehci_device = stm_usb_device_create("stm-ehci",
-			pdev->id, pdev);
+			id, pdev);
 		if (IS_ERR(dr_data->ehci_device))
 			return PTR_ERR(dr_data->ehci_device);
 	}
@@ -256,7 +279,7 @@ static int __devinit stm_usb_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ohci");
 	if (res) {
 		dr_data->ohci_device =
-			stm_usb_device_create("stm-ohci", pdev->id, pdev);
+			stm_usb_device_create("stm-ohci", id, pdev);
 		if (IS_ERR(dr_data->ohci_device)) {
 			platform_device_del(dr_data->ehci_device);
 			return PTR_ERR(dr_data->ohci_device);
@@ -282,9 +305,8 @@ static void stm_usb_shutdown(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int stm_usb_suspend(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
 	struct drv_usb_data *dr_data = dev_get_drvdata(dev);
-	struct stm_plat_usb_data *pl_data = pdev->dev.platform_data;
+	struct stm_plat_usb_data *pl_data = dr_data->plat_data;
 	void *wrapper_base = dr_data->ahb2stbus_wrapper_glue_base;
 	long reg;
 	dgb_print("\n");

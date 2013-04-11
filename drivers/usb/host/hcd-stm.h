@@ -33,6 +33,7 @@ struct drv_usb_data {
 	struct stm_device_state *device_state;
 	struct stm_amba_bridge *amba_bridge;
 	struct clk *clks[NR_USB_CLKS];
+	struct stm_plat_usb_data *plat_data;
 };
 
 #endif
