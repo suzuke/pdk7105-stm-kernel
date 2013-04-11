@@ -338,29 +338,6 @@ static void __devinit asc_init_port(struct asc_port *ascport,
 	ascport->force_m1 = plat_data->force_m1;
 }
 
-static struct uart_driver asc_uart_driver = {
-	.owner		= THIS_MODULE,
-	.driver_name	= DRIVER_NAME,
-	.dev_name	= "ttyAS",
-	.major		= ASC_MAJOR,
-	.minor		= ASC_MINOR_START,
-	.nr		= ASC_MAX_PORTS,
-#ifdef CONFIG_SERIAL_STM_ASC_CONSOLE
-	.cons		= &asc_console,
-#endif
-};
-
-#ifdef CONFIG_SERIAL_STM_ASC_CONSOLE
-static struct console asc_console = {
-	.name		= "ttyAS",
-	.device		= uart_console_device,
-	.write		= asc_console_write,
-	.setup		= asc_console_setup,
-	.flags		= CON_PRINTBUFFER,
-	.index		= -1,
-	.data		= &asc_uart_driver,
-};
-
 #ifdef CONFIG_OF
 void *stm_asc_of_get_pdata(struct platform_device *pdev)
 {
@@ -411,6 +388,29 @@ struct stm_plat_asc_data *stm_asc_of_get_early_pdata(struct device_node *np,
 	return -ENOSYS;
 }
 #endif
+
+static struct uart_driver asc_uart_driver = {
+	.owner		= THIS_MODULE,
+	.driver_name	= DRIVER_NAME,
+	.dev_name	= "ttyAS",
+	.major		= ASC_MAJOR,
+	.minor		= ASC_MINOR_START,
+	.nr		= ASC_MAX_PORTS,
+#ifdef CONFIG_SERIAL_STM_ASC_CONSOLE
+	.cons		= &asc_console,
+#endif
+};
+
+#ifdef CONFIG_SERIAL_STM_ASC_CONSOLE
+static struct console asc_console = {
+	.name		= "ttyAS",
+	.device		= uart_console_device,
+	.write		= asc_console_write,
+	.setup		= asc_console_setup,
+	.flags		= CON_PRINTBUFFER,
+	.index		= -1,
+	.data		= &asc_uart_driver,
+};
 /*
  * Early console initialization.
  */
