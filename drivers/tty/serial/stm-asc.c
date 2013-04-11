@@ -286,11 +286,16 @@ static struct uart_ops asc_uart_ops = {
 };
 
 static void __devinit asc_init_port(struct asc_port *ascport,
-				    struct platform_device *pdev)
+	struct platform_device *pdev,
+	struct stm_plat_asc_data *plat_data, int id)
 {
 	struct uart_port *port = &ascport->port;
-	struct stm_plat_asc_data *plat_data = pdev->dev.platform_data;
 	struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+
+	if (!plat_data) {
+		dev_err(&pdev->dev, "Platform data not found\n");
+		return;
+	}
 
 	if (!res) {
 		dev_err(&pdev->dev, "Unable to get platform io_memory resource\n");
@@ -301,7 +306,7 @@ static void __devinit asc_init_port(struct asc_port *ascport,
 	port->flags	= UPF_BOOT_AUTOCONF;
 	port->ops	= &asc_uart_ops;
 	port->fifosize	= FIFO_SIZE;
-	port->line	= pdev->id;
+	port->line	= id;
 	port->dev	= &pdev->dev;
 
 	port->mapbase	= res->start;
@@ -363,8 +368,10 @@ void *stm_asc_of_get_pdata(struct platform_device *pdev)
 	struct stm_plat_asc_data *data;
 	struct device_node *np = pdev->dev.of_node;
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
-
-	pdev->id = of_alias_get_id(np, "ttyAS");
+	if (!data) {
+		dev_err(&pdev->dev, "Unable to allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
 
 	data->hw_flow_control = of_property_read_bool(np, "st,hw-flow-control");
 
@@ -378,28 +385,30 @@ void *stm_asc_of_get_pdata(struct platform_device *pdev)
 	return data;
 }
 
-int stm_asc_of_get_early_pdata(struct device_node *np,
+struct stm_plat_asc_data *stm_asc_of_get_early_pdata(struct device_node *np,
 				struct platform_device **ppdev)
 {
-	struct platform_device *pdev;
-
+	struct stm_plat_asc_data *data;
 	if (!of_device_is_available(np))
-		return -ENODATA;
+		return NULL;
+	*ppdev = of_device_alloc(np, NULL, NULL);
+	if (!*ppdev)
+		return NULL;
 
-	pdev = of_device_alloc(np, NULL, NULL);
-	pdev->dev.platform_data = stm_asc_of_get_pdata(pdev);
-	*ppdev = pdev;
-	return 0;
+	data = stm_asc_of_get_pdata(*ppdev);
+	if (IS_ERR(data))
+		return NULL;
+	return data;
 }
 #else
 void *stm_asc_of_get_pdata(struct platform_device *pdev)
 {
 	return NULL;
 }
-int stm_asc_of_get_early_pdata(struct device_node *np,
+struct stm_plat_asc_data *stm_asc_of_get_early_pdata(struct device_node *np,
 				struct platform_device **ppdev)
 {
-	return -ENODATA;
+	return -ENOSYS;
 }
 #endif
 /*
@@ -407,35 +416,42 @@ int stm_asc_of_get_early_pdata(struct device_node *np,
  */
 static int __init asc_console_init(void)
 {
-	int id;
-	struct stm_plat_asc_data *data;
+	int id  = 0;
+	struct stm_plat_asc_data *data = NULL;
+	struct device_node *dn = NULL;
 #ifdef CONFIG_OF
-	const char *name;
-	struct device_node *dn;
+	const char *name = NULL;
 	if (of_chosen) {
 		name = of_get_property(of_chosen, "linux,stdout-path", NULL);
-		if (name == NULL)
-			return -1;
+		if (!name)
+			return -ENODEV;
 
 		dn = of_find_node_by_path(name);
 		if (!dn)
-			return -1;
-		stm_asc_of_get_early_pdata(dn, &stm_asc_console_device);
+			return -ENODEV;
+		data = stm_asc_of_get_early_pdata(dn, &stm_asc_console_device);
+		if (!data)
+			return -ENODEV;
+		id = of_alias_get_id(dn, "ttyAS");
 	}
 #endif
 
 	if (!stm_asc_console_device)
-		return 0;
+		return -ENODEV;
 
 	/* If only non-ASC consoles are specified, don't register ourselves */
 	if (console_set_on_cmdline &&
 		(!strstr(saved_command_line, "console=ttyAS")))
-		return 0;
+		return -ENODEV;
+	if (!dn) {
+		data = stm_asc_console_device->dev.platform_data;
+		id = stm_asc_console_device->id;
+	}
+	if (id < 0)
+		return -ENODEV;
 
-	data = stm_asc_console_device->dev.platform_data;
-	id = stm_asc_console_device->id;
 	add_preferred_console("ttyAS", id, NULL);
-	asc_init_port(&asc_ports[id], stm_asc_console_device);
+	asc_init_port(&asc_ports[id], stm_asc_console_device, data, id);
 	register_console(&asc_console);
 
 	return 0;
@@ -460,16 +476,34 @@ static int __devinit asc_serial_probe(struct platform_device *pdev)
 	int ret;
 	struct asc_port *ascport;
 	int irq = platform_get_irq(pdev, 0);
+	struct stm_plat_asc_data *plat_data = NULL;
+	int id;
 
-	if (pdev->dev.of_node)
-		pdev->dev.platform_data = stm_asc_of_get_pdata(pdev);
+	if (pdev->dev.of_node) {
+		plat_data = stm_asc_of_get_pdata(pdev);
+		id = of_alias_get_id(pdev->dev.of_node, "ttyAS");
+	} else {
+		plat_data = pdev->dev.platform_data;
+		id = pdev->id;
+	}
 
-	ascport = &asc_ports[pdev->id];
-	asc_init_port(ascport, pdev);
+	if (!plat_data || IS_ERR(plat_data)) {
+		dev_err(&pdev->dev, "No platform data found\n");
+		return -ENODEV;
+	}
+
+	if (id < 0) {
+		dev_err(&pdev->dev,
+			"No ID specified via pdev->id or in DT alias\n");
+		return -ENODEV;
+	}
+
+	ascport = &asc_ports[id];
+	asc_init_port(ascport, pdev, plat_data, id);
 
 	ret = uart_add_one_port(&asc_uart_driver, &ascport->port);
 	if (ret == 0) {
-		platform_set_drvdata(pdev, &ascport->port);
+		platform_set_drvdata(pdev, ascport);
 		/* set can_wakeup*/
 		device_set_wakeup_capable(&pdev->dev, 1);
 		/* enable the wakeup on console */
@@ -485,7 +519,8 @@ static int __devinit asc_serial_probe(struct platform_device *pdev)
 
 static int __devexit asc_serial_remove(struct platform_device *pdev)
 {
-	struct uart_port *port = platform_get_drvdata(pdev);
+	struct asc_port *ascport = platform_get_drvdata(pdev);
+	struct uart_port *port = &ascport->port;
 
 	platform_set_drvdata(pdev, NULL);
 	return uart_remove_one_port(&asc_uart_driver, port);
@@ -494,8 +529,7 @@ static int __devexit asc_serial_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int asc_serial_suspend(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct asc_port *ascport = &asc_ports[pdev->id];
+	struct asc_port *ascport = dev_get_drvdata(dev);
 	struct uart_port *port   = &(ascport->port);
 	unsigned long flags;
 
@@ -527,8 +561,7 @@ ret_asc_suspend:
 
 static int asc_serial_resume(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct asc_port *ascport = &asc_ports[pdev->id];
+	struct asc_port *ascport = dev_get_drvdata(dev);
 	struct uart_port *port   = &(ascport->port);
 	unsigned long flags;
 
@@ -550,8 +583,7 @@ static int asc_serial_resume(struct device *dev)
 
 static int asc_serial_freeze(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct asc_port *ascport = &asc_ports[pdev->id];
+	struct asc_port *ascport = dev_get_drvdata(dev);
 	struct uart_port *port   = &(ascport->port);
 
 	ascport->pm_ctrl = asc_in(port, CTL);
@@ -563,8 +595,7 @@ static int asc_serial_freeze(struct device *dev)
 
 static int asc_serial_restore(struct device *dev)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct asc_port *ascport = &asc_ports[pdev->id];
+	struct asc_port *ascport = dev_get_drvdata(dev);
 	struct uart_port *port   = &(ascport->port);
 
 	clk_prepare_enable(ascport->clk);
