@@ -247,9 +247,9 @@
 			status = "okay";
 			snps,phy-bus-id = <0>;
 			snps,phy-bus-name = "gpio";
-			phy-mode	= "rmii";
-			snps,phy-addr = <0x9>;
-			device-config = <&rmii0_dev_config>;
+			phy-mode	= "mii";
+			snps,phy-addr = <0x1>;
+			device-config = <&mii0_ext_clk_dev_config>;
 		};
 
 		ethernet1: ethernet@fef08000 {
