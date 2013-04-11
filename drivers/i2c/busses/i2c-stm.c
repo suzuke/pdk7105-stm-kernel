@@ -1174,10 +1174,13 @@ static void *stm_iic_dt_get_pdata(struct platform_device *pdev)
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 
+	if (!data) {
+		dev_err(&pdev->dev, "Unable to allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
 	if (!of_property_read_string(np, "st,dev-clk", &clk_name))
 		clk_add_alias(NULL, pdev->name, (char *)clk_name, NULL);
-
-	pdev->id = of_alias_get_id(np, "i2c");
 
 	data->pad_config = stm_of_get_pad_config(&pdev->dev);
 	if (of_property_read_bool(np, "st,i2c-fastmode"))
@@ -1195,16 +1198,30 @@ static void *stm_iic_dt_get_pdata(struct platform_device *pdev)
 #endif
 static int iic_stm_probe(struct platform_device *pdev)
 {
-	struct stm_plat_ssc_data *plat_data;
+	struct stm_plat_ssc_data *plat_data = NULL;
 	struct iic_ssc *i2c_stm;
 	struct resource *res;
-	int err;
+	int err, id;
 
 
-	if (pdev->dev.of_node)
-		pdev->dev.platform_data = stm_iic_dt_get_pdata(pdev);
+	if (pdev->dev.of_node) {
+		plat_data = stm_iic_dt_get_pdata(pdev);
+		id = of_alias_get_id(pdev->dev.of_node, "i2c");
+	} else {
+		plat_data = pdev->dev.platform_data;
+		id = pdev->id;
+	}
 
-	plat_data = pdev->dev.platform_data;
+	if (!plat_data || IS_ERR(plat_data)) {
+		dev_err(&pdev->dev, "No platform data found\n");
+		return -ENODEV;
+	}
+
+	if (id < 0) {
+		dev_err(&pdev->dev,
+			"No ID specified via pdev->id or in DT alias\n");
+		return -ENODEV;
+	}
 
 	i2c_stm = devm_kzalloc(&pdev->dev, sizeof(struct iic_ssc), GFP_KERNEL);
 
@@ -1254,8 +1271,8 @@ static int iic_stm_probe(struct platform_device *pdev)
 	i2c_stm->adapter.retries = 0;
 	i2c_stm->adapter.class = I2C_CLASS_HWMON | I2C_CLASS_DDC |
 				 I2C_CLASS_SPD;
-	sprintf(i2c_stm->adapter.name, "i2c-stm%d", pdev->id);
-	i2c_stm->adapter.nr = pdev->id;
+	sprintf(i2c_stm->adapter.name, "i2c-stm%d", id);
+	i2c_stm->adapter.nr = id;
 	i2c_stm->adapter.algo = &iic_stm_algo;
 	i2c_stm->adapter.dev.parent = &(pdev->dev);
 	if (plat_data->i2c_speed == 400)
