@@ -280,7 +280,7 @@ static int ahci_resume(struct device *dev)
 	}
 
 	if (dev->power.power_state.event == PM_EVENT_SUSPEND ||
-	    dev->power.power_state.event == PM_EVENT_HIBERNATE) {
+	    dev->power.power_state.event == PM_EVENT_FREEZE) {
 		rc = ahci_reset_controller(host);
 		if (rc)
 			return rc;
