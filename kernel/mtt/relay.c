@@ -716,6 +716,8 @@ mtt_drv_relay_config(struct mtt_sys_kconfig *cfg)
 	if (mtt_cur_out_drv == &relay_output_driver) {
 		MTT_BUG_ON(!my_chan);
 		MTT_BUG_ON(!debugfs_ok);
+		/* Only reset the channel. */
+		relay_reset(my_chan);
 	} else {
 		c = (struct mtt_dfs_drv_cfg *)(&(cfg->media_cfg));
 		BUG_ON(!relay_output_driver.debugfs);
