@@ -1,5 +1,16 @@
 config WIRELESS_EXT
-	bool
+	bool "Wireless extensions"
+	default n
+	---help---
+	  This option enables the legacy wireless extensions
+	  (wireless network interface configuration via ioctls.)
+
+	  Wireless extensions will be replaced by cfg80211 and
+	  will be required only by legacy drivers that implement
+	  wireless extension handlers.
+
+	  Say N (if you can) unless you know you need wireless
+	  extensions for external modules.
 
 config WEXT_CORE
 	def_bool y
@@ -14,7 +25,13 @@ config WEXT_SPY
 	bool
 
 config WEXT_PRIV
-	bool
+	bool "Wireless iwpriv support"
+        default n
+        ---help---
+	  This enables the support for iwpriv.
+
+          Say N (if you can) unless you know you need this option
+          for external modules.
 
 config CFG80211
 	tristate "cfg80211 - wireless configuration API"
