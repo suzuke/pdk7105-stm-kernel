@@ -122,7 +122,6 @@
 			compatible	= "gpio-leds";
 			red {
 				#gpio-cells = <1>;
-				label	= "Front Panel LED";
 				gpios	= <&PIO4 1>;
 				linux,default-trigger	= "heartbeat";
 			};
