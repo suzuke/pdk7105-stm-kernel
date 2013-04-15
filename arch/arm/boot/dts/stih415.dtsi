@@ -1332,7 +1332,7 @@
 		};
 
 		/* SBC comms block ASCs in SASG1 */
-		sbc_uart0: uart@fe5300000 {
+		sbc_uart0: uart@fe530000 {
 			compatible	= "st,asc", "simple-bus";
 			status = "disabled";
 			reg		= <0xfe530000 0x2c>;
