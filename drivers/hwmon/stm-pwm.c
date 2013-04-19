@@ -140,8 +140,10 @@ stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
 		struct stm_plat_pwm_channel_config *channel_config;
 		channel_config = &pwm->platform_data->pwm_channel_config[channel];
 		if (channel_config->enabled) {
-			/* Initial value */
-			writel(0, pwm->base + PWM_VAL(channel));
+			if (!channel_config->retain_hw_value)
+				writel(channel_config->initial_value,
+				       pwm->base + PWM_VAL(channel));
+
 			pwm->pad_state[channel] =
 				devm_stm_pad_claim(&pdev->dev,
 				pwm->platform_data->pwm_pad_config[channel],
@@ -167,6 +169,8 @@ stm_pwm_dt_get_pdata(struct platform_device *pdev)
 	for_each_child_of_node(pdev->dev.of_node, node) {
 		u32 channel;
 		struct stm_plat_pwm_channel_config *channel_config;
+		u32 initial_value;
+		bool retain_hw_value;
 
 		if (!of_device_is_available(node))
 			continue;
@@ -184,9 +188,16 @@ stm_pwm_dt_get_pdata(struct platform_device *pdev)
 			continue;
 		}
 
+		initial_value = 0;
+		of_property_read_u32(node, "st,initial-value", &initial_value);
+		retain_hw_value = of_property_read_bool(node,
+			"st,retain-hw-value");
+
 		channel_config = &data->pwm_channel_config[channel];
 
 		channel_config->enabled = true;
+		channel_config->initial_value = initial_value;
+		channel_config->retain_hw_value = retain_hw_value;
 
 		data->pwm_pad_config[channel] =
 			stm_of_get_pad_config_index(&pdev->dev, channel);

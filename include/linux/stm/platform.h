@@ -170,6 +170,8 @@ struct stm_plat_lirc_data {
 #define STM_PLAT_PWM_NUM_CHANNELS 4
 struct stm_plat_pwm_channel_config {
 	int enabled;
+	u8 initial_value;
+	bool retain_hw_value;	/* retain register, ignoring initial_value */
 };
 
 struct stm_plat_pwm_data {
