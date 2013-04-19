@@ -207,56 +207,55 @@ static int stm_pwm_probe(struct platform_device *pdev)
 	struct stm_pwm *pwm;
 	int err;
 
-	pwm = kmalloc(sizeof(struct stm_pwm), GFP_KERNEL);
-	if (pwm == NULL) {
+	pwm = devm_kzalloc(&pdev->dev, sizeof(*pwm), GFP_KERNEL);
+	if (!pwm)
 		return -ENOMEM;
-	}
-	memset(pwm, 0, sizeof(*pwm));
 
 	if (pdev->dev.of_node)
-		pdev->dev.platform_data = stm_pwm_dt_get_pdata(pdev);
+		pwm->platform_data = stm_pwm_dt_get_pdata(pdev);
+	else
+		pwm->platform_data = pdev->dev.platform_data;
+
+	if (!pwm->platform_data) {
+		dev_err(&pdev->dev, "No platform data found\n");
+		return -ENODEV;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-        if (!res) {
-                err = -ENODEV;
-		goto failed1;
+	if (!res) {
+		dev_err(&pdev->dev, "No memory region in device\n");
+		return -ENODEV;
 	}
 
-	pwm->mem = request_mem_region(res->start, res->end - res->start + 1, "stm-pwn");
+	pwm->mem = devm_request_mem_region(&pdev->dev,
+			res->start, resource_size(res), "stm-pwm");
 	if (pwm->mem == NULL) {
 		dev_err(&pdev->dev, "failed to claim memory region\n");
-                err = -EBUSY;
-		goto failed1;
+		return -EBUSY;
 	}
 
-	pwm->base = ioremap(res->start, res->end - res->start + 1);
+	pwm->base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
 	if (pwm->base == NULL) {
 		dev_err(&pdev->dev, "failed ioremap");
-		err = -EINVAL;
-		goto failed2;
+		return -EINVAL;
 	}
 
 	pwm->hwmon_dev = hwmon_device_register(&pdev->dev);
 	if (IS_ERR(pwm->hwmon_dev)) {
 		err = PTR_ERR(pwm->hwmon_dev);
 		dev_err(&pdev->dev, "Class registration failed (%d)\n", err);
-		goto failed3;
+		return err;
 	}
-
-	pwm->platform_data = pdev->dev.platform_data;
 
 	platform_set_drvdata(pdev, pwm);
 	dev_info(&pdev->dev, "registers at 0x%x, mapped to 0x%p\n",
 		 res->start, pwm->base);
 
-	return stm_pwm_init(pdev, pwm);
+	err = stm_pwm_init(pdev, pwm);
 
-failed3:
-	iounmap(pwm->base);
-failed2:
-	release_resource(pwm->mem);
-failed1:
-	kfree(pwm);
+	if (err)
+		hwmon_device_unregister(pwm->hwmon_dev);
+
 	return err;
 }
 
@@ -268,9 +267,6 @@ static int stm_pwm_remove(struct platform_device *pdev)
 		hwmon_device_unregister(pwm->hwmon_dev);
 		sysfs_remove_group(&pdev->dev.kobj, &stm_pwm_attr_group);
 		platform_set_drvdata(pdev, NULL);
-		iounmap(pwm->base);
-		release_resource(pwm->mem);
-		kfree(pwm);
 	}
 	return 0;
 }
