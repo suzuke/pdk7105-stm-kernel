@@ -373,9 +373,9 @@ static int __init b2000_devices_init(void)
 	stih415_configure_lirc(&(struct stih415_lirc_config) {
 			.rx_mode = stih415_lirc_rx_mode_ir, });
 
-	stih415_configure_pwm(&(struct stih415_pwm_config) {
-			.pwm = stih415_sbc_pwm,
-			.out0_enabled = 1, });
+	stih415_configure_pwm(stih415_sbc_pwm, &(struct stih415_pwm_config) {
+			.pwm_channel_config[0].enabled = 1,
+		});
 
 #if defined(CONFIG_STM_B2000_CN22_B2035) || defined(CONFIG_STM_MMC_B2048A_CARD)
 #ifdef CONFIG_STM_B2000_B2048_EMMC

@@ -203,11 +203,11 @@ static void __init fli76xxhdk01_init(void)
 
 	fli7610_configure_lirc();
 
-	fli7610_configure_pwm(&(struct fli7610_pwm_config) {
-			.pwm = fli7610_sbc_pwm,
-			.enabled[0] = 1,
-			.enabled[1] = 1,
-			.enabled[2] = 1, });
+	fli7610_configure_pwm(fli7610_sbc_pwm, &(struct fli7610_pwm_config) {
+			.pwm_channel_config[0].enabled = 1,
+			.pwm_channel_config[1].enabled = 1,
+			.pwm_channel_config[2].enabled = 1,
+		});
 
 #ifdef CONFIG_SND
 	/* Power up the STA333W */

@@ -79,7 +79,7 @@ static mode_t stm_pwm_is_visible(struct kobject *kobj, struct attribute *attr,
 	devattr = container_of(attr, struct device_attribute, attr);
 	channel = to_sensor_dev_attr(devattr)->index;
 
-	if (!pwm->platform_data->channel_enabled[channel])
+	if (!pwm->platform_data->pwm_channel_config[channel].enabled)
 		return 0;
 
 	return attr->mode;
@@ -137,12 +137,14 @@ stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
 	stm_pwm_enable(pwm);
 
 	for (channel = 0; channel < STM_PLAT_PWM_NUM_CHANNELS; channel++) {
-		if (pwm->platform_data->channel_enabled[channel]) {
+		struct stm_plat_pwm_channel_config *channel_config;
+		channel_config = &pwm->platform_data->pwm_channel_config[channel];
+		if (channel_config->enabled) {
 			/* Initial value */
 			writel(0, pwm->base + PWM_VAL(channel));
 			pwm->pad_state[channel] =
 				devm_stm_pad_claim(&pdev->dev,
-				pwm->platform_data->channel_pad_config[channel],
+				pwm->platform_data->pwm_pad_config[channel],
 				dev_name(&pdev->dev));
 			if (!pwm->pad_state[channel])
 				return -ENODEV;
@@ -152,24 +154,44 @@ stm_pwm_init(struct platform_device  *pdev, struct stm_pwm *pwm)
 	return sysfs_create_group(&pdev->dev.kobj, &stm_pwm_attr_group);
 }
 #ifdef CONFIG_OF
-static void *stm_pwm_dt_get_pdata(struct platform_device *pdev)
+static struct stm_plat_pwm_data *
+stm_pwm_dt_get_pdata(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
 	struct stm_plat_pwm_data  *data;
-	int  i = 0;
+	struct device_node *node;
+
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return NULL;
 
+	for_each_child_of_node(pdev->dev.of_node, node) {
+		u32 channel;
+		struct stm_plat_pwm_channel_config *channel_config;
 
-	of_property_read_u32_array(np, "st,channel-enable",
-		(u32 *)&data->channel_enabled, STM_PLAT_PWM_NUM_CHANNELS);
+		if (!of_device_is_available(node))
+			continue;
 
-	for (i = 0; i < STM_PLAT_PWM_NUM_CHANNELS; i++) {
-		if (data->channel_enabled[i]) {
-			data->channel_pad_config[i] =
-				stm_of_get_pad_config_index(&pdev->dev, i);
+		if (of_property_read_u32(node, "reg", &channel)) {
+			dev_err(&pdev->dev, "unable to read \"reg\" for %s\n",
+				node->full_name);
+			continue;
 		}
 
+		if (channel >= STM_PLAT_PWM_NUM_CHANNELS) {
+			dev_err(&pdev->dev,
+				"invalid channel index %d on %s\n",
+				(unsigned int)channel, node->full_name);
+			continue;
+		}
+
+		channel_config = &data->pwm_channel_config[channel];
+
+		channel_config->enabled = true;
+
+		data->pwm_pad_config[channel] =
+			stm_of_get_pad_config_index(&pdev->dev, channel);
 	}
+
 	return data;
 }
 #else
@@ -178,6 +200,7 @@ static void *stm_pwm_dt_get_pdata(struct platform_device *pdev)
 	return NULL;
 }
 #endif
+
 static int stm_pwm_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -261,7 +284,7 @@ static int stm_pwm_restore(struct device *dev)
 	stm_pwm_enable(pwm);
 
 	for (channel = 0; channel < STM_PLAT_PWM_NUM_CHANNELS; channel++) {
-		if (!pwm->platform_data->channel_enabled[channel])
+		if (!pwm->platform_data->pwm_channel_config[channel].enabled)
 			continue;
 		writel(0, pwm->base + PWM_VAL(channel));
 		stm_pad_setup(pwm->pad_state[channel]);

@@ -115,15 +115,15 @@ struct stih415_lirc_config {
 };
 void stih415_configure_lirc(struct stih415_lirc_config *config);
 
-struct stih415_pwm_config {
-	enum {
-		stih415_sas_pwm = 0,
-		stih415_sbc_pwm
-	} pwm;
-	int out0_enabled;
-	int out1_enabled;
+enum stih415_pwm {
+	stih415_sas_pwm = 0,
+	stih415_sbc_pwm
 };
-void stih415_configure_pwm(struct stih415_pwm_config *config);
+struct stih415_pwm_config {
+	struct stm_plat_pwm_channel_config pwm_channel_config[2];
+};
+void stih415_configure_pwm(enum stih415_pwm pwm,
+		struct stih415_pwm_config *config);
 
 void stih415_configure_mmc(int emmc);
 

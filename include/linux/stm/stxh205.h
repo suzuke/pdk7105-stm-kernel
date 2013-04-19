@@ -123,9 +123,12 @@ struct stxh205_lirc_config {
 void stxh205_configure_lirc(struct stxh205_lirc_config *config);
 
 struct stxh205_pwm_config {
-	int out10_enabled;
-	int out11_enabled;
+	struct stm_plat_pwm_channel_config pwm_channel_config[2];
 };
+/*
+ * Note there is no PWM in the main comms block, so this implicitly
+ * refers to the PWM in the SBC (PWM10 and PWM11 in the ballout).
+ */
 void stxh205_configure_pwm(struct stxh205_pwm_config *config);
 
 struct stxh205_ethernet_config {

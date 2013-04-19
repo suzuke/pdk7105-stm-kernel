@@ -108,14 +108,15 @@ struct fli7610_ssc_config {
 int fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config);
 int fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config);
 void fli7610_configure_lirc(void);
-struct fli7610_pwm_config {
-	enum {
-		fli7610_tae_pwm = 0,
-		fli7610_sbc_pwm
-	} pwm;
-	int enabled[STM_PLAT_PWM_NUM_CHANNELS];
+enum fli7610_pwm {
+	fli7610_tae_pwm = 0,
+	fli7610_sbc_pwm
 };
-void fli7610_configure_pwm(struct fli7610_pwm_config *config);
+struct fli7610_pwm_config {
+	struct stm_plat_pwm_channel_config pwm_channel_config[4];
+};
+void fli7610_configure_pwm(enum fli7610_pwm pwm,
+		struct fli7610_pwm_config *config);
 
 void fli7610_reset(char mode, const char *cmd);
 

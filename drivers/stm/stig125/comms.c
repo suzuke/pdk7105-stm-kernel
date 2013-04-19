@@ -322,7 +322,7 @@ void __init stig125_configure_lirc(struct stig125_lirc_config *config)
 /* PWM resources ---------------------------------------------------------- */
 static struct stm_plat_pwm_data stig125_pwm_platform_data =  {
 	/* SBC PWM Module  */
-	.channel_pad_config = {
+	.pwm_pad_config = {
 		[0] = &(struct stm_pad_config) {
 			.gpios_num = 1,
 			.gpios = (struct stm_pad_gpio []) {
@@ -351,13 +351,13 @@ static struct platform_device stig125_pwm_devices =  {
 
 void __init stig125_configure_pwm(struct stig125_pwm_config *config)
 {
+	int channel;
+
 	BUG_ON(!config);
 
-
-	stig125_pwm_platform_data.channel_enabled[0] =
-			config->out0_enabled;
-	stig125_pwm_platform_data.channel_enabled[1] =
-				config->out1_enabled;
+	for (channel = 0; channel < ARRAY_SIZE(config->pwm_channel_config); channel++)
+		stig125_pwm_platform_data.pwm_channel_config[channel] =
+			config->pwm_channel_config[channel];
 
 	platform_device_register(&stig125_pwm_devices);
 }

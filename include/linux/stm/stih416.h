@@ -195,17 +195,15 @@ struct stih416_lirc_config {
 };
 void stih416_configure_lirc(struct stih416_lirc_config *config);
 
-struct stih416_pwm_config {
-	enum {
-		stih416_sas_pwm = 0,
-		stih416_sbc_pwm,
-	} pwm;
-	int out0_enabled;
-	int out1_enabled;
-	int out2_enabled;
-	int out3_enabled;
+enum stih416_pwm {
+	stih416_sas_pwm = 0,
+	stih416_sbc_pwm,
 };
-void stih416_configure_pwm(struct stih416_pwm_config *config);
+struct stih416_pwm_config {
+	struct stm_plat_pwm_channel_config pwm_channel_config[4];
+};
+void stih416_configure_pwm(enum stih416_pwm pwm,
+		struct stih416_pwm_config *config);
 
 void stih416_configure_keyscan(const struct stm_keyscan_config *config);
 

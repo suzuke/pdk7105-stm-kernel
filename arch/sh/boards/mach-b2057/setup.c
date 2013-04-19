@@ -273,7 +273,8 @@ static int __init device_init(void)
 			 * PWM10 is connected to 12V->1.2V power supply
 			 * for "debug purposes". Enable at your own risk!
 			 */
-			.out10_enabled = 0 });
+			.pwm_channel_config[0].enabled = 0,
+		});
 
 	stxh205_configure_mmc(0);
 

@@ -105,8 +105,7 @@ void stx7108_configure_lirc(struct stx7108_lirc_config *config);
 
 
 struct stx7108_pwm_config {
-	int out0_enabled;
-	int out1_enabled;
+	struct stm_plat_pwm_channel_config pwm_channel_config[2];
 };
 void stx7108_configure_pwm(struct stx7108_pwm_config *config);
 

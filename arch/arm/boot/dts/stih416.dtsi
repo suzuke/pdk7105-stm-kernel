@@ -1294,7 +1294,7 @@
 
 		};
 
-	/* SAS PWM MODULE */
+		/* SAS PWM MODULE */
 		pwm0: pwm@fed10000{
 			compatible	= "st,pwm";
 			reg		= <0xfed10000 0x68>;
@@ -1305,6 +1305,25 @@
 			padcfg-1 = <&padcfg_pwm0_chan1>;
 			padcfg-2 = <&padcfg_pwm0_chan2>;
 			padcfg-3 = <&padcfg_pwm0_chan3>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pwm-channel@0 {
+				reg = <0>;
+				status = "disabled";
+			};
+			pwm-channel@1 {
+				reg = <1>;
+				status = "disabled";
+			};
+			pwm-channel@2 {
+				reg = <2>;
+				status = "disabled";
+			};
+			pwm-channel@3 {
+				reg = <3>;
+				status = "disabled";
+			};
 		};
 
 		/* SBC PWM MODULE */
@@ -1318,6 +1337,25 @@
 			padcfg-1 = <&padcfg_pwm1_chan1>;
 			padcfg-2 = <&padcfg_pwm1_chan2>;
 			padcfg-3 = <&padcfg_pwm1_chan3>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pwm-channel@0 {
+				reg = <0>;
+				status = "disabled";
+			};
+			pwm-channel@1 {
+				reg = <1>;
+				status = "disabled";
+			};
+			pwm-channel@2 {
+				reg = <2>;
+				status = "disabled";
+			};
+			pwm-channel@3 {
+				reg = <3>;
+				status = "disabled";
+			};
 		};
 
 		/* Mali GPU resources */

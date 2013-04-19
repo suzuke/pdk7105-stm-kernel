@@ -1803,6 +1803,17 @@
 			padcfg-names = "chan0", "chan1";
 			padcfg-0 = <&padcfg_pwm0_chan0>;
 			padcfg-1 = <&padcfg_pwm0_chan1>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pwm-channel@0 {
+				reg = <0>;
+				status = "disabled";
+			};
+			pwm-channel@1 {
+				reg = <1>;
+				status = "disabled";
+			};
 		};
 
 	};

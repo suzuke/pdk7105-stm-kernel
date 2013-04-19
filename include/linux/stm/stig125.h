@@ -112,8 +112,7 @@ void stig125_configure_fp(const struct stig125_fp_config *config);
 void stig125_configure_usb(int port);
 
 struct stig125_pwm_config {
-	int out0_enabled;
-	int out1_enabled;
+	struct stm_plat_pwm_channel_config pwm_channel_config[2];
 };
 
 void stig125_configure_pwm(struct stig125_pwm_config *config);

@@ -246,8 +246,9 @@ static int __init device_init(void)
 			 *    keyscan and MII1 notReset.
 			 * 11: conflicts with ETH_RXCLK
 			 */
-			.out10_enabled = 0,
-			.out11_enabled = 0, });
+			.pwm_channel_config[0].enabled = 0,
+			.pwm_channel_config[1].enabled = 0,
+		});
 
 	/* NAND Flash via b2006/b2007 VPMEM daughter board. */
 	stxh205_configure_nand(&(struct stm_nand_config) {

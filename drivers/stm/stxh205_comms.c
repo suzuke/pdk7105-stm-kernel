@@ -613,7 +613,7 @@ void __init stxh205_configure_lirc(struct stxh205_lirc_config *config)
 /* PWM resources ---------------------------------------------------------- */
 
 static struct stm_plat_pwm_data stxh205_pwm_platform_data = {
-	.channel_pad_config = {
+	.pwm_pad_config = {
 		[0] = &(struct stm_pad_config) {
 			.gpios_num = 1,
 			.gpios = (struct stm_pad_gpio []) {
@@ -643,16 +643,14 @@ static struct platform_device stxh205_pwm_device = {
 void __init stxh205_configure_pwm(struct stxh205_pwm_config *config)
 {
 	static int configured;
+	int channel;
 
 	BUG_ON(configured);
 	configured = 1;
 
-	if (config) {
-		stxh205_pwm_platform_data.channel_enabled[0] =
-				config->out10_enabled;
-		stxh205_pwm_platform_data.channel_enabled[1] =
-				config->out11_enabled;
-	}
+	for (channel = 0; channel < ARRAY_SIZE(config->pwm_channel_config); channel++)
+		stxh205_pwm_platform_data.pwm_channel_config[channel] =
+			config->pwm_channel_config[channel];
 
 	platform_device_register(&stxh205_pwm_device);
 }

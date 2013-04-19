@@ -289,7 +289,7 @@ void __init fli7610_configure_lirc(void)
 static struct stm_plat_pwm_data fli7610_pwm_platform_data[] =  {
 	/* SAS PWM Module  */
 	[0] = {
-		.channel_pad_config = {
+		.pwm_pad_config = {
 			[0] = &(struct stm_pad_config) {
 				.gpios_num = 1,
 				.gpios = (struct stm_pad_gpio []) {
@@ -312,7 +312,7 @@ static struct stm_plat_pwm_data fli7610_pwm_platform_data[] =  {
 	},
 	/* SBC PWM Module */
 	[1] = {
-		.channel_pad_config = {
+		.pwm_pad_config = {
 			[0] = &(struct stm_pad_config) {
 				.gpios_num = 1,
 				.gpios = (struct stm_pad_gpio []) {
@@ -365,20 +365,20 @@ static struct platform_device fli7610_pwm_devices[] =  {
 };
 
 static int __initdata fli7610_pwm_configured[ARRAY_SIZE(fli7610_pwm_devices)];
-void __init fli7610_configure_pwm(struct fli7610_pwm_config *config)
+void __init fli7610_configure_pwm(enum fli7610_pwm pwm,
+		struct fli7610_pwm_config *config)
 {
-	int pwm;
 	int i;
+
 	BUG_ON(!config);
-	pwm = config->pwm;
 	BUG_ON(pwm < 0 || pwm >= ARRAY_SIZE(fli7610_pwm_devices));
 
 	BUG_ON(fli7610_pwm_configured[pwm]);
 
 	fli7610_pwm_configured[pwm] = 1;
 	for (i = 0; i < STM_PLAT_PWM_NUM_CHANNELS; i++)
-		fli7610_pwm_platform_data[pwm].channel_enabled[i] =
-					config->enabled[i];
+		fli7610_pwm_platform_data[pwm].pwm_channel_config[i] =
+			config->pwm_channel_config[i];
 
 	platform_device_register(&fli7610_pwm_devices[pwm]);
 }

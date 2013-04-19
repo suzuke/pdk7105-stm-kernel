@@ -612,7 +612,7 @@ void __init stih416_configure_lirc(struct stih416_lirc_config *config)
 static struct stm_plat_pwm_data stih416_pwm_platform_data[] =  {
 	/* SAS PWM Module  */
 	[0] = {
-		.channel_pad_config = {
+		.pwm_pad_config = {
 			[0] = &(struct stm_pad_config) {
 				.gpios_num = 1,
 				.gpios = (struct stm_pad_gpio []) {
@@ -641,7 +641,7 @@ static struct stm_plat_pwm_data stih416_pwm_platform_data[] =  {
 	},
 	/* SBC PWM-0 Module */
 	[1] = {
-		.channel_pad_config = {
+		.pwm_pad_config = {
 			[0] = &(struct stm_pad_config) {
 				.gpios_num = 1,
 				.gpios = (struct stm_pad_gpio []) {
@@ -690,26 +690,21 @@ static struct platform_device stih416_pwm_devices[] =  {
 };
 
 static int __initdata stih416_pwm_configured[ARRAY_SIZE(stih416_pwm_devices)];
-void __init stih416_configure_pwm(struct stih416_pwm_config *config)
+void __init stih416_configure_pwm(enum stih416_pwm pwm,
+		struct stih416_pwm_config *config)
 {
-	int pwm;
+	int channel;
 
 	BUG_ON(!config);
-	pwm = config->pwm;
 	BUG_ON(pwm < 0 || pwm >= ARRAY_SIZE(stih416_pwm_devices));
 
 	BUG_ON(stih416_pwm_configured[pwm]);
 
 	stih416_pwm_configured[pwm] = 1;
 
-	stih416_pwm_platform_data[pwm].channel_enabled[0] =
-			config->out0_enabled;
-	stih416_pwm_platform_data[pwm].channel_enabled[1] =
-				config->out1_enabled;
-	stih416_pwm_platform_data[pwm].channel_enabled[2] =
-				config->out2_enabled;
-	stih416_pwm_platform_data[pwm].channel_enabled[3] =
-				config->out3_enabled;
+	for (channel = 0; channel < ARRAY_SIZE(config->pwm_channel_config); channel++)
+		stih416_pwm_platform_data[pwm].pwm_channel_config[channel] =
+			config->pwm_channel_config[channel];
 
 	platform_device_register(&stih416_pwm_devices[pwm]);
 }
