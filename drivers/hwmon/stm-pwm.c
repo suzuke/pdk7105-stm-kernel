@@ -26,6 +26,9 @@ struct stm_pwm {
 	struct device *hwmon_dev;
 	struct stm_plat_pwm_data *platform_data;
 	struct stm_pad_state *pad_state[STM_PLAT_PWM_NUM_CHANNELS];
+#ifdef CONFIG_PM_SLEEP
+	u8 suspend_value[STM_PLAT_PWM_NUM_CHANNELS];
+#endif
 };
 
 /* PWM registers */
@@ -282,7 +285,22 @@ static int stm_pwm_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_HIBERNATION
+#ifdef CONFIG_PM_SLEEP
+static int stm_pwm_suspend(struct device *dev)
+{
+	struct stm_pwm *pwm = dev_get_drvdata(dev);
+	int channel;
+
+	for (channel = 0; channel < STM_PLAT_PWM_NUM_CHANNELS; channel++) {
+		if (!pwm->platform_data->pwm_channel_config[channel].enabled)
+			continue;
+		pwm->suspend_value[channel] =
+			(u8)readl(pwm->base + PWM_VAL(channel));
+	}
+
+	return 0;
+}
+
 static int stm_pwm_restore(struct device *dev)
 {
 	struct stm_pwm *pwm = dev_get_drvdata(dev);
@@ -293,17 +311,15 @@ static int stm_pwm_restore(struct device *dev)
 	for (channel = 0; channel < STM_PLAT_PWM_NUM_CHANNELS; channel++) {
 		if (!pwm->platform_data->pwm_channel_config[channel].enabled)
 			continue;
-		writel(0, pwm->base + PWM_VAL(channel));
+		writel(pwm->suspend_value, pwm->base + PWM_VAL(channel));
 		stm_pad_setup(pwm->pad_state[channel]);
 	}
+
 	return 0;
 }
-
-static const struct dev_pm_ops stm_pwm_pm_ops = {
-	.thaw = stm_pwm_restore,
-	.restore = stm_pwm_restore,
-};
 #endif
+
+static SIMPLE_DEV_PM_OPS(stm_pwm_pm_ops, stm_pwm_suspend, stm_pwm_restore);
 
 #ifdef CONFIG_OF
 static struct of_device_id stm_pwm_match[] = {
@@ -319,9 +335,7 @@ static struct platform_driver stm_pwm_driver = {
 	.driver = {
 		.name		= "stm-pwm",
 		.of_match_table = of_match_ptr(stm_pwm_match),
-#ifdef CONFIG_HIBERNATION
 		.pm		= &stm_pwm_pm_ops,
-#endif
 	},
 	.probe		= stm_pwm_probe,
 	.remove		= stm_pwm_remove,
