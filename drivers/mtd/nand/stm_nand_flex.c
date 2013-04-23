@@ -1113,7 +1113,6 @@ flex_init_bank(struct stm_nand_flex_controller *flex, int bank_nr,
 	       struct stm_nand_bank_data *bank,
 	       int rbn_connected, struct device *dev)
 {
-	const char *name = dev_name(dev);
 	struct stm_nand_flex_device *data;
 	int res;
 	struct mtd_part_parser_data ppdata;
@@ -1340,7 +1339,6 @@ static void *stm_flex_dt_get_pdata(struct platform_device *pdev)
 static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata;
-	int res;
 	int n;
 	struct stm_nand_bank_data *bank;
 	struct stm_nand_flex_controller *flex;

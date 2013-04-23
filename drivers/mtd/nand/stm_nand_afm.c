@@ -2886,7 +2886,6 @@ static struct stm_nand_afm_device * __devinit
 afm_init_bank(struct stm_nand_afm_controller *afm, int bank_nr,
 		struct stm_nand_bank_data *bank, struct device *dev)
 {
-	const char *name = dev_name(dev);
 	struct stm_nand_afm_device *data;
 	int err;
 	struct mtd_part_parser_data ppdata;
