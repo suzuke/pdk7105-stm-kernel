@@ -812,6 +812,14 @@
 				};
 			};
 		};
+
+		nandflex: nandflex@fe901000{
+			compatible	= "st,nand-flex", "simple-bus";
+			reg =	<0xfe901000 0x1000>;
+			reg-names = "nand_mem";
+			status = "disabled";
+		};
+
 		nandafm: nandafm@fe901000{
 			compatible	= "st,nand-afm", "simple-bus";
 			reg =	<0xfe901000 0x1000>, <0xfef00800 0x0800>;
