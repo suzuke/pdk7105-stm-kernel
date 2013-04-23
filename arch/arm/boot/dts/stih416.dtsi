@@ -1074,6 +1074,8 @@
 			reg =	<0xfe902000 0x1000>;
 			reg-names = "spi-fsm";
 			padcfg-0 	= <&padcfg_fsm>;
+			boot-device	= <&sysconf 2598 0 4>;
+			boot-device-spi	= <0x1a>;
 			caps-handle = <&fsm_caps>;
 			fsm_caps: fsm-caps {
 				no-read-repeat;

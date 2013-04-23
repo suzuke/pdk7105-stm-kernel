@@ -2118,6 +2118,9 @@ static void *stm_fsm_dt_get_pdata(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct stm_plat_spifsm_data *data;
 	struct device_node *tp;
+	struct sysconf_field *sc = NULL;
+	unsigned int boot_device_spi = 0;
+
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 
 	of_property_read_string(np, "flash-name",
@@ -2130,6 +2133,11 @@ static void *stm_fsm_dt_get_pdata(struct platform_device *pdev)
 	data->capabilities.dual_mode = of_property_read_bool(tp, "dual-mode");
 
 	data->capabilities.quad_mode =	of_property_read_bool(tp, "quad-mode");
+
+	data->capabilities.reset_signal = of_property_read_bool(tp,
+								"reset-signal");
+	data->capabilities.reset_por = of_property_read_bool(tp, "reset-por");
+
 	data->capabilities.addr_32bit = of_property_read_bool(tp, "addr-32bit");
 	data->capabilities.no_poll_mode_change =
 			of_property_read_bool(tp, "no-poll-mode-change");
@@ -2148,6 +2156,22 @@ static void *stm_fsm_dt_get_pdata(struct platform_device *pdev)
 	if (of_property_read_bool(tp, "read-status-clkdiv4"))
 		data->capabilities.read_status_bug =
 					spifsm_read_status_clkdiv4;
+
+	/* Assume boot-from-spi, unless we can prove otherwise. */
+	data->capabilities.boot_from_spi = 1;
+
+	sc = stm_of_sysconf_claim(np, "boot-device");
+	if (sc &&
+	    (of_property_read_u32(np, "boot-device-spi",
+				  &boot_device_spi) == 0)) {
+		if (sysconf_read(sc) != boot_device_spi)
+			data->capabilities.boot_from_spi = 0;
+	} else {
+		dev_warn(&pdev->dev, "failed to determine boot-device: assuming boot-from-spi!\n");
+	}
+
+	if (sc)
+		sysconf_release(sc);
 
 	return data;
 }
