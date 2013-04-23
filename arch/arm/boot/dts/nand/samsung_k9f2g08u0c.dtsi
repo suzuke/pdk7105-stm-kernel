@@ -1,0 +1,37 @@
+/*
+ * Samsung K9F2G08U0C NAND Flash timing specification
+ *
+ * Copyright (C) 2013 STMicroelectronics Limited.
+ * Author: Angus Clark <angus.clark@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+
+/ {
+	samsung_k9f2g08u0c_tspec: nand-timing-spec {
+		tR		= <40>;
+		tCLS		= <12>;
+		tCS		= <20>;
+		tALS		= <12>;
+		tDS		= <12>;
+		tWP		= <12>;
+		tCLH		= <5>;
+		tCH		= <5>;
+		tALH		= <5>;
+		tDH		= <5>;
+		tWB		= <100>;
+		tWH		= <10>;
+		tWC		= <25>;
+		tRP		= <12>;
+		tREH		= <15>;
+		tRC		= <25>;
+		tREA		= <20>;
+		tRHOH		= <15>;
+		tCEA		= <25>;
+		tCOH		= <15>;
+		tCHZ		= <30>;
+		tCSD		= <10>;
+	};
+};

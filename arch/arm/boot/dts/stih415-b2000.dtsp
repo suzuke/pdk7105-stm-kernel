@@ -8,6 +8,7 @@
  */
 /dts-v1/;
 #include "stih415.dtsi"
+#include "nand/samsung_k9f2g08u0c.dtsi"
 
 / {
 	model = "Stih415 Orly B2000";
@@ -43,20 +44,23 @@
 		power-on-gpio	= <&PIO4 3>;
 		nandafm: nandafm@fe901000{
 			status = "okay";
-			nand-no-autoincr;
-			nand-on-flash-bbt;
 			st,rbn-flex-connected;
 			st,nand-banks = <&nand_banks>;
-			st,nand-csn = <0>;
 		};
 
 		nand_banks: nand-banks {
+			/*
+			 * NAND Flash via b2006/b2007 VPMEM module.
+			 * Configuration below assumes module is fitted
+			 * with Samsung K9F2G08U0C device.  Please update
+			 * if module is populated with a different device.
+			 */
 			bank0 {
-				/* NAND_BBT_USE_FLASH */
 				nand-on-flash-bbt;
 				nand-no-autoincr;
 				st,nand-csn		= <0>;
-				st,nand-timing-data	= <&nand_timing0>;
+				st,nand-timing-spec	= <&samsung_k9f2g08u0c_tspec>;
+				st,nand-timing-relax	= <0>;
 				partitions {
 					#address-cells = <1>;
 			                #size-cells = <1>;
@@ -66,22 +70,10 @@
 					};
 					partition@800000{
 						label = "NAND Flash 2";
-						reg = <0x00800000 0x3f800000>;
+						reg = <0x00800000 0x0f800000>;
 					};
 				};
 			};
-		};
-
-		nand_timing0: nand-timing {
-			sig-setup	= <10>;
-			sig-hold	= <10>;
-			CE-deassert	= <0>;
-			WE-to-RBn	= <100>;
-			wr-on		= <10>;
-			wr-off		= <30>;
-			rd-on		= <10>;
-			rd-off		= <30>;
-			chip-delay	= <30>;		/* delay in us */
 		};
 
 		spifsm:	spifsm@fe902000{
