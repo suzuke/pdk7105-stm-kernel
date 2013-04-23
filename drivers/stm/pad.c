@@ -149,6 +149,7 @@ void stm_pad_setup(struct stm_pad_state *state)
 
 	mutex_unlock(&stm_pad_mutex);
 }
+EXPORT_SYMBOL(stm_pad_setup);
 
 static int __stm_pad_claim(struct stm_pad_config *config,
 		struct stm_pad_state *state, const char *owner)
