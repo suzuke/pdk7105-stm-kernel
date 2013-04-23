@@ -1519,6 +1519,8 @@ static int fsm_read_jedec(struct stm_spi_fsm *fsm, uint8_t *const jedec)
 
 	memcpy(jedec, tmp, 5);
 
+	fsm_wait_seq(fsm);
+
 	return 0;
 }
 
@@ -2378,6 +2380,8 @@ static int __devexit stm_spi_fsm_remove(struct platform_device *pdev)
 	iounmap(fsm->base);
 	release_resource(fsm->region);
 	platform_set_drvdata(pdev, NULL);
+
+	kfree(fsm);
 
 	return 0;
 }
