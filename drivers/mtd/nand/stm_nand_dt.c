@@ -85,27 +85,66 @@ int stm_of_get_nand_banks(struct device *dev, struct device_node *np,
 		banks[i].nr_partitions = 0;
 		banks[i].partitions = NULL;
 		timing = of_parse_phandle(bank_np, "st,nand-timing-data", 0);
-		banks[i].timing_data = devm_kzalloc(dev,
-			sizeof(struct stm_nand_timing_data), GFP_KERNEL);
-		of_property_read_u32(timing, "sig-setup",
-					&banks[i].timing_data->sig_setup);
-		of_property_read_u32(timing, "sig-hold",
-					&banks[i].timing_data->sig_hold);
-		of_property_read_u32(timing, "CE-deassert",
-					&banks[i].timing_data->CE_deassert);
-		of_property_read_u32(timing, "WE-to-RBn",
-					&banks[i].timing_data->WE_to_RBn);
-		of_property_read_u32(timing, "wr-on",
-					&banks[i].timing_data->wr_on);
-		of_property_read_u32(timing, "wr-off",
-					&banks[i].timing_data->wr_off);
-		of_property_read_u32(timing, "rd-on",
-					&banks[i].timing_data->rd_on);
-		of_property_read_u32(timing, "rd-off",
-					&banks[i].timing_data->rd_off);
-		of_property_read_u32(timing, "chip-delay",
-					&banks[i].timing_data->chip_delay);
+		if (timing) {
+			struct stm_nand_timing_data *td;
+			td = devm_kzalloc(dev,
+					  sizeof(struct stm_nand_timing_data),
+					  GFP_KERNEL);
 
+			of_property_read_u32(timing, "sig-setup",
+					     &td->sig_setup);
+			of_property_read_u32(timing, "sig-hold",
+					     &td->sig_hold);
+			of_property_read_u32(timing, "CE-deassert",
+					     &td->CE_deassert);
+			of_property_read_u32(timing, "WE-to-RBn",
+					     &td->WE_to_RBn);
+			of_property_read_u32(timing, "wr-on",
+					     &td->wr_on);
+			of_property_read_u32(timing, "wr-off",
+					     &td->wr_off);
+			of_property_read_u32(timing, "rd-on",
+					     &td->rd_on);
+			of_property_read_u32(timing, "rd-off",
+					     &td->rd_off);
+			of_property_read_u32(timing, "chip-delay",
+					     &td->chip_delay);
+
+			banks[i].timing_data = td;
+		}
+		timing = of_parse_phandle(bank_np, "st,nand-timing-spec", 0);
+		if (timing) {
+			struct nand_timing_spec *ts;
+
+			ts = devm_kzalloc(dev, sizeof(struct nand_timing_spec),
+					  GFP_KERNEL);
+
+			of_property_read_u32(timing, "tR", &ts->tR);
+			of_property_read_u32(timing, "tCLS", &ts->tCLS);
+			of_property_read_u32(timing, "tCS", &ts->tCS);
+			of_property_read_u32(timing, "tALS", &ts->tALS);
+			of_property_read_u32(timing, "tDS", &ts->tDS);
+			of_property_read_u32(timing, "tWP", &ts->tWP);
+			of_property_read_u32(timing, "tCLH", &ts->tCLH);
+			of_property_read_u32(timing, "tCH", &ts->tCH);
+			of_property_read_u32(timing, "tALH", &ts->tALH);
+			of_property_read_u32(timing, "tDH", &ts->tDH);
+			of_property_read_u32(timing, "tWB", &ts->tWB);
+			of_property_read_u32(timing, "tWH", &ts->tWH);
+			of_property_read_u32(timing, "tWC", &ts->tWC);
+			of_property_read_u32(timing, "tRP", &ts->tRP);
+			of_property_read_u32(timing, "tREH", &ts->tREH);
+			of_property_read_u32(timing, "tRC", &ts->tRC);
+			of_property_read_u32(timing, "tREA", &ts->tREA);
+			of_property_read_u32(timing, "tRHOH", &ts->tRHOH);
+			of_property_read_u32(timing, "tCEA", &ts->tCEA);
+			of_property_read_u32(timing, "tCOH", &ts->tCOH);
+			of_property_read_u32(timing, "tCHZ", &ts->tCHZ);
+			of_property_read_u32(timing, "tCSD", &ts->tCSD);
+			banks[i].timing_spec = ts;
+		}
+		of_property_read_u32(bank_np, "st,nand-timing-relax",
+				     &banks[i].timing_relax);
 	}
 	return nr_banks;
 }

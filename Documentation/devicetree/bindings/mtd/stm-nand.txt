@@ -1,52 +1,107 @@
 
 ===============================================================================
-		STM BCH, Flex, AFM, EMI Nand Controller.
+                STM NAND Support: FLEX, AFM, and BCH Drivers
 ===============================================================================
 
 Required properties:
-- compatible		: "st,nand-afm",
-			"st,nand-bch", "st,nand-emi".
-			This define which driver to be used.
-- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
-			resources with names. look in
-			Documentation/devicetree/bindings/resource-names.txt
-- st,nand-banks	: An array of nand banks with timing data.
-- st,nand-csn		: Chip select associated with the Bank.
-- st,nand-timing-data	: Timing parameters in ns for nand controller
-			See ADCS #7864584.
 
-- partitions		: a child node with mtd partitions associated
-			with the bank.
+  - compatible          : Select according to STM NAND driver: "st,nand-afm",
+                          "st,nand-bch", "st,nand-flex".
 
-Depending on the driver selection in compatible field some properties become
-optional.
+  - reg,                : Standard register descriptions for named resources:
+  - reg-names,          :   "nand_mem" : NAND Controller register map
+                            "nand_dma" : ["st,nand-bch ONLY"] BCH Controller DMA
+                                           configuration map
 
-For "st,nand-afm"
-- st,rbn-flex-connected is must, and it boolean property.
+  - interrupts,         : Standard description for named IRQ:
+  - interrupt-names	:   "nand_irq" : NAND Controller IRQ
 
-For "st,nand-bch"
--st,bch-ecc-mode is must and it takes one of the below strings.
-        "auto"
-	"noecc"
-	"18bit"
-	"30bit"
+  - st,nand-banks       : Subnode representing one or more "banks" of NAND
+                          Flash, connected to an STM NAND Controller (see
+                          descriptin below).  Note, "st,nand-bch" only supports
+                          a single connected NAND bank.
 
--named resource "nand_dma" is must for bch controller.
+  - st,bch-ecc-mode     : ["st,nand-bch" ONLY] BCH ECC configuration mode:
+                            "auto"  : Use strongest ECC supported by device
+                            "noecc" : No ECC
+                            "18bit" : Use 18-bit/1024B ECC
+                            "30bit" : Use 30-bit/1024B ECC
 
+Properties describing Bank of NAND Flash ("st,nand-banks"):
+  - st,nand-csn         : Chip select associated with the Bank.
 
-For "st,nand-emi"
-- emi-rbn-gpio gpio number
+  - st,nand-timing-spec : [Optional] NAND Device Timing Data.  All times
+                          expressed in ns, except where stated otherwise:
 
+                            tR           : Max Page Read delay [us]
+                            tCLS         : Min CLE setup time
+                            tCS          : Min CE setup time
+                            tALS         : Min ALE setup time
+                            tDS          : Min Data setup time
+                            tWP          : Min WE pulse width
+                            tCLH         : Min CLE hold time
+                            tCH          : Min CE hold time
+                            tALH         : Min ALE hold time
+                            tDH          : Min Data hold time
+                            tWB          : Max WE high to busy
+                            tWH          : Min WE hold time
+                            tWC          : Min Write cycle time
+                            tRP          : Min RE pulse width
+                            tREH         : Min RE high hold time
+                            tRC          : Min Read cycle time
+                            tREA         : Max Read access time
+                            tRHOH        : Min RE high to output hold
+                            tCEA         : Max CE access time
+                            tCOH         : Min CE high to output hold
+                            tCHZ         : Max CE high to output high Z
+                            tCSD         : Min CE high to ALE/CLE don't care
 
-Optional properties:
-- Subnode partition map from mtd flash binding
+  - st,nand-timing-data : [Optional, DEPRECATED] Legacy NAND Device Timing Data.
+                          All times expressed in ns, except where stated
+                          otherwise
 
-Example afm configuration:
+                            sig-setup    : CL/AL setup time
+                            sig-hold     : CL/AL hold time
+                            CE-deassert  : Min CE deassert time
+                            WE-to-RBn    : Min WE to RBn time
+                            wr-on        : Write pulse ON time
+                            wr-off       : Write pulse OFF time
+                            rd-on        : Read pulse ON time
+                            rd-off       : Read pulse OFF time
+                            chip-delay   : Page read time [us]
+
+  - st,nand-timing-relax : [Optional] Number of IP clock cycles by which to
+                          "relax" timing configuration.  Required on some boards
+                          to accommodate board-level limitations. Applies to
+                          'st,nand-timing-spec' and ONFI timing mode
+                          configuration.
+
+  - nand-on-flash-bbt   : [Optional] Generic NAND properties (See mtd/nand.txt
+  - nand-no-autoinc     :   for more details).
+
+  - partitions          : [Optional] Subnode describing MTD partition map
+                          (see mtd/partition.txt for more details).
+
+Note, during initialisation, the NAND Controller timing registers are configured
+according to one of the following methods, in order of precedence:
+
+           1. Configuration based on "st,nand_timing_spec" if supplied.
+
+           2. Configuration based on "st,nand_timing_data" if supplied.  Not
+              supported by the stm-nand-bch driver, and deprecated in favour of
+              method 1.
+
+           3. Configuration based on ONFI timing mode, as advertised by the
+              device during ONFI-probing (ONFI-compliant NAND only).
+
+           4. Use reset/safe timing values
+
+Example 'stm-nand-afm' configuration:
 
 	nandafm: nand-afm{
 		#interrupt-cells = <3>;
-                #address-cells = <1>;
-                #size-cells = <1>;
+		#address-cells = <1>;
+		#size-cells = <1>;
 		interrupt-parent = <&intc>;
 		compatible	= "st,nand-afm", "simple-bus";
 		reg =	<0xFE901000 0x1000>;
@@ -66,7 +121,7 @@ Example afm configuration:
 			st,nand-timing-data	= <&nand_timing0>;
 			partitions {
 				#address-cells = <1>;
-		                #size-cells = <1>;
+				#size-cells = <1>;
 				partition@0{
 					label = "NAND Flash 1";
 					reg = <0x00000000 0x00800000>;
@@ -78,7 +133,6 @@ Example afm configuration:
 			};
 		};
 	};
-
 
 	nand_timing0: nand-timing {
 		sig-setup	= <10>;
