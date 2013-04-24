@@ -191,24 +191,28 @@
 			#gpio-cells = <1>;
 			compatible = "st,gpio";
 			reg = <0xfea00000 0x100>;
+			interrupts      =  <0 20 0>;
 			bank-name = "PIO19";
 		};
 		PIO20: PIO@fea01000 {
 			#gpio-cells = <1>;
 			compatible = "st,gpio";
 			reg = <0xfea01000 0x100>;
+			interrupts      =  <0 21 0>;
 			bank-name = "PIO20";
 		};
 		PIO21: PIO@fea02000 {
 			#gpio-cells = <1>;
 			compatible = "st,gpio";
 			reg = <0xfea02000 0x100>;
+			interrupts      =  <0 22 0>;
 			bank-name = "PIO21";
 		};
 		PIO22: PIO@fea03000 {
 			#gpio-cells = <1>;
 			compatible = "st,gpio";
 			reg = <0xfea03000 0x100>;
+			interrupts      =  <0 23 0>;
 			bank-name = "PIO22";
 		};
 
@@ -237,6 +241,40 @@
 			compatible = "st,gpio";
 			reg = <0xfea63000 0x100>;
 			bank-name = "SBC_PIO3";
+		};
+	};
+
+	gpio-irqmux {
+		#interrupt-cells = <3>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		interrupt-parent = <&intc>;
+		ranges;
+		/*PIO0-10: PIO_WEST */
+		gpio-irqmux@febef080{
+			compatible      = "st,gpio-irqmux", "simple-bus";
+			reg =   <0xfebef080 0x4>;
+			interrupts = <0 18 0x0>;
+			first-port = <0>;
+			ports = <10>;
+		};
+
+		/*PIO10-18: PIO_SOUTH */
+		gpio-irqmux@fef7f080{
+			compatible      = "st,gpio-irqmux", "simple-bus";
+			reg =   <0xfef7f080 0x4>;
+			interrupts = <0 19 0x0>;
+			first-port = <10>;
+			ports = <9>;
+		};
+
+		/*PIO23-26: PIO_SBC */
+		gpio-irqmux@fea6f080{
+			compatible      = "st,gpio-irqmux", "simple-bus";
+			reg =   <0xfea6f080 0x4>;
+			interrupts = <0 24 0x0>;
+			first-port = <23>;
+			ports = <4>;
 		};
 	};
 
@@ -780,6 +818,13 @@
 				interrupts-enable;
 				interrupts-multiplier = <1>;
 				interrupts-constant = <0>;
+				irqmux-map = <	 0  9 1 1 0 /* PIO10-18  -> A9IRQ19 */
+						 9 10 0 1 0 /* PIO0-9    -> A9IRQ18 */
+						19  1 2 1 0 /* PIO19     -> A9IRQ20 */
+						20  1 3 1 0 /* PIO20     -> A9IRQ21 */
+						21  1 4 1 0 /* PIO21     -> A9IRQ22 */
+						22  1 5 1 0 /* PIO22     -> A9IRQ23 */
+						23  4 6 1 0 >;/* SBCPIO0-3 -> A9IRQ24 */
 			 };
 			irqmux@fea2c800{
 				compatible      = "st,irqmux", "simple-bus";
