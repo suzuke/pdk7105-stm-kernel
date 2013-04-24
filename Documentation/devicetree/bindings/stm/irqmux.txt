@@ -13,6 +13,14 @@ Required properties:
 - irqmux-inputs : Should be number of inputs to irqmux.
 - irqmux-outputs: Should be number of outputs to irqmux.
 - interrupts-enable: Binary flag to enable or disable all interrupts in irqmux.
+- irqmux-map    : when the generic modulo-mapping formula can not be used a static
+		  mapping shouldn be provided;
+		  Each map-entry is a set of 5 longs with the following struture:
+		  - begin   : defines the first input mapped;
+		  - size    : defines how many inputs are mapped;
+		  - output  : defines the output on where the inputs are routed;
+		  - enabled : defines if the inputs are enabled or not;
+		  - inverted: defines ir the inputs are inverted or not;
 
 Example:
 	irqmuxs{
@@ -37,6 +45,13 @@ Example:
 			irqmux-inputs = <27>;
 			irqmux-outputs = <10>;
 			interrupts-enable;
+			irqmux-map = <   0  9 1 1 0
+					 9 10 0 1 0
+					19  1 2 1 0
+					20  1 3 1 0
+					21  1 4 1 0
+					22  1 5 1 0
+					23  4 6 1 0 >;
 		 };
 		...
 		...

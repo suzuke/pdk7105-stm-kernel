@@ -62,7 +62,7 @@ static int apply_irqmux_mapping(struct device *dev)
 	return 0;
 }
 
-static int of_irqmux_mapping(struct device *dev,
+static int of_generic_irqmux_mapping(struct device *dev,
 		long input, long *enable, long *output, long *inv)
 {
 	struct stm_plat_irq_mux_data *pdata = dev_get_platdata(dev);
@@ -79,6 +79,53 @@ static int of_irqmux_mapping(struct device *dev,
 	*output = input % pdata->num_output;
 	return 0;
 }
+
+static int of_custom_irqmux_mapping(struct device *dev,
+		long input, long *enable, long *output, long *inv)
+{
+	struct device_node *np;
+	union {
+		u32 array[5];
+		struct {
+			u32 begin;
+			u32 size;
+			u32 output;
+			u32 enabled;
+			u32 inverted;
+		};
+	} irqmux_map_entry;
+	const __be32 *list;
+	const struct property *pp;
+	int remaining;
+
+	np = dev->of_node;
+	pp = of_find_property(np, "irqmux-map", NULL);
+	BUG_ON(!pp);
+
+	list = pp->value;
+	remaining = pp->length / sizeof(*list);
+	while (remaining >= ARRAY_SIZE(irqmux_map_entry.array)) {
+		int i;
+		for (i = 0; i < ARRAY_SIZE(irqmux_map_entry.array); ++i)
+			irqmux_map_entry.array[i] = be32_to_cpup(list++);
+
+		if (input >= irqmux_map_entry.begin &&
+		    input < (irqmux_map_entry.begin + irqmux_map_entry.size))
+			goto found;
+
+		remaining -= ARRAY_SIZE(irqmux_map_entry.array);
+	}
+
+	return -EINVAL;
+
+found:
+	*enable = irqmux_map_entry.enabled;
+	*inv = irqmux_map_entry.inverted;
+	*output = irqmux_map_entry.output;
+
+	return 0;
+}
+
 static void *irq_mux_get_pdata(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -95,7 +142,11 @@ static void *irq_mux_get_pdata(struct platform_device *pdev)
 	data->num_input = num_inputs;
 	pdev->dev.platform_data = data;
 
-	data->custom_mapping = of_irqmux_mapping;
+	if (of_find_property(np, "irqmux-map", NULL))
+		data->custom_mapping = of_custom_irqmux_mapping;
+	else
+		data->custom_mapping = of_generic_irqmux_mapping;
+
 	return data;
 }
 static int __devinit irq_mux_driver_probe(struct platform_device *pdev)
