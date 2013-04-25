@@ -36,7 +36,6 @@
 		#size-cells = <1>;
 		#interrupt-cells = <3>;
 		interrupt-parent = <&intc>;
-		compatible = "simple-bus";
 		ranges;
 
 		timer@fffe0600 {
@@ -335,7 +334,7 @@
 		ranges;
 		compatible	= "simple-bus";
 		sysconf@fe600000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfe600000 0x1000>;
 			group@0{
 				group	= <0>;
@@ -345,7 +344,7 @@
 			};
 		};
 		sysconf@fee10000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfee10000 0x1000>;
 			group@0{
 				group	= <1>;
@@ -355,7 +354,7 @@
 			};
 		};
 		sysconf@fe830000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfe830000 0x1000>;
 			group@0 {
 				group	= <2>;
@@ -367,7 +366,7 @@
 
 		/* MPE */
 		sysconf@fddf0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfddf0000 0x1000>;
 			group@0 {
 				group	= <3>;
@@ -377,7 +376,7 @@
 			};
 		};
 		sysconf@fd6a0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfd6a0000 0x1000>;
 			group@0 {
 				group	= <4>;
@@ -388,7 +387,7 @@
 		};
 
 		sysconf@fdde0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfdde0000 0x1000>;
 			group@0 {
 				group	= <5>;
@@ -399,7 +398,7 @@
 		};
 
 		sysconf@fd320000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfd320000 0x1000>;
 			group@0 {
 				group	= <6>;
@@ -410,7 +409,7 @@
 		};
 
 		sysconf@fd690000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfd690000 0x1000>;
 			group@0{
 				group	= <7>;
@@ -421,7 +420,7 @@
 		};
 
 		sysconf@fe4b5100{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfe4b5100 0x54>;
 			group@0 {
 				group	= <8>;
@@ -1049,14 +1048,14 @@
 		};
 
 		nandflex: nand-flex{
-			compatible	= "st,nand-flex", "simple-bus";
+			compatible	= "st,nand-flex";
 			reg =	<0xfe901000 0x1000>;
 			reg-names = "nand_mem";
 			status = "disabled";
 		};
 
 		nandafm: nand-afm{
-			compatible	= "st,nand-afm", "simple-bus";
+			compatible	= "st,nand-afm";
 			reg =	<0xfe901000 0x1000>, <0xfef00800 0x0800>;
 			reg-names = "nand_mem", "nand_dma";
 			interrupts = <0 139 0x0>;
@@ -1065,7 +1064,7 @@
 		};
 
 		nandbch: nand-bch {
-			compatible	= "st,nand-bch", "simple-bus";
+			compatible	= "st,nand-bch";
 			reg =	<0xfe901000 0x1000>, <0xfef00800 0x0800>;
 			reg-names = "nand_mem", "nand_dma";
 			interrupts = <0 139 0x0>;
@@ -1076,7 +1075,7 @@
 
 		/* FSM */
 		spifsm:	spifsm@fe902000{
-			compatible	= "st,spi-fsm", "simple-bus";
+			compatible	= "st,spi-fsm";
 			status		= "disabled";
 			reg =	<0xfe902000 0x1000>;
 			reg-names = "spi-fsm";
@@ -1177,7 +1176,7 @@
 		};
 
 		usb0: usb@fe100000{
-			compatible	= "st,usb", "simple-bus";
+			compatible	= "st,usb";
 			status = "disabled";
 			amba-config		= <&usb_amba_config>;
 			strap-8bit;
@@ -1206,7 +1205,7 @@
 		};
 
 		usb1: usb@fe200000{
-			compatible	= "st,usb", "simple-bus";
+			compatible	= "st,usb";
 			status = "disabled";
 			amba-config		= <&usb_amba_config>;
 			strap-8bit;
@@ -1232,7 +1231,7 @@
 		};
 
 		usb2: usb@fe300000{
-			compatible	= "st,usb", "simple-bus";
+			compatible	= "st,usb";
 			status = "disabled";
 			amba-config		= <&usb_amba_config>;
 			strap-8bit;
@@ -1260,7 +1259,7 @@
 		};
 
 		usb3: usb@fe340000{
-			compatible	= "st,usb", "simple-bus";
+			compatible	= "st,usb";
 			status = "disabled";
 			amba-config		= <&usb_amba_config>;
 			strap-8bit;
@@ -1289,7 +1288,7 @@
 
 	/* SAS PWM MODULE */
 		pwm0: pwm@fed10000{
-			compatible	= "st,pwm", "simple-bus";
+			compatible	= "st,pwm";
 			reg		= <0xfed10000 0x68>;
 			interrupts	=  <0 200 0>;
 			status = "disabled";
@@ -1302,7 +1301,7 @@
 
 		/* SBC PWM MODULE */
 		pwm1: pwm@fe510000{
-			compatible	= "st,pwm", "simple-bus";
+			compatible	= "st,pwm";
 			reg		= <0xfe510000 0x68>;
 			interrupts	=  <0 202 0>;
 			status = "disabled";
@@ -1314,7 +1313,7 @@
 		};
 
 		lirc: lirc@fe518000 {
-			compatible	= "st,lirc", "simple-bus";
+			compatible	= "st,lirc";
 			status = "disabled";
 			reg		= <0xfe518000 0x234>;
 			interrupts	=  <0 203 0>;
@@ -1383,7 +1382,7 @@
 		};
 
 		i2c0: i2c@fed40000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed40000 0x110>;
 			interrupts	=  <0 187 0>;
@@ -1392,7 +1391,7 @@
 		};
 
 		i2c1: i2c@fed41000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed41000 0x110>;
 			interrupts	=  <0 188 0>;
@@ -1400,7 +1399,7 @@
 		};
 
 		i2c2: i2c@fed42000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed42000 0x110>;
 			interrupts	=  <0 189 0>;
@@ -1408,7 +1407,7 @@
 		};
 
 		i2c3: i2c@fed43000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed43000 0x110>;
 			interrupts	=  <0 190 0>;
@@ -1416,7 +1415,7 @@
 		};
 
 		i2c4: i2c@fed44000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed44000 0x110>;
 			interrupts	=  <0 191 0>;
@@ -1424,7 +1423,7 @@
 		};
 
 		i2c5: i2c@fed45000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed45000 0x110>;
 			interrupts	=  <0 192 0>;
@@ -1432,7 +1431,7 @@
 		};
 
 		i2c6: i2c@fed46000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed46000 0x110>;
 			interrupts	=  <0 193 0>;
@@ -1440,7 +1439,7 @@
 		};
 
 		i2c7: i2c@fed47000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfed47000 0x110>;
 			interrupts	=  <0 194 0>;
@@ -1449,7 +1448,7 @@
 
 		/* SBC SSC0 */
 		sbc_i2c0: i2c@fe540000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe540000 0x110>;
 			interrupts	=  <0 206 0>;
@@ -1459,7 +1458,7 @@
 
 		/* SBC SSC1 */
 		sbc_i2c1: i2c@fe541000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe541000 0x110>;
 			interrupts	=  <0 207 0>;
@@ -1469,7 +1468,7 @@
 
 		/* SBC SSC2 */
 		sbc_i2c2: i2c@fe542000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe542000 0x110>;
 			interrupts	=  <0 208 0>;
@@ -1479,7 +1478,7 @@
 
 		/* Comms block ASCs in SASG2 */
 		uart0: uart@fed30000{
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfed30000 0x2c>;
 			interrupts	=  <0 195 0>;
@@ -1488,7 +1487,7 @@
 		};
 
 		uart1: uart@fed31000 {
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfed31000 0x2c>;
 			interrupts	=  <0 196 0>;
@@ -1496,7 +1495,7 @@
 		};
 
 		uart2: uart@fed32000{
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfed32000 0x2c>;
 			interrupts	=  <0 197 0>;
@@ -1504,7 +1503,7 @@
 		};
 
 		uart3: uart@fed33000 {
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfed33000 0x2c>;
 			interrupts	=  <0 198 0>;
@@ -1515,7 +1514,7 @@
 
 		/* UART10 (MPE) */
 		uart4: uart@fd4fb000 {
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfd4fb000 0x2c>;
 			interrupts	=  <0 117 0>;
@@ -1526,7 +1525,7 @@
 		/* SBC comms block ASCs */
 		/* SBC_UART0 */
 		sbc_uart0: uart@fe530000 {
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfe530000 0x2c>;
 			interrupts	=  <0 209 0>;
@@ -1537,7 +1536,7 @@
 
 		/* SBC_UART1 */
 		sbc_uart1: uart@fe531000 {
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfe531000 0x2c>;
 			interrupts	=  <0 210 0>;
@@ -1546,7 +1545,7 @@
 		};
 
 		sdhci0:sdhci@fe81e000 {
-			compatible	= "st,sdhci", "simple-bus";
+			compatible	= "st,sdhci";
 			status = "disabled";
 			reg	= <0xfe81e000  0x1000>;
 			interrupts	=  <0 127 0>;
@@ -1555,7 +1554,7 @@
 		};
 
 		sdhci1:sdhci@fe81f000 {
-			compatible	= "st,sdhci", "simple-bus";
+			compatible	= "st,sdhci";
 			status = "disabled";
 			reg	= <0xfe81f000  0x1000>;
 			interrupts	=  <0 128 0>;
@@ -1563,7 +1562,7 @@
 			padcfg-0 	= <&padcfg_mmc1>;
 		};
 		ethernet0:ethernet@fe810000 {
-			compatible	= "snps,dwmac", "simple-bus";
+			compatible	= "snps,dwmac";
 			status = "disabled";
 			device_type = "network";
 
@@ -1584,7 +1583,7 @@
 
 		ethernet1:ethernet@fef08000 {
 			device_type = "network";
-			compatible	= "snps,dwmac", "simple-bus";
+			compatible	= "snps,dwmac";
 			status = "disabled";
 
 			reg = <0xfef08000 0x8000>;
@@ -1652,7 +1651,7 @@
 
 		/* Thermal sensor on SAS */
 		temp0{
-			compatible    = "st,temp", "simple-bus";
+			compatible    = "st,temp";
 		        status = "okay";
 			device-config = <&temp0_dev_config>;
 		};
@@ -1698,7 +1697,7 @@
 
 		/* FDMA_0_MPE: */
 		fdma0_mpe:fdma-mpe@0{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfd600000 0x20000>;
 			interrupts	=  <0 10 0>;
 			hw-conf = <&fdma_hw_config>;
@@ -1709,7 +1708,7 @@
 
 		/* FDMA_1_MPE: */
 		fdma1_mpe:fdma-mpe@1{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfd620000 0x20000>;
 			interrupts	=  <0 12 0>;
 			hw-conf = <&fdma_hw_config>;
@@ -1719,7 +1718,7 @@
 
 		/* FDMA_2_MPE: */
 		fdma2_mpe:fdma-mpe@2{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfd640000 0x20000>;
 			interrupts	=  <0 14 0>;
 			hw-conf = <&fdma_hw_config>;
@@ -1728,14 +1727,14 @@
 		};
 
 		fdma_xbar_mpe: fdma-xbar-mpe {
-			compatible	= "st,fdma-xbar", "simple-bus";
+			compatible	= "st,fdma-xbar";
 			reg		= <0xfd6df000 0x1000>;
 			first-fdma	= <0>;
 			last-fdma	= <2>;
 		};
 
 		fdma_xbar_sas: fdma-xbar-sas {
-			compatible	= "st,fdma-xbar", "simple-bus";
+			compatible	= "st,fdma-xbar";
 			reg		= <0xfee61000 0x1000>;
 			first-fdma	= <3>;
 			last-fdma	= <4>;
@@ -1743,7 +1742,7 @@
 
 		/* FDMA_100: SAS FDMA 0 */
 		fdma0_sas:fdma-sas@0{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfea00000 0x20000>;
 			interrupts	=  <0 121 0>;
 			hw-conf = <&fdma_hw_config>;
@@ -1753,7 +1752,7 @@
 
 		/* FDMA_101: SAS FDMA 1 */
 		fdma1_sas:fdma-sas@1{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfea20000 0x20000>;
 			interrupts	=  <0 124 0>;
 			hw-conf = <&fdma_hw_config>;
