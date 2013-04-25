@@ -1760,5 +1760,15 @@
 			fw-regs = <&fdma_fw_regs>;
 			xbar	= <1>;
 		};
+
+		/* RTC LPC MODULE */
+		rtc@fde05000{
+			compatible	= "st,rtc";
+			reg		= <0xfde05000 0x1000>;
+			interrupts	=  <0 118 0>;
+			clk-rate = <300000>;
+			need-wdt-reset;
+			irq-edge-rising;
+		};
 	};
 };
