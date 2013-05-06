@@ -9,11 +9,6 @@
  */
 
 
-#ifndef CONFIG_OF
-/* All the Drivers are now configured using device trees so,
- * Please start using device trees */
-#warning  "This code will disappear soon, you should use device trees"
-
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
@@ -27,6 +22,12 @@
 #ifdef CONFIG_ARM
 #include <mach/hardware.h>
 #endif
+
+#ifndef CONFIG_OF
+/* All the Drivers are now configured using device trees so,
+ * Please start using device trees */
+#warning  "This code will disappear soon, you should use device trees"
+
 
 /* SSC resources ---------------------------------------------------------- */
 
