@@ -56,6 +56,24 @@
 			status = "okay";
 		};
 
+		spifsm: spifsm@fe302000{
+			status		= "okay";
+			flash-name	= "n25q128";
+			partitions	= <&b2044_fsm_partitions>;
+			b2044_fsm_partitions: partitions-b2044 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				partition@0 {
+					label = "Serial Flash 1";
+					reg = <0x00000000 0x00200000>;
+				};
+				partition@200000{
+					label = "Serial Flash 2";
+					reg = <0x00200000 0x00e00000>;
+				};
+			};
+		};
+
 		leds {
 			compatible	= "gpio-leds";
 			fp_led {
