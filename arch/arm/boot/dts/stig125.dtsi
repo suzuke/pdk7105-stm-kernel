@@ -1433,6 +1433,24 @@
 			};
 		};
 
+		spifsm: spifsm@fe302000{
+			compatible      = "st,spi-fsm", "simple-bus";
+			status          = "disabled";
+			reg =   <0xfe302000 0x1000>;
+			reg-names = "spi-fsm";
+			padcfg-0        = <&padcfg_fsm>;
+			boot-device	= <&sysconf 54 2 6>;
+			boot-device-spi = <0x1a>;
+			caps-handle = <&fsm_caps>;
+			fsm_caps: fsm-caps {
+				no-read-repeat;
+				no-write-repeat;
+				read-status-clkdiv4;
+				dual-mode;		/* DUAL mode */
+				quad-mode;		/* QUAD mode */
+			};
+		};
+
 		/* SSCs in Comms block */
 		stm_i2c0: i2c-stm0{
 			compatible	= "st,i2c";

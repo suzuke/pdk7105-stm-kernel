@@ -145,6 +145,19 @@
 				};
 			};
 		};
+		fsm {
+				padcfg_fsm: fsm {
+				st,pins {
+					spi-fsm-clk	= <&PIO20 2	OUT	ALT1>;
+					spi-fsm-cs	= <&PIO20 3	OUT	ALT1>;
+					spi-fsm-mosi	= <&PIO20 4	OUT	ALT1>;
+					spi-fsm-miso	= <&PIO20 5	IN	ALT1>;
+					spi-fsm-hol	= <&PIO20 6	OUT	ALT1>;
+					spi-fsm-wp	= <&PIO20 7	OUT	ALT1>;
+				};
+			};
+		};
+
 		i2c0 {
 			padcfg_i2c0: i2c0 {
 				st,pins {
