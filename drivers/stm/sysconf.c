@@ -665,6 +665,7 @@ static int sysconf_probe(struct platform_device *pdev)
 	for (i = 0; i < sysconf_blocks_num; i++) {
 #ifdef CONFIG_OF
 		if (sysconf_blocks[i].of_node == pdev->dev.of_node) {
+			sysconf_blocks[i].pdev = pdev;
 			result = 0;
 			break;
 		}
