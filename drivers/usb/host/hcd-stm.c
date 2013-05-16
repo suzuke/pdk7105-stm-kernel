@@ -352,7 +352,7 @@ static int stm_usb_resume(struct device *dev)
 	 * but in case of usb_48_clk we have to guarantee
 	 * it's @ 48MHz!
 	 */
-	if (!IS_ERR(dr_data->clks[0]))
+	if (dr_data->clks[0])
 		clk_set_rate(dr_data->clks[0], 48000000);
 
 	stm_device_setup(dr_data->device_state);
