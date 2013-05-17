@@ -57,6 +57,8 @@ static int __check_wakeup_device(struct device *dev, void *data)
 			wkd->rtc = 1;
 		else if (strstr(dev_name(dev), "uart"))
 			wkd->asc = 1;
+		else if (strstr(dev_name(dev), "rtc_sbc"))
+			wkd->rtc_sbc = 1;
 
 	}
 	return 0;
