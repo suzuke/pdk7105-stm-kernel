@@ -36,16 +36,16 @@ static int __check_wakeup_device(struct device *dev, void *data)
 	struct stm_wakeup_devices *wkd = (struct stm_wakeup_devices *)data;
 
 	if (device_may_wakeup(dev)) {
-		pr_info("[STM][PM] -> device %s can wakeup\n", dev_name(dev));
-		if (!strcmp(dev_name(dev), "lirc-stm"))
+		pr_info("stm pm: -> device %s can wakeup\n", dev_name(dev));
+		if (strstr(dev_name(dev), "lirc"))
 			wkd->lirc_can_wakeup = 1;
 		else if (!strcmp(dev_name(dev), "hdmi"))
 			wkd->hdmi_can_wakeup = 1;
-		else if (!strcmp(dev_name(dev), "stmmaceth"))
+		else if (!strcmp(dev_name(dev), "snps,dwmac"))
 			wkd->stm_mac0_can_wakeup = 1;
-		else if (!strcmp(dev_name(dev), "stmmaceth.0"))
+		else if (!strcmp(dev_name(dev), "snps,dwmac.0"))
 			wkd->stm_mac0_can_wakeup = 1;
-		else if (!strcmp(dev_name(dev), "stmmaceth.1"))
+		else if (!strcmp(dev_name(dev), "snps,dwmac.1"))
 			wkd->stm_mac1_can_wakeup = 1;
 		else if (!strcmp(dev_name(dev), "stm-hdmi-cec"))
 			wkd->hdmi_cec = 1;
@@ -55,9 +55,7 @@ static int __check_wakeup_device(struct device *dev, void *data)
 			wkd->kscan = 1;
 		else if (!strcmp(dev_name(dev), "stm-rtc"))
 			wkd->rtc = 1;
-		else if (!strcmp(dev_name(dev), "stm-asc"))
-			wkd->asc = 1;
-		else if (!strncmp(dev_name(dev), "stm-asc.", 8))
+		else if (strstr(dev_name(dev), "uart"))
 			wkd->asc = 1;
 
 	}
