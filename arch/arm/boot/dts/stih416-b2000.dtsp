@@ -87,11 +87,11 @@
 			        #size-cells = <1>;
 				partition@0 {
 					label = "Serial Flash 1";
-					reg = <0x00000000 0x00200000>;
+					reg = <0x00000000 0x00500000>;
 				};
-				partition@200000{
+				partition@500000{
 					label = "Serial Flash 2";
-					reg = <0x00200000 0x00e00000>;
+					reg = <0x00500000 0x00b00000>;
 				};
 			};
 		};
