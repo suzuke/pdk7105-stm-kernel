@@ -282,6 +282,23 @@ static int __devexit gpio_led_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_HIBERNATION
+static int gpio_led_restore(struct device *dev)
+{
+	struct gpio_leds_priv *priv = dev_get_drvdata(dev);
+	int i;
+
+	for (i = 0; i < priv->num_leds; ++i)
+		gpio_direction_output(priv->leds[i].gpio, 1);
+	return 0;
+}
+
+static struct dev_pm_ops gpio_led_pm = {
+	.thaw = gpio_led_restore,
+	.restore = gpio_led_restore,
+};
+#endif
+
 static struct platform_driver gpio_led_driver = {
 	.probe		= gpio_led_probe,
 	.remove		= __devexit_p(gpio_led_remove),
@@ -289,6 +306,9 @@ static struct platform_driver gpio_led_driver = {
 		.name	= "leds-gpio",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_gpio_leds_match,
+#ifdef CONFIG_HIBERNATION
+		.pm = &gpio_led_pm,
+#endif
 	},
 };
 
