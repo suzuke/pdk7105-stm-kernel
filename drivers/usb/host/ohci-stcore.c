@@ -167,31 +167,58 @@ static int ohci_hcd_stm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static DEFINE_MUTEX(stm_ohci_usb_mutex); /* to serialize the operations.. */
 
-static int stm_ohci_runtime_suspend(struct device *dev)
+static int stm_ohci_freeze(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 
+	if (pm_runtime_status_suspended(dev))
+		/* already suspended using pm_runtime */
+		return 0;
 	mutex_lock(&stm_ohci_usb_mutex);
 	ohci_hcd_stm_remove(pdev);
 	mutex_unlock(&stm_ohci_usb_mutex);
 	return 0;
 }
 
-static int stm_ohci_runtime_resume(struct device *dev)
+static int stm_ohci_restore(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 
+	if (pm_runtime_status_suspended(dev))
+		/* want resume using pm_runtime */
+		return 0;
 	mutex_lock(&stm_ohci_usb_mutex);
 	ohci_hcd_stm_init(pdev);
 	mutex_unlock(&stm_ohci_usb_mutex);
-
 	return 0;
 }
 
+#ifdef CONFIG_PM_RUNTIME
+static int stm_ohci_runtime_suspend(struct device *dev)
+{
+	if (pm_runtime_status_suspended(dev))
+		return 0;
+	return stm_ohci_freeze(dev);
+}
+
+static int stm_ohci_runtime_resume(struct device *dev)
+{
+	if (pm_runtime_status_suspended(dev))
+		return 0;
+	return stm_ohci_restore(dev);
+}
+#else
+#define stm_ohci_runtime_suspend
+#define stm_ohci_runtime_resume
+#endif
+
 static const struct dev_pm_ops stm_ohci_pm = {
+	.freeze = stm_ohci_freeze,
+	.thaw = stm_ohci_restore,
+	.restore = stm_ohci_restore,
 	.runtime_suspend = stm_ohci_runtime_suspend,
 	.runtime_resume = stm_ohci_runtime_resume,
 };
@@ -204,7 +231,7 @@ static struct platform_driver ohci_hcd_stm_driver = {
 	.driver = {
 		.name = "stm-ohci",
 		.owner = THIS_MODULE,
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 		.pm = &stm_ohci_pm,
 #endif
 	},

@@ -201,13 +201,16 @@ static int ehci_hcd_stm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static DEFINE_MUTEX(stm_ehci_usb_mutex); /* to serialize the operations.. */
 
-static int stm_ehci_runtime_suspend(struct device *dev)
+static int stm_ehci_freeze(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 
+	if (pm_runtime_status_suspended(dev))
+		/* want resume using pm_runtime */
+		return 0;
 	mutex_lock(&stm_ehci_usb_mutex);
 	ehci_hcd_stm_remove(pdev);
 	mutex_unlock(&stm_ehci_usb_mutex);
@@ -215,10 +218,13 @@ static int stm_ehci_runtime_suspend(struct device *dev)
 
 }
 
-static int stm_ehci_runtime_resume(struct device *dev)
+static int stm_ehci_restore(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 
+	if (pm_runtime_status_suspended(dev))
+		/* want resume using pm_runtime */
+		return 0;
 	mutex_lock(&stm_ehci_usb_mutex);
 	ehci_hcd_stm_init(pdev);
 	mutex_unlock(&stm_ehci_usb_mutex);
@@ -226,7 +232,28 @@ static int stm_ehci_runtime_resume(struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_RUNTIME
+static int stm_ehci_runtime_suspend(struct device *dev)
+{
+	if (pm_runtime_status_suspended(dev))
+		return 0;
+	return stm_ehci_freeze(dev);
+}
+static int stm_ehci_runtime_resume(struct device *dev)
+{
+	if (pm_runtime_status_suspended(dev))
+		return 0;
+	return stm_ehci_restore(dev);
+}
+#else
+#define stm_ehci_runtime_suspend	NULL
+#define stm_ehci_runtime_resume		NULL
+#endif
+
 static const struct dev_pm_ops stm_ehci_pm = {
+	.freeze = stm_ehci_freeze,
+	.thaw = stm_ehci_restore,
+	.restore = stm_ehci_restore,
 	.runtime_suspend = stm_ehci_runtime_suspend,
 	.runtime_resume = stm_ehci_runtime_resume,
 };
