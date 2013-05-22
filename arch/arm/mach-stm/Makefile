@@ -21,6 +21,9 @@ obj-$(CONFIG_MACH_STM_B2044)	+= board-b2044.o
 obj-$(CONFIG_MACH_STM_B2078)	+= board-b2078.o
 obj-$(CONFIG_MACH_STM_B2092)	+= board-b2092.o
 obj-$(CONFIG_MACH_STM_B2105)	+= board-b2105.o
+ifdef CONFIG_MACH_STM_B2112
+obj-$(CONFIG_MACH_STM_B2112_STIG125)	+= board-b2112_d128xxZ.o
+endif
 obj-$(CONFIG_CACHE_L2X0)	+= l2x0.o
 obj-$(CONFIG_PCI)		+= pci-glue.o
 

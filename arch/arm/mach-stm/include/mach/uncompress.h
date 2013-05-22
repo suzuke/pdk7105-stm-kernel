@@ -54,6 +54,8 @@ static inline unsigned long get_uart_base(void)
 		return STIG125_SBC_ASC0_BASE;
 	if (machine_is_stm_b2078())
 		return STIG125_ASC1_BASE;
+	if (machine_is_stm_b2112())
+		return STIG125_ASC1_BASE;
 #elif defined(CONFIG_MACH_STM_STIH415)
 	if (machine_is_stm_b2000())
 		return STIH415_ASC2_BASE;

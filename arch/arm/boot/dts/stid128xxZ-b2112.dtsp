@@ -1,0 +1,70 @@
+/*
+ * Copyright (C) 2013 STMicroelectronics Limited.
+ * Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+/dts-v1/;
+#include "stig125.dtsi"
+
+/ {
+	model = "stig125 B2112";
+	compatible = "st,stig125", "st,stig125-b2112";
+	memory{
+                device_type = "memory";
+		reg = <0xc0000000 0x10000000>;
+	};
+
+	chosen {
+		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                              ";
+		linux,stdout-path = &asc8;
+	};
+
+        aliases {
+                ttyAS0 = &asc8;
+		usb0 = &usb0;
+
+        };
+
+	soc {
+		/* USB's */
+		usb0: usb-0{
+			status = "okay";
+		};
+
+		asc8:stm-asc8{
+			status = "okay";
+		};
+
+		leds {
+			compatible	= "gpio-leds", "simple-bus";
+			fp_led {
+				label	= "Front Panel LED";
+				gpios	= <&PIO23 6>;
+				linux,default-trigger	= "heartbeat";
+			};
+		};
+
+		spifsm:	spifsm@fe302000{
+			status		= "okay";
+			flash-name	= "n25q256";
+			partitions	= <&b2112_fsm_partitions>;
+
+			b2112_fsm_partitions: partitions-b2112 {
+		                #address-cells = <1>;
+			        #size-cells = <1>;
+				partition@0 {
+					label = "Serial Flash 1";
+					reg = <0x00000000 0x00500000>;
+				};
+				partition@500000{
+					label = "Serial Flash 2";
+					reg = <0x00500000 0x02000000>;
+				};
+			};
+		};
+
+	};
+};
