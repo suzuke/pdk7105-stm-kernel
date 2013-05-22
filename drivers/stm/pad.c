@@ -1202,8 +1202,7 @@ void stm_of_pad_config_fixup(struct device *dev,
 	struct stm_pio_control_pad_config *priv;
 	struct property *pp;
 	const __be32 *list;
-	phandle phandle;
-	struct device_node *gpios, *np;
+	struct device_node *gpios;
 	int dir, altfun, nr_props;
 
 	if (!fixup_np)
