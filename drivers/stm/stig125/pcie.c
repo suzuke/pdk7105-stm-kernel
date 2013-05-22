@@ -25,13 +25,39 @@
 
 #define PCIE_DEFAULT_VAL        (PCIE_DEVICE_TYPE)
 
-static void stig125_pcie_init(void *handle)
+static void *stig125_pcie_init(struct platform_device *pdev)
 {
-	struct sysconf_field *sc = (struct sysconf_field *)handle;
+	struct stm_plat_pcie_config *config = pdev->dev.platform_data;
+	/* Using the miphy_num also for the port (that is not the
+	 * best solution) it is needed to decode the port
+	 * PCIe0 is on MiPHY1
+	 * PCIe1 is on MiPHY2
+	 */
+	int port = config->miphy_num - 1;
+	struct sysconf_field *sc;
+
+	switch (port) {
+	case 0:
+		sc = sysconf_claim(SYSCONF(267), 0, 5, "pcie");
+		BUG_ON(!sc);
+		break;
+	case 1:
+		sc = sysconf_claim(SYSCONF(263), 0, 5, "pcie");
+		BUG_ON(!sc);
+		break;
+	case 2:
+		sc = sysconf_claim(SYSCONF(264), 0, 5, "pcie");
+		BUG_ON(!sc);
+		break;
+	default:
+		BUG();
+	}
 
 	sysconf_write(sc, PCIE_DEFAULT_VAL);
 
 	mdelay(1);
+
+	return sc;
 }
 
 static void stig125_pcie_enable_ltssm(void *handle)
@@ -117,25 +143,5 @@ static struct platform_device stig125_pcie_devices[] = {
 
 void __init stig125_configure_pcie(int controller)
 {
-	struct sysconf_field *sc;
-
-	switch (controller) {
-	case 0:
-		sc = sysconf_claim(SYSCONF(267), 0, 5, "pcie");
-		BUG_ON(!sc);
-		break;
-	case 1:
-		sc = sysconf_claim(SYSCONF(263), 0, 5, "pcie");
-		BUG_ON(!sc);
-		break;
-	case 2:
-		sc = sysconf_claim(SYSCONF(264), 0, 5, "pcie");
-		BUG_ON(!sc);
-		break;
-	default:
-		BUG();
-	}
-
-	stig125_plat_pcie_config[controller].ops_handle = sc;
 	platform_device_register(&stig125_pcie_devices[controller]);
 }
