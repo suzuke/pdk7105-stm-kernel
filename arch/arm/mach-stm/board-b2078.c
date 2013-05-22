@@ -118,7 +118,7 @@ static void __init b2078_init(void)
 	platform_add_devices(b2078_devices, ARRAY_SIZE(b2078_devices));
 
 	stig125_configure_usb(0);
-	stig125_configure_fp();
+	stig125_configure_fp(NULL);
 
 	/* see schematic: i2c-tel */
 	stig125_configure_ssc_i2c(STIG125_SSC(1), 100);

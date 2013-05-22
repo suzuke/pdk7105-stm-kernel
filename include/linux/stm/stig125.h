@@ -13,6 +13,7 @@
 
 #include <linux/device.h>
 #include <linux/stm/platform.h>
+#include <linux/stmfp.h>
 
 #define STIG125_IRQ(irq) ((irq)+32)
 
@@ -99,7 +100,15 @@ struct stig125_lirc_config {
 };
 
 void stig125_configure_lirc(struct stig125_lirc_config *config);
-void stig125_configure_fp(void);
+
+
+struct stig125_fp_config {
+	struct fpif_config {
+		unsigned int phy_addr;
+	} *if_cfg[NUM_INTFS];
+};
+
+void stig125_configure_fp(const struct stig125_fp_config *config);
 void stig125_configure_usb(int port);
 
 struct stig125_pwm_config {

@@ -96,7 +96,7 @@ static void __init b2044_dt_init(void)
 	of_platform_populate(NULL, of_default_bus_match_table,
 				 stig125_auxdata_lookup, NULL);
 
-	stig125_configure_fp();
+	stig125_configure_fp(NULL);
 
 	stig125_configure_miphy(&(struct stig125_miphy_config){
 			.id = 2,

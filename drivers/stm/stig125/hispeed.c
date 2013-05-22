@@ -21,7 +21,6 @@
 #include <linux/clk.h>
 #include <linux/ahci_platform.h>
 #include <linux/stm/isve.h>
-#include <linux/stmfp.h>
 #include <linux/phy.h>
 
 #ifdef CONFIG_ARM
@@ -993,7 +992,21 @@ static struct platform_device stig125_fp_device = {
 	}
 };/* end STIG125_fp_device */
 
-void __init stig125_configure_fp(void)
+void __init stig125_configure_fp(const struct stig125_fp_config *config)
 {
+	struct plat_stmfp_data *fpdata;
+	int id;
+
+	if (config) {
+		fpdata = (struct plat_stmfp_data *)
+				stig125_fp_device.dev.platform_data;
+		for (id = DEVID_GIGE; id <= DEVID_DOCSIS; id++) {
+			if (!config->if_cfg[id])
+				continue;
+			fpdata->if_data[id]->phy_addr =
+						config->if_cfg[id]->phy_addr;
+		}
+	}
+
 	platform_device_register(&stig125_fp_device);
 }
