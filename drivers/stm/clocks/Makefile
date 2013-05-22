@@ -9,5 +9,6 @@ clock-$(CONFIG_MACH_STM_STIG125)	+= clock-stig125.o clock-stxsasc1.o
 clock-$(CONFIG_CPU_SUBTYPE_STXH205)	+= clock-stxh205.o
 clock-$(CONFIG_CPU_SUBTYPE_STIH415)	+= clock-stih415.o clock-stxmpe41.o clock-stxsasg1.o
 clock-$(CONFIG_MACH_STM_STIH416)	:= clk-common.o clock-stih416.o clock-stxmpe42.o clock-stxsasg2.o
+clock-$(CONFIG_MACH_STM_STID127)	:= clk-common.o clock-stid127.o
 
 obj-y	+= $(clock-y)

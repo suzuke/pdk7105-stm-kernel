@@ -1,0 +1,176 @@
+/*****************************************************************************
+ *
+ * File name   : clock-stid127.h
+ * Description : Low Level API - Clocks identifiers
+ *
+ * COPYRIGHT (C) 2012 STMicroelectronics - All Rights Reserved
+ * May be copied or modified under the terms of the GNU General Public
+ * License.  See linux/COPYING for more information.
+ *
+ *****************************************************************************/
+
+/* LLA version: YYYYMMDD */
+#define LLA_VERSION 20130502
+
+enum {
+	CLK_IFE_REF,		/* OSC clock */
+
+	/* Clockgen A-0 */
+	CLK_A0_REF,		/* A0 ref clock */
+	CLK_A0_PLL0HS,
+	CLK_A0_PLL0LS,		/* LS = HS/2 */
+	CLK_A0_PLL1HS,
+	CLK_A0_PLL1LS,		/* LS = HS/2 */
+
+	CLK_CT_DIAG,		/* HS[0] */
+	CLK_FDMA_0,
+	CLK_FDMA_1,
+	CLK_A0_SPARE_3,
+	CLK_A0_SPARE_4,
+	CLK_A0_SPARE_5,
+	CLK_A0_SPARE_6,
+	CLK_A0_SPARE_7,
+	CLK_A0_SPARE_8,
+	CLK_A0_SPARE_9,		/* HS[9] */
+	CLK_IC_CM_ST40,		/* LS[10] */
+	CLK_IC_SPI,
+	CLK_IC_CPU,
+	CLK_IC_MAIN,
+	CLK_IC_ROUTER,
+	CLK_IC_PCIE,
+	CLK_IC_LP,
+	CLK_IC_LP_CPU,
+	CLK_IC_STFE,
+	CLK_IC_DMA,
+	CLK_IC_GLOBAL_ROUTER,
+	CLK_IC_GLOBAL_PCI,
+	CLK_IC_GLOBAL_PCI_TARG,
+	CLK_IC_GLOBAL_NETWORK,
+	CLK_A9_TRACE_INT,
+	CLK_A9_EXT2FS,
+	CLK_IC_LP_D3,
+	CLK_IC_LP_DQAM,
+	CLK_IC_LP_ETH,
+	CLK_IC_LP_HD,
+	CLK_IC_SECURE,
+	CLK_A0_SPARE_31,	/* LS[31] */
+
+	CLK_A9_EXT2FS_DIV2,	/* CLK_A9_EXT2FS divided by 2 */
+
+	/* Clockgen A-1 */
+	CLK_A1_REF,		/* A1 ref clock */
+	CLK_A1_PLL0HS,
+	CLK_A1_PLL0LS,		/* LS = HS/2 */
+	CLK_A1_PLL1HS,
+	CLK_A1_PLL1LS,		/* LS = HS/2 */
+
+	CLK_A1_SPARE_0,		/* HS[0] */
+	CLK_A1_SPARE_1,
+	CLK_A1_SPARE_2,
+	CLK_A1_SPARE_3,
+	CLK_A1_SPARE_4,
+	CLK_IC_DDR,
+	CLK_A1_SPARE_6,
+	CLK_A1_SPARE_7,
+	CLK_A1_SPARE_8,
+	CLK_A1_SPARE_9,		/* HS[9] */
+	CLK_A1_SPARE_10,	/* LS[10] */
+	CLK_A1_SPARE_11,
+	CLK_A1_SPARE_12,
+	CLK_A1_SPARE_13,
+	CLK_A1_SPARE_14,
+	CLK_A1_SPARE_15,
+	CLK_A1_SPARE_16,
+	CLK_A1_SPARE_17,
+	CLK_A1_SPARE_18,
+	CLK_A1_SPARE_19,
+	CLK_A1_SPARE_20,
+	CLK_A1_SPARE_21,
+	CLK_A1_SPARE_22,
+	CLK_A1_SPARE_23,
+	CLK_A1_SPARE_24,
+	CLK_A1_SPARE_25,
+	CLK_A1_SPARE_26,
+	CLK_A1_SPARE_27,
+	CLK_A1_SPARE_28,
+	CLK_A1_SPARE_29,
+	CLK_A1_SPARE_30,
+	CLK_A1_SPARE_31,	/* LS[31] */
+
+	/* Clockgen TEL */
+	CLK_TEL_REF,
+	CLK_USB_SRC,		/* FS VCO=540Mhz */
+	CLK_FDMA_TEL,		/* FS chan 0 */
+	CLK_ZSI,		/* FS chan 1 */
+	CLK_ETH0,		/* FS chan 2 */
+	CLK_PAD_OUT,		/* FS chan 3 */
+
+	CLK_ZSI_TEL,		/* CCM TEL clk_div1 */
+	CLK_ZSI_APPL,		/* CCM TEL clk_divx */
+	CLK_USB_REF,		/* CCM USB clk_divx */
+
+	/* Clockgen DOC */
+	CLK_DOC_REF,
+	/* Clockgen DOC: QFS */
+	CLK_DOC_VCO,		/* FS VCO */
+	CLK_FP,			/* FS chan 0 */
+	CLK_D3_XP70,		/* FS chan 1 */
+	CLK_IFE,		/* FS chan 2 */
+	CLK_TSOUT_SRC,		/* FS chan 3 */
+	/* Clockgen DOC: CCM IFE */
+	CLK_IFE_216,		/* CCM DOC clk_div1 */
+	CLK_IFE_108,		/* CCM DOC clk_div2 */
+	CLK_IFE_54,		/* CCM DOC clk_div4 */
+	/* Clockgen DOC: CSM */
+	CLK_IFE_54_DQAM0,
+	CLK_IFE_54_DQAM1,
+	CLK_IFE_54_DQAM2,
+	CLK_IFE_54_DQAM3,
+	CLK_IFE_54_DQAM4,
+	CLK_IFE_54_DQAM5,
+	CLK_IFE_54_DQAM6,
+	CLK_IFE_54_DQAM7,
+	CLK_IFE_54_DQAM8,
+	CLK_IFE_54_DQAM9,
+	CLK_IFE_54_DQAM10,
+	CLK_IFE_54_DQAM11,
+	CLK_IFE_54_DQAM12,
+	CLK_IFE_54_DQAM13,
+	CLK_IFE_54_DQAM14,
+	CLK_IFE_54_DQAM15,
+	CLK_IFE_54_QPSK,
+	CLK_IFE_54_RC,
+	CLK_IFE_54_DOCSIS,
+	CLK_IFE_54_D3HS,
+	CLK_IFE_108_DQAM0,
+	CLK_IFE_108_DQAM1,
+	CLK_IFE_108_DQAM2,
+	CLK_IFE_108_DQAM3,
+	CLK_IFE_108_DQAM4,
+	CLK_IFE_108_DQAM5,
+	CLK_IFE_108_DQAM6,
+	CLK_IFE_108_DQAM7,
+	CLK_IFE_108_DQAM8,
+	CLK_IFE_108_DQAM9,
+	CLK_IFE_108_DQAM10,
+	CLK_IFE_108_DQAM11,
+	CLK_IFE_108_DQAM12,
+	CLK_IFE_108_DQAM13,
+	CLK_IFE_108_DQAM14,
+	CLK_IFE_108_DQAM15,
+	CLK_IFE_216_DOCSIS,
+	CLK_IFE_216_D3HS,
+	CLK_IFE_216_FP,
+	CLK_IFE_216_RC,
+
+	/* CCM LPC */
+	CLK_LPC_REF,
+	CLK_THERMAL_SENSE,	/* CCM div4 out */
+	CLK_LPC_COMMS,		/* CCM divx out */
+
+	/* CA9 PLL3200 */
+	CLK_A9_REF,
+	CLK_A9_PHI0,		/* PLL1600 FVCOBY2/ODF0 */
+	CLK_A9,			/* CA9 clock */
+	CLK_A9_PERIPHS		/* ARM.GT and ARM.TWD clock */
+};
