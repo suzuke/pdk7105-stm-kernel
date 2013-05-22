@@ -25,6 +25,30 @@
 
 #define PCIE_DEFAULT_VAL        (PCIE_DEVICE_TYPE)
 
+/* Clock shift programming to configure the MIPHY1 to work with the PCIe
+ * instead of SATA
+ */
+static void pcieclk_shift(void)
+{
+	struct sysconf_field *sc_pcie0_soft_reset;
+	struct sysconf_field *sc_pcie_select;
+	struct sysconf_field *sc_miphy1_hc_reset;
+	struct sysconf_field *sc_force_ext;
+
+	sc_pcie0_soft_reset = sysconf_claim(SYSCONF(707), 18, 18, "pcie");
+	sc_miphy1_hc_reset = sysconf_claim(SYSCONF(707), 16, 16, "MIPHY1");
+	sc_pcie_select = sysconf_claim(SYSCONF(267), 9, 9, "select-pcie");
+	sc_force_ext = sysconf_claim(SYSCONF(268), 0, 0, "force-ext");
+	sysconf_write(sc_pcie0_soft_reset, 0);
+	sysconf_write(sc_miphy1_hc_reset, 0);
+	sysconf_write(sc_force_ext, 0);
+	sysconf_write(sc_pcie_select, 0);
+	sysconf_write(sc_miphy1_hc_reset, 1);
+	sysconf_write(sc_pcie0_soft_reset, 1);
+	sysconf_release(sc_miphy1_hc_reset);
+	sysconf_release(sc_pcie0_soft_reset);
+}
+
 static void *stig125_pcie_init(struct platform_device *pdev)
 {
 	struct stm_plat_pcie_config *config = pdev->dev.platform_data;
@@ -40,6 +64,7 @@ static void *stig125_pcie_init(struct platform_device *pdev)
 	case 0:
 		sc = sysconf_claim(SYSCONF(267), 0, 5, "pcie");
 		BUG_ON(!sc);
+		pcieclk_shift();
 		break;
 	case 1:
 		sc = sysconf_claim(SYSCONF(263), 0, 5, "pcie");
