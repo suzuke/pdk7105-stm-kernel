@@ -834,6 +834,16 @@ device_initcall(stig125_isve_devices_setup);
 		.name = "MDIO", \
 	}
 
+#ifdef CONFIG_MACH_STM_B2112
+/* It's a really dirty hack to fix retimings delay on Alicante board */
+#define TXCLK_DELAY	2500
+#define RXCLK_DELAY	1250
+#else
+/* Default value suitable for B2044 and B2078 */
+#define TXCLK_DELAY	3250
+#define RXCLK_DELAY	1250
+#endif
+
 static struct stm_pad_config stig125_fastpath_byoi_pad_config = {
 	.gpios_num = 14,
 	.gpios = (struct stm_pad_gpio[]){
@@ -848,7 +858,7 @@ static struct stm_pad_config stig125_fastpath_byoi_pad_config = {
 		 DATA_OUT(11, 6, 2, RET_DE_IO(0, 1)),/* WAN_TXD2  */
 		 DATA_OUT(11, 7, 2, RET_DE_IO(0, 1)),/* WAN_TXD3  */
 		 DATA_OUT(12, 0, 2, RET_DE_IO(0, 1)),/* WAN_TXCTL */
-		 CLOCK_OUT(12, 1, 2, RET_NICLK(3250, 1)),/* WAN_TXCLK */
+		 CLOCK_OUT(12, 1, 2, RET_NICLK(TXCLK_DELAY, 1)),/* WAN_TXCLK */
 		 /* RX */
 		 DATA_IN(12, 2, 2, RET_DE_IO(0, 0)),/* WAN_RXD0 */
 		 DATA_IN(12, 3, 2, RET_DE_IO(0, 0)),/* WAN_RXD1 */
@@ -856,7 +866,7 @@ static struct stm_pad_config stig125_fastpath_byoi_pad_config = {
 		 DATA_IN(12, 5, 2, RET_DE_IO(0, 0)),/* WAN_RXD3 */
 		 DATA_IN(12, 6, 2, RET_DE_IO(0, 0)),/* WAN_RXCTL */
 
-		 CLOCK_IN(12, 7, 2, RET_NICLK(1250, 0)),/* WAN_RXCLK */
+		 CLOCK_IN(12, 7, 2, RET_NICLK(RXCLK_DELAY, 0)),/* WAN_RXCLK */
 
 		 /* Select PIO Alternate Function for MDIO and MDC Intf */
 		 MDIO(14, 4, 1),		/* MDIO */
