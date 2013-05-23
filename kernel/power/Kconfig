@@ -117,6 +117,15 @@ config HOM_DEBUG
 	  like a standard printk on the empty_zero_page.
 	  It's used as a rudimentary printk to debug.
 
+config HOM_SELF_RESET
+	bool "Hibernation on memory - Self Reset"
+	depends on HIBERNATION_ON_MEMORY
+	select HOM_DEBUG
+	default n
+	---help---
+	  This option adds the CPU self-reset as last action in the HoM system
+	  This is done to raise a complete HoM flow when SBC/LPM isn't used.
+
 config PM_SLEEP
 	def_bool y
 	depends on SUSPEND || HIBERNATE_CALLBACKS

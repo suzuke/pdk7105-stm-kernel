@@ -81,6 +81,15 @@ static const unsigned long __stxh416_hom_enter_passive[] = {
 POKE32(SBC_MBX_WRITE_STATUS(0), 0x5),
 };
 
+#ifdef CONFIG_HOM_SELF_RESET
+static const unsigned long __stxh416_hom_reset[] = {
+/*
+ * CPU Self-Reset
+ */
+POKE32(SASG2_SBC_SYSCONF_BASE + 0x7d0, 0),
+};
+
+#endif
 #define HOM_TBL(name) {					\
 		.addr = name,				\
 		.size = ARRAY_SIZE(name) * sizeof(long),\
@@ -91,6 +100,9 @@ static struct hom_table stxh416_hom_table[] = {
 	HOM_TBL(__stxh416_hom_ddr_1),
 	HOM_TBL(__stxh416_hom_lmi_retention),
 	HOM_TBL(__stxh416_hom_enter_passive),
+#ifdef CONFIG_HOM_SELF_RESET
+	HOM_TBL(__stxh416_hom_reset),
+#endif
 };
 
 static struct stm_wakeup_devices stxh416_wkd;
