@@ -193,9 +193,10 @@ void stm_device_sysconf_write(struct stm_device_state *state,
 	int i;
 
 	i = stm_device_find_sysconf(state->config, name);
-	WARN_ON(i < 0);
 	if (i >= 0)
 		sysconf_write(state->sysconf_fields[i], value);
+	else
+		dev_err(state->dev, "failed to write on SYSCFG bit %s\n", name);
 }
 EXPORT_SYMBOL(stm_device_sysconf_write);
 
@@ -203,14 +204,14 @@ unsigned long long stm_device_sysconf_read(struct stm_device_state *state,
 		const char* name)
 {
 	int i;
-	unsigned long long result = -1;
 
 	i = stm_device_find_sysconf(state->config, name);
-	WARN_ON(i < 0);
 	if (i >= 0)
-		result = sysconf_read(state->sysconf_fields[i]);
+		return sysconf_read(state->sysconf_fields[i]);
+	else
+		dev_err(state->dev, "failed to err on SYSCFG bit %s\n", name);
 
-	return result;
+	return -EPERM;
 }
 EXPORT_SYMBOL(stm_device_sysconf_read);
 
