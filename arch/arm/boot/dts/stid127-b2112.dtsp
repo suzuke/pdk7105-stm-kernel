@@ -1,0 +1,127 @@
+/*
+ * Copyright (C) 2013 STMicroelectronics Limited.
+ * Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+/dts-v1/;
+#include "stid127.dtsi"
+
+/ {
+	model = "stid127 B2112";
+	compatible = "st,stid127";
+	memory{
+		device_type = "memory";
+		reg = <0x40000000 0x10000000>;
+	};
+
+	chosen {
+		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                              ";
+		linux,stdout-path = &asc2;
+	};
+
+	aliases {
+		ttyAS0 = &asc2;
+		usb0	= &usb0;
+	};
+
+	soc {
+		/* USB's */
+		usb0: usb@fe800000{
+			status = "okay";
+		};
+
+		asc2:uart@fe532000{
+			status = "okay";
+		};
+
+		leds {
+			compatible	= "gpio-leds";
+			fp_led {
+				label	= "Front Panel LED";
+				gpios	= <&PIO19 6>;
+				linux,default-trigger	= "heartbeat";
+			};
+		};
+
+		pwm0: pwm@fe510000{
+			status = "okay";
+			st,channel-enable = <1 0 0 0>;
+		};
+
+		spifsm:	spifsm@fe302000{
+			status		= "okay";
+			flash-name	= "n25q256";
+			partitions	= <&b2112_fsm_partitions>;
+
+			b2112_fsm_partitions: partitions-b2112 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				partition@0 {
+					label = "Serial Flash 1";
+					reg = <0x00000000 0x00500000>;
+				};
+				partition@500000{
+					label = "Serial Flash 2";
+					reg = <0x00500000 0x02000000>;
+				};
+			};
+		};
+
+		/*
+		---------------------------------------------------------------
+		On b2112-A the following changes are required for having the
+		SYNP MAC working:
+
+		1) Move RE16 to RE9.
+		2) Move RE19 to RE12.
+		3) Fit 1K5 to R166 and R287.
+		4) Remove R379, R393,R394 for Alicante Cut 1.0
+
+		---------------------------------------------------------------
+		On b2112-B no HW changes are required.
+		---------------------------------------------------------------
+		*/
+		ethernet0:ethernet@feb00000 {
+			status = "okay";
+			phy-mode	= "rgmii";
+			snps,phy-bus-name = "stmmac";
+			snps,phy-bus-id = <0>;
+			snps,phy-addr = <0>;
+			device-config = <&rgmii0_dev_config>;
+
+			snps,reset-gpio = <&PIO21 2>;
+			snps,reset-active-low;
+			snps,reset-delays-us = <0 10000 10000>;
+		};
+
+		miphy0: miphy@fef24000 {
+			status = "okay";
+			miphy-modes	= "pcie";
+		};
+		pcie0: pcie@fef20000{
+			status = "okay";
+		};
+		miphy1: miphy@fef34000 {
+			status = "okay";
+			miphy-modes	= "pcie";
+		};
+		pcie1: pcie@fef30000{
+			status = "okay";
+		};
+		if17: isve_queue_3 {
+			status = "okay";
+		};
+		if18: isve_queue_4 {
+			status = "okay";
+		};
+		if16: isve_queue_5 {
+			status = "okay";
+		};
+		if1: isve_queue_7 {
+			status = "okay";
+		};
+	};
+};

@@ -1,0 +1,123 @@
+/*
+ * Copyright (C) 2013 STMicroelectronics Limited.
+ * Author(s): Giuseppe Cavallaro <peppe.cavallaro@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+#include "stm-padcfg.h"
+/ {
+	/* RGMII mode Internal Clock */
+	rgmii0_dev_config: gmac0-rgmii-dev-config{
+		padcfg-0 = <&padcfg_rgmii0 &padcfg_rgmii0_phyclk>;
+		device-seqs = <&rgmii0_dev_seqs>;
+		sysconfs{
+			EN_GMAC =	<&sysconf 286   1  1>;
+			MIIx_PHY_SEL =	<&sysconf 286   2  4>;
+			ENMIIx =	<&sysconf 286   5  5>;
+			TXCLK_NOT_CLK125 = <&sysconf 286   6  6>;
+			INT_NOEXT_PHYCLK = <&sysconf 286   7  7>;
+
+		};
+	};
+
+	rgmii0_dev_seqs: rgmii-dev-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =		<1>;
+				MIIx_PHY_SEL =		<1>;
+				ENMIIx =		<1>;
+				TXCLK_NOT_CLK125 =	<0>;
+				INT_NOEXT_PHYCLK =	<0>;
+				type = "sysconf";
+			};
+		};
+	};
+
+	/* RMII mode internal clock */
+	rmii0_dev_config: gmac0-rmii-dev-config {
+		padcfg-0 = <&padcfg_rmii0 &padcfg_rmii0_phyclk>;
+		device-seqs = <&rmii0_dev_seqs>;
+		sysconfs{
+			 EN_GMAC =	<&sysconf 286   1  1>;
+			 MIIx_PHY_SEL =	<&sysconf 286   2  4>;
+			 ENMIIx =	<&sysconf 286   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 286   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 286   7  7>;
+		};
+	};
+
+	rmii0_dev_seqs: rmii-dev-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =		<1>;
+				MIIx_PHY_SEL =		<1>;
+				ENMIIx =		<1>;
+				TXCLK_NOT_CLK125 =	<0>;
+				INT_NOEXT_PHYCLK =	<1>;
+				type = "sysconf";
+			};
+		};
+	};
+
+	/* RMII mode external clock */
+	rmii0_dev_config: gmac0-rmii-dev-config {
+		padcfg-0 = <&padcfg_rmii0 &padcfg_rmii0_phyclk_ext>;
+		device-seqs = <&rmii0_dev_seqs_ext_clk>;
+		sysconfs{
+			 EN_GMAC =	<&sysconf 286   1  1>;
+			 MIIx_PHY_SEL =	<&sysconf 286   2  4>;
+			 ENMIIx =	<&sysconf 286   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 286   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 286   7  7>;
+		};
+	};
+
+	rmii0_dev_seqs_ext_clk: rmii-dev-ext-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =		<1>;
+				MIIx_PHY_SEL =		<1>;
+				ENMIIx =		<1>;
+				TXCLK_NOT_CLK125 =	<0>;
+				INT_NOEXT_PHYCLK =	<0>;
+				type = "sysconf";
+			};
+		};
+	};
+
+	/* Configure the clk according to the negotiated speed in RGMII mode
+	   o 25Mhz for 100	--> output clock driver by Clockgen
+	   o 2.5   for 10		""
+	   o 125   for 1000	--> use internal 125Mhz Clock from PHY
+	 */
+	gmac_speed_fixups: gmac-speed-sel {
+		rgmii-speed-sel {
+			speed-1000 {
+				clk = <125000000>;
+				sysconfs {
+					TXCLK_NOT_CLK125 = <1>;
+					INT_NOEXT_PHYCLK = <0>;
+				};
+			};
+
+			speed-100{
+				clk = <25000000>;
+				sysconfs {
+					TXCLK_NOT_CLK125 = <1>;
+					INT_NOEXT_PHYCLK = <1>;
+				};
+			};
+
+			speed-10{
+				clk = <2500000>;
+				sysconfs {
+					TXCLK_NOT_CLK125 = <1>;
+					INT_NOEXT_PHYCLK = <1>;
+				};
+			};
+		};
+	};
+
+};

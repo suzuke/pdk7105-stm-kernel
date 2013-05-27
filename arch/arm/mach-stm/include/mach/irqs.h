@@ -26,6 +26,8 @@
 # define NR_GPIO_PORTS		34
 #elif defined(CONFIG_MACH_STM_STIG125)
 # define NR_GPIO_PORTS		27
+#elif defined(CONFIG_MACH_STM_STID127)
+# define NR_GPIO_PORTS		23
 #else
 # error	NR_GPIO_PORTS not defined for this chip
 #endif

@@ -29,6 +29,12 @@ config MACH_STM_STIG125
 	help
 	  Include support for a generic STiG125 (Barcelona) platform.
 
+config MACH_STM_STID127
+	def_bool n
+	select STM_IRQ_MUX
+	help
+	  Include support for a generic STiD127 (Alicante) platform.
+
 config MACH_STM_STIG125_BOARD
 	bool "Generic board support for StiG125 based boards via Device trees"
 	depends on OF
@@ -141,11 +147,26 @@ config MACH_STM_B2112_STIG125
 	bool "B2112 with STiG125 (Alicante Cut 0) SoC"
 	select MACH_STM_STIG125
 	help
-	  Select the appropriate SoC which the board is socketed with
+	  This is to select a B2112 board developed to support the
+	  Alicante cut0 SoC based on STIG125 SASC1.
+
+config MACH_STM_B2112_STID127
+	bool "B2112 with STiD127 (Alicante Cut 1) SoC"
+	select MACH_STM_STID127
+	help
+	  This is to select a B2112 board developed to support the
+	  Alicante cut1 SoC based on STID127.
 
 endchoice
 
 endif
+
+config MACH_STM_B2110
+	bool "Support B2110 STiD127 (Alicante Cut1)"
+	select MACH_STM_STID127
+	help
+	  Include support for a B2110 - (Alicante cut 1) Module for
+	  Zaragoza Premium.
 
 if MACH_STM_STIG125
 

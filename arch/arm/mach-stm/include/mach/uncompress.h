@@ -32,6 +32,8 @@
 #elif defined(CONFIG_MACH_STM_STIH416)
 #include <mach/soc-stih416.h>
 #include <linux/stm/sasg2-periphs.h>
+#elif defined(CONFIG_MACH_STM_STID127)
+#include <linux/stm/stid127.h>
 #endif
 
 #define ASC_TX_BUF(base)	(*(volatile unsigned int*)((base) + 0x04))
@@ -68,6 +70,9 @@ static inline unsigned long get_uart_base(void)
 		return SASG2_SBC_ASC1_BASE;
 	if (machine_is_stm_b2105())
 		return SASG2_ASC2_BASE;
+#elif defined(CONFIG_MACH_STM_STID127)
+	if (machine_is_stm_b2110())
+		return STID127_ASC0_BASE;
 #else
 #error "UART base address not defined"
 #endif

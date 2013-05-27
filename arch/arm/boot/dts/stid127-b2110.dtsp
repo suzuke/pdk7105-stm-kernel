@@ -1,0 +1,95 @@
+/*
+ * Copyright (C) 2013 STMicroelectronics Limited.
+ * Author: Giuseppe Cavallaro <peppe.cavallaro@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+/dts-v1/;
+#include "stid127.dtsi"
+
+/ {
+	model = "stid127 B2110";
+	compatible = "st,stid127";
+	memory{
+		device_type = "memory";
+		reg = <0x40000000 0x10000000>;
+	};
+
+	chosen {
+		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                              ";
+		linux,stdout-path = &asc2;
+	};
+
+	aliases {
+		ttyAS0 = &asc2;
+		usb0	= &usb0;
+	};
+
+	soc {
+		/* USB's */
+		usb0: usb@fe800000{
+			status = "okay";
+		};
+		/* UART 1 / CN57 */
+		asc2:uart@fe532000{
+			status = "okay";
+		};
+
+		leds {
+			compatible	= "gpio-leds";
+			fp_led {
+				label	= "Front Panel LED";
+				gpios	= <&PIO19 6>;
+				linux,default-trigger	= "heartbeat";
+			};
+		};
+
+		spifsm:	spifsm@fe302000{
+			status		= "okay";
+			flash-name	= "s25fl256s";
+			partitions	= <&b2110_fsm_partitions>;
+
+			b2110_fsm_partitions: partitions-b2110 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				partition@0 {
+					label = "Serial Flash 1";
+					reg = <0x00000000 0x00500000>;
+				};
+				partition@500000{
+					label = "Serial Flash 2";
+					reg = <0x00500000 0x02000000>;
+				};
+			};
+		};
+		ethernet0:ethernet@feb00000 {
+			status = "okay";
+			phy-mode	= "rgmii";
+			snps,phy-bus-name = "stmmac";
+			snps,phy-bus-id = <0>;
+			snps,phy-addr = <0>;
+			device-config = <&rgmii0_dev_config>;
+
+			snps,reset-gpio = <&PIO21 2>;
+			snps,reset-active-low;
+			snps,reset-delays-us = <0 1000000 1000000>;
+		};
+
+		miphy0: miphy@fef24000 {
+			status = "okay";
+			miphy-modes	= "pcie";
+		};
+		pcie0: pcie@fef20000{
+			status = "okay";
+		};
+		miphy1: miphy@fef34000 {
+			status = "okay";
+			miphy-modes	= "pcie";
+		};
+		pcie1: pcie@fef30000{
+			status = "okay";
+		};
+	};
+};

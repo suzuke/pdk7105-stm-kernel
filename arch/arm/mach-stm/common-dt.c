@@ -44,7 +44,8 @@ static int __init stm_of_l2x0_init(void)
 	u32 way_size = 0x4;
 	u32 aux_ctrl;
 
-	if (of_machine_is_compatible("st,stig125"))
+	if ((of_machine_is_compatible("st,stig125")) ||
+	     of_machine_is_compatible("st,stid127"))
 		way_size = 0x3;
 
 	aux_ctrl = (0x1 << L2X0_AUX_CTRL_SHARE_OVERRIDE_SHIFT) |

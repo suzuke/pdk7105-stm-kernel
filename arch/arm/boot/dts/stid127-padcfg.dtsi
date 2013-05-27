@@ -1,0 +1,239 @@
+/*
+ * Copyright (C) 2012 STMicroelectronics Limited.
+ * Author(s): Giuseppe Cavallaro <peppe.cavallaro@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+#include "stm-padcfg.h"
+/ {
+	pad-configs {
+		uart0 {
+			padcfg_uart0: uart0-0 {
+				st,pins {
+					TX	= <&PIO3 2	OUT	ALT2>;
+					RX	= <&PIO3 0	IN 	ALT2>;
+				};
+			};
+			padcfg_uart0_rts: uart0_rts {
+				st,pins {
+					RTS	= <&PIO3 1	OUT	ALT2 >;
+				};
+			};
+			padcfg_uart0_cts: uart0_cts {
+				st,pins {
+					CTS	= <&PIO3 4	IN 	ALT2 >;
+				};
+			};
+		};
+		uart1{
+			padcfg_uart1: uart1-0 {
+				st,pins {
+
+					TX	= <&PIO9 6	OUT	ALT1>;
+					RX	= <&PIO9 7	IN 	ALT1>;
+				};
+			};
+		};
+
+		uart2 {
+			padcfg_uart2: uart2-0 {
+				st,pins {
+					TX	= <&PIO20 1	OUT	ALT3>;
+					RX	= <&PIO17 5	IN 	ALT3>;
+					output-enable	= <&PIO20 5	OUT	ALT3>;
+				};
+			};
+			padcfg_uart2_rts: uart2_rts {
+				st,pins {
+					RTS	= <&PIO20 3	OUT	ALT3>;
+				};
+			};
+			padcfg_uart2_cts: uart2_cts {
+				st,pins {
+					CTS	= <&PIO20 4	IN 	ALT3>;
+				};
+			};
+		};
+		uart3 {
+			padcfg_uart3: uart3-0 {
+				st,pins {
+					TX	= <&PIO15 3	OUT	ALT1>;
+					RX	= <&PIO15 4	IN 	ALT1>;
+					output-enable	= <&PIO15 0	OUT	ALT3>;
+				};
+			};
+			padcfg_uart3_rts: uart3_rts {
+				st,pins {
+					CTS	= <&PIO15 1	IN 	ALT1>;
+				};
+			};
+			padcfg_uart3_cts: uart3_cts {
+				st,pins {
+					RTS	= <&PIO15 2	OUT	ALT1>;
+				};
+			};
+		};
+
+		usb0 {
+			padcfg_usb0: usb0 {
+				st,pins {
+					usb-oc-detect	= <&PIO22 6	IN	ALT1>;
+					usb-pwr-enable	= <&PIO22 7	OUT	ALT1>;
+				};
+			};
+		};
+
+
+		pwm0{
+			padcfg_pwm0_chan0: chan0 {
+				st,pins {
+					gpio-0	= <&PIO20 3	OUT	ALT1>;
+				};
+			};
+
+			padcfg_pwm0_chan1: chan1 {
+				st,pins {
+					gpio-0	= <&PIO20 7	OUT	ALT1>;
+				};
+			};
+		};
+
+		/*
+		---------------------------------------------------------------
+		The table below shows the status of the tx/rx clock timing
+		for the RTL PHY embeddded on Alicante boards.
+
+			      TXDLY 	RXDLY
+
+		   ------------------------------------
+		    b2112-A   2ns      (default is 0ns but needed to fit
+					RE9 for 2ns)
+		    b2112-B   2ns      2ns    (default on this board)
+		    b2110     2ns      2ns    (default on this board)
+
+		On-top of these, SYNP MAC is programmed to add extra delay
+		(0.5ns) for rxclk and txclk PIO lines.
+		---------------------------------------------------------------
+		*/
+		gmac0{
+			padcfg_rgmii0: rgmii0 {
+				st,pins {
+					 txd0  = <&PIO11  0	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd1  = <&PIO11  1	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd2  = <&PIO11  2	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd3  = <&PIO11  3	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txen =	<&PIO11  4	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txclk =<&PIO11  5	OUT 	ALT1	NICLK	500	CLK_A>;
+
+					 rxd0  = <&PIO11  6	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd1  = <&PIO11  7	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd2  = <&PIO12  0	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd3  = <&PIO12  1	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxdv =	<&PIO12  2	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxclk = <&PIO12  3	IN 	ALT1	NICLK	500	CLK_A>;
+
+					 phyclk =<&PIO12  4	OUT 	ALT1	NICLK	0	CLK_A>;
+					 mdio=	<&PIO12  5	OUT 	ALT1	BYPASS	0>;
+					 mdc =	<&PIO12  6	OUT 	ALT1	NICLK	0	CLK_A>;
+					 mdint=	<&PIO12  7	IN 	ALT1	BYPASS	0>;
+				};
+			};
+			/* RGMII internal clock (default in pad) */
+			padcfg_rgmii0_phyclk: rgmii0_phyclk {
+				st,pins;
+			};
+
+			padcfg_rmii0: rmii0 {
+				st,pins {
+					 txd0  = <&PIO11  0	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txd1  = <&PIO11  1	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 txen =	 <&PIO11  4	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rxd.0 = <&PIO11  6	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rxd.1 = <&PIO11  7	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+					 rxdv  = <&PIO12  2	IN 	ALT1	SE_NICLK_IO	0 	CLK_A>;
+				};
+			};
+			/* RMII Internal clock */
+			padcfg_rmii0_phyclk: rmii0_phyclk {
+				st,pins {
+					 phyclk =	<&PIO12  4	OUT 	ALT1	NICLK	0	CLK_A>;
+				};
+			};
+
+			/* RMII external clock */
+			padcfg_rmii0_phyclk_ext: rmii0_phyclk_ext {
+				st,pins {
+					 phyclk =	<&PIO12  4	IN 	ALT1	NICLK	0	CLK_A>;
+				};
+			};
+
+		};
+
+		i2c0 {
+			padcfg_i2c0: i2c0 {
+				st,pins {
+					SCL	= <&PIO8 2	BIDIR	ALT1>;
+					SDA	= <&PIO8 1	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c1 {
+			padcfg_i2c1: i2c1 {
+				st,pins {
+					SCL	= <&PIO8 3	BIDIR	ALT1>;
+					SDA	= <&PIO8 4	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c2 {
+			padcfg_i2c2: i2c2 {
+				st,pins {
+					SCL	= <&PIO9 0	BIDIR	ALT1>;
+					SDA	= <&PIO9 1	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c3 {
+			padcfg_i2c3: i2c3 {
+				st,pins {
+					SCL	= <&PIO9 5	BIDIR	ALT1>;
+					SDA	= <&PIO9 4	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c4 {
+			padcfg_i2c4: i2c4 {
+				st,pins {
+					SCL	= <&PIO10 0	BIDIR	ALT1>;
+					SDA	= <&PIO10 1	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c5 {
+			padcfg_i2c5: i2c5 {
+				st,pins {
+					SCL	= <&PIO10 3	BIDIR	ALT1>;
+					SDA	= <&PIO10 4	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c6 {
+			padcfg_i2c6: i2c6 {
+				st,pins {
+					SCL	= <&PIO22 0	BIDIR	ALT1>;
+					SDA	= <&PIO22 1	BIDIR	ALT1>;
+				};
+			};
+		};
+		i2c7 {
+			padcfg_i2c7: i2c7 {
+				st,pins {
+					SCL	= <&PIO16 1	BIDIR	ALT1>;
+					SDA	= <&PIO16 2	BIDIR	ALT1>;
+				};
+			};
+		};
+	};
+};

@@ -5,6 +5,7 @@ obj-$(CONFIG_MACH_STM_FLI7610)	+= soc-fli7610.o mpe41.o
 obj-$(CONFIG_MACH_STM_STIG125)	+= soc-stig125.o
 obj-$(CONFIG_MACH_STM_STIH415)	+= soc-stih415.o mpe41.o
 obj-$(CONFIG_MACH_STM_STIH416)	+= soc-stih416.o mpe42.o
+obj-$(CONFIG_MACH_STM_STID127)	+= soc-stid127.o
 obj-$(CONFIG_MACH_STM_FLI76XXHDK01)	+= board-fli76xxhdk01.o
 ifdef CONFIG_MACH_STM_B2000
 obj-$(CONFIG_MACH_STM_STIH415)	+= board-b2000.o
@@ -23,7 +24,9 @@ obj-$(CONFIG_MACH_STM_B2092)	+= board-b2092.o
 obj-$(CONFIG_MACH_STM_B2105)	+= board-b2105.o
 ifdef CONFIG_MACH_STM_B2112
 obj-$(CONFIG_MACH_STM_B2112_STIG125)	+= board-b2112_d128xxZ.o
+obj-$(CONFIG_MACH_STM_B2112_STID127)	+= board-stid127-dt.o
 endif
+obj-$(CONFIG_MACH_STM_B2110)	+= board-stid127-dt.o
 obj-$(CONFIG_CACHE_L2X0)	+= l2x0.o
 obj-$(CONFIG_PCI)		+= pci-glue.o
 
