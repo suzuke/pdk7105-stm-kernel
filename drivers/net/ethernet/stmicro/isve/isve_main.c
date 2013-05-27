@@ -42,6 +42,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/of.h>
 #include "isve.h"
 
 static int debug = -1;		/* -1: default, 0: no output, 16:  all */
@@ -696,6 +697,33 @@ struct isve_priv *isve_dvr_probe(struct device *device,
 
 	return priv;
 }
+#ifdef CONFIG_OF
+static struct plat_isve_data *stm_isve_get_pdata(struct platform_device *pdev)
+{
+	struct plat_isve_data *data = dev_get_platdata(&pdev->dev);
+	struct device_node *np = pdev->dev.of_node;
+
+	if (!data)
+		data  = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+
+	of_property_read_u32(np, "isve,downstream_queue_size",
+			     &data->downstream_queue_size);
+	of_property_read_u32(np, "isve,upstream_queue_size",
+			     &data->upstream_queue_size);
+	of_property_read_u32(np, "isve,queue_number", &data->queue_number);
+	of_property_read_u32(np, "isve,skip_hdr", &data->skip_hdr);
+	of_property_read_u32(np, "isve,hw_rem_hdr", &data->hw_rem_hdr);
+	of_property_read_string(np, "isve,ifname",
+				(const char **)&data->ifname);
+
+	return data;
+}
+#else
+static struct plat_isve_data *stm_isve_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif /* CONFIG_OF */
 
 /**
  * isve_pltfr_probe: main probe function.
@@ -745,8 +773,10 @@ static int isve_pltfr_probe(struct platform_device *pdev)
 		release_mem_region(res1->start, resource_size(res1));
 		return -ENOMEM;
 	}
-
-	plat_dat = dev->platform_data;
+	if (pdev->dev.of_node)
+		plat_dat = stm_isve_get_pdata(pdev);
+	else
+		plat_dat = pdev->dev.platform_data;
 
 	priv = isve_dvr_probe(dev, plat_dat);
 	if (!priv) {
@@ -821,13 +851,23 @@ static int isve_pltfr_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id stm_isve_match[] = {
+	{
+		.compatible = "st,isve",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_isve_match);
+
 static struct platform_driver isve_driver = {
 	.probe = isve_pltfr_probe,
 	.remove = isve_pltfr_remove,
 	.driver = {
 		   .name = ISVE_RESOURCE_NAME,
 		   .owner = THIS_MODULE,
-		   },
+		   .of_match_table = of_match_ptr(stm_isve_match),
+	},
 };
 
 module_platform_driver(isve_driver);

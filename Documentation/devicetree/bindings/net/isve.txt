@@ -1,0 +1,40 @@
+* Integrated SoC Virtual Ethernet driver
+
+Required properties:
+- compatible: Should be "st,isve"
+- reg: Address and length of the downstream and upstream register set
+- interrupts: Should contain downstream and upstream interrupts
+- interrupt-names: Should contain the interrupt names "isveirq_ds", "isveirq_us"
+		   so the downstream and upstream interrupt names.
+
+Optional properties:
+isve,downstream_queue_size	Downstream queue size
+isve,upstream_queue_size	Upstream queue size
+isve,queue_number		Number of the queue
+isve,skip_hdr			Extra bytes to remove (also in case of the
+				HW is programmed to remove both extra and docsis
+				headers from the incoming frames) to keep the
+				Ethernet frame aligned to 32bit.
+isve,hw_rem_hdr			This can be 1 to remove the docsis header,
+				2 to remove the extra header and 3 to remove
+				all the headers.
+isve,ifname			This is to override the default interface name
+				for example if17, if18, if19 and if1 commonly
+				used on our SoCs for eCM etc.
+
+Examples:
+	if17:isve_queue_3 {
+			compatible	= "st,isve", "simple-bus";
+			status = "disabled";
+			device_type = "network";
+			reg = <0xfee2e460 0x20>, <0xfee1a478 0x20>;
+			interrupts = <0 78 0>, <0 89 0>;
+			interrupt-names = "isveirq_ds", "isveirq_us";
+
+			isve,downstream_queue_size = <32>;
+			isve,upstream_queue_size = <32>;
+			isve,queue_number = <3>;
+			isve,skip_hdr = <0x2>; /* two extra bytes have to be removed */
+			isve,hw_rem_hdr = <0x3>; /* remove docsis and extra HDR */
+			isve,ifname = "if17";
+		};
