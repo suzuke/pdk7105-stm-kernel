@@ -250,7 +250,7 @@ static struct of_device_id stm_sdhci_match[] = {
 	{},
 };
 
-MODULE_DEVICE_TABLE(of, stm_asc_match);
+MODULE_DEVICE_TABLE(of, stm_sdhci_match);
 #endif
 
 static struct platform_driver sdhci_stm_driver = {
