@@ -156,6 +156,10 @@ Where:
 		over-sized frames due to limited buffer sizes.
 		Setting this flag the csum will be done in SW on
 		JUMBO frames.
+ o bugged_tx_coe: on some chips, although the HW cap register says that
+	the TX COE is available, this is not true and the MAC
+	fails to calculate it. So this field can be used to
+	force the HW csum in SW.
  o pmt: core has the embedded power module (optional).
  o force_sf_dma_mode: force DMA to use the Store and Forward mode
 		     instead of the Threshold.

@@ -74,6 +74,7 @@ static int stmmac_probe_config_dt(struct platform_device *pdev,
 	plat->bugged_jumbo = of_property_read_bool(np, "snps,bugged-jumbo");
 	plat->force_sf_dma_mode = of_property_read_bool(np,
 					"snps,force-sf-dma-mode");
+	plat->bugged_tx_coe = of_property_read_bool(np, "snps,bugged_tx_coe");
 
 	dma_cfg = devm_kzalloc(&pdev->dev, sizeof(*dma_cfg), GFP_KERNEL);
 	plat->dma_cfg = dma_cfg;

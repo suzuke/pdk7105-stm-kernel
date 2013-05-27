@@ -102,6 +102,7 @@ struct plat_stmmacenet_data {
 	int tx_coe;
 	int rx_coe;
 	int bugged_jumbo;
+	int bugged_tx_coe;
 	int pmt;
 	int force_sf_dma_mode;
 	int riwt_off;
