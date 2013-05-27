@@ -1389,8 +1389,8 @@
 			status = "disabled";
 
 			reg = <0xfe810000 0x8000>;
-			interrupts = <0 147 0>;
-			interrupt-names = "macirq";
+			interrupts = <0 147 0>, <0 148 0>, <0 149 0>;
+			interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
 
 
 			snps,enh-desc;
@@ -1410,8 +1410,8 @@
 			status = "disabled";
 
 			reg = <0xfef08000 0x8000>;
-			interrupts = <0 150 0>;
-			interrupt-names = "macirq";
+			interrupts = <0 150 0>, <0 151 0>, <0 152 0>;
+			interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
 
 			snps,enh-desc;
 			snps,bugged-jumbo;
