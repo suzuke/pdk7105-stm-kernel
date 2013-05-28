@@ -110,6 +110,13 @@ config MACH_STM_B2092
 # b2092 specific configuration
 source "arch/arm/mach-stm/Kconfig.b2092"
 
+config MACH_STM_B2105
+	bool "Support B2105 - STiH416 (Orly-2) Zaragoza Premium board"
+	select MACH_STM_STIH416
+	select FIXED_PHY
+	help
+	  Include support for a B2105 - STiH416 (Orly-2) Zaragoza Premium board.
+
 config MACH_STM_FLI76XXHDK01
 	bool "Support FLI76XX HDK01 - FLI7610 (Newman) Board"
 	select MACH_STM_FLI7610

@@ -20,6 +20,7 @@ obj-$(CONFIG_MACH_STM_STIH416_BOARD)	+= board-stih416-dt.o
 obj-$(CONFIG_MACH_STM_B2044)	+= board-b2044.o
 obj-$(CONFIG_MACH_STM_B2078)	+= board-b2078.o
 obj-$(CONFIG_MACH_STM_B2092)	+= board-b2092.o
+obj-$(CONFIG_MACH_STM_B2105)	+= board-b2105.o
 obj-$(CONFIG_CACHE_L2X0)	+= l2x0.o
 obj-$(CONFIG_PCI)		+= pci-glue.o
 
