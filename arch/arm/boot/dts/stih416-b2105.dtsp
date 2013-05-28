@@ -171,14 +171,29 @@
 			snps,reset-delays-us = <0 10000 10000>;
 
 		};
-		// GMAC1 uses dummy phy to communicate with B2112 board
-		ethernet1:ethernet@fef08000 {
-		//	status = "okay";
+		/* The GMAC1 is used to communicate with the b2112 via NIM plug.
+		   It is configured in RGMII mode and it uses the dummy phy.
+
+			To allow this a custom configuration must be provided:
+			in particular, the following settings have to be done:
+
+			1 GMAC 1 in RGMII mode
+			2 CLK_S_ETH1_PHY and CLK_S_MII1_REF_OUT set to 125MHz
+			3 MII_PHY_REFCLK has to be kept at 125 MHz
+			  independently of the link speed.
+			4 All TX/RX PIOs with new retiming RET_DE_IO(0, 0)
+			  instead of RET_DE_IO(500, 0)
+			5 Retiming GTXCLK to RET_NICLK(3250, 1);
+			6 Set: SYSCFG_SBC508[8:6] = 0x7
+			7 Set PIO4_3 OUT alternate 4
+		 */
+		eth_zaragoza:eth_zaragoza@fef08000 {
+			status = "okay";
 			phy-mode	= "rgmii";
 			snps,phy-bus-name = "fixed";
 			snps,phy-bus-id = <0>;
 			snps,phy-addr = <0x1>;
-			device-config = <&rgmii1_ext_clk_dev_config>;
+			device-config = <&rgmii1_zaragoza_dev_config>;
 		};
 	};
 };

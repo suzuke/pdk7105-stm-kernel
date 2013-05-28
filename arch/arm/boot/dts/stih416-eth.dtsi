@@ -168,6 +168,23 @@
 		};
 	};
 
+	/* GMAC in RGMII custom selection with internal phy clk and special
+	   configiration for zaragoza/alicante connection.
+	 */
+	rgmii1_zaragoza_dev_config: gmac1-rgmii-custom_dev-config{
+		padcfg-0 = <&padcfg_rgmii1_zaragoza &padcfg_rgmii1_zaragoza_phyclk>;
+		device-seqs = <&rgmii_zaragoza_dev_seqs>;
+		sysconfs {
+			 EN_GMAC =	<&sysconf 510   0  0>;
+			 PWR_DWN_REQ =  <&sysconf 508	0  0>;
+			 MIIx_PHY_SEL =	<&sysconf 508   2  4>;
+			 ENMIIx =	<&sysconf 508   5  5>;
+			 TXCLK_NOT_CLK125 = <&sysconf 508   6  6>;
+			 INT_NOEXT_PHYCLK = <&sysconf 508   7  7>;
+			 TX_RETIME_CLK    = <&sysconf 508   8  8>;
+		};
+	};
+
 	/* GMAC1 in RGMII mode with external phy clk */
 	rgmii1_ext_clk_dev_config: gmac1-rgmii-ext-clk-dev-config{
 		padcfg-0 = <&padcfg_rgmii1>;
@@ -303,6 +320,27 @@
 				TXCLK_NOT_CLK125 =	<0>;
 				INT_NOEXT_PHYCLK =	<0>;
 				TX_RETIME_CLK    =	<0>;
+				type = "sysconf";
+			};
+		};
+	};
+
+	/*
+		we have to set the sysconfif register bits 6-7-8:
+
+		ETH_SEL_TX_RETIMING_CLK, ETH_SEL_INTERNAL_NOTEXT_PHYCLK,
+		ETH_SEL_TXCLK_NOT_CLK125
+	*/
+	rgmii_zaragoza_dev_seqs: rgmii-zaragoza-dev-sequence{
+		init-seq{
+			step0 {
+				EN_GMAC =		<1>;
+				PWR_DWN_REQ = 		<0>;
+				MIIx_PHY_SEL =		<1>;
+				ENMIIx =		<1>;
+				TXCLK_NOT_CLK125 =	<1>;
+				INT_NOEXT_PHYCLK =	<1>;
+				TX_RETIME_CLK    =	<1>;
 				type = "sysconf";
 			};
 		};

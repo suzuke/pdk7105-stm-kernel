@@ -1616,6 +1616,23 @@
 
 		};
 
+		eth_zaragoza:eth_zaragoza@fef08000 {
+			device_type = "network";
+			compatible	= "snps,dwmac", "simple-bus";
+			status = "disabled";
+
+			reg = <0xfef08000 0x8000>;
+			interrupts = <0 136 0>, <0 137 0>, <0 138 0>;
+			interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
+
+			snps,enh-desc;
+			snps,pbl = <32>;
+
+			amba-config	= <&ethernet_amba_bridge_config>;
+			st,phy-clk-name = "CLK_S_ETH1_PHY";
+		};
+
+
 		ethernet_amba_bridge_config: stm-eth-amba-bridge {
 			reg-offset		= <0x1ffc>;
 			bridge_type2;

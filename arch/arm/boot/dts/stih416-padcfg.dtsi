@@ -785,6 +785,40 @@
 				};
 			};
 
+			/* Custom pad for zaragoza/alicante setup */
+			padcfg_rgmii1_zaragoza: rgmii1-zaragoza {
+				st,pins {
+
+					 txd0  =	<&PIO0  0	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd1  =	<&PIO0  1	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd2  =	<&PIO0  2	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd3  =	<&PIO0  3	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txen =		<&PIO0  5	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txclk =	<&PIO0  6	IN 	ALT1	NICLK	0	CLK_A>;
+
+					 mdio =		<&PIO1  0	OUT 	ALT1	BYPASS	0>;
+					 mdc =		<&PIO1  1	OUT 	ALT1	NICLK	0	CLK_A>;
+
+					 rxd0  =	<&PIO1  4	IN 	ALT1	DE_IO	0 	CLK_A>;
+					 rxd1  =	<&PIO1  5	IN 	ALT1	DE_IO	0 	CLK_A>;
+					 rxd2  =	<&PIO1  6	IN 	ALT1	DE_IO	0 	CLK_A>;
+					 rxd3  =	<&PIO1  7	IN 	ALT1	DE_IO	0 	CLK_A>;
+
+					 rxdv =		<&PIO2  0	IN 	ALT1	DE_IO	0	CLK_A>;
+
+					 rxclk =	<&PIO2  2	IN 	ALT1	NICLK	0	CLK_A>;
+					 phyclk =	<&PIO2  3	OUT	ALT4	NICLK	3250	CLK_B>;
+
+					 clk125=	<&PIO3  7	IN 	ALT4	NICLK	0	CLK_A>;
+					 phyrefclk=	<&PIO4  3	OUT 	ALT4	BYPASS	0>;
+				};
+			};
+			padcfg_rgmii1_zaragoza_phyclk: rgmii1_zaragoza_phyclk {
+				st,pins{
+				};
+			};
+
+
 			padcfg_rmii1: rmii1-0 {
 				st,pins {
 					 txd0  =	<&PIO0  0	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;

@@ -74,7 +74,10 @@ struct of_dev_auxdata stih416_auxdata_lookup[] __initdata = {
 
 static struct fixed_phy_status stmmac1_fixed_phy_status = {
 	.link = 1,
-	.speed = 1000,
+	/* The speed is limited to 100 instead of 1000 for alicante/zaragoza
+	 * bring-up.
+	 */
+	.speed = 100,
 	.duplex = 1,
 };
 
