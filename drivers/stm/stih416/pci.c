@@ -30,16 +30,24 @@ static void *stih416_pcie_init(struct platform_device *pdev)
 {
 	struct stm_plat_pcie_config *config = pdev->dev.platform_data;
 	int port = config->miphy_num;
-	struct sysconf_field *sc;
+	struct sysconf_field *sc, *pdown;
 
 	switch (port) {
 	case 0:
 		sc = sysconf_claim(SYSCONF(2524), 0, 5, "pcie");
 		BUG_ON(!sc);
+		/* Power up PCIe0 Controller */
+		pdown = sysconf_claim(SYSCONF(2525), 7, 7, "pcie");
+		BUG_ON(!pdown);
+		sysconf_write(pdown, 0);
 		break;
 	case 1:
 		sc = sysconf_claim(SYSCONF(2523), 0, 5, "pcie");
 		BUG_ON(!sc);
+		/* Power up PCIe1 Controller */
+		pdown = sysconf_claim(SYSCONF(2525), 5, 5, "pcie");
+		BUG_ON(!pdown);
+		sysconf_write(pdown, 0);
 		break;
 	default:
 		BUG();
@@ -137,30 +145,9 @@ static struct platform_device stih416_pcie_devices[] = {
 
 void __init stih416_configure_pcie(struct stih416_pcie_config *config)
 {
-	struct sysconf_field *sc_pcie1_powerdown,
-	    *sc_satapcie_hreset, *sc_miphy1_hreset;
 	int port = config->port;
 
-	switch (port) {
-	case 0:
-		break;
-	case 1:
-		/* Deassert Hard reset to MiPHY1 */
-		sc_miphy1_hreset = sysconf_claim(SYSCONF(2552), 19, 19, "pcie");
-		BUG_ON(!sc_miphy1_hreset);
-		sysconf_write(sc_miphy1_hreset, 1);
-		/* Deassert Hard Reset to SATA/PCIe1 Controller */
-		sc_satapcie_hreset = sysconf_claim(SYSCONF(2553), 0, 0, "pcie");
-		BUG_ON(!sc_satapcie_hreset);
-		sysconf_write(sc_satapcie_hreset, 1);
-		/* Power up PCIe1 Controller */
-		sc_pcie1_powerdown = sysconf_claim(SYSCONF(2525), 5, 5, "pcie");
-		BUG_ON(!sc_pcie1_powerdown);
-		sysconf_write(sc_pcie1_powerdown, 0);
-		break;
-	default:
-		BUG();
-	}
+	BUG_ON((port < 0) || (port > 1));
 
 	stih416_plat_pcie_config[port].ops = &stih416_pcie_ops;
 	stih416_plat_pcie_config[port].ahb_val = 0x26C208,

@@ -1356,7 +1356,47 @@ void __init stih416_configure_mmc(int port, int is_emmc)
 static void stih416_sata_mp_select(void *data, int port)
 {
 }
+static void __init sataclk_shift(void)
+{
+	struct sysconf_field *sc_sata1_hc_reset, *sc_sata_select;
+	struct sysconf_field *sc_miphy1_hc_reset, *sc_force_ext;
 
+	sc_sata1_hc_reset = sysconf_claim(SYSCONF(2553), 0, 0, "sata");
+	sc_miphy1_hc_reset = sysconf_claim(SYSCONF(2552), 19, 19, "MIPHY1");
+	sc_sata_select = sysconf_claim(SYSCONF(2522), 1, 1, "select-sata");
+	sc_force_ext = sysconf_claim(SYSCONF(2522), 2, 2, "force-ext");
+	sysconf_write(sc_sata1_hc_reset, 0);
+	sysconf_write(sc_miphy1_hc_reset, 0);
+	sysconf_write(sc_force_ext, 1);
+	sysconf_write(sc_sata_select, 1);
+	sysconf_write(sc_miphy1_hc_reset, 1);
+	sysconf_write(sc_sata1_hc_reset, 1);
+	sysconf_release(sc_miphy1_hc_reset);
+	sysconf_release(sc_sata1_hc_reset);
+	sysconf_release(sc_sata_select);
+	sysconf_release(sc_force_ext);
+}
+
+static void __init pcieclk_shift(void)
+{
+	struct sysconf_field *sc_pcie0_soft_reset, *sc_pcie_select;
+	struct sysconf_field *sc_miphy0_hc_reset, *sc_force_ext;
+
+	sc_pcie0_soft_reset = sysconf_claim(SYSCONF(2553), 7, 7, "sata");
+	sc_miphy0_hc_reset = sysconf_claim(SYSCONF(2552), 18, 18, "MIPHY0");
+	sc_pcie_select = sysconf_claim(SYSCONF(2521), 1, 1, "select-sata");
+	sc_force_ext = sysconf_claim(SYSCONF(2521), 2, 2, "force-ext");
+	sysconf_write(sc_pcie0_soft_reset, 0);
+	sysconf_write(sc_miphy0_hc_reset, 0);
+	sysconf_write(sc_force_ext, 1);
+	sysconf_write(sc_pcie_select, 0);
+	sysconf_write(sc_miphy0_hc_reset, 1);
+	sysconf_write(sc_pcie0_soft_reset, 1);
+	sysconf_release(sc_miphy0_hc_reset);
+	sysconf_release(sc_pcie0_soft_reset);
+	sysconf_release(sc_pcie_select);
+	sysconf_release(sc_force_ext);
+}
 /*
  *  __both__ the miphy are multiplexed with PCIe
  */
@@ -1416,16 +1456,8 @@ void stih416_configure_miphy(struct stih416_miphy_config *config)
 {
 
 	static int configured[ARRAY_SIZE(stih416_miphy_devices)];
-	struct sysconf_field *sc;
 	struct stm_plat_pcie_mp_data *pdata =
 		&stih416_sata_mp_platform_data[config->id];
-	const struct miphy_sysconf {
-		unsigned short grp;
-		unsigned short nr;
-	} miphy_sc[2] = {
-		{	SYSCONF(2521),},
-		{	SYSCONF(2522)  }
-	};
 
 	BUG_ON(config->id < 0 ||
 		config->id >= ARRAY_SIZE(stih416_miphy_devices));
@@ -1433,17 +1465,17 @@ void stih416_configure_miphy(struct stih416_miphy_config *config)
 
 	pdata->miphy_modes[0] = config->mode;
 
-	sc = sysconf_claim(miphy_sc[config->id].grp, miphy_sc[config->id].nr,
-				5, 6, "MiPhy");
-	switch (config->mode) {
-	case SATA_MODE:
+	switch (config->id) {
+	case 0:
+		if (config->mode == PCIE_MODE)
+			pcieclk_shift();
 		pdata->rx_pol_inv = config->rx_pol_inv;
 		pdata->tx_pol_inv = config->tx_pol_inv;
-		sysconf_write(sc, 0);
 		break;
-	case PCIE_MODE:
-		/* TODO */
-		sysconf_write(sc, 3);
+	case 1:
+		 if (config->mode == SATA_MODE)
+			sataclk_shift();
+
 		break;
 	default:
 		BUG();
@@ -1481,12 +1513,8 @@ static struct stm_plat_ahci_data stm_ahci_plat_data[2] = {
 					AHCI_HOST_ACK),
 				},
 			.pad_config = &(struct stm_pad_config){
-				.sysconfs_num = 3,
+				.sysconfs_num = 1,
 				.sysconfs =  (struct stm_pad_sysconf[]){
-					/* Select Sata instead of PCIe */
-					STM_PAD_SYSCONF(SYSCONF(2521), 1, 1, 1),
-					/* Sata-phy uses 30MHz for PLL */
-					STM_PAD_SYSCONF(SYSCONF(2521), 2, 2, 0),
 					/* speed mode gen3 */
 					STM_PAD_SYSCONF(SYSCONF(2521), 3, 4, 2),
 					},
@@ -1505,14 +1533,10 @@ static struct stm_plat_ahci_data stm_ahci_plat_data[2] = {
 					AHCI_HOST_ACK),
 				},
 			.pad_config = &(struct stm_pad_config){
-				.sysconfs_num = 3,
+				.sysconfs_num = 1,
 				.sysconfs =  (struct stm_pad_sysconf[]){
-					/* Select Sata instead of PCIe */
-					STM_PAD_SYSCONF(SYSCONF(2522), 1, 1, 1),
-					/* Sata-phy uses 30MHz for PLL */
-					STM_PAD_SYSCONF(SYSCONF(2522), 2, 2, 0),
-					/* speed mode gen3 */
-					STM_PAD_SYSCONF(SYSCONF(2522), 3, 4, 2),
+					/* speed mode gen2*/
+					STM_PAD_SYSCONF(SYSCONF(2522), 3, 4, 1),
 					},
 			},
 		},
