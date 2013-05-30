@@ -1317,9 +1317,14 @@ static int iic_stm_remove(struct platform_device *pdev)
 	struct resource *res;
 	struct iic_ssc *iic_stm = platform_get_drvdata(pdev);
 
-	clk_disable_unprepare(iic_stm->clk);
+	if (!pm_runtime_status_suspended(&pdev->dev))
+		clk_disable_unprepare(iic_stm->clk);
 
 	i2c_del_adapter(&iic_stm->adapter);
+
+	/* disaboe PM runtime */
+	pm_runtime_disable(&pdev->dev);
+
 	/* irq */
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	devm_free_irq(&pdev->dev, res->start, iic_stm);
