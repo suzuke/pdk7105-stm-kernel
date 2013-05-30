@@ -245,7 +245,7 @@
 		};
 
 		ethernet1: ethernet@fef08000 {
-//			status = "okay";
+			status = "okay";
 			snps,phy-bus-id = <1>;
 			snps,phy-bus-name = "stmmac";
 
