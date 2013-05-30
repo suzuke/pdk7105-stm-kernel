@@ -201,12 +201,12 @@
 		};
 
 		ethernet1:ethernet@fef08000 {
-//			status = "okay";
-			phy-mode	= "rgmii";
+			status = "okay";
+			phy-mode	= "gmii";
 			snps,phy-bus-name = "stmmac";
-			snps,phy-bus-id = <0>;
+			snps,phy-bus-id = <1>;
 			snps,phy-addr = <0x1>;
-			device-config = <&rgmii1_ext_clk_dev_config>;
+			device-config = <&gmii1_ext_clk_dev_config>;
 
 			snps,reset-gpio = <&PIO4 7>;
 			snps,reset-active-low;
