@@ -48,6 +48,7 @@
 #include <mach/soc-stih416.h>
 #include <mach/hardware.h>
 
+static int b2105_power_on_gpio = -EINVAL;
 
 static struct stm_pad_config stih416_hdmi_hp_pad_config = {
 	.gpios_num = 1,
@@ -106,6 +107,20 @@ static void b2105_stmmac1_clk_setting(void)
 
 static void __init b2105_dt_init(void)
 {
+	int power_on_gpio;
+	struct device_node *np = of_find_node_by_path("/soc");
+
+	if (np) {
+		power_on_gpio = of_get_named_gpio(np, "power-on-gpio", 0);
+		if (power_on_gpio > 0) {
+			gpio_request(power_on_gpio, "POWER_PIO");
+			gpio_direction_output(power_on_gpio, 1);
+			b2105_power_on_gpio = power_on_gpio;
+		}
+		of_node_put(np);
+	} else {
+		WARN_ON(!np);
+	}
 	/* GMAC1 uses fixed phy support to communicate with the b2112 board */
 	BUG_ON(fixed_phy_add(PHY_POLL, 1, &stmmac1_fixed_phy_status));
 	b2105_stmmac1_clk_setting();
@@ -157,6 +172,7 @@ MACHINE_END
 
 static int b2105_hom_restore(struct stm_wakeup_devices *dev_wk)
 {
+	gpio_direction_output(b2105_power_on_gpio, 1);
 	return 0;
 }
 

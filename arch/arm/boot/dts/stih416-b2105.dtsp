@@ -37,6 +37,7 @@
 		mmc0 = &sdhci0;
 	};
 	soc {
+		power-on-gpio   = <&PIO4 3>;
 
 		nandbch: nand-bch{
 			/* Most of the properities inherited from stih415.dtsi */
