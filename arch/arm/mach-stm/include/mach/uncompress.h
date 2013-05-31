@@ -24,6 +24,8 @@
 #if defined(CONFIG_MACH_STM_FLI7610)
 #include <mach/soc-fli7610.h>
 #include <linux/stm/fli7610-periphs.h>
+#elif defined(CONFIG_MACH_STM_STID127)
+#include <linux/stm/stid127.h>
 #elif defined(CONFIG_MACH_STM_STIG125)
 #include <mach/soc-stig125.h>
 #elif defined(CONFIG_MACH_STM_STIH415)
@@ -51,6 +53,9 @@ static inline unsigned long get_uart_base(void)
 #if defined(CONFIG_MACH_STM_FLI7610)
 	if (machine_is_stm_nmhdk_fli7610())
 		return FLI7610_CONSOLE_BASE;
+#elif defined(CONFIG_MACH_STM_STID127)
+	if (machine_is_stm_b2112() || machine_is_stm_b2110())
+		return STID127_ASC2_BASE;
 #elif defined(CONFIG_MACH_STM_STIG125)
 	if (machine_is_stm_b2044())
 		return STIG125_SBC_ASC0_BASE;
