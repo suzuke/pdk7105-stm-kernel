@@ -35,7 +35,6 @@
 		#size-cells = <1>;
 		#interrupt-cells = <3>;
 		interrupt-parent = <&intc>;
-		compatible = "simple-bus";
 		ranges;
 
 		timer@fffe0600 {
@@ -304,7 +303,7 @@
 		ranges;
 		compatible	= "simple-bus";
 		sysconf@febf0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfebf0000 0x1000>;
 			group@0{
 				group	= <0>;
@@ -314,7 +313,7 @@
 			};
 		};
 		sysconf@fefa0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfefa0000 0x1000>;
 			group@0{
 				group	= <1>;
@@ -324,7 +323,7 @@
 			};
 		};
 		sysconf@fef90000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfef90000 0x1000>;
 			group@0 {
 				group	= <2>;
@@ -335,7 +334,7 @@
 		};
 
 		sysconf@fe9a0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfe9a0000 0x1000>;
 			group@0 {
 				group	= <3>;
@@ -345,7 +344,7 @@
 			};
 		};
 		sysconf@fe930000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfe930000 0x1000>;
 			group@0 {
 				group	= <4>;
@@ -356,7 +355,7 @@
 		};
 
 		sysconf@fec00000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfec00000 0x1000>;
 			group@0 {
 				group	= <5>;
@@ -367,7 +366,7 @@
 		};
 
 		sysconf@fefd0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfefd0000 0x1000>;
 			group@0 {
 				group	= <6>;
@@ -378,7 +377,7 @@
 		};
 
 		sysconf@febd0000{
-			compatible	= "st,sysconf", "simple-bus";
+			compatible	= "st,sysconf";
 			reg	=	<0xfebd0000 0x1000>;
 			group@0{
 				group	= <7>;
@@ -790,7 +789,7 @@
 
 		/* FSM */
 		spifsm:	spifsm@fe302000{
-			compatible	= "st,spi-fsm", "simple-bus";
+			compatible	= "st,spi-fsm";
 			status		= "disabled";
 			reg =	<0xfe302000 0x1000>;
 			reg-names = "spi-fsm";
@@ -806,7 +805,7 @@
 		};
 
 		pwm0: pwm@fe510000{
-			compatible	= "st,pwm", "simple-bus";
+			compatible	= "st,pwm";
 			reg		= <0xfe510000 0x68>;
 			interrupts	=  <0 17 0>;
 			status = "disabled";
@@ -817,7 +816,7 @@
 
 		/* Comms block ASCs in SASG2 */
 		uart0: uart@fe530000{
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfe530000 0x2c>;
 			interrupts	=  <0 25 0>;
@@ -826,7 +825,7 @@
 		};
 
 		uart1: uart@fe531000 {
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfe531000 0x2c>;
 			interrupts	=  <0 26 0>;
@@ -834,7 +833,7 @@
 		};
 
 		uart2: uart@fe532000{
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfe532000 0x2c>;
 			interrupts	=  <0 27 0>;
@@ -843,7 +842,7 @@
 
 		/* telss */
 		uart3: uart@feba6000 {
-			compatible	= "st,asc", "simple-bus";
+			compatible	= "st,asc";
 			status = "disabled";
 			reg		= <0xfeba6000 0x2c>;
 			interrupts	=  <0 144 0>;
@@ -851,7 +850,7 @@
 		};
 
 		ethernet0:ethernet@feb00000 {
-			compatible	= "snps,dwmac", "simple-bus";
+			compatible	= "snps,dwmac";
 			status = "disabled";
 			device_type = "network";
 
@@ -902,7 +901,7 @@
 				docsis_base + 0x1A400 + (queue * 0x28)
 		*/
 		if17:isve_queue_3 {
-			compatible	= "st,isve", "simple-bus";
+			compatible	= "st,isve";
 			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e460 0x20>, <0xfee1a478 0x20>;
@@ -918,7 +917,7 @@
 		};
 
 		if18:isve_queue_4 {
-			compatible	= "st,isve", "simple-bus";
+			compatible	= "st,isve";
 			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e480 0x20>, <0xfee1a4a0 0x20>;
@@ -934,7 +933,7 @@
 		};
 
 		if16:isve_queue_5 {
-			compatible	= "st,isve", "simple-bus";
+			compatible	= "st,isve";
 			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e4a0 0x20>, <0xfee1a4c8 0x20>;
@@ -950,7 +949,7 @@
 		};
 
 		if1:isve_queue_7 {
-			compatible	= "st,isve", "simple-bus";
+			compatible	= "st,isve";
 			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e4e0 0x20>, <0xfee1a518 0x20>;
@@ -993,7 +992,7 @@
 
 		/* Internal Thermal sensor */
 		temp0{
-			compatible    = "st,temp", "simple-bus";
+			compatible    = "st,temp";
 			status = "okay";
 			device-config = <&temp0_dev_config>;
 		};
@@ -1038,7 +1037,7 @@
 		};
 
 		fdma0_mpe:fdma-mpe@0{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfe2c0000 0x20000>;
 			interrupts	=  <0 172 0>;
 			hw-conf = <&fdma_hw_config>;
@@ -1048,7 +1047,7 @@
 		};
 
 		fdma1_mpe:fdma-mpe@1{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfe2e0000 0x20000>;
 			interrupts	=  <0 176 0>;
 			hw-conf = <&fdma_hw_config>;
@@ -1058,7 +1057,7 @@
 
 		/* TELSS FDMA */
 		fdma2_mpe:fdma-mpe@2{
-			compatible	= "st,fdma", "simple-bus";
+			compatible	= "st,fdma";
 			reg		= <0xfeb80000 0x20000>;
 			interrupts	=  <0 180 0>;
 			hw-conf = <&fdma_hw_config>;
@@ -1067,14 +1066,14 @@
 		};
 
 		fdma_xbar_mpe: fdma-xbar-mpe {
-			compatible	= "st,fdma-xbar", "simple-bus";
+			compatible	= "st,fdma-xbar";
 			reg		= <0xfe96a000 0x1000>;
 			first-fdma	= <0>;
 			last-fdma	= <2>;
 		};
 
 		miphy0: miphy@fef24000 {
-			compatible	= "st,miphy-mp", "simple-bus";
+			compatible	= "st,miphy-mp";
 			reg		= <0xfef24000 0xff>;
 			reg-names = 	"pcie-uport";
 			status		= "disabled";
@@ -1084,7 +1083,7 @@
 		};
 
 		miphy1: miphy@fef34000 {
-			compatible	= "st,miphy-mp", "simple-bus";
+			compatible	= "st,miphy-mp";
 			reg		= <0xfef34000 0xff>;
 			reg-names = 	"pcie-uport";
 			status		= "disabled";
@@ -1094,7 +1093,7 @@
 		};
 
 		pcie0: pcie@fef20000{
-			compatible	= "st,pcie", "simple-bus";
+			compatible	= "st,pcie";
 			reg		= <0xfef20000 0x1000>, <0xfef28000 0x8>, <0x27ff0000 0x10000>;
 			reg-names	= "pcie cntrl", "pcie ahb", "pcie config";
 
@@ -1121,7 +1120,7 @@
 		};
 
 		pcie1: pcie@fef30000{
-			compatible	= "st,pcie", "simple-bus";
+			compatible	= "st,pcie";
 			reg		= <0xfef30000 0x1000>, <0xfef38000 0x8>, <0x2fff0000 0x10000>;
 			reg-names	= "pcie cntrl", "pcie ahb", "pcie config";
 
@@ -1149,7 +1148,7 @@
 
 
 		i2c0: i2c@fe540000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe540000 0x110>;
 			interrupts	=  <0 18 0>;
@@ -1158,7 +1157,7 @@
 		};
 
 		i2c1: i2c@fe541000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe541000 0x110>;
 			interrupts	=  <0 19 0>;
@@ -1166,7 +1165,7 @@
 		};
 
 		i2c2: i2c@fe542000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe542000 0x110>;
 			interrupts	=  <0 20 0>;
@@ -1174,7 +1173,7 @@
 		};
 
 		i2c3: i2c@fe543000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe543000 0x110>;
 			interrupts	=  <0 21 0>;
@@ -1182,7 +1181,7 @@
 		};
 
 		i2c4: i2c@fe544000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe544000 0x110>;
 			interrupts	=  <0 22 0>;
@@ -1190,7 +1189,7 @@
 		};
 
 		i2c5: i2c@fe545000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe545000 0x110>;
 			interrupts	=  <0 23 0>;
@@ -1198,7 +1197,7 @@
 		};
 
 		i2c6: i2c@fe546000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfe546000 0x110>;
 			interrupts	=  <0 24 0>;
@@ -1206,7 +1205,7 @@
 		};
 
 		i2c7: i2c@feba6000{
-			compatible	= "st,i2c", "simple-bus";
+			compatible	= "st,i2c";
 			status = "disabled";
 			reg		= <0xfeba6000 0x110>;
 			interrupts	=  <0 143 0>;
@@ -1320,7 +1319,7 @@
 		};
 
 		usb0: usb@fe800000{
-			compatible	= "st,usb", "simple-bus";
+			compatible	= "st,usb";
 			status = "disabled";
 			reg		=	<0xfe800000 0x100>,
 						<0xfe803c00 0x100>,
