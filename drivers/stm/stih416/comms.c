@@ -365,6 +365,7 @@ static int stih416_configure_ssc_routing(int ssc, int is_spi,
 		case stih416_ssc4_mtsr_pio31_5:
 			stm_pad_config_add_pio_bidir_named(pad_config,
 				STIH416_GPIO(31), 5, 2, "SDA");
+			break;
 		default:
 			ret = -EINVAL;
 			BUG();
