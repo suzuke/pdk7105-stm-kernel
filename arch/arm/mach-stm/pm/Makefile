@@ -3,6 +3,7 @@
 
 # Suspend
 suspend-$(CONFIG_MACH_STM_STIG125)	:= suspend-stig125.o
+suspend-$(CONFIG_MACH_STM_STID127)	:= suspend-stid127.o
 suspend-$(CONFIG_CPU_SUBTYPE_STIH415)	:= suspend-stih415.o suspend-stxmpe41.o suspend-stxsasg1.o suspend-mcm.o
 suspend-$(CONFIG_MACH_STM_STIH416)	:= suspend-stih416.o suspend-stxmpe42.o suspend-stxsasg2.o suspend-mcm.o
 suspend-$(CONFIG_MACH_STM_FLI7610)	:= suspend-fli7610.o suspend-stxmpe41.o suspend-stxtae.o suspend-mcm.o

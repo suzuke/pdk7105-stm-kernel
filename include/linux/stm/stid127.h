@@ -26,6 +26,8 @@
 #define STID127_SYSCONF_SOUTH_BASE	0xfefa0000
 #define STID127_SYSCONF_PSOUTH_BASE	0xfefd0000
 
+#define STID127_DDR_PCTL_BASE		0xfe990000
+
 /* Sysconfig defines */
 #define SYSCONFG_GROUP(x) \
 	( ((x) >= 1400) ? 7 : ((x) >= 1200) ? 6 : ((x) >= 1000) ? 5 :	\
