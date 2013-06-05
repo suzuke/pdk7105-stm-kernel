@@ -103,6 +103,7 @@ static void __devinit *stm_sdhci_dt_get_pdata(struct platform_device *pdev)
 	priv_data->custom_cfg = stm_of_get_pad_config(&pdev->dev);
 	priv_data->nonremovable =
 		of_property_read_bool(np, "st,mmc-non-removable");
+	priv_data->amba_config = stm_of_get_amba_config(&pdev->dev);
 
 	return priv_data;
 }

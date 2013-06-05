@@ -1551,6 +1551,7 @@
 			interrupts	=  <0 127 0>;
 			interrupt-names = "mmcirq";
 			padcfg-0 	= <&padcfg_mmc0>;
+			amba-config     = <&mmc_amba_bridge_config>;
 		};
 
 		sdhci1:sdhci@fe81f000 {
@@ -1560,7 +1561,20 @@
 			interrupts	=  <0 128 0>;
 			interrupt-names = "mmcirq";
 			padcfg-0 	= <&padcfg_mmc1>;
+			amba-config     = <&mmc_amba_bridge_config>;
 		};
+
+		mmc_amba_bridge_config: stm-mmc-amba-bridge {
+			bridge_type2;
+			chunks_in_msg		= <1>;
+			packets_in_chunk	= <2>;
+			write_posting;
+			max_opcode_LD64_ST64;
+			threshold		= <128>;
+			sd_config_missing;
+			read_ahead;
+		};
+
 		ethernet0:ethernet@fe810000 {
 			compatible	= "snps,dwmac";
 			status = "disabled";

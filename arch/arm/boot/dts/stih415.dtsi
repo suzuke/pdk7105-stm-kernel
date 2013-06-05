@@ -1366,7 +1366,19 @@
 			interrupts	=  <0 145 0>;
 			interrupt-names = "mmcirq";
 			padcfg-0	= <&padcfg_mmc>;
+			amba-config	= <&mmc_amba_bridge_config>;
 
+		};
+
+		mmc_amba_bridge_config: stm-mmc-amba-bridge {
+			bridge_type2;
+			chunks_in_msg		=	<1>;
+			packets_in_chunk	=	<2>;
+			write_posting;
+			max_opcode_LD64_ST64;
+			threshold		=	<128>;
+			sd_config_missing;
+			read_ahead;
 		};
 
 		/* Ethernet */
