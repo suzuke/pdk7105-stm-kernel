@@ -103,7 +103,10 @@ static int stmmac_of_init(struct platform_device *pdev)
 	int ret = 0;
 	struct plat_stmmacenet_data *plat_dat = pdev->dev.platform_data;
 	struct device *dev = &pdev->dev;
-	plat_dat->custom_cfg = stm_of_get_dev_config(dev);
+
+	if (!plat_dat->custom_cfg)
+		plat_dat->custom_cfg = stm_of_get_dev_config(dev);
+
 	plat_dat->custom_data = devm_stm_device_init(dev,
 			(struct stm_device_config *)plat_dat->custom_cfg);
 	if (!plat_dat->custom_data) {
