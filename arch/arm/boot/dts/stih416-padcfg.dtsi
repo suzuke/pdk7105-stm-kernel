@@ -188,7 +188,7 @@
 					DATA7  = <&PIO16 1	BIDIR_PU	ALT3	BYPASS	0>;
 
 					PWR    = <&PIO16 2	OUT		ALT3>;	/* MMC Card PWR */
-					NRESET = <&PIO13 6	IN		ALT3>;	/* MMC RESET */
+					NRESET = <&PIO13 6	OUT		ALT3>;	/* MMC RESET */
 
 				};
 			};
