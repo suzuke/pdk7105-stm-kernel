@@ -24,6 +24,7 @@
 #include <linux/err.h>
 #include <linux/mmc/host.h>
 #include <linux/stm/mmc.h>
+#include <linux/stm/platform.h>
 
 #include "sdhci-pltfm.h"
 
@@ -87,17 +88,61 @@ static struct sdhci_pltfm_data sdhci_stm_pdata = {
 	    SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
 };
 
+#ifdef CONFIG_OF
+static void __devinit *stm_sdhci_dt_get_pdata(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct stm_mmc_platform_data *priv_data = devm_kzalloc(
+		&pdev->dev, sizeof(*priv_data), GFP_KERNEL);
+
+	if (!priv_data) {
+		dev_err(&pdev->dev, "Unable to allocate platform data\n");
+		return ERR_PTR(-ENOMEM);
+	}
+
+	priv_data->custom_cfg = stm_of_get_pad_config(&pdev->dev);
+	priv_data->nonremovable =
+		of_property_read_bool(np, "st,mmc-non-removable");
+
+	return priv_data;
+}
+#else
+static void __devinit *stm_sdhci_dt_get_pdata(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 {
 	struct sdhci_host *host;
 	struct stm_mmc_platform_data *pdata;
 	struct sdhci_pltfm_host *pltfm_host;
 	struct clk *clk;
-	int ret;
+	int ret = 0;
 
 	pr_debug("sdhci STM platform driver\n");
 
+	if (pdev->dev.of_node)
+		pdev->dev.platform_data = stm_sdhci_dt_get_pdata(pdev);
+
+	if (!pdev->dev.platform_data || IS_ERR(pdev->dev.platform_data)) {
+		dev_err(&pdev->dev, "No platform data found\n");
+		return -ENODEV;
+	}
+
 	pdata = pdev->dev.platform_data;
+
+	if (pdata->custom_cfg) {
+		pdata->custom_data = devm_stm_pad_claim(&pdev->dev,
+			(struct stm_pad_config *)(pdata->custom_cfg),
+			dev_name(&pdev->dev));
+		if (!pdata->custom_data) {
+			dev_err(&pdev->dev, "Failed on pad_claim\n");
+			return -ENODEV;
+		}
+	} else
+		pr_warning("%s: no custom_cfg found\n", __func__);
 
 	host = sdhci_pltfm_init(pdev, &sdhci_stm_pdata);
 	if (IS_ERR(host))
@@ -108,13 +153,6 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 	/* To manage eMMC */
 	if (pdata->nonremovable)
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
-
-	/* Invoke specific MMC function to configure HW resources */
-	if (pdata && pdata->init) {
-		ret = pdata->init(pdev);
-		if (ret)
-			return ret;
-	}
 
 	clk = clk_get(mmc_dev(host->mmc), NULL);
 	if (IS_ERR(clk)) {
@@ -164,9 +202,8 @@ static int __devexit sdhci_stm_remove(struct platform_device *pdev)
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 
-	if (pdata && pdata->exit)
-		pdata->exit(pdev);
-
+	if (pdata->custom_data)
+		devm_stm_pad_release(&pdev->dev, pdata->custom_data);
 	clk_disable_unprepare(pltfm_host->clk);
 	clk_put(pltfm_host->clk);
 
@@ -209,23 +246,22 @@ static int sdhci_stm_freeze(struct device *dev)
 	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
 	struct platform_device *pdev = to_platform_device(dev);
 
-	if (pdata && pdata->exit)
-		pdata->exit(pdev);
-
+	if (pdata->custom_data) {
+		devm_stm_pad_release(&pdev->dev, pdata->custom_data);
+		pdata->custom_data = NULL;
+	}
 	return sdhci_stm_suspend(dev);
 }
 
 static int sdhci_stm_restore(struct device *dev)
 {
-	int ret;
 	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
 	struct platform_device *pdev = to_platform_device(dev);
 
-	if (pdata && pdata->init) {
-		ret = pdata->init(pdev);
-		if (ret)
-			return ret;
-	}
+	if (pdata->custom_cfg)
+		pdata->custom_data = devm_stm_pad_claim(&pdev->dev,
+			(struct stm_pad_config *)(pdata->custom_cfg),
+			dev_name(&pdev->dev));
 	return sdhci_stm_resume(dev);
 }
 

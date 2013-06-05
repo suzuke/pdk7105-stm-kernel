@@ -21,9 +21,6 @@
 #define MMC_AHB2STBUS_BASE	 (0x104 - 4)
 
 struct stm_mmc_platform_data {
-	/* Initialize board-specific MMC resources (e.g. PAD) */
-	int (*init)(struct platform_device *pdev);
-	void (*exit)(struct platform_device *pdev);
 	void *custom_cfg;
 	void *custom_data;
 

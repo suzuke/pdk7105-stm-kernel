@@ -1287,14 +1287,10 @@ static struct stm_amba_bridge_config stih416_amba_mmc_config = {
 
 static struct stm_mmc_platform_data stih416_mmc_platform_data[] = {
 	{
-		.init = mmc_claim_resource,
-		.exit = mmc_release_resource,
 		.nonremovable = false,
 		.custom_cfg = &stih416_mmc_pad_config[0],
 		.amba_config = &stih416_amba_mmc_config,
 	}, {
-		.init = mmc_claim_resource,
-		.exit = mmc_release_resource,
 		.nonremovable = false,
 		.custom_cfg = &stih416_mmc_pad_config[1],
 		.amba_config = &stih416_amba_mmc_config,

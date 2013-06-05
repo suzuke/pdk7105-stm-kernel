@@ -636,8 +636,6 @@ static struct stm_amba_bridge_config stxh205_amba_mmc_config = {
 };
 
 static struct stm_mmc_platform_data stxh205_mmc_platform_data = {
-	.init = &mmc_claim_resource,
-	.exit = &mmc_release_resource,
 	.custom_cfg = &stxh205_mmc_pad_config,
 	.amba_config = &stxh205_amba_mmc_config,
 	.custom_cfg = &stxh205_mmc_pad_config,

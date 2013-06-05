@@ -30,46 +30,6 @@
 #include <linux/stm/pad.h>
 
 
-/* MMC */
-static int stm_of_claim_resources(struct platform_device *pdev,
-		void **custom_cfg, void **custom_data)
-{
-	/* Get Pad configs from the device trees and update priv */
-	if (pdev->dev.of_node)
-		*custom_cfg = stm_of_get_pad_config(&pdev->dev);
-
-	*custom_data = devm_stm_pad_claim(&pdev->dev,
-			(struct stm_pad_config *)(*custom_cfg),
-			dev_name(&pdev->dev));
-
-	if (!*custom_data)
-		return -ENODEV;
-
-	return 0;
-}
-
-
-static int stm_of_mmc_claim_resources(struct platform_device *pdev)
-{
-	struct stm_mmc_platform_data *data = pdev->dev.platform_data;
-	return stm_of_claim_resources(pdev,
-				&data->custom_cfg, &data->custom_data);
-}
-
-static void stm_of_mmc_release_resource(struct platform_device *pdev)
-{
-	struct stm_mmc_platform_data *plat_dat = pdev->dev.platform_data;
-
-	if (!plat_dat->custom_data)
-		return;
-	devm_stm_device_exit(&pdev->dev, plat_dat->custom_data);
-	plat_dat->custom_data = NULL;
-}
-struct stm_mmc_platform_data mmc_platform_data = {
-	.init = &stm_of_mmc_claim_resources,
-	.exit = &stm_of_mmc_release_resource,
-};
-
 /* Ethernet */
 
 void stmmac_of_clk_fixup(struct device_node *np, struct device_node *fixup_np)
