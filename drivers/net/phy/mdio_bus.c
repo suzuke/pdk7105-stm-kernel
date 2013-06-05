@@ -93,7 +93,7 @@ static int mdio_class_restore(struct device *dev)
 }
 
 const struct dev_pm_ops mdio_class_pm_ops = {
-	.restore = mdio_class_restore,
+	.restore_noirq = mdio_class_restore,
 };
 #endif
 
