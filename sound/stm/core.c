@@ -61,15 +61,11 @@ static struct snd_stm_card_info snd_stm_cards[SND_STM_CARD_TYPE_COUNT];
 static struct snd_stm_card_info *snd_stm_card_find(
 		enum snd_stm_card_type card_type)
 {
-	switch (card_type) {
-	case SND_STM_CARD_TYPE_AUDIO:
-	case SND_STM_CARD_TYPE_TELSS:
+	if (card_type < SND_STM_CARD_TYPE_COUNT)
 		return &snd_stm_cards[card_type];
 
-	default:
-		snd_BUG();
-		return NULL;
-	}
+	snd_BUG();
+	return NULL;
 }
 
 static int snd_stm_card_do_register(struct snd_stm_card_info *card_info)
@@ -124,24 +120,23 @@ int snd_stm_card_register(enum snd_stm_card_type card_type)
 
 	snd_stm_printd(1, "%s(card_type=%d)\n", __func__, card_type);
 
-	switch (card_type) {
-	case SND_STM_CARD_TYPE_ALL:
-		for (i = 0; i < SND_STM_CARD_TYPE_COUNT; ++i)
-			result |= snd_stm_card_do_register(&snd_stm_cards[i]);
-		break;
-
-	case SND_STM_CARD_TYPE_AUDIO:
-	case SND_STM_CARD_TYPE_TELSS:
+	/* Register a single card type */
+	if (card_type < SND_STM_CARD_TYPE_COUNT) {
 		card_info = snd_stm_card_find(card_type);
-		result = snd_stm_card_do_register(card_info);
-		break;
-
-	default:
-		snd_stm_printe("Invalid card type (%d)\n", card_type);
-		result = -EINVAL;
+		return snd_stm_card_do_register(card_info);
 	}
 
-	return result;
+	/* Register all card types */
+	if (card_type == SND_STM_CARD_TYPE_ALL) {
+		for (i = 0; i < SND_STM_CARD_TYPE_COUNT; ++i)
+			result |= snd_stm_card_do_register(&snd_stm_cards[i]);
+
+		return result;
+	}
+
+	/* Card type must be invalid */
+	snd_stm_printe("Invalid card type (%d)\n", card_type);
+	return -EINVAL;
 }
 EXPORT_SYMBOL(snd_stm_card_register);
 
@@ -766,10 +761,8 @@ static int __init snd_stm_core_init(void)
 	snd_stm_printd(0, "%s()\n", __func__);
 
 	/* Initialise the sound card info data */
-	snd_stm_cards[SND_STM_CARD_TYPE_AUDIO].name = "AUDIO";
-	snd_stm_cards[SND_STM_CARD_TYPE_AUDIO].subsystem = "audio";
-	snd_stm_cards[SND_STM_CARD_TYPE_TELSS].name = "TELSS";
-	snd_stm_cards[SND_STM_CARD_TYPE_TELSS].subsystem = "telss";
+	SND_STM_CARDS_INIT_AUDIO(snd_stm_cards);
+	SND_STM_CARDS_INIT_TELSS(snd_stm_cards);
 
 	/* Create the sound cards (but don't register them yet!) */
 	for (i = 0; i < SND_STM_CARD_TYPE_COUNT; ++i) {

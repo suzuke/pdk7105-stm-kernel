@@ -25,10 +25,24 @@
 
 enum snd_stm_card_type {
 	SND_STM_CARD_TYPE_AUDIO,
+#ifdef CONFIG_SND_STM_TELSS
 	SND_STM_CARD_TYPE_TELSS,
+#endif
 	SND_STM_CARD_TYPE_COUNT,	/* Number of different card types */
 	SND_STM_CARD_TYPE_ALL		/* Used by snd_stm_card_register() */
 };
+
+#define SND_STM_CARDS_INIT_AUDIO(cards) \
+	cards[SND_STM_CARD_TYPE_AUDIO].name = "AUDIO"; \
+	cards[SND_STM_CARD_TYPE_AUDIO].subsystem = "audio";
+
+#ifdef CONFIG_SND_STM_TELSS
+#define SND_STM_CARDS_INIT_TELSS(cards) \
+	cards[SND_STM_CARD_TYPE_TELSS].name = "TELSS"; \
+	cards[SND_STM_CARD_TYPE_TELSS].subsystem = "telss";
+#else
+#define SND_STM_CARDS_INIT_TELSS(cards)
+#endif
 
 int snd_stm_card_register(enum snd_stm_card_type card_type);
 int snd_stm_card_is_registered(enum snd_stm_card_type card_type);
