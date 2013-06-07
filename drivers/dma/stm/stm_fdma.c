@@ -902,7 +902,6 @@ static int stm_fdma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 static u32 stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 {
 	u32 count = 0;
-	u32 partial = 0;
 
 	dev_dbg(fchan->fdev->dev, "%s(fchan=%p)\n", __func__, fchan);
 
@@ -926,7 +925,7 @@ static u32 stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 
 		do {
 			stat1 = readl(CMD_STAT_REG(fchan));
-			partial = readl(NODE_COUNT_REG(fchan));
+			count = readl(NODE_COUNT_REG(fchan));
 			stat2 = readl(CMD_STAT_REG(fchan));
 		} while (stat1 != stat2);
 
@@ -985,15 +984,8 @@ static u32 stm_fdma_get_residue(struct stm_fdma_chan *fchan)
 			}
 
 			/* Does physical node match child? */
-			if (phys_node == child->dma_desc.phys) {
+			if (phys_node == child->dma_desc.phys)
 				found_node = 1;
-
-				/* Ensure NODE_COUNT_REG didn't contain junk */
-				if (partial > child->llu->nbytes)
-					partial = child->llu->nbytes;
-
-				count += partial;
-			}
 		}
 
 		/* Ensure the current node is from the active descriptor */
