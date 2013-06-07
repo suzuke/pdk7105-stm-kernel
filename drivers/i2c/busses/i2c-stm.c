@@ -612,7 +612,6 @@ be_fsm_stop:
 		 * i.e.: it is much less sensible to the noice on the cable
 		 */
 		dbg_print2("-Idle\n");
-		ssc_store32(adap, SSC_I2C, SSC_I2C_I2CM);
 		/* No break here! */
 	case IIC_FSM_COMPLETE:
 		dbg_print2("-Complete\n");
@@ -764,6 +763,8 @@ static void iic_pio_sda_pull_up(struct iic_ssc *adap)
 	udelay(2);
 
 	stm_pad_gpio_free(adap->pad_state, sda);
+
+	ssc_store32(adap, SSC_I2C, SSC_I2C_I2CM);
 }
 
 
