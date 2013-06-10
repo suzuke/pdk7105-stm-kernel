@@ -267,11 +267,9 @@ static int stm_rtc_resume(struct device *dev)
 	struct stm_rtc *rtc = dev_get_drvdata(dev);
 	struct stm_plat_rtc_lpc *pdata = dev->platform_data;
 
-	/*
-	 * clean 'rtc->alarm' to allow a new
-	 * a new .set_alarm to the upper RTC layer
-	 */
-	memset(&rtc->alarm, 0, sizeof(struct rtc_wkalrm));
+	 if (device_may_wakeup(dev))
+		rtc_update_irq(rtc->rtc_dev, 1, RTC_AF);
+
 	if (pdata->need_wdt_reset) {
 		writel(0, rtc->ioaddr + LPC_LPA_MSB_OFF);
 		writel(0, rtc->ioaddr + LPC_LPA_LSB_OFF);
