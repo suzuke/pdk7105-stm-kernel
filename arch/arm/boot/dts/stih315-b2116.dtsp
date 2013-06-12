@@ -21,7 +21,7 @@
 	};
 
 	chosen {
-		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                                         ";
+		bootargs = "";
 		linux,stdout-path = &uart1;
 	};
 
