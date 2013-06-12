@@ -31,7 +31,7 @@
 
 #define PCIE_DEFAULT_VAL	(PCIE_SOFT_RST_N_PCIE | PCIE_DEVICE_TYPE)
 
-static void *stx7108_pcie_init(struct platfrom_device *pdev)
+static void *stx7108_pcie_init(struct platform_device *pdev)
 {
 	static struct sysconf_field *sc;
 
