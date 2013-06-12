@@ -22,11 +22,11 @@
 
 	chosen {
 		bootargs = "";
-		linux,stdout-path = &uart1;
+		linux,stdout-path = &sbc_uart1;
 	};
 
 	aliases {
-		ttyAS0 = &uart1;
+		ttyAS0 = &sbc_uart1;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
 
@@ -103,10 +103,10 @@
 
 
 		/*
-			UART11 (aka SBC_ASC 1) via J26
-			UART10 (aka SBC_ASC 0) via J29
+			SBC_ASC1 via J26
+			SBC_ASC0 via J29
 		*/
-		uart1: uart@fed31000 {
+		sbc_uart1: uart@fe531000 {
 			status = "okay";
 		};
 
