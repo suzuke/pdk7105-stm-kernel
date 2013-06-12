@@ -26,7 +26,7 @@
 	};
 
 	aliases {
-		ttyAS0 = &sbc_uart1;
+		ttyAS0 = &sbc_uart0;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
 
@@ -101,11 +101,8 @@
 		};
 
 
-		/*
-			SBC_ASC1 via J26
-			SBC_ASC0 via J29
-		*/
-		sbc_uart1: uart@fe531000 {
+		/* SBC_ASC0 via J29 */
+		sbc_uart0: uart@fe530000 {
 			status = "okay";
 		};
 
