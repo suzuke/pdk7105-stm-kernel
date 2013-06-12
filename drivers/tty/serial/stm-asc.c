@@ -385,7 +385,7 @@ void *stm_asc_of_get_pdata(struct platform_device *pdev)
 struct stm_plat_asc_data *stm_asc_of_get_early_pdata(struct device_node *np,
 				struct platform_device **ppdev)
 {
-	return -ENOSYS;
+	return NULL;
 }
 #endif
 
