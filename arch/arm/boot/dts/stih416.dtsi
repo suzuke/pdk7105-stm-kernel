@@ -1350,7 +1350,7 @@
 				};
 			};
 
-			lirc_tx_device_config: lirc-tx-dev-config {
+			lirc_ir_tx_device_config: lirc-ir-tx-dev-config {
 				padcfg-0	= <&padcfg_ir &padcfg_tx>;
 				device-seqs = <&lirc_dev_seqs>;
 				sysconfs{
@@ -1358,8 +1358,27 @@
 					irb-normal-mode = <&lpm_sysconf 1 7 7>;
 				};
 			};
-			lirc_tx_od_device_config: lirc-tx-od-dev-config {
+
+			lirc_ir_tx_od_device_config: lirc-ir-tx-od-dev-config {
 				padcfg-0	= <&padcfg_ir &padcfg_tx_od>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+
+			lirc_uhf_tx_device_config: lirc-uhf-tx-dev-config {
+				padcfg-0	= <&padcfg_uhf &padcfg_tx>;
+				device-seqs = <&lirc_dev_seqs>;
+				sysconfs{
+					irb-enabled	= <&lpm_sysconf 1 6 6>;
+					irb-normal-mode = <&lpm_sysconf 1 7 7>;
+				};
+			};
+
+			lirc_uhf_tx_od_device_config: lirc-uhf-tx-od-dev-config {
+				padcfg-0	= <&padcfg_uhf &padcfg_tx_od>;
 				device-seqs = <&lirc_dev_seqs>;
 				sysconfs{
 					irb-enabled	= <&lpm_sysconf 1 6 6>;
