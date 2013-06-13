@@ -1085,22 +1085,6 @@
 				};
 			};
 
-			lirc_tx_device_config: lirc-tx-dev-config {
-				padcfg-0	= <&padcfg_ir &padcfg_tx>;
-				device-seqs = <&lirc_dev_seqs>;
-				sysconfs{
-					irb-enabled	= <&lpm_sysconf 1 6 6>;
-					irb-normal-mode = <&lpm_sysconf 1 7 7>;
-				};
-			};
-			lirc_tx_od_device_config: lirc-tx-od-dev-config {
-				padcfg-0	= <&padcfg_ir &padcfg_tx_od>;
-				device-seqs = <&lirc_dev_seqs>;
-				sysconfs{
-					irb-enabled	= <&lpm_sysconf 1 6 6>;
-					irb-normal-mode = <&lpm_sysconf 1 7 7>;
-				};
-			};
 			lirc_dev_seqs: lirc-dev-seqs{
 				init-seq{
 					step0 {
