@@ -1043,11 +1043,12 @@ static void *stm_ir_dt_get_pdata(struct platform_device *pdev)
 {
 
 	struct device_node *np = pdev->dev.of_node;
-	struct device_node *child;
 	struct stm_plat_lirc_data *data;
 	const char *clk_name;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
+	if (!data)
+		return ERR_PTR(-ENOMEM);
 
 	if (of_property_read_string(np, "sys-clk", &clk_name) == 0)
 		clk_add_alias(NULL, pdev->name, (char *)clk_name, NULL);
@@ -1064,15 +1065,11 @@ static void *stm_ir_dt_get_pdata(struct platform_device *pdev)
 	of_property_read_u32(np, "rx-polarity", &data->rxpolarity);
 	of_property_read_u32(np, "sub-carrwidth", &data->subcarrwidth);
 
-	child = of_get_child_by_name(np, "rx-uhfmode");
-	if (of_property_read_bool(child, "enable"))
-			data->rxuhfmode = 1;
-	else
-			data->rxuhfmode = 0;
+	if (of_property_read_bool(np, "rx-uhfmode"))
+		data->rxuhfmode = 1;
 
-	child = of_get_child_by_name(np, "tx-enabled");
-	if (of_property_read_bool(child, "enable"))
-			data->txenabled = 1;
+	if (of_property_read_bool(np, "tx-enabled"))
+		data->txenabled = 1;
 
 	data->dev_config  = stm_of_get_dev_config(&pdev->dev);
 
@@ -1092,6 +1089,7 @@ static int ir_stm_probe(struct platform_device *pdev)
 	struct resource *res;
 	int irb_irq, irb_irq_wup;
 	struct stm_ir_device *ir_dev;
+	struct stm_plat_lirc_data *pdata;
 
 	irb_irq = irb_irq_wup = 0;
 
@@ -1102,7 +1100,12 @@ static int ir_stm_probe(struct platform_device *pdev)
 	}
 
 	if (pdev->dev.of_node)
-		pdev->dev.platform_data = stm_ir_dt_get_pdata(pdev);
+		pdata = stm_ir_dt_get_pdata(pdev);
+	else
+		pdata = dev->platform_data;
+
+	if (IS_ERR(pdata) || pdata == NULL)
+		return -EINVAL;
 
 	ir_dev = devm_kzalloc(dev, sizeof(struct stm_ir_device), GFP_KERNEL);
 	rdev = rc_allocate_device();
@@ -1118,8 +1121,8 @@ static int ir_stm_probe(struct platform_device *pdev)
 	clk_prepare_enable(ir_dev->sys_clock);
 	pr_info(IR_STM_NAME
 	       ": probe found data for platform device %s\n", pdev->name);
-	ir_dev->pdata = dev->platform_data;
 	ir_dev->dev = dev;
+	ir_dev->pdata = pdata;
 
 	irb_irq = platform_get_irq(pdev, 0);
 	if (irb_irq < 0) {
