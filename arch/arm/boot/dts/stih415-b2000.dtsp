@@ -123,9 +123,14 @@
 				linux,default-trigger	= "heartbeat";
 			};
 		};
-		/* For tx in open drain mode, overide padcfg configuration of default tx pads
-			by setting below property.
-			padcfg-2 = <&state_tx_od>;
+
+		/**
+		* By default IRB is configured to be in IR mode.
+		* To configure to UHF mode, Please add these two properties
+		* to lirc node here, this will overide default ir configuration.
+		*
+		*	device-config = <&lirc_uhf_device_config>;
+		*	rx-uhfmode;
 		*/
 
 		lirc: lirc@fe518000 {
