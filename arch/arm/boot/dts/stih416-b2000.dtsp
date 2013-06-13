@@ -130,6 +130,24 @@
 			};
 		};
 
+		/**
+		* By default IRB is configured to be in IR-RX mode.
+		* To configure to UHF mode, Please add these two properties
+		* to lirc node here, this will overide default ir configuration.
+		*
+		* For UHF mode, Please add these two properties
+		*	device-config = <&lirc_uhf_device_config>;
+		*	rx-uhfmode;
+		*
+		* For UHF-RX and TX mode, Please add these two properties
+		*	device-config = <&lirc_uhf_tx_device_config>;
+		*	rx-uhfmode;
+		*
+		* For IR-RX and TX mode, Please add these two properties
+		*	device-config = <&lirc_ir_tx_device_config>;
+		*	tx-enabled;
+		*/
+
 		lirc: lirc@fe518000 {
 			status = "okay";
 		};
