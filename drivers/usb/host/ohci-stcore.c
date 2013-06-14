@@ -211,8 +211,8 @@ static int stm_ohci_runtime_resume(struct device *dev)
 	return stm_ohci_restore(dev);
 }
 #else
-#define stm_ohci_runtime_suspend
-#define stm_ohci_runtime_resume
+#define stm_ohci_runtime_suspend	NULL
+#define stm_ohci_runtime_resume		NULL
 #endif
 
 static const struct dev_pm_ops stm_ohci_pm = {
