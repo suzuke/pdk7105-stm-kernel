@@ -56,7 +56,7 @@
 				st,pins {
 					TX	= <&PIO17 4	OUT	ALT2>;
 					RX	= <&PIO17 5	IN 	ALT2>;
-					output-enable	= <&PIO11 3	OUT	ALT2>;
+					output-enable	= <&PIO17 3	OUT	ALT2>;
 				};
 			};
 			padcfg_uart2_rts: uart2_rts {
