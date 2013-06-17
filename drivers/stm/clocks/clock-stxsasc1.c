@@ -2353,5 +2353,9 @@ int __init sasc1_clk_init(struct clk *_sys_clk_in, struct clk *_sys_clkalt_in,
 	ret |= clk_register_table(&clk_clocks[CLK_S_B_REF],
 				ARRAY_SIZE(clk_clocks) - CLK_S_B_REF, 0);
 #endif
+	clk_prepare_enable(&clk_clocks[CLK_S_D_FDMA_TEL]);
+	clk_set_rate(&clk_clocks[CLK_S_D_VCO], 600000000);
+	clk_set_rate(&clk_clocks[CLK_S_D_FDMA_TEL], 400000000);
+	clk_disable_unprepare(&clk_clocks[CLK_S_D_FDMA_TEL]);
 	return ret;
 }
