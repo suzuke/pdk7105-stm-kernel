@@ -288,6 +288,8 @@ static int stm_mali_remove(struct platform_device *pdev)
 
 static int stm_mali_probe(struct platform_device *pdev)
 {
+	struct mali_gpu_device_data mali_gpu_data = {};
+
 	MALI_DEBUG_PRINT(2, ("stm_mali_probe(): called\n"));
 	mali_clk = devm_clk_get(&pdev->dev, "gpu_clk");
 	if (IS_ERR(mali_clk)) {
@@ -296,6 +298,14 @@ static int stm_mali_probe(struct platform_device *pdev)
 	}
 
 	clk_prepare_enable(mali_clk);
+
+	mali_gpu_data.shared_mem_size = CONFIG_STM_MALI_OS_MEMORY_SIZE;
+
+	if (platform_device_add_data(pdev,
+		&mali_gpu_data, sizeof(mali_gpu_data))) {
+		MALI_PRINT_ERROR(("stm_mali_probe(): Failed the Mali memory registration.\n"));
+		return -EEXIST;
+	}
 
 	return 0;
 }
