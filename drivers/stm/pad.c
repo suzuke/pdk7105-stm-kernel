@@ -645,12 +645,14 @@ static int stm_pad_seq_show(struct seq_file *s, void *v)
 		struct stm_pad_gpio *pad_gpio = &config->gpios[i];
 		char name[20];
 		static const char *directions[] = {
+			[stm_pad_gpio_direction_unknown] = "unknown",
 			[stm_pad_gpio_direction_in] = "input",
 			[stm_pad_gpio_direction_in_pull_up] = "input pull up",
 			[stm_pad_gpio_direction_out] = "output",
 			[stm_pad_gpio_direction_bidir] = "bidirectional",
 			[stm_pad_gpio_direction_bidir_pull_up] =
 						 "bidirectional pull up",
+			[stm_pad_gpio_direction_ignored] = "ignored",
 		};
 
 		if (i == 0)
