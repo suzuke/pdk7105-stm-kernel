@@ -17,6 +17,7 @@
 
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/of.h>
 #include <linux/random.h>
 #include <linux/clk.h>
 #include <linux/err.h>
@@ -96,10 +97,22 @@ static int __exit stm_rng_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_hwrandom_match[] = {
+	{
+		.compatible = "st,hwrandom",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_hwrandom_match);
+#endif
+
 static struct platform_driver stm_rng_driver = {
 	.driver = {
 		.name		= "stm-hwrandom",
 		.owner		= THIS_MODULE,
+		.of_match_table = of_match_ptr(stm_hwrandom_match),
 	},
 	.probe		= stm_rng_probe,
 	.remove		= __exit_p(stm_rng_remove),

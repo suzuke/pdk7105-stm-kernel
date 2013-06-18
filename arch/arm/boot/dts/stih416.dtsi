@@ -1004,6 +1004,10 @@
 			compatible	= "st,rng";
 			reg = <0xfd6d8000  0x1000>;
 		};
+		st-hwrandom {
+			compatible      = "st,hwrandom";
+			reg = <0xfd6d8000  0x1000>;
+		};
 		emis{
 		        #address-cells = <1>;
 		        #size-cells = <1>;
