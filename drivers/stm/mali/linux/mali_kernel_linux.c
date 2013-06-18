@@ -37,6 +37,9 @@
 #if defined(CONFIG_MALI400_INTERNAL_PROFILING)
 #include "mali_profiling_internal.h"
 #endif
+#ifdef CONFIG_PM_RUNTIME
+#include <linux/pm_runtime.h>
+#endif
 #include <linux/of.h>
 #include <linux/clk.h>
 static struct clk *mali_clk;
@@ -307,6 +310,11 @@ static int stm_mali_probe(struct platform_device *pdev)
 		return -EEXIST;
 	}
 
+#ifdef CONFIG_PM_RUNTIME
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	MALI_DEBUG_PRINT(2, ("stm_mali_probe(): power domain registered\n"));
+#endif
 	return 0;
 }
 
