@@ -161,6 +161,7 @@ static const struct dev_pm_ops mali_dev_pm_ops =
 	.resume = mali_driver_resume_scheduler,
 	.freeze = mali_driver_suspend_scheduler,
 	.thaw = mali_driver_resume_scheduler,
+	.restore = mali_driver_resume_scheduler,
 };
 #endif
 
