@@ -13,7 +13,7 @@
 #include <linux/stm/platform.h>
 
 /* Peripheral macros */
-#define STID127_ASC2_BASE		0xfe532000
+#define STID127_ASC0_BASE			0xfe530000
 #define STID127_PIO_PEAST0_BASE		0xfebc0000
 #define STID127_PIO_WEST0_BASE		0xfebe0000
 #define STID127_PIO_SOUTH0_BASE		0xfef70000
