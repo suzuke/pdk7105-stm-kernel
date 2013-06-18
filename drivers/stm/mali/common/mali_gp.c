@@ -30,7 +30,8 @@ struct mali_gp_core *mali_gp_create(const _mali_osk_resource_t * resource, struc
 	struct mali_gp_core* core = NULL;
 
 	MALI_DEBUG_ASSERT(NULL == mali_global_gp_core);
-	MALI_DEBUG_PRINT(2, ("Mali GP: Creating Mali GP core: %s\n", resource->description));
+	MALI_DEBUG_PRINT(2, ("Mali GP: Creating Mali GP core: %s IRQ %d\n",
+		resource->description, resource->irq));
 
 	core = _mali_osk_malloc(sizeof(struct mali_gp_core));
 	if (NULL != core)

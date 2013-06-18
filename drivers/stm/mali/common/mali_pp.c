@@ -35,7 +35,8 @@ struct mali_pp_core *mali_pp_create(const _mali_osk_resource_t *resource, struct
 {
 	struct mali_pp_core* core = NULL;
 
-	MALI_DEBUG_PRINT(2, ("Mali PP: Creating Mali PP core: %s\n", resource->description));
+	MALI_DEBUG_PRINT(2, ("Mali PP: Creating Mali PP core: %s IRQ %d\n",
+		resource->description, resource->irq));
 	MALI_DEBUG_PRINT(2, ("Mali PP: Base address of PP core: 0x%x\n", resource->base));
 
 	if (mali_global_num_pp_cores >= MALI_MAX_NUMBER_OF_PP_CORES)

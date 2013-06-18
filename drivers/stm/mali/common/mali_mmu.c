@@ -92,7 +92,8 @@ struct mali_mmu_core *mali_mmu_create(_mali_osk_resource_t *resource, struct mal
 
 	MALI_DEBUG_ASSERT_POINTER(resource);
 
-	MALI_DEBUG_PRINT(2, ("Mali MMU: Creating Mali MMU: %s\n", resource->description));
+	MALI_DEBUG_PRINT(2, ("Mali MMU: Creating Mali MMU: %s IRQ %d\n",
+		resource->description, resource->irq));
 
 	mmu = _mali_osk_calloc(1,sizeof(struct mali_mmu_core));
 	if (NULL != mmu)
