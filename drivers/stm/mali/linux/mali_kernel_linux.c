@@ -37,6 +37,7 @@
 #if defined(CONFIG_MALI400_INTERNAL_PROFILING)
 #include "mali_profiling_internal.h"
 #endif
+#include <linux/of.h>
 
 /* Streamline support for the Mali driver */
 #if defined(CONFIG_TRACEPOINTS) && defined(CONFIG_MALI400_PROFILING)
@@ -155,6 +156,15 @@ static const struct dev_pm_ops mali_dev_pm_ops =
 };
 #endif
 
+static struct of_device_id stm_mali_match[] = {
+	{
+	.compatible = "st,mali",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_mali_match);
+
 /* The Mali device driver struct */
 static struct platform_driver mali_platform_driver =
 {
@@ -171,6 +181,7 @@ static struct platform_driver mali_platform_driver =
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29))
 		.pm = &mali_dev_pm_ops,
 #endif
+		.of_match_table = of_match_ptr(stm_mali_match),
 	},
 };
 
