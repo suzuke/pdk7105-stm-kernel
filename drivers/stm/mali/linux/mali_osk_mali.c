@@ -40,8 +40,24 @@ _mali_osk_errcode_t _mali_osk_resource_find(u32 addr, _mali_osk_resource_t *res)
 		{
 			if (NULL != res)
 			{
+				char irqname[512] = "\0";
+
 				res->base = addr;
 				res->description = mali_platform_device->resource[i].name;
+
+				/* To support devicetree approach, we privilege
+				 * the IRQs finding by name. In case the IRQs
+				 * aren't found, ordered resources approach is
+				 * levied as it is, */
+				strcat(irqname,	(char *)mali_platform_device->
+					resource[i].name);
+				strcat(irqname, "_IRQ");
+
+				res->irq = platform_get_irq_byname(
+						mali_platform_device, irqname);
+
+				if (res->irq >= 0)
+					return _MALI_OSK_ERR_OK;
 
 				/* Any (optional) IRQ resource belonging to this resource will follow */
 				if ((i + 1) < mali_platform_device->num_resources &&
