@@ -166,10 +166,25 @@ config STM_MALI_OS_MEMORY_SIZE
 	  
 config STM_MALI_DEBUG
 	depends on STM_MALI
-	bool "Enable debug tracing"
+	bool "Enable Mali debug tracing"
 	default y
 	---help---
 	  Enable this option to enable debug trace messages on the console
+
+config STM_MALI_PROFILING
+	depends on STM_MALI
+	bool "Enable Mali profiling"
+	select TRACEPOINTS
+	default n
+	---help---
+	  This enables gator profiling of Mali GPU events.
+
+config STM_MALI_INTERNAL_PROFILING
+	bool "Enable internal Mali profiling API"
+	depends on STM_MALI_PROFILING
+	default n
+	---help---
+	  This enables the internal legacy Mali profiling API.
 
 config STM_SYSTRACE
 	bool "System Trace Module"
