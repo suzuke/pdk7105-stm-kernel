@@ -17,6 +17,7 @@
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/of.h>
 #include <linux/spinlock.h>
 #include <linux/random.h>
 #include <linux/timer.h>
@@ -158,9 +159,21 @@ static int __devexit stm_rng_remove(struct platform_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id stm_rng_match[] = {
+	{
+		.compatible = "st,rng",
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, stm_rng_match);
+#endif
+
 static struct platform_driver stm_rng_driver = {
 	.driver.name = "stm-rng",
 	.driver.owner = THIS_MODULE,
+	.driver.of_match_table = of_match_ptr(stm_rng_match),
 	.probe = stm_rng_probe,
 	.remove = stm_rng_remove,
 };

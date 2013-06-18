@@ -765,6 +765,10 @@
 		compatible	= "simple-bus";
 		id		= <&stih415_sysconf 427 0 31>;
 		reset		= <&stih415_sysconf 11 0 0>;
+		st-rng {
+			compatible	= "st,rng";
+			reg = <0xfd6d8000  0x1000>;
+		};
 		emis{
 		        #address-cells = <1>;
 		        #size-cells = <1>;

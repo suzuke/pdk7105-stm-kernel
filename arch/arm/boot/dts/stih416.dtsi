@@ -1000,6 +1000,10 @@
 		compatible	= "simple-bus";
 		id		= <&sysconf 9516 0 31>;
 		reset		= <&sysconf 500 0 0>;
+		st-rng {
+			compatible	= "st,rng";
+			reg = <0xfd6d8000  0x1000>;
+		};
 		emis{
 		        #address-cells = <1>;
 		        #size-cells = <1>;
