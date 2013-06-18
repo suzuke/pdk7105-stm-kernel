@@ -34,6 +34,7 @@
 #include "mali_pm.h"
 #include "mali_kernel_license.h"
 #include "mali_dma_buf.h"
+#include "mali_mem_validation.h"
 #if defined(CONFIG_MALI400_INTERNAL_PROFILING)
 #include "mali_profiling_internal.h"
 #endif
@@ -338,6 +339,15 @@ static int stm_mali_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 	MALI_DEBUG_PRINT(2, ("power domain registered\n"));
 #endif
+
+	/* The Mali "Validation memory range" is used to validate phys addresses
+	* of the memory used by the driver. However, it is difficult to
+	* construct a simple address range which can cope with differing
+	* amounts of memory in both LMI0 and LMI1. Then, allowed access to
+	* all LMIs.
+	*/
+	mali_mem_validation_add_range(0x40000000, 0x80000000);
+
 	return 0;
 }
 
