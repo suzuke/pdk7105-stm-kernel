@@ -38,6 +38,8 @@
 #include "mali_profiling_internal.h"
 #endif
 #include <linux/of.h>
+#include <linux/clk.h>
+static struct clk *mali_clk;
 
 /* Streamline support for the Mali driver */
 #if defined(CONFIG_TRACEPOINTS) && defined(CONFIG_MALI400_PROFILING)
@@ -274,6 +276,30 @@ void mali_module_exit(void)
 	MALI_PRINT(("Mali device driver unloaded\n"));
 }
 
+static int stm_mali_remove(struct platform_device *pdev)
+{
+	MALI_DEBUG_PRINT(2, ("stm_mali_remove(): called\n"));
+
+	if (mali_clk)
+		clk_disable_unprepare(mali_clk);
+
+	return 0;
+}
+
+static int stm_mali_probe(struct platform_device *pdev)
+{
+	MALI_DEBUG_PRINT(2, ("stm_mali_probe(): called\n"));
+	mali_clk = devm_clk_get(&pdev->dev, "gpu_clk");
+	if (IS_ERR(mali_clk)) {
+		MALI_PRINT_ERROR(("stm_mali_probe(): GPU clk not found\n"));
+		return -EEXIST;
+	}
+
+	clk_prepare_enable(mali_clk);
+
+	return 0;
+}
+
 static int mali_probe(struct platform_device *pdev)
 {
 	int err;
@@ -286,6 +312,9 @@ static int mali_probe(struct platform_device *pdev)
 		MALI_PRINT_ERROR(("mali_probe(): The Mali driver is already connected with a Mali device."));
 		return -EEXIST;
 	}
+
+	if (stm_mali_probe(pdev))
+		return -EEXIST;
 
 	mali_platform_device = pdev;
 
@@ -324,6 +353,7 @@ static int mali_probe(struct platform_device *pdev)
 		_mali_osk_wq_term();
 	}
 
+	stm_mali_remove(pdev);
 	mali_platform_device = NULL;
 	return -EFAULT;
 }
@@ -336,6 +366,7 @@ static int mali_remove(struct platform_device *pdev)
 	mali_terminate_subsystems();
 	_mali_osk_wq_term();
 	mali_platform_device = NULL;
+	stm_mali_remove(pdev);
 	return 0;
 }
 
