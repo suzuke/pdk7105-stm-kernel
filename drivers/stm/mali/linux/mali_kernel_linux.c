@@ -40,6 +40,9 @@
 #ifdef CONFIG_PM_RUNTIME
 #include <linux/pm_runtime.h>
 #endif
+#ifdef CONFIG_STM_MALI_MEM_DEDICATED
+#include <linux/bpa2.h>
+#endif
 #include <linux/of.h>
 #include <linux/clk.h>
 static struct clk *mali_clk;
@@ -296,24 +299,43 @@ static int stm_mali_probe(struct platform_device *pdev)
 	MALI_DEBUG_PRINT(2, ("stm_mali_probe(): called\n"));
 	mali_clk = devm_clk_get(&pdev->dev, "gpu_clk");
 	if (IS_ERR(mali_clk)) {
-		MALI_PRINT_ERROR(("stm_mali_probe(): GPU clk not found\n"));
+		MALI_PRINT_ERROR(("GPU clk not found\n"));
 		return -EEXIST;
 	}
 
 	clk_prepare_enable(mali_clk);
 
-	mali_gpu_data.shared_mem_size = CONFIG_STM_MALI_OS_MEMORY_SIZE;
+	/* Shared is always enabled by default */
+	mali_gpu_data.shared_mem_size = CONFIG_STM_MALI_MEM_SIZE;
+
+#ifdef CONFIG_STM_MALI_MEM_DEDICATED
+	{
+		struct bpa2_part *mali_bpa2_part =
+			bpa2_find_part("mali-memory");
+
+		if (NULL == mali_bpa2_part) {
+			MALI_DEBUG_PRINT(2, ("Failed BPA2 partition probing.\n"));
+		} else {
+			bpa2_memory(mali_bpa2_part,
+				&mali_gpu_data.dedicated_mem_start,
+				&mali_gpu_data.dedicated_mem_size);
+			MALI_DEBUG_PRINT(2, ("mali-memory BPA2 partition found at 0x%08lx size %ld KiB.\n",
+				mali_gpu_data.dedicated_mem_start,
+				mali_gpu_data.dedicated_mem_size / 1024));
+		}
+	}
+#endif
 
 	if (platform_device_add_data(pdev,
 		&mali_gpu_data, sizeof(mali_gpu_data))) {
-		MALI_PRINT_ERROR(("stm_mali_probe(): Failed the Mali memory registration.\n"));
+		MALI_PRINT_ERROR(("Failed the Mali memory registration.\n"));
 		return -EEXIST;
 	}
 
 #ifdef CONFIG_PM_RUNTIME
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
-	MALI_DEBUG_PRINT(2, ("stm_mali_probe(): power domain registered\n"));
+	MALI_DEBUG_PRINT(2, ("power domain registered\n"));
 #endif
 	return 0;
 }

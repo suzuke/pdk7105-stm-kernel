@@ -153,16 +153,54 @@ config STM_MALI
 	depends on STM_HAS_MALI
 	tristate "STM Mali GPU support"
 	default n
+	select STM_MALI_MEM_SHARED
 	---help---
 	  Enable this option to support Mali GPU Driver.
 
-config STM_MALI_OS_MEMORY_SIZE
+menu "Mali memory model"
 	depends on STM_MALI
-	hex "Maximum Mali GPU OS memory size"
-	default "0x7800000"
+	comment "Configurable Mali memory models"
+
+config  STM_MALI_MEM_SHARED
+        bool "Mali memory model: shared"
+	default y
+	---help---
+	  This resource configures the driver to obtain graphics
+	  memory from OS.
+	  This has the advantage that there is no requirement for memory to be
+	  specifically reserved for the Mali GPU.
+	  This is always enabled to have Mali GPU working fine with at least
+	  the OS memory usage.
+
+config STM_MALI_MEM_SIZE
+	hex "Mali memory size"
+	depends on STM_MALI_MEM_SHARED
+	default "0x0E000000"
 	---help---
 	  Specify the size of memory which the Mali driver is allowed to
 	  allocate from Linux kernel.
+	  If you choice the shared memory model this size value rappresents the
+	  maximum limit of memory the OS can assign to the Mali GPU.
+
+config	STM_MALI_MEM_DEDICATED
+	bool "Mali memory model: dedicated"
+	default n
+	select BPA2
+	---help---
+	  Use this resource to configure dedicated areas of memory that are used
+	  exclusively by the Mali GPU. You must not share this memory with
+	  any other device or memory allocator.
+	  The memory allocator privileges this than the shared.
+	  Only when the dedicated memory will finish the allocator will use
+	  the shared.
+
+	  The driver will retreive base address and size from a BPA2 partition
+	  called: mali-memory:base:size
+
+	  bpa2parts=mali-memory:192M:0x40000000
+
+	  If unsure don't use this but the shared memory model.
+endmenu
 	  
 config STM_MALI_DEBUG
 	depends on STM_MALI
@@ -173,7 +211,7 @@ config STM_MALI_DEBUG
 
 config STM_MALI_PROFILING
 	depends on STM_MALI
-	bool "Enable Mali profiling"
+	bool "Mali profiling"
 	select TRACEPOINTS
 	default n
 	---help---

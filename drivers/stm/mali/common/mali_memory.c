@@ -372,6 +372,8 @@ _mali_osk_errcode_t mali_memory_core_resource_dedicated_memory(u32 start, u32 si
 	u32 alloc_order = 0; /* Dedicated range has first priority */
 
 	/* do the low level linux operation first */
+#ifndef CONFIG_STM_MALI_MEM_DEDICATED
+	/* STM BPA2 driver already has reserved the memory region */
 
 	/* Request ownership of the memory */
 	if (_MALI_OSK_ERR_OK != _mali_osk_mem_reqregion(start, size, "Dedicated Mali GPU memory"))
@@ -379,7 +381,7 @@ _mali_osk_errcode_t mali_memory_core_resource_dedicated_memory(u32 start, u32 si
 		MALI_DEBUG_PRINT(1, ("Failed to request memory region for frame buffer (0x%08X - 0x%08X)\n", start, start + size - 1));
 		MALI_ERROR(_MALI_OSK_ERR_FAULT);
 	}
-
+#endif
 	/* create generic block allocator object to handle it */
 	allocator = mali_block_allocator_create(start, 0 /* cpu_usage_adjust */, size, "Dedicated Mali GPU memory");
 
