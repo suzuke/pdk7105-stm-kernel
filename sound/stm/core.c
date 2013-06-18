@@ -225,7 +225,7 @@ int snd_stm_irq_request(struct platform_device *pdev,
 
 	return 0;
 }
-
+EXPORT_SYMBOL(snd_stm_irq_request);
 
 /*
  * ALSA procfs additional entries
@@ -505,7 +505,7 @@ int snd_stm_buffer_mmap(struct snd_pcm_substream *substream,
 
 	return 0;
 }
-
+EXPORT_SYMBOL(snd_stm_buffer_mmap);
 
 
 /*

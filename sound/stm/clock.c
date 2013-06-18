@@ -21,6 +21,7 @@
  *
  */
 
+#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
 #include <asm/div64.h>
@@ -130,6 +131,7 @@ int snd_stm_clk_enable(struct snd_stm_clk *clk)
 
 	return result;
 }
+EXPORT_SYMBOL(snd_stm_clk_enable);
 
 int snd_stm_clk_disable(struct snd_stm_clk *clk)
 {
@@ -146,6 +148,7 @@ int snd_stm_clk_disable(struct snd_stm_clk *clk)
 
 	return 0;
 }
+EXPORT_SYMBOL(snd_stm_clk_disable);
 
 int snd_stm_clk_set_rate(struct snd_stm_clk *clk, unsigned long rate)
 {
@@ -222,6 +225,7 @@ int snd_stm_clk_set_rate(struct snd_stm_clk *clk, unsigned long rate)
 
 	return 0;
 }
+EXPORT_SYMBOL(snd_stm_clk_set_rate);
 
 struct snd_stm_clk *snd_stm_clk_get(struct device *dev, const char *id,
 		struct snd_card *card, int card_device)
@@ -265,6 +269,7 @@ error_clk_get:
 error_kzalloc_clk:
 	return NULL;
 }
+EXPORT_SYMBOL(snd_stm_clk_get);
 
 void snd_stm_clk_put(struct snd_stm_clk *clk)
 {
@@ -278,4 +283,5 @@ void snd_stm_clk_put(struct snd_stm_clk *clk)
 	snd_stm_magic_clear(clk);
 	kfree(clk);
 }
+EXPORT_SYMBOL(snd_stm_clk_put);
 
