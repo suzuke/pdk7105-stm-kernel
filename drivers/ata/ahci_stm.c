@@ -285,4 +285,5 @@ static struct platform_driver ahci_stm_driver = {
 	.remove = ahci_stm_remove,
 };
 
+MODULE_LICENSE("GPL");
 module_platform_driver(ahci_stm_driver);
