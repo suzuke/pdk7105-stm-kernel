@@ -27,6 +27,16 @@ Required properties:
                             "18bit" : Use 18-bit/1024B ECC
                             "30bit" : Use 30-bit/1024B ECC
 
+  - st,bch-bitflip-threshold
+                        : ["st,nand-bch" ONLY] The threshold at which the
+                          number of corrected bit-flips per sector is deemed to
+                          have reached an excessive level (triggers '-EUCLEAN'
+                          to be returned to the caller).  The value should be
+                          in the range 1 to <ecc-strength> where <ecc-strength>
+                          is 18 or 30, depending on the BCH ECC mode in
+                          operation.  A value of 0, or if left unspecified, is
+                          interpreted by the driver as <ecc-strength>.
+
 Properties describing Bank of NAND Flash ("st,nand-banks"):
   - st,nand-csn         : Chip select associated with the Bank.
 

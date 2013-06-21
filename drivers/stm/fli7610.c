@@ -579,6 +579,7 @@ void __init fli7610_configure_nand(struct stm_nand_config *config)
 		fli7610_nandi_device.dev.platform_data = bch_data;
 		bch_data->bank = config->banks;
 		bch_data->bch_ecc_cfg = config->bch_ecc_cfg;
+		bch_data->bch_bitflip_threshold = config->bch_bitflip_threshold;
 		fli7610_nandi_device.name = "stm-nand-bch";
 		platform_device_register(&fli7610_nandi_device);
 		break;
