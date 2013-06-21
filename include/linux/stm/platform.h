@@ -406,24 +406,24 @@ struct stm_nand_config {
 
 struct stm_spifsm_caps {
 	/* Board/SoC/IP capabilities */
-	int dual_mode:1;		/* DUAL mode */
-	int quad_mode:1;		/* QUAD mode */
+	unsigned dual_mode:1;		/* DUAL mode */
+	unsigned quad_mode:1;		/* QUAD mode */
 
 	/* Board capabilities */
-	int reset_signal:1;		/* SoC reset routed to device reset */
-	int reset_por:1;		/* SoC reset forces device POR (e.g.
+	unsigned reset_signal:1;	/* SoC reset routed to device reset */
+	unsigned reset_por:1;		/* SoC reset forces device POR (e.g.
 					 *   on-board logic/controller) */
-	int boot_from_spi:1;		/* Boot device is SPI */
+	unsigned boot_from_spi:1;	/* Boot device is SPI */
 
 	/* IP capabilities */
-	int addr_32bit:1;		/* 32bit addressing supported */
-	int no_poll_mode_change:1;	/* Polling MODE_CHANGE broken */
-	int no_clk_div_4:1;		/* Bug prevents ClK_DIV=4 */
-	int no_sw_reset:1;		/* S/W reset not possible */
-	int dummy_on_write:1;		/* Bug requires "dummy" sequence on
+	unsigned addr_32bit:1;		/* 32bit addressing supported */
+	unsigned no_poll_mode_change:1;	/* Polling MODE_CHANGE broken */
+	unsigned no_clk_div_4:1;	/* Bug prevents ClK_DIV=4 */
+	unsigned no_sw_reset:1;		/* S/W reset not possible */
+	unsigned dummy_on_write:1;	/* Bug requires "dummy" sequence on
 					 * WRITE */
-	int no_read_repeat:1;		/* READ repeat sequence broken */
-	int no_write_repeat:1;		/* WRITE repeat sequence broken */
+	unsigned no_read_repeat:1;	/* READ repeat sequence broken */
+	unsigned no_write_repeat:1;	/* WRITE repeat sequence broken */
 	enum {
 		spifsm_no_read_status = 1,	/* READ_STA broken */
 		spifsm_read_status_clkdiv4,	/* READ_STA only at CLK_DIV=4 */
