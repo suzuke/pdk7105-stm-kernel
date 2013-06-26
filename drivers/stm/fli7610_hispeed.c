@@ -75,8 +75,6 @@ static struct stm_pad_config fli7610_mmc_pad_config = {
 };
 
 static struct stm_mmc_platform_data fli7610_mmc_platform_data = {
-	.init = &mmc_claim_resource,
-	.exit = &mmc_release_resource,
 	.custom_cfg = &fli7610_mmc_pad_config,
 	.nonremovable = false,
 };
