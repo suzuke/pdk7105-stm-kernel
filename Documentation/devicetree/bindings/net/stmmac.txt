@@ -42,7 +42,8 @@ Optional properties:
 	The 1st cell is reset pre-delay in micro seconds.
 	The 2nd cell is reset pulse in micro seconds.
 	The 3rd cell is reset post-delay in micro seconds.
-- snps,bugged_tx_coe	fall-back to SW TX csum if the HW is known bugged.
+- snps,bugged_sg	do not allow SG feature due to HW limits, e.g. bugged
+			csum on fragments.
 
 Examples:
 

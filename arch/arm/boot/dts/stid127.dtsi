@@ -861,7 +861,7 @@
 			snps,enh-desc;
 			snps,pbl = <32>;
 			snps,mixed-burst;
-			snps,bugged_tx_coe;
+			snps,bugged_sg;
 
 			amba-config	= <&ethernet_amba_bridge_config>;
 			st,phy-clk-name = "CLK_ETH0";
