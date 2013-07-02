@@ -467,12 +467,12 @@
 			};
 			padcfg_tx: tx {
 				st,pins {
-					gpio-2	= <&PIO4 2	IN	ALT2>;
+					gpio-2	= <&PIO4 2	OUT	ALT2>;
 				};
 			};
 			padcfg_tx_od: tx_od {
 				st,pins {
-					gpio-3	= <&PIO4 3	IN	ALT2>;
+					gpio-3	= <&PIO4 3	OUT	ALT2>;
 				};
 			};
 		};

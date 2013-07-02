@@ -345,12 +345,12 @@
 			};
 			padcfg_tx: tx {
 				st,pins {
-					tx_en	=	<&PIO4 2	IN	ALT2>;
+					tx_en	=	<&PIO4 2	OUT	ALT2>;
 				};
 			};
 			padcfg_tx_od: tx_od {
 				st,pins {
-					tx_od	=	<&PIO4 3	IN	ALT2>;
+					tx_od	=	<&PIO4 3	OUT	ALT2>;
 				};
 			};
 		};
