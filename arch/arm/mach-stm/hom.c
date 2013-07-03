@@ -267,11 +267,6 @@ static int __cpuinitdata stm_hom_enter(void)
 
 	local_irq_restore(flag);
 
-	/*
-	 * clear the empty_zero_page
-	 */
-	memset(__va(PFN_PHYS(page_to_pfn(empty_zero_page))), 0, 0x1000);
-
 	hom_mark_step(0x40);
 #ifdef CONFIG_SMP
 	/*
