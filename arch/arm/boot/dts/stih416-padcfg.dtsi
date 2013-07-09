@@ -325,13 +325,13 @@
 				};
 			};
 
-			padcfg_i2c4_sda_pio10_6: i2c2_sda_pio10_6 {
+			padcfg_i2c4_sda_pio10_6: i2c4_sda_pio10_6 {
 				st,pins {
 					SDA	= <&PIO10 6	BIDIR	ALT4>;
 				};
 			};
 
-			padcfg_i2c2_sda_pio31_5: i2c2_sda_pio31_5 {
+			padcfg_i2c4_sda_pio31_5: i2c4_sda_pio31_5 {
 				st,pins {
 					SDA	= <&PIO31 5	BIDIR	ALT2>;
 				};
@@ -339,25 +339,25 @@
 		};
 
 		i2c5 {
-			padcfg_i2c5_sclk_pio14_1: i2c4_sclk_pio14_1 {
+			padcfg_i2c5_sclk_pio14_1: i2c5_sclk_pio14_1 {
 				st,pins {
 					SCL	= <&PIO14 1	BIDIR	ALT4>;
 				};
 			};
 
-			padcfg_i2c5_sclk_pio14_4: i2c4_sclk_pio14_4 {
+			padcfg_i2c5_sclk_pio14_4: i2c5_sclk_pio14_4 {
 				st,pins {
 					SCL	= <&PIO14 4	BIDIR	ALT3>;
 				};
 			};
 
-			padcfg_i2c5_sda_pio14_2: i2c2_sda_pio14_2 {
+			padcfg_i2c5_sda_pio14_2: i2c5_sda_pio14_2 {
 				st,pins {
 					SDA	= <&PIO14 2	BIDIR	ALT4>;
 				};
 			};
 
-			padcfg_i2c5_sda_pio14_5: i2c2_sda_pio14_5 {
+			padcfg_i2c5_sda_pio14_5: i2c5_sda_pio14_5 {
 				st,pins {
 					SDA	= <&PIO14 5	BIDIR	ALT3>;
 				};
