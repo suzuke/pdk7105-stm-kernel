@@ -1859,6 +1859,13 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		return 0;
 	}
 
+	/* On some platforms, the auto-tuning can be done after configuring
+	 * own HW (dynamic delay loop) able to set internal delay
+	 * (after tuning loop) in a pad logic.
+	 */
+	if (host->ops->platform_tuning)
+		host->ops->platform_tuning(host);
+
 	sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
 
 	/*
