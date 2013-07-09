@@ -67,8 +67,8 @@ static u32 sdhci_stm_readl(struct sdhci_host *host, int reg)
 	switch (reg) {
 	case SDHCI_CAPABILITIES:
 		ret = readl(host->ioaddr + reg);
-		/* Only support 3.3V */
-		ret &= ~(SDHCI_CAN_VDD_180 | SDHCI_CAN_VDD_300);
+		/* Support 3.3V and 1.8V */
+		ret &= ~SDHCI_CAN_VDD_300;
 		break;
 	default:
 		ret = readl(host->ioaddr + reg);
