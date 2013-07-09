@@ -1180,7 +1180,7 @@
 
 			chunks_in_msg	=	<0>;
 			packets_in_chunk	=	<2>;
-			threshold		=	<256>;
+			threshold		=	<16>;
 		};
 
 		usb0: usb@fe100000{
