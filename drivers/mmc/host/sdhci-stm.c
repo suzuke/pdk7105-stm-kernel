@@ -78,11 +78,11 @@ static u32 sdhci_stm_readl(struct sdhci_host *host, int reg)
 
 static struct sdhci_ops sdhci_stm_ops = {
 	.get_max_clock = sdhci_stm_get_max_clk,
-	.platform_8bit_width = sdhci_stm_8bit_width,
+	.platform_bus_width = sdhci_stm_8bit_width,
 	.read_l = sdhci_stm_readl,
 };
 
-static struct sdhci_pltfm_data sdhci_stm_pdata = {
+const static struct sdhci_pltfm_data sdhci_stm_pdata = {
 	.ops = &sdhci_stm_ops,
 	.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC |
 	    SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN,
