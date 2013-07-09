@@ -149,7 +149,8 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 	if (IS_ERR(host))
 		return PTR_ERR(host);
 
-	host->mmc->caps |= MMC_CAP_8_BIT_DATA | MMC_CAP_BUS_WIDTH_TEST;
+	host->mmc->caps |= MMC_CAP_8_BIT_DATA | MMC_CAP_BUS_WIDTH_TEST
+			| MMC_CAP_1_8V_DDR;
 
 	/* To manage eMMC */
 	if (pdata->nonremovable)
