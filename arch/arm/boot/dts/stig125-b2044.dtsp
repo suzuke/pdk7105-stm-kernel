@@ -77,9 +77,8 @@
 		leds {
 			compatible	= "gpio-leds";
 			fp_led {
-				#gpio-cells = <1>;
 				label	= "Front Panel LED";
-				gpios	= <&PIO25 2>;
+				gpios	= <&PIO25 2 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 		};

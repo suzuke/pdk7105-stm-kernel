@@ -113,13 +113,11 @@
 		leds {
 			compatible	= "gpio-leds";
 			red {
-				#gpio-cells = <1>;
-				gpios	= <&PIO4 1>;
+				gpios	= <&PIO4 1 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 			green {
-				#gpio-cells = <1>;
-				gpios	= <&PIO4 7>;
+				gpios	= <&PIO4 7 0>;
 				default-state = "off";
 			};
 		};
@@ -138,7 +136,7 @@
 			status = "okay";
 		};
 
-		/* SSC10 to M24256-BWMN6 eeprom and NIM SCL2/SDA2 */	
+		/* SSC10 to M24256-BWMN6 eeprom and NIM SCL2/SDA2 */
 		sbc_i2c0: i2c@fe540000{
 			status = "okay";
 		};
@@ -169,7 +167,7 @@
 			snps,phy-addr = <0x1>;
 			device-config = <&rgmii1_ext_clk_dev_config>;
 
-			snps,reset-gpio = <&PIO3 0>;
+			snps,reset-gpio = <&PIO3 0 0>;
 			snps,reset-active-low;
 			snps,reset-delays-us = <0 10000 10000>;
 

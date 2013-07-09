@@ -111,56 +111,56 @@
 		ranges;
 		/* 0-7: PIO_WEST: PIO bank west edge */
 		PIO0: PIO@febe0000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe0000 0x100>;
 			interrupts =  <0 149 0>;
 			bank-name  = "PIO0";
 		};
 		PIO1: PIO@febe1000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe1000 0x100>;
 			interrupts =  <0 150 0>;
 			bank-name  = "PIO1";
 		};
 		PIO2: PIO@febe2000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe2000 0x100>;
 			interrupts =  <0 151 0>;
 			bank-name  = "PIO2";
 		};
 		PIO3: PIO@febe3000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe3000 0x100>;
 			interrupts =  <0 152 0>;
 			bank-name  = "PIO3";
 		};
 		PIO4: PIO@febe4000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe4000 0x100>;
 			interrupts =  <0 153 0>;
 			bank-name  = "PIO4";
 		};
 		PIO5: PIO@febe5000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe5000 0x100>;
 			interrupts =  <0 154 0>;
 			bank-name  = "PIO5";
 		};
 		PIO6: PIO@febe6000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe6000 0x100>;
 			interrupts =  <0 155 0>;
 			bank-name  = "PIO6";
 		};
 		PIO7: PIO@febe7000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebe7000 0x100>;
 			interrupts =  <0 156 0>;
@@ -168,49 +168,49 @@
 		};
 		/* 8-14: PIO_SOUTH */
 		PIO8: PIO@fef70000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfef70000 0x100>;
 			interrupts =  <0 157 0>;
 			bank-name  = "PIO8";
 		};
 		PIO9: PIO@fef71000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfef71000 0x100>;
 			interrupts =  <0 158 0>;
 			bank-name  = "PIO9";
 		};
 		PIO10: PIO@fef72000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfef72000 0x100>;
 			interrupts =  <0 159 0>;
 			bank-name  = "PIO10";
 		};
 		PIO11: PIO@fef73000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfef73000 0x100>;
 			interrupts =  <0 160 0>;
 			bank-name  = "PIO11";
 		};
 		PIO12: PIO@fef74000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfef74000 0x100>;
 			interrupts =  <0 161 0>;
 			bank-name  = "PIO12";
 		};
 		PIO13: PIO@fef75000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfef75000 0x100>;
 			interrupts =  <0 162 0>;
 			bank-name  = "PIO13";
 		};
 		PIO14: PIO@fef76000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfef76000 0x100>;
 			interrupts =  <0 163 0>;
@@ -218,56 +218,56 @@
 		};
 		/* 15-22: PIO_EAST */
 		PIO15: PIO@febc0000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc0000 0x100>;
 			interrupts =  <0 164 0>;
 			bank-name  = "PIO15";
 		};
 		PIO16: PIO@febc1000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc1000 0x100>;
 			interrupts =  <0 165 0>;
 			bank-name  = "PIO16";
 		};
 		PIO17: PIO@febc2000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc2000 0x100>;
 			interrupts =  <0 166 0>;
 			bank-name  = "PIO17";
 		};
 		PIO18: PIO@febc3000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc3000 0x100>;
 			interrupts =  <0 167 0>;
 			bank-name  = "PIO18";
 		};
 		PIO19: PIO@febc4000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc4000 0x100>;
 			interrupts =  <0 168 0>;
 			bank-name  = "PIO19";
 		};
 		PIO20: PIO@febc5000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc5000 0x100>;
 			interrupts =  <0 169 0>;
 			bank-name  = "PIO20";
 		};
 		PIO21: PIO@febc6000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc6000 0x100>;
 			interrupts =  <0 170 0>;
 			bank-name  = "PIO21";
 		};
 		PIO22: PIO@febc7000 {
-			#gpio-cells = <1>;
+			#gpio-cells = <2>;
 			compatible = "st,gpio";
 			reg = <0xfebc7000 0x100>;
 			interrupts =  <0 171 0>;

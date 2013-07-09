@@ -105,12 +105,11 @@
 		leds {
 			compatible	= "gpio-leds";
 			red {
-				#gpio-cells = <1>;
-				gpios	= <&PIO4 1>;
+				gpios	= <&PIO4 1 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 			green {
-				gpios	= <&PIO4 7>;
+				gpios	= <&PIO4 7 0>;
 				default-state = "off";
 			};
 		};
@@ -159,7 +158,7 @@
 			snps,phy-bus-id = <0>;
 			snps,phy-addr = <0x1>;
 
-			snps,reset-gpio = <&PIO3 0>;
+			snps,reset-gpio = <&PIO3 0 0>;
 			snps,reset-active-low;
 			snps,reset-delays-us = <0 10000 10000>;
 			device-config = <&rgmii1_ext_clk_dev_config>;

@@ -42,7 +42,7 @@
 			compatible	= "gpio-leds", "simple-bus";
 			fp_led {
 				label	= "Front Panel LED";
-				gpios	= <&PIO23 6>;
+				gpios	= <&PIO23 6 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 		};

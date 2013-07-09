@@ -41,7 +41,7 @@
 			compatible	= "gpio-leds";
 			fp_led {
 				label	= "Front Panel LED";
-				gpios	= <&PIO19 6>;
+				gpios	= <&PIO19 6 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 		};
@@ -72,7 +72,7 @@
 			snps,phy-addr = <0>;
 			device-config = <&rgmii0_dev_config>;
 
-			snps,reset-gpio = <&PIO21 2>;
+			snps,reset-gpio = <&PIO21 2 0>;
 			snps,reset-active-low;
 			snps,reset-delays-us = <0 1000000 1000000>;
 		};

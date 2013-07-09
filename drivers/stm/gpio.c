@@ -681,21 +681,6 @@ int stm_gpio_get_name(int gpio, char *buf, int len)
 
 #ifdef CONFIG_OF
 
-static int stm_gpio_xlate(struct gpio_chip *gc,
-			const struct of_phandle_args *gpiospec, u32 *flags)
-{
-	if (WARN_ON(gc->of_gpio_n_cells < 1))
-		return -EINVAL;
-
-	if (WARN_ON(gpiospec->args_count < gc->of_gpio_n_cells))
-		return -EINVAL;
-
-	if (gpiospec->args[0] > gc->ngpio)
-		return -EINVAL;
-	/* Ignore  alt func and name setup. */
-	return gpiospec->args[0];
-}
-
 static struct of_device_id stm_gpio_match[] = {
 	{
 		.compatible = "st,gpio",
@@ -753,8 +738,6 @@ int __init of_stm_gpio_early_init(int irq_base)
 		of_property_read_string(child, "bank-name",
 						&port->bank_name);
 		port->gpio_chip.of_node = child;
-		port->gpio_chip.of_gpio_n_cells = 1;
-		port->gpio_chip.of_xlate = stm_gpio_xlate;
 
 		stm_gpio_bases[port_no] = port->base;
 

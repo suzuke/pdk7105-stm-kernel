@@ -114,9 +114,8 @@
 		leds {
 			compatible	= "gpio-leds", "simple-bus";
 			fp_led {
-				#gpio-cells = <1>;
 				label	= "Front Panel LED";
-				gpios	= <&PIO105 7>;
+				gpios	= <&PIO105 7 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 		};
@@ -182,10 +181,10 @@
 				reg = <0x0 0x0>;
 //				status = "disabled";
 				compatible	= "virtual,mdio-gpio";
-				gpios = <&PIO15 5
-					 &PIO15 4>;
+				gpios = <&PIO15 5 0
+					 &PIO15 4 0>;
 
-				linux,reset-gpio = <&PIO106 2>;
+				linux,reset-gpio = <&PIO106 2 0>;
 				linux,reset-active-low;
 				linux,reset-pulse-us = <10000>;
 				linux,reset-post-delay-us = <10000>;
@@ -255,7 +254,7 @@
 			snps,phy-addr = <0x1>;
 			device-config = <&gmii1_ext_clk_dev_config>;
 
-			snps,reset-gpio = <&PIO4 7>;
+			snps,reset-gpio = <&PIO4 7 0>;
 			snps,reset-active-low;
 			snps,reset-delays-us = <0 10000 10000>;
 		};

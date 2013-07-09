@@ -37,7 +37,7 @@
 		mmc1 = &sdhci1;
 	};
 	soc {
-		power-on-gpio	= <&PIO3 6>;
+		power-on-gpio	= <&PIO3 6 0>;
 		spifsm:	spifsm@fe902000{
 			status		= "okay";
 			flash-name	= "n25q256";
@@ -74,9 +74,8 @@
 		leds {
 			compatible	= "gpio-leds";
 			red {
-				#gpio-cells = <1>;
 				label	= "Front Panel LED";
-				gpios	= <&PIO4 1>;
+				gpios	= <&PIO4 1 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 		};
@@ -127,7 +126,7 @@
 			snps,phy-addr = <0>;
 			device-config = <&rgmii1_ext_clk_dev_config>;
 
-			snps,reset-gpio = <&PIO0 7>;
+			snps,reset-gpio = <&PIO0 7 0>;
 			snps,reset-active-low;
 			/* RTL8211 needs at least 30ms */
 			snps,reset-delays-us = <0 11000 35000>;

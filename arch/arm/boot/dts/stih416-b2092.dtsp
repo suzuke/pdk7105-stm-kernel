@@ -80,9 +80,8 @@
 		leds {
 			compatible	= "gpio-leds";
 			fp_led {
-				#gpio-cells = <1>;
 				label	= "Front Panel LED";
-				gpios	= <&PIO105 7>;
+				gpios	= <&PIO105 7 0>;
 				linux,default-trigger	= "heartbeat";
 			};
 		};
@@ -149,7 +148,7 @@
 			snps,phy-addr = <0x1>;
 			device-config = <&mii0_ext_clk_dev_config>;
 
-			snps,reset-gpio = <&PIO106 2>;
+			snps,reset-gpio = <&PIO106 2 0>;
 			snps,reset-active-low;
 			snps,reset-delays-us = <0 10000 10000>;
 		};
@@ -162,7 +161,7 @@
 			snps,phy-addr = <0x1>;
 			device-config = <&mii1_ext_clk_dev_config>;
 
-			snps,reset-gpio = <&PIO4 7>;
+			snps,reset-gpio = <&PIO4 7 0>;
 			snps,reset-active-low;
 			snps,reset-delays-us = <0 10000 10000>;
 		};
