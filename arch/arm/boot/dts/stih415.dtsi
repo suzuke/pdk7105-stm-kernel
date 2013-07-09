@@ -943,11 +943,11 @@
 			sd_config_missing;
 			complete_on_error;
 			read_ahead;
-			max_opcode_LD32_ST32;
+			max_opcode_LD64_ST64;
 
 			chunks_in_msg	=	<0>;
-			packets_in_chunk	=	<8>;
-			threshold		=	<128>;
+			packets_in_chunk	=	<2>;
+			threshold		=	<16>;
 		};
 
 		usb0: usb@fe100000{
