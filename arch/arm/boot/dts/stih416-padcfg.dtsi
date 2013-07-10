@@ -717,7 +717,7 @@
 					 txd2  =	<&PIO0  2	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
 					 txd3  =	<&PIO0  3	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
 					 txer =		<&PIO0  4	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
-					 txen =		<&PIO0  5	OUT 	ALT1	SE_NICLK_IO	750 	CLK_A>;
+					 txen =		<&PIO0  5	OUT 	ALT1	SE_NICLK_IO	0 	CLK_A>;
 					 txclk =	<&PIO0  6	IN 	ALT1	NICLK		0	CLK_A>;
 					 col =		<&PIO0  7	IN 	ALT1	BYPASS		500>;
 
