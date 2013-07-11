@@ -27,4 +27,8 @@ int flashss_set_vsense(enum vsense_devices fdev, enum vsense_voltages v);
 void flashss_emmc_set_dll(void);
 void flashss_show_top_registers(void);
 void flashss_nandi_select(enum nandi_controllers controller);
+
+/* Specific MMC core callbacks */
+int flashss_start_mmc_tuning(void __iomem *mmc_ioaddr);
+void flashss_mmc_core_config(void __iomem *mmc_ioaddr);
 #endif

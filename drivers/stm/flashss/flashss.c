@@ -197,7 +197,8 @@ EXPORT_SYMBOL_GPL(flashss_set_vsense);
 /**
  * flashss_emmc_set_dll: program DLL
  * Description: this function is to enable the Dynamic Loop used by the eMMC HC
- * to perform the auto-tuning process while switching on super-speed mode.
+ * to perform the auto-tuning process while switching on super-speed mode. It is
+ * directly called by the mmc core.
  */
 void flashss_emmc_set_dll(void)
 {
@@ -214,7 +215,6 @@ void flashss_emmc_set_dll(void)
 	writel(TX_STEP_DEFAULT_DELAY, flashss_config +
 	       TOP_EMMC_TX_DLL_STEP_DELAY);
 }
-EXPORT_SYMBOL_GPL(flashss_emmc_set_dll);
 
 /**
  * flashss_nandi_select: program nand controller
