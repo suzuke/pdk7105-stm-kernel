@@ -4,6 +4,7 @@
 
 obj-y					+= soc.o
 obj-y					+= emi.o
+obj-y					+= flashss/
 obj-y					+= gpio.o
 obj-y					+= pad.o
 obj-y					+= sysconf.o
