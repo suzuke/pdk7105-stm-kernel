@@ -158,6 +158,14 @@ struct uniperif_tdm_mem_fmt_map {
 
 
 /*
+ * Uniperipheral TDM function prototypes.
+ */
+
+static void uniperif_tdm_hw_enable(struct uniperif_tdm *tdm);
+static void uniperif_tdm_hw_disable(struct uniperif_tdm *tdm);
+
+
+/*
  * Uniperipheral TDM implementation.
  */
 
@@ -443,6 +451,10 @@ static int uniperif_tdm_close(struct snd_pcm_substream *substream)
 			set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(tdm);
 			set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(tdm);
 
+			/* Turn uniperipheral off (reader only) */
+			if (tdm->info->fdma_direction == DMA_DEV_TO_MEM)
+				uniperif_tdm_hw_disable(tdm);
+
 			/* Terminate the dma */
 			dmaengine_terminate_all(tdm->dma_channel);
 		}
@@ -667,7 +679,9 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 		set__AUD_UNIPERIF_ITM_BSET__DMA_ERROR(tdm);
 		enable_irq(tdm->irq);
 
-		/* The tdm is already running (it supplies telss with clock) */
+		/* Turn uniperipheral on (reader only - player always on) */
+		if (tdm->info->fdma_direction == DMA_DEV_TO_MEM)
+			uniperif_tdm_hw_enable(tdm);
 	} else {
 		/* Set to period offset to next period and set call valid */
 		handset->config.period_offset =
@@ -756,6 +770,10 @@ static int uniperif_tdm_stop(struct snd_pcm_substream *substream)
 		disable_irq_nosync(tdm->irq);
 		set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(tdm);
 		set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(tdm);
+
+		/* Turn uniperipheral off (reader only - player always on) */
+		if (tdm->info->fdma_direction == DMA_DEV_TO_MEM)
+			uniperif_tdm_hw_disable(tdm);
 
 		/* Terminate the dma */
 		dmaengine_terminate_all(tdm->dma_channel);
@@ -1145,9 +1163,6 @@ static int uniperif_tdm_configure(struct uniperif_tdm *tdm)
 	/* Configure the time slots */
 	uniperif_tdm_configure_timeslots(tdm);
 
-	/* Enable the tdm functionality */
-	set__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(tdm);
-
 	return 0;
 }
 
@@ -1296,6 +1311,9 @@ static void uniperif_tdm_hw_enable(struct uniperif_tdm *tdm)
 	BUG_ON(!tdm);
 	BUG_ON(!snd_stm_magic_valid(tdm));
 
+	/* Enable the tdm functionality */
+	set__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(tdm);
+
 	/* Prime the FIFO to start internal clocking (player only) */
 	if (tdm->info->fdma_direction == DMA_MEM_TO_DEV)
 		for (i = 0; i < tdm->info->frame_size; ++i)
@@ -1414,8 +1432,9 @@ static int uniperif_tdm_register(struct snd_device *snd_device)
 		goto error_info_register;
 	}
 
-	/* Enable the tdm device */
-	uniperif_tdm_hw_enable(tdm);
+	/* Enable the tdm device immediately (player only) */
+	if (tdm->info->fdma_direction == DMA_MEM_TO_DEV)
+		uniperif_tdm_hw_enable(tdm);
 
 	return 0;
 
