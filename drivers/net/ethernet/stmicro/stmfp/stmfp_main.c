@@ -551,11 +551,12 @@ static int put_l2cam(struct fpif_priv *priv, u8 dev_addr[])
 		return -EIO;
 	}
 
+	fpif_write_reg(fpgrp->base + L2_CAM_CFG_MODE, HW_MANAGED);
 	val = (dev_addr[2] << 24) | (dev_addr[3] << 16) |
 		       (dev_addr[4] << 8) | dev_addr[5];
 	fpif_write_reg(priv->fpgrp->base + L2_CAM_MAC_DA_LOW, val);
-	val = (dp << L2CAM_DP_SHIFT) | (sp << L2CAM_SP_SHIFT) |
-	    (dev_addr[0] << 8) | dev_addr[1];
+	val = (1 << L2CAM_BRIDGE_SHIFT) | (dp << L2CAM_DP_SHIFT) |
+		(sp << L2CAM_SP_SHIFT) | (dev_addr[0] << 8) | dev_addr[1];
 	fpif_write_reg(priv->fpgrp->base + L2_CAM_MAC_DA_HIGH, val);
 	fpif_write_reg(priv->fpgrp->base + L2_CAM_CFG_COMMAND, 0x00000000);
 
@@ -586,20 +587,22 @@ static int remove_l2cam(struct fpif_priv *priv, int idx)
 	u32 status;
 	struct fpif_grp *fpgrp = priv->fpgrp;
 
-	val = (idx << 8) | 0x01;
-	fpif_write_reg(fpgrp->base + L2CAM_BASE + 0x14, val);
-	status = readl(fpgrp->base + L2CAM_BASE + 0x18);
+	fpif_write_reg(fpgrp->base + L2_CAM_CFG_MODE, SW_MANAGED);
+	val = (idx << 8) | L2CAM_READ;
+	fpif_write_reg(fpgrp->base + L2_CAM_CFG_COMMAND, val);
+	val = (idx << 8) | L2CAM_DEL;
+	fpif_write_reg(fpgrp->base + L2_CAM_CFG_COMMAND, val);
+	status = readl(fpgrp->base + L2_CAM_CFG_STATUS);
 	priv->l2cam_count--;
 	fpgrp->available_l2cam++;
 
 	return 0;
 }
 
-
 static int remove_l2cam_if(struct fpif_priv *priv)
 {
-	int i;
-	for (i = 0; i < priv->l2cam_count; i++)
+	int i, cnt = priv->l2cam_count;
+	for (i = 0; i < cnt; i++)
 		remove_l2cam(priv, priv->l2_idx[i]);
 	return 0;
 }
@@ -639,6 +642,97 @@ static int fpif_change_mtu(struct net_device *dev, int new_mtu)
 	return 0;
 }
 
+static void remove_tcam_promisc(struct fpif_priv *priv)
+{
+	struct fpif_grp *fpgrp = priv->fpgrp;
+
+	if (priv->promisc_idx != TCAM_IDX_INV) {
+		readl(fpgrp->base + FP_FC_RST);
+		writel(priv->promisc_idx, fpgrp->base + FP_FC_CMD);
+		readl(fpgrp->base + FP_FC_RST);
+		writel(priv->promisc_idx + TCAM_PROMISC_OFFSET,
+		       fpgrp->base + FP_FC_CMD);
+		priv->promisc_idx = TCAM_IDX_INV;
+	}
+}
+
+
+static void remove_tcam_allmulti(struct fpif_priv *priv)
+{
+	struct fpif_grp *fpgrp = priv->fpgrp;
+
+	if (priv->allmulti_idx != TCAM_IDX_INV) {
+		readl(fpgrp->base + FP_FC_RST);
+		writel(priv->allmulti_idx, fpgrp->base + FP_FC_CMD);
+		priv->allmulti_idx = TCAM_IDX_INV;
+	}
+}
+
+
+static void add_tcam_allmulti(struct fpif_priv *priv)
+{
+	struct fpif_grp *fpgrp = priv->fpgrp;
+	u32 fc_ctrl;
+
+	if (priv->allmulti_idx == TCAM_IDX_INV) {
+		readl(fpgrp->base + FP_FC_RST);
+		writel(FC_SOURCE_SRCP_MASK | priv->sp << FC_SOURCE_SRCP_SHIFT,
+		       fpgrp->base + FP_FC_SOURCE);
+		fc_ctrl = readl(fpgrp->base + FP_FC_CTRL) |
+			priv->dma_port << FC_CTRL_DST_SHIFT |
+			1 << FC_CTRL_REDIR_SHIFT |
+			1 << FC_CTRL_BRIDGE_SHIFT |
+			1 << FC_CTRL_CONTINUE_SHIFT |
+			1 << FC_CTRL_VALID_SHIFT;
+		writel(fc_ctrl, fpgrp->base + FP_FC_CTRL);
+		writel(0x100, fpgrp->base + FP_FC_MAC_D_H);
+		writel(0x100, fpgrp->base + FP_FC_MAC_D_MASK_H);
+		priv->allmulti_idx = priv->id + TCAM_FIRST_FREE_IDX_SW;
+		writel(priv->allmulti_idx, fpgrp->base + FP_FC_CMD);
+	}
+}
+
+
+static void add_tcam_promisc(struct fpif_priv *priv)
+{
+	struct fpif_grp *fpgrp = priv->fpgrp;
+	struct net_device *netdev = priv->netdev;
+	u8 *dev_addr = netdev->dev_addr;
+	u32 val, fc_ctrl;
+
+	if (priv->promisc_idx == TCAM_IDX_INV) {
+		readl(fpgrp->base + FP_FC_RST);
+		writel(FC_SOURCE_SRCP_MASK | priv->sp <<
+				FC_SOURCE_SRCP_SHIFT,
+				fpgrp->base + FP_FC_SOURCE);
+		fc_ctrl = readl(fpgrp->base + FP_FC_CTRL) |
+			priv->dma_port << FC_CTRL_DST_SHIFT |
+			1 << FC_CTRL_REDIR_SHIFT |
+			1 << FC_CTRL_BRIDGE_SHIFT |
+			1 << FC_CTRL_CONTINUE_SHIFT |
+			1 << FC_CTRL_VALID_SHIFT;
+		writel(fc_ctrl, fpgrp->base + FP_FC_CTRL);
+		priv->promisc_idx = priv->id + TCAM_FIRST_FREE_IDX_SW;
+		writel(priv->promisc_idx + TCAM_PROMISC_OFFSET,
+		       fpgrp->base + FP_FC_CMD);
+		readl(fpgrp->base + FP_FC_RST);
+		writel(FC_SOURCE_SRCP_MASK | priv->sp <<
+				FC_SOURCE_SRCP_SHIFT,
+				fpgrp->base + FP_FC_SOURCE);
+		fc_ctrl = readl(fpgrp->base + FP_FC_CTRL) |
+			1 << FC_CTRL_VALID_SHIFT;
+		writel(fc_ctrl, fpgrp->base + FP_FC_CTRL);
+		val = dev_addr[0] << 8 | dev_addr[1];
+		writel(val, fpgrp->base + FP_FC_MAC_D_H);
+		writel(0xffff, fpgrp->base + FP_FC_MAC_D_MASK_H);
+		val = (dev_addr[2] << 24) | (dev_addr[3] << 16) |
+		       (dev_addr[4] << 8) | dev_addr[5];
+		writel(val, fpgrp->base + FP_FC_MAC_D_L);
+		writel(0xffffffff, fpgrp->base + FP_FC_MAC_D_MASK_L);
+		writel(priv->promisc_idx, fpgrp->base + FP_FC_CMD);
+	}
+}
+
 
 static void fpif_set_multi(struct net_device *dev)
 {
@@ -646,28 +740,26 @@ static void fpif_set_multi(struct net_device *dev)
 	struct fpif_priv *priv = netdev_priv(dev);
 	struct fpif_grp *fpgrp = priv->fpgrp;
 
+	remove_tcam_promisc(priv);
+	remove_tcam_allmulti(priv);
 	if (dev->flags & IFF_PROMISC) {
-		netdev_err(dev, "Promiscuous mode is not supported\n");
+		add_tcam_promisc(priv);
 		return;
 	}
-
 	if (dev->flags & IFF_ALLMULTI) {
-		netdev_err(dev, "No support of all multicast mode\n");
+		add_tcam_allmulti(priv);
 		return;
 	}
-
 	if (netdev_mc_empty(dev))
 		return;
-
 	if (netdev_mc_count(dev) > fpgrp->available_l2cam) {
 		netdev_err(dev, "netdev_mc_count (%d) > l2cam size\n",
-			   netdev_mc_count(dev));
+			netdev_mc_count(dev));
+		add_tcam_allmulti(priv);
 		return;
 	}
-
-	netdev_for_each_mc_addr(ha, dev) {
+	netdev_for_each_mc_addr(ha, dev)
 		put_l2cam(priv, ha->addr);
-	}
 }
 
 /**

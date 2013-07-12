@@ -133,6 +133,7 @@
 #define L2CAM_BASE (FASTPATH_BASE + 0x16000)
 #define L2_CAM_MAC_DA_LOW (L2CAM_BASE)
 #define L2_CAM_MAC_DA_HIGH (L2CAM_BASE + 4)
+#define L2_CAM_CFG_MODE (L2CAM_BASE + 0x10)
 #define L2_CAM_CFG_COMMAND (L2CAM_BASE + 0x14)
 #define L2_CAM_CFG_STATUS (L2CAM_BASE + 0x18)
 
@@ -264,6 +265,7 @@
 #define FPRXDMA0_IRQ_MASK (7)
 #define FPTXDMA0_IRQ_MASK (7)
 
+#define L2CAM_BRIDGE_SHIFT (31)
 #define L2CAM_DP_SHIFT (24)
 #define L2CAM_SP_SHIFT (16)
 #define L2CAM_IDX_SHIFT (0)
@@ -271,6 +273,11 @@
 #define L2CAM_STS_MASK (0x7f)
 #define L2CAM_STS_SHIFT (8)
 #define L2CAM_COLL_MASK (8)
+#define L2CAM_CLEAR (2)
+#define L2CAM_READ (3)
+#define L2CAM_DEL (1)
+#define SW_MANAGED (1)
+#define HW_MANAGED (0)
 
 #define MACINFO_DUPLEX (0x4000000)
 #define MACINFO_HALF_DUPLEX (0 << 26)
@@ -284,6 +291,33 @@
 
 #define MAX_RXDMA	(3)
 #define MAX_TXDMA	(3)
+
+/*filter tcam register masks & shifts */
+#define FC_SOURCE_SRCP_SHIFT (4)
+#define FC_SOURCE_SRCP_MASK (0xc0)
+#define FC_CTRL_DST_SHIFT (13)
+#define FC_CTRL_REDIR_SHIFT (12)
+#define FC_CTRL_BRIDGE_SHIFT (11)
+#define FC_CTRL_CONTINUE_SHIFT (1)
+#define FC_CTRL_VALID_SHIFT (0)
+
+#define FP_FILT_BASE (FASTPATH_BASE + 0x15000)
+#define FILT_BADF (FP_FILT_BASE + 0x4c)
+#define FILT_BADF_DROP (FP_FILT_BASE + 0x50)
+
+#define FP_FCAM_BASE (FP_FILT_BASE + 0x800)
+#define FP_FC_RST (FP_FCAM_BASE + 0)
+#define FP_FC_CTRL (FP_FCAM_BASE + 0x4)
+#define FP_FC_SOURCE (FP_FCAM_BASE + 0x8)
+#define FP_FC_MAC_D_H (FP_FCAM_BASE + 0x10)
+#define FP_FC_MAC_D_L (FP_FCAM_BASE + 0x14)
+#define FP_FC_MAC_D_MASK_H (FP_FCAM_BASE + 0x18)
+#define FP_FC_MAC_D_MASK_L (FP_FCAM_BASE + 0x1c)
+#define FP_FC_CMD (FP_FCAM_BASE + 0xa0)
+
+#define TCAM_FIRST_FREE_IDX_SW (8)
+#define TCAM_PROMISC_OFFSET (NUM_INTFS)
+#define TCAM_IDX_INV (-1)
 
 struct rx_ch_reg {
 	u32 rx_cpu;
@@ -423,6 +457,8 @@ struct fpif_priv {
 	struct fpif_rxdma *rxdma_ptr;
 	struct fpif_txdma *txdma_ptr;
 	struct fpif_grp *fpgrp;
+	short allmulti_idx;
+	short promisc_idx;
 	u32 id;
 	u32 dma_port;
 	u32 sp; /* Fastpath source port */
