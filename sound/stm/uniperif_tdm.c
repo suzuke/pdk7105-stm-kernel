@@ -74,6 +74,8 @@
 
 #define UNIPERIF_TDM_DMA_MAXBURST	35  /* FIFO is 70 words, so half */
 
+#define UNIPERIF_TDM_FIFO_ERROR_LIMIT	2  /* FIFO errors allowed */
+
 
 /*
  * Types.
@@ -133,6 +135,7 @@ struct uniperif_tdm {
 	struct dma_async_tx_descriptor *dma_descriptor;
 	struct dma_tx_state dma_state;
 	enum dma_status dma_status;
+	unsigned int dma_fifo_errors;		/* Count of fifo errors */
 
 	struct telss_handset handsets[UNIPERIF_TDM_MAX_HANDSETS];
 
@@ -188,11 +191,14 @@ static irqreturn_t uniperif_tdm_irq_handler(int irq, void *dev_id)
 	preempt_enable();
 
 	if (unlikely(status & mask__AUD_UNIPERIF_ITS__FIFO_ERROR(tdm))) {
-		/* Disable interrupt so doesn't continually fire */
-		set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(tdm);
+		/* Allow some fifo errors as we leave underflow state */
+		if (++tdm->dma_fifo_errors > UNIPERIF_TDM_FIFO_ERROR_LIMIT) {
+			/* Disable interrupt so doesn't continually fire */
+			set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(tdm);
 
-		/* Stop each uniperipheral pcm device that is running */
-		uniperif_tdm_xrun(tdm, "FIFO error!");
+			/* Stop each uniperipheral pcm device that is running */
+			uniperif_tdm_xrun(tdm, "FIFO error!");
+		}
 
 		result = IRQ_HANDLED;
 
@@ -627,6 +633,9 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 
 		/* Indicate the call is ready */
 		handset->call_ready = 1;
+
+		/* Reset the fifo error count */
+		tdm->dma_fifo_errors = 0;
 
 		/* Prepare the dma descriptor */
 		tdm->dma_descriptor = dma_telss_prep_dma_cyclic(

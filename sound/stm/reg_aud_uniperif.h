@@ -1481,6 +1481,14 @@
 #define set__AUD_UNIPERIF_STATUS_1(ip, value) \
 	writel(value, ip->base + offset__AUD_UNIPERIF_STATUS_1(ip))
 
+/* SAMPLES_PRESENT */
+#define shift__AUD_UNIPERIF_STATUS_1__SAMPLES_PRESENT(ip) 24
+#define mask__AUD_UNIPERIF_STATUS_1__SAMPLES_PRESENT(ip) 0x7f
+#define get__AUD_UNIPERIF_STATUS_1__SAMPLES_PRESENT(ip) \
+	get__AUD_UNIPERIF_REG(ip, \
+		offset__AUD_UNIPERIF_STATUS_1(ip), \
+		shift__AUD_UNIPERIF_STATUS_1__SAMPLES_PRESENT(ip), \
+		mask__AUD_UNIPERIF_STATUS_1__SAMPLES_PRESENT(ip))
 
 /*
  * AUD_UNIPERIF_CHANNEL_STA_REGn
