@@ -1058,7 +1058,7 @@ static void uniperif_tdm_configure_timeslots(struct uniperif_tdm *tdm)
 		set__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_MSB(tdm,
 				tdm->info->timeslot_info->word_pos[7].msb);
 		set__AUD_UNIPERIF_TDM_WORD_POS_7_8__TS_8_LSB(tdm,
-				tdm->info->timeslot_info->word_pos[7].msb);
+				tdm->info->timeslot_info->word_pos[7].lsb);
 	}
 }
 
