@@ -1325,6 +1325,8 @@ static int iic_stm_remove(struct platform_device *pdev)
 	devm_free_irq(&pdev->dev, res->start, iic_stm);
 	/* mem */
 	devm_iounmap(&pdev->dev, iic_stm->base);
+	/* pad */
+	devm_stm_pad_release(&pdev->dev, iic_stm->pad_state);
 	/* kmem */
 	devm_kfree(&pdev->dev, iic_stm);
 	return 0;
