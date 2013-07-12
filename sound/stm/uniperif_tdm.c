@@ -766,30 +766,6 @@ static snd_pcm_uframes_t uniperif_tdm_pointer(
 	return period * handset->tdm->info->frame_count;
 }
 
-#define COPY_FROM_USER(t, dma, usr, a, s) \
-	do { \
-		t data; \
-		/*t *ptr = (t *) dma;*/		\
-		int i; \
-		for (i = 0; i < a; ++i) { \
-			__get_user(data, &((t __user *) usr)[i]); \
-			/*ptr[i] = s(data);*/			  \
-			((t *) dma)[i] = s(data);		  \
-		} \
-	} while (0);
-
-#define COPY_TO_USER(t, dma, usr, a, s) \
-	do { \
-		t data; \
-		/*t *ptr = (t *) dma;*/		\
-		int i; \
-		for (i = 0; i < a; ++i) { \
-			/*data = s(ptr[i]);*/	\
-			data = s(((t *) dma)[i]);		  \
-			__put_user(data, &((t __user *) usr)[i]); \
-		} \
-	} while (0);
-
 static int uniperif_tdm_copy(struct snd_pcm_substream *substream,
 		int channel, snd_pcm_uframes_t pos, void __user *buf,
 		snd_pcm_uframes_t count)
