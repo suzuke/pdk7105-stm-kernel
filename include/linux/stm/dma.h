@@ -88,6 +88,8 @@ struct stm_dma_telss_config {
 
 struct stm_dma_telss_handset_config {
 	u16 buffer_offset;
+	u16 period_offset;
+	u32 period_stride;
 	u16 first_slot_id;
 	u16 second_slot_id;
 	bool second_slot_id_valid;
@@ -143,8 +145,7 @@ int dma_telss_handset_config(struct dma_chan *chan, int handset,
 int dma_telss_handset_control(struct dma_chan *chan, int handset, int valid);
 struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
-		size_t period_len, size_t period_stride,
-		enum dma_transfer_direction direction);
+		size_t period_len, enum dma_transfer_direction direction);
 int dma_telss_get_period(struct dma_chan *chan);
 
 

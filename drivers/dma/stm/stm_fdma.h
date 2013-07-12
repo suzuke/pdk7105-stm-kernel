@@ -165,6 +165,8 @@ struct stm_fdma_desc {
 	struct list_head llu_list;
 
 	struct dma_async_tx_descriptor dma_desc;
+
+	void *extension;
 };
 
 

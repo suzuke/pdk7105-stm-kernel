@@ -53,6 +53,9 @@
  * TELSS handset specific defines
  */
 
+#define TELSS_HANDSET_BUF_OFF_BIT_MASK	0x0001fff8
+#define TELSS_HANDSET_BUF_OFF_SCALE	3
+
 #define TELSS_HANDSET_BUF_OFF_MASK	0x00003fff
 #define TELSS_HANDSET_BUF_OFF_SHIFT	0
 #define TELSS_HANDSET_SLOT_1_ID_MASK	0x001fc000
@@ -73,7 +76,8 @@ struct stm_fdma_telss {
 	u32 frame_count;
 	u32 frame_size;
 	u32 handset_count;
-	u32 handset_params[STM_FDMA_LLU_TELSS_HANDSETS];
+	struct stm_dma_telss_handset_config
+			handset_config[STM_FDMA_LLU_TELSS_HANDSETS];
 };
 
 
@@ -81,11 +85,77 @@ struct stm_fdma_telss {
  * TELSS dmaengine extension helper functions
  */
 
-static void stm_fdma_telss_update_active(struct stm_fdma_chan *fchan,
-		int handset, u32 params)
+static u32 stm_fdma_telss_encode_params(struct stm_fdma_desc *fdesc,
+		struct stm_dma_telss_handset_config *config)
 {
-	dev_dbg(fchan->fdev->dev, "%s(fchan=%p, handset=%d, params=%08x)\n",
-		__func__, fchan, handset, params);
+	u32 node_index;
+	u32 node_total;
+	u32 offset;
+	u32 params = 0;
+
+	BUG_ON(!fdesc);
+	BUG_ON(!config);
+
+	/*
+	 * Normally we will start processing our handset buffer from the first
+	 * node of the transfer. In the case where the transfer is already
+	 * running for another handset, to mimimize the time taken to start the
+	 * new handset we may want to start from a specified node. This code
+	 * calculates the buffer offset for a node taking this into account.
+	 */
+
+	/* Get the index of this node into the transfer */
+	node_index = (u32) fdesc->extension & 0xffff;
+	/* Get the total number of nodes in the transfer */
+	node_total = (u32) fdesc->extension >> 16;
+
+	BUG_ON(node_index > node_total);
+
+	/* Add the period offset to the node index and wrap */
+	node_index = (node_index + config->period_offset) % node_total;
+
+	/* Calculate the handset buffer offset for this node and scale down */
+	offset = config->buffer_offset + (node_index * config->period_stride);
+	offset >>= TELSS_HANDSET_BUF_OFF_SCALE;
+
+	/* Set the buffer offset */
+	params |= offset << TELSS_HANDSET_BUF_OFF_SHIFT;
+
+	/* Set the first slot id */
+	params |= config->first_slot_id << TELSS_HANDSET_SLOT_1_ID_SHIFT;
+
+	/* Set the second slot id */
+	params |= config->second_slot_id << TELSS_HANDSET_SLOT_2_ID_SHIFT;
+
+	/* Set the second slot id valid bit */
+	if (config->second_slot_id_valid)
+		params |= TELSS_HANDSET_SLOT_2_ID_VALID;
+
+	/* Set the duplicate enable bit */
+	if (config->duplicate_enable)
+		params |= TELSS_HANDSET_DUPLICATE_ENB;
+
+	/* Set the data length bit */
+	if (config->data_length)
+		params |= TELSS_HANDSET_DATA_LENGTH;
+
+	/* Set the call valid bit */
+	if (config->call_valid)
+		params |= TELSS_HANDSET_CALL_VALID;
+
+	return params;
+}
+
+static void stm_fdma_telss_update_active(struct stm_fdma_chan *fchan,
+		int handset)
+{
+	struct stm_fdma_telss *telss = fchan->extension;
+	u32 params;
+
+	dev_dbg(fchan->fdev->dev, "%s(fchan=%p, handset=%d)\n",
+		__func__, fchan, handset);
+
+	BUG_ON(!telss);
 
 	/* Update the currently active descriptor handset parameters */
 	if (!list_empty(&fchan->desc_active)) {
@@ -96,11 +166,20 @@ static void stm_fdma_telss_update_active(struct stm_fdma_chan *fchan,
 		fdesc = list_first_entry(&fchan->desc_active,
 				struct stm_fdma_desc, node);
 
-		/* Update the first descriptor */
+		/* Encode handset configuration to handset params */
+		params = stm_fdma_telss_encode_params(fdesc,
+			&telss->handset_config[handset]);
+
+		/* Update the first descriptor handset params */
 		fdesc->llu->telss.handset_param[handset] = params;
 
 		/* Update the remaining descriptors */
 		list_for_each_entry(child, &fdesc->llu_list, node) {
+			/* Encode handset configuration to handset params */
+			params = stm_fdma_telss_encode_params(child,
+				&telss->handset_config[handset]);
+
+			/* Update descriptor handset params */
 			child->llu->telss.handset_param[handset] = params;
 		}
 	}
@@ -220,6 +299,19 @@ int dma_telss_handset_config(struct dma_chan *chan, int handset,
 	if ((handset < 0) || (handset >= telss->handset_count)) {
 		dev_err(fchan->fdev->dev, "Invalid handset (%d) (range 0-%d)\n",
 				handset, telss->handset_count);
+		return -EINVAL;
+	}
+
+	/* Ensure buffer offset is within range */
+	if (config->buffer_offset & ~TELSS_HANDSET_BUF_OFF_BIT_MASK) {
+		dev_err(fchan->fdev->dev, "Invalid buffer offset\n");
+		return -EINVAL;
+	}
+
+	/* Ensure period stride is specified */
+	if (config->period_stride == 0) {
+		dev_err(fchan->fdev->dev, "Period stride not specified\n");
+		return -EINVAL;
 	}
 
 	/* Ensure that duplicate and second slot are not both enabled */
@@ -231,44 +323,21 @@ int dma_telss_handset_config(struct dma_chan *chan, int handset,
 
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
-	/* Set the buffer offset */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_BUF_OFF_MASK;
-	telss->handset_params[handset] |=
-			config->buffer_offset << TELSS_HANDSET_BUF_OFF_SHIFT;
+	/* Copy to the handset config */
+	telss->handset_config[handset].buffer_offset = config->buffer_offset;
+	telss->handset_config[handset].period_offset = config->period_offset;
+	telss->handset_config[handset].period_stride = config->period_stride;
+	telss->handset_config[handset].first_slot_id = config->first_slot_id;
+	telss->handset_config[handset].second_slot_id = config->second_slot_id;
+	telss->handset_config[handset].second_slot_id_valid =
+			config->second_slot_id_valid;
+	telss->handset_config[handset].duplicate_enable =
+			config->duplicate_enable;
+	telss->handset_config[handset].data_length = config->data_length;
+	telss->handset_config[handset].call_valid = config->call_valid;
 
-	/* Set the first slot id */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_SLOT_1_ID_MASK;
-	telss->handset_params[handset] |=
-		config->first_slot_id << TELSS_HANDSET_SLOT_1_ID_SHIFT;
-
-	/* Set the second slot id */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_SLOT_2_ID_MASK;
-	telss->handset_params[handset] |=
-		config->second_slot_id << TELSS_HANDSET_SLOT_2_ID_SHIFT;
-
-	/* Set the second slot id valid bit */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_SLOT_2_ID_VALID;
-	if (config->second_slot_id_valid)
-		telss->handset_params[handset] |= TELSS_HANDSET_SLOT_2_ID_VALID;
-
-	/* Set the duplicate enable bit */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_DUPLICATE_ENB;
-	if (config->duplicate_enable)
-		telss->handset_params[handset] |= TELSS_HANDSET_DUPLICATE_ENB;
-
-	/* Set the data length bit */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_DATA_LENGTH;
-	if (config->data_length)
-		telss->handset_params[handset] |= TELSS_HANDSET_DATA_LENGTH;
-
-	/* Set the call valid bit */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_CALL_VALID;
-	if (config->call_valid)
-		telss->handset_params[handset] |= TELSS_HANDSET_CALL_VALID;
-
-	/* Update any active transfers */
-	stm_fdma_telss_update_active(fchan, handset,
-			telss->handset_params[handset]);
+	/* Update any active transfer */
+	stm_fdma_telss_update_active(fchan, handset);
 
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
@@ -297,13 +366,36 @@ int dma_telss_handset_control(struct dma_chan *chan, int handset, int valid)
 	spin_lock_irqsave(&fchan->lock, irqflags);
 
 	/* Update the call valid bit in the cached handset parameters */
-	telss->handset_params[handset] &= ~TELSS_HANDSET_CALL_VALID;
-	if (valid)
-		telss->handset_params[handset] |= TELSS_HANDSET_CALL_VALID;
+	telss->handset_config[handset].call_valid = valid;
 
-	/* Update any active transfers */
-	stm_fdma_telss_update_active(fchan, handset,
-			telss->handset_params[handset]);
+	/* Update any active transfer */
+	if (!list_empty(&fchan->desc_active)) {
+		struct stm_fdma_desc *fdesc;
+		struct stm_fdma_desc *child;
+
+		/* Get the currently active decriptor */
+		fdesc = list_first_entry(&fchan->desc_active,
+				struct stm_fdma_desc, node);
+
+		/* Set of clear the call valid flag */
+		if (valid)
+			fdesc->llu->telss.handset_param[handset] |=
+				TELSS_HANDSET_CALL_VALID;
+		else
+			fdesc->llu->telss.handset_param[handset] &=
+				~TELSS_HANDSET_CALL_VALID;
+
+		/* Update the remaining descriptors */
+		list_for_each_entry(child, &fdesc->llu_list, node) {
+			/* Set of clear the call valid flag */
+			if (valid)
+				child->llu->telss.handset_param[handset] |=
+					TELSS_HANDSET_CALL_VALID;
+			else
+				child->llu->telss.handset_param[handset] &=
+					~TELSS_HANDSET_CALL_VALID;
+		}
+	}
 
 	spin_unlock_irqrestore(&fchan->lock, irqflags);
 
@@ -313,8 +405,7 @@ EXPORT_SYMBOL(dma_telss_handset_control);
 
 struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		struct dma_chan *chan, dma_addr_t buf_addr, size_t buf_len,
-		size_t period_len, size_t period_stride,
-		enum dma_transfer_direction direction)
+		size_t period_len, enum dma_transfer_direction direction)
 {
 	struct stm_fdma_chan *fchan = to_stm_fdma_chan(chan);
 	struct stm_fdma_telss *telss = fchan->extension;
@@ -325,9 +416,8 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 	u32 tmp;
 
 	dev_dbg(fchan->fdev->dev, "%s(chan=%p, buf_addr=%08x, buf_len=%d,"
-			"period_len=%d, period_stride=%d, direction=%d)\n",
-			__func__, chan, buf_addr, buf_len, period_len,
-			period_stride, direction);
+			"period_len=%d, direction=%d)\n", __func__,
+			chan, buf_addr, buf_len, period_len, direction);
 
 	/* Only allow this function on telss channels */
 	BUG_ON(fchan->type != STM_DMA_TYPE_TELSS);
@@ -337,6 +427,15 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 	if (!fchan->dma_addr) {
 		dev_err(fchan->fdev->dev, "Slave not configured!\n");
 		return NULL;
+	}
+
+	/* Each handset must have been configured! */
+	for (h = 0; h < telss->handset_count; ++h) {
+		/* Check period stride has been set for each handset */
+		if (telss->handset_config[h].period_stride == 0) {
+			dev_err(fchan->fdev->dev, "Handsets not configured!\n");
+			return NULL;
+		}
 	}
 
 	/* Only a single transfer allowed as channel is cyclic */
@@ -359,6 +458,9 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 			goto error_desc_get;
 		}
 
+		/* Encode transfer node and total nodes in extension pointer */
+		fdesc->extension = (void *) (p | ((buf_len / period_len) << 16));
+
 		/* Configure the desciptor llu */
 		fdesc->llu->next = 0;
 		fdesc->llu->control = TELSS_CONTROL_REQ_MAP_EXT;
@@ -372,11 +474,11 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		switch (direction) {
 		case DMA_DEV_TO_MEM:
 			fdesc->llu->saddr = fchan->dma_addr;
-			fdesc->llu->daddr = buf_addr + (p * period_stride);
+			fdesc->llu->daddr = buf_addr;
 			break;
 
 		case DMA_MEM_TO_DEV:
-			fdesc->llu->saddr = buf_addr + (p * period_stride);
+			fdesc->llu->saddr = buf_addr;
 			fdesc->llu->daddr = fchan->dma_addr;
 			break;
 
@@ -397,10 +499,11 @@ struct dma_async_tx_descriptor *dma_telss_prep_dma_cyclic(
 		tmp &= TELSS_PARAM_NUM_HANDSETS_MASK;
 		fdesc->llu->telss.node_param |= tmp;
 
-		/* Configure the telss handset specific parameters */
+		/* Configure the cached telss handset specific parameters */
 		for (h = 0; h < telss->handset_count; ++h) {
 			fdesc->llu->telss.handset_param[h] =
-					telss->handset_params[h];
+				stm_fdma_telss_encode_params(fdesc,
+					&telss->handset_config[h]);
 		}
 
 		/* Add the descriptor to the chain */
