@@ -417,6 +417,7 @@ struct snd_stm_uniperif_tdm_info {
 	unsigned int endian_swap;		/* Swap endian of data */
 	unsigned int frame_size;		/* In 32-bit words */
 	unsigned int frame_count;		/* Frames per period */
+	unsigned int max_periods;		/* Max audio periods */
 	unsigned int handset_count;		/* One per I2S: 2/4/6/8/10 */
 	struct snd_stm_telss_handset_info *handset_info;
 };

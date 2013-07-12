@@ -49,7 +49,6 @@
 #define UNIPERIF_TDM_MAX_HANDSETS	10
 
 #define UNIPERIF_TDM_MIN_PERIODS	2
-#define UNIPERIF_TDM_MAX_PERIODS	10
 
 #define UNIPERIF_TDM_MIN_TIMESLOTS	1
 #define UNIPERIF_TDM_MAX_TIMESLOTS	128
@@ -1630,17 +1629,25 @@ static int __devinit uniperif_tdm_probe(struct platform_device *pdev)
 	/* Calculate actual period size (for all handsets) */
 	tdm->period_act_sz = tdm->info->frame_size * 4 * tdm->info->frame_count;
 
+	/* Ensure max period config is larger than or equal to the minimum */
+	BUG_ON(tdm->info->max_periods < UNIPERIF_TDM_MIN_PERIODS);
+
 	/* Calculate number of periods that we can fit within handset offset */
 	tdm->period_count = UNIPERIF_TDM_BUF_OFF_MAX;
 	tdm->period_count /= tdm->period_act_sz;
 	tdm->period_count /= tdm->info->handset_count;
 
 	/* Bounds check the number of periods */
-	if (tdm->period_count > UNIPERIF_TDM_MAX_PERIODS)
-		tdm->period_count = UNIPERIF_TDM_MAX_PERIODS;
+	if (tdm->period_count > tdm->info->max_periods)
+		tdm->period_count = tdm->info->max_periods;
 
 	BUG_ON(tdm->period_count < UNIPERIF_TDM_MIN_PERIODS);
-	BUG_ON(tdm->period_count > UNIPERIF_TDM_MAX_PERIODS);
+	BUG_ON(tdm->period_count > tdm->info->max_periods);
+
+	/* Output a message if we don't have as many periods as expected */
+	if (tdm->period_count != tdm->info->max_periods)
+		dev_notice(&pdev->dev, "Using %d periods not %d",
+				tdm->period_count, tdm->info->max_periods);
 
 	/* Calculate actual buffer size */
 	tdm->buffer_act_sz = tdm->period_act_sz * tdm->period_count;

@@ -75,6 +75,7 @@ static struct snd_stm_uniperif_tdm_info stig125_uniperif_tdm_player_info = {
 
 	.frame_size =  4,			/* 4 words */
 	.frame_count = 80,			/* 10ms * FSync / 1000 */
+	.max_periods = 10,			/* Maximum audio periods */
 	.handset_count = 2,			/* Either 2/4/6/8/10 */
 	.handset_info = stig125_telss_handset_info,
 };
@@ -129,6 +130,7 @@ static struct snd_stm_uniperif_tdm_info stig125_uniperif_tdm_reader_info = {
 
 	.frame_size = 4,			/* 4 words */
 	.frame_count = 80,			/* 10ms * FSync / 1000 */
+	.max_periods = 10,			/* Maximum audio periods */
 	.handset_count = 2,			/* Either 2/4/6/8/10 */
 	.handset_info = stig125_telss_handset_info,
 };
