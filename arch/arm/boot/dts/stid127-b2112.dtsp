@@ -103,21 +103,18 @@
 			phy-mode = "rgmii";
 
 			fpdocsis{
-				status = "okay";
 				st,phy-bus-name = "fixed";
 				st,phy-bus-id = <0>;
 				st,phy-addr = <2>;
 			};
 
 			fpgige0{
-				status = "okay";
 				st,phy-bus-name = "fixed";
 				st,phy-bus-id = <0>;
 				st,phy-addr = <3>;
 			};
 
 			fpgige1{
-				status = "okay";
 				st,phy-bus-name = "stmmac";
 				st,phy-bus-id = <0>;
 				st,phy-addr = <1>;

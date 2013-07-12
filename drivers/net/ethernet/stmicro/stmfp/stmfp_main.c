@@ -64,6 +64,8 @@ TBD
 #include <linux/stm/pad.h>
 #include <linux/io.h>
 #include "stmfp_main.h"
+#include <linux/of.h>
+#include <linux/of_net.h>
 
 static const u32 default_msg_level = (NETIF_MSG_LINK |
 				      NETIF_MSG_IFUP | NETIF_MSG_IFDOWN |
@@ -117,6 +119,92 @@ static struct fp_qos_queue fp_qos_queue_info[NUM_QOS_QUEUES] = {
 	{32, 32, 32, 32, 6},	/* RECIRC QoS Queue */
 };
 
+
+#ifdef CONFIG_OF
+static void stmfp_if_config_dt(struct platform_device *pdev,
+				struct plat_fpif_data *plat,
+				  struct device_node *node, int version)
+{
+	const char **phy_bus_name = (const char **)&plat->phy_bus_name;
+	of_property_read_string(node, "st,phy-bus-name", phy_bus_name);
+	of_property_read_u32(node, "st,phy-addr", &plat->phy_addr);
+	of_property_read_u32(node, "st,phy-bus-id", &plat->bus_id);
+	plat->interface = of_get_phy_mode(node);
+	if (*phy_bus_name && strcmp(*phy_bus_name, "stmfp"))
+		plat->mdio_bus_data = NULL;
+	else
+		plat->mdio_bus_data = devm_kzalloc(&pdev->dev,
+					sizeof(struct stmfp_mdio_bus_data),
+					GFP_KERNEL);
+	plat->tso_enabled = 0;
+	plat->rx_dma_ch = 0;
+	plat->tx_dma_ch = 0;
+	strcpy(plat->ifname, node->name);
+	if (!strcmp(node->name, "fpdocsis")) {
+		plat->iftype = DEVID_DOCSIS;
+		plat->q_idx = 3;
+		plat->buf_thr = 35;
+	} else if (!strcmp(node->name, "fpgige0")) {
+		plat->iftype = DEVID_GIGE0;
+		plat->q_idx = 7;
+		plat->buf_thr = 35;
+	} else {
+		plat->iftype = DEVID_GIGE1;
+		if (version == FP)
+			plat->q_idx = 8;
+		else
+			plat->q_idx = 11;
+		plat->buf_thr = 35;
+	}
+}
+
+static u64 stmfp_dma_mask = DMA_BIT_MASK(32);
+static int stmfp_probe_config_dt(struct platform_device *pdev,
+				  struct plat_stmfp_data *plat)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *node;
+	int if_idx;
+
+	if (!np)
+		return -ENODEV;
+
+	of_property_read_u32(np, "st,fp_clk_rate", &plat->fp_clk_rate);
+
+	if (of_device_is_compatible(np, "st,fplite")) {
+		plat->version = FPLITE;
+		plat->available_l2cam = 128;
+		plat->common_cnt = 56;
+		plat->empty_cnt = 16;
+	} else {
+		plat->version = FP;
+		plat->available_l2cam = 256;
+		plat->common_cnt = 60;
+		plat->empty_cnt = 6;
+	}
+
+	if (!pdev->dev.dma_mask)
+		pdev->dev.dma_mask = &stmfp_dma_mask;
+
+	if_idx = 0;
+	for_each_child_of_node(np, node) {
+		plat->if_data[if_idx] = devm_kzalloc(&pdev->dev,
+				sizeof(struct plat_fpif_data), GFP_KERNEL);
+		if (plat->if_data[if_idx] == NULL)
+			return -ENOMEM;
+		stmfp_if_config_dt(pdev, plat->if_data[if_idx], node,
+				   plat->version);
+		if_idx++;
+	}
+	return 0;
+}
+#else
+static int stmfp_probe_config_dt(struct platform_device *pdev,
+				 struct plat_stmfp_data *plat)
+{
+	return -ENOSYS;
+}
+#endif
 
 static inline void fpif_write_reg(void __iomem *fp_reg, u32 val)
 {
@@ -473,7 +561,7 @@ static int fpif_deinit(struct fpif_grp *fpgrp)
 		if (NULL == priv)
 			continue;
 		if (priv->plat) {
-			if ((priv->plat->mdio_enabled) && (priv->mii))
+			if (priv->plat->mdio_bus_data)
 				fpif_mdio_unregister(priv->netdev);
 			if (priv->plat->exit)
 				priv->plat->exit(priv->plat);
@@ -1534,8 +1622,7 @@ static int fpif_init(struct fpif_grp *fpgrp)
 		/* initialize a napi context */
 		netif_napi_add(netdev, &priv->napi, fpif_poll, FP_NAPI_BUDGET);
 		netdev->netdev_ops = &fpif_netdev_ops;
-		if (priv->plat->ethtool_enabled)
-			fpif_set_ethtool_ops(netdev);
+		fpif_set_ethtool_ops(netdev);
 		netdev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
 		netdev->features |= netdev->hw_features;
 		netdev->hard_header_len += FP_HDR_SIZE;
@@ -1585,7 +1672,7 @@ static int fpif_init(struct fpif_grp *fpgrp)
 			}
 		}
 
-		if (priv->plat->mdio_enabled) {
+		if (priv->plat->mdio_bus_data) {
 			err = fpif_mdio_register(netdev);
 			if (err < 0) {
 				netdev_err(netdev, "fpif_mdio_register err=%d\n",
@@ -1610,8 +1697,6 @@ static void fpga_preirq(void *p);
 static void fpga_postirq(void *p);
 
 static struct plat_fpif_data fpif_gige_data = {
-	.mdio_enabled = 1,
-	.ethtool_enabled = 1,
 	.id = 0,
 	.iftype = DEVID_GIGE0,
 	.ifname = "fpgige",
@@ -1623,8 +1708,6 @@ static struct plat_fpif_data fpif_gige_data = {
 };
 
 static struct plat_fpif_data fpif_isis_data = {
-	.mdio_enabled = 0,
-	.ethtool_enabled = 0,
 	.id = 1,
 	.iftype = DEVID_GIGE1,
 	.ifname = "fplan",
@@ -1823,13 +1906,14 @@ static int __devinit fpif_probe(struct platform_device *pdev)
 	int rx_irq;
 	struct device *devptr = &pdev->dev;
 	struct fpif_grp *fpgrp;
+	struct plat_stmfp_data *plat_dat;
 
 	pr_debug("%s\n", __func__);
 
 	/* Map FastPath register memory */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "fp_mem");
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		pr_err("ERROR :%s: platform_get_resource_byname ", __func__);
+		pr_err("ERROR :%s: platform_get_resource ", __func__);
 		return -ENODEV;
 	}
 
@@ -1840,15 +1924,43 @@ static int __devinit fpif_probe(struct platform_device *pdev)
 	}
 	pr_debug("fastpath base=%p\n", base);
 
+	if (pdev->dev.of_node) {
+		plat_dat =
+		    devm_kzalloc(&pdev->dev, sizeof(struct plat_stmfp_data),
+				 GFP_KERNEL);
+		if (!plat_dat)
+			return -ENOMEM;
+
+		if (pdev->dev.platform_data)
+			memcpy(plat_dat, pdev->dev.platform_data,
+			       sizeof(struct plat_stmfp_data));
+
+		err = stmfp_probe_config_dt(pdev, plat_dat);
+		if (err) {
+			pr_err("%s: FP config of DT failed", __func__);
+			return err;
+		}
+		if (pdev->dev.platform_data)
+			pdev->dev.platform_data = plat_dat;
+	} else {
+		plat_dat = pdev->dev.platform_data;
+	}
+
+	if (plat_dat->init) {
+		err = plat_dat->init(pdev);
+		if (unlikely(err))
+			return err;
+	}
+
 	/* Get Rx interrupt number */
-	rx_irq = platform_get_irq_byname(pdev, "FastPath_6");
+	rx_irq = platform_get_irq_byname(pdev, "fprxdmairq");
 	if (rx_irq == -ENXIO) {
 		pr_err("%s: ERROR: Rx IRQ config info not found\n", __func__);
 		return -ENXIO;
 	}
 
 	/* Get Tx interrupt number */
-	tx_irq = platform_get_irq_byname(pdev, "FastPath_2");
+	tx_irq = platform_get_irq_byname(pdev, "fptxdmairq");
 	if (tx_irq == -ENXIO) {
 		pr_err("%s: ERROR: Tx IRQ config info not found\n", __func__);
 		return -ENXIO;
@@ -1924,12 +2036,25 @@ static int fpif_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id stmfp_dt_ids[] = {
+	{.compatible = "st,fp"},
+	{.compatible = "st,fplite"},
+	{ }
+};
+
+MODULE_DEVICE_TABLE(of, stmfp_dt_ids);
+#endif
+
 static struct platform_driver fpif_driver = {
 	.probe = fpif_probe,
 	.remove = fpif_remove,
 	.driver = {
 		   .name = DRV_NAME,
 		   .owner = THIS_MODULE,
+#ifdef CONFIG_OF
+		   .of_match_table = of_match_ptr(stmfp_dt_ids),
+#endif
 		   },
 };
 

@@ -879,18 +879,6 @@
 			interrupt-names = "fptxdmairq", "fprxdmairq";
 
 			st,fp_clk_rate = <200>;
-
-			fpdocsis {
-				status = "disabled";
-			};
-
-			fpgige0 {
-				status = "disabled";
-			};
-
-			fpgige1 {
-				status = "disabled";
-			};
 		};
 
 		ethernet_amba_bridge_config: stm-eth-amba-bridge {

@@ -42,7 +42,8 @@ struct stmfp_mdio_bus_data {
 };
 
 
-enum IF_DEVID { DEVID_DOCSIS = 0, DEVID_GIGE0 = 1, DEVID_GIGE1 = 2 };
+enum IF_DEVID { DEVID_DOCSIS , DEVID_GIGE0 , DEVID_GIGE1 };
+enum FP_VERSION { FP , FPLITE, FP2 };
 
 struct plat_fpif_data {
 	char *phy_bus_name;
@@ -61,10 +62,16 @@ struct plat_fpif_data {
 	struct stm_pad_state  *pad_state;
 	int (*init)(void *plat);
 	void (*exit)(void *plat);
+	int buf_thr;
+	int q_idx;
 };
 
 struct plat_stmfp_data {
 	int available_l2cam;
+	int version;
+	u32 fp_clk_rate;
+	int common_cnt;
+	int empty_cnt;
 	void (*platinit)(void *fpgrp);
 	void (*preirq)(void *fpgrp);
 	void (*postirq)(void *fpgrp);
