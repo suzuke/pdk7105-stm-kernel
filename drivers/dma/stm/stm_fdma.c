@@ -49,7 +49,7 @@ static void stm_fdma_irq_error(struct stm_fdma_chan *fchan)
 	stm_fdma_hw_channel_pause(fchan, 0);
 
 	/* Complete the active descriptor */
-	tasklet_schedule(&fchan->tasklet_complete);
+	tasklet_hi_schedule(&fchan->tasklet_complete);
 }
 
 static void stm_fdma_irq_complete(struct stm_fdma_chan *fchan)
@@ -100,7 +100,7 @@ static void stm_fdma_irq_complete(struct stm_fdma_chan *fchan)
 	}
 
 	/* Complete the descriptor */
-	tasklet_schedule(&fchan->tasklet_complete);
+	tasklet_hi_schedule(&fchan->tasklet_complete);
 }
 
 static irqreturn_t stm_fdma_irq_handler(int irq, void *dev_id)
