@@ -134,6 +134,8 @@ struct uniperif_tdm {
 	struct dma_tx_state dma_state;
 	enum dma_status dma_status;
 	unsigned int dma_fifo_errors;		/* Count of fifo errors */
+	unsigned int dma_period;		/* Cached current dma period */
+	s64 dma_last_callback_time;		/* Time of last dma callback */
 
 	struct telss_handset handsets[UNIPERIF_TDM_MAX_HANDSETS];
 
@@ -551,14 +553,23 @@ static int uniperif_tdm_prepare(struct snd_pcm_substream *substream)
 static void uniperif_tdm_dma_callback(void *param)
 {
 	struct uniperif_tdm *tdm = param;
-	int period;
+	s64 now;
 	int i;
 
 	BUG_ON(!tdm);
 	BUG_ON(!snd_stm_magic_valid(tdm));
 
-	/* Get the period currently being processed */
-	period = dma_telss_get_period(tdm->dma_channel);
+	/* Get the current ktime in microseconds */
+	now = ktime_to_us(ktime_get());
+
+	/* Cache currently being processed dma period for use by pointer fn */
+	tdm->dma_period = dma_telss_get_period(tdm->dma_channel);
+
+	/*dev_dbg(tdm->dev, "dma period %d, delta %5lld us", tdm->dma_period,
+			now - tdm->dma_last_callback_time);*/
+
+	/* Save last callback time */
+	tdm->dma_last_callback_time = now;
 
 	/* Update buffer pointers for every handset that is running */
 	for (i = 0; i < tdm->info->handset_count; ++i) {
@@ -607,7 +618,8 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 			goto error_handset_config;
 		}
 
-		/* Reset the fifo error count */
+		/* Reset the the cached period and fifo error count */
+		tdm->dma_period = 0;
 		tdm->dma_fifo_errors = 0;
 
 		/* Prepare the dma descriptor */
@@ -724,17 +736,13 @@ static int uniperif_tdm_trigger(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-/* return -1 on xrun */
 static snd_pcm_uframes_t uniperif_tdm_pointer(
 		struct snd_pcm_substream *substream)
 {
 	struct telss_handset *handset = snd_pcm_substream_chip(substream);
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	int period;
 
 	BUG_ON(!handset);
 	BUG_ON(!snd_stm_magic_valid(handset));
-	BUG_ON(!runtime);
 	BUG_ON(!handset->tdm);
 	BUG_ON(!snd_stm_magic_valid(handset->tdm));
 
@@ -743,11 +751,8 @@ static snd_pcm_uframes_t uniperif_tdm_pointer(
 	/* We should only be here when handset call is valid */
 	BUG_ON(!handset->call_valid);
 
-	/* Get current period being processed */
-	period = dma_telss_get_period(handset->tdm->dma_channel);
-
-	/* Convert period offset to a frame offset */
-	return period * handset->tdm->info->frame_count;
+	/* Just return cached dma frame offset */
+	return handset->tdm->dma_period * handset->tdm->info->frame_count;
 }
 
 static int uniperif_tdm_copy(struct snd_pcm_substream *substream,
