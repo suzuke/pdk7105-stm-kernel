@@ -91,6 +91,7 @@ struct telss_handset {
 	struct snd_pcm_hardware hw;		/* Supported hw info */
 	struct snd_pcm_substream *substream;	/* Substream for handset */
 
+	unsigned int call_xrun;			/* Call is in xrun */
 	unsigned int call_valid;		/* Call is valid */
 	unsigned int period_act_sz;		/* Handset actual period size */
 	unsigned int buffer_act_sz;		/* Handset actual buffer size */
@@ -433,6 +434,23 @@ static int uniperif_tdm_close(struct snd_pcm_substream *substream)
 
 	dev_dbg(tdm->dev, "%s(substream=%p)", __func__, substream);
 
+	/* Clean up after an xrun */
+	if (handset->call_xrun) {
+		/* Is this the last started call? */
+		if (--tdm->start_ref == 0) {
+			/* Disable interrupts */
+			disable_irq_nosync(tdm->irq);
+			set__AUD_UNIPERIF_ITM_BCLR__FIFO_ERROR(tdm);
+			set__AUD_UNIPERIF_ITM_BCLR__DMA_ERROR(tdm);
+
+			/* Terminate the dma */
+			dmaengine_terminate_all(tdm->dma_channel);
+		}
+
+		/* The handset is no longer in xrun */
+		handset->call_xrun = 0;
+	}
+
 	/* Unlink the substream from the pcm device */
 	handset->substream = NULL;
 
@@ -577,7 +595,7 @@ static void uniperif_tdm_dma_callback(void *param)
 		if (!tdm->handsets[i].substream)
 			continue;
 
-		/* Skip non-valid calls */
+		/* Skip non-valid calls (i.e. not started or in xrun) */
 		if (!tdm->handsets[i].call_valid)
 			continue;
 
@@ -601,11 +619,11 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 
 	dev_dbg(tdm->dev, "%s(substream=%p)", __func__, substream);
 
-	/* The pcm interface should not be already started */
+	/* The handset call must be stopped or in xrun (i.e. not valid) */
 	BUG_ON(handset->call_valid);
 
 	/* Is this the first call? */
-	if (tdm->start_ref++ == 0) {
+	if (tdm->start_ref == 0) {
 		/* First call so ensure period offset 0 and call valid */
 		handset->config.period_offset = 0;
 		handset->config.call_valid = true;
@@ -666,7 +684,12 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 		}
 	}
 
-	/* Indicate the pcm interface is started and the call is valid */
+	/* Only increment start ref when handset not recovering from xrun */
+	if (!handset->call_xrun)
+		tdm->start_ref++;
+
+	/* Indicate the handset call is started and clear xrun flag */
+	handset->call_xrun = 0;
 	handset->call_valid = 1;
 
 	return 0;
@@ -674,7 +697,6 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 error_prep_dma_cyclic:
 	dma_telss_handset_control(tdm->dma_channel, handset->id, 0);
 error_handset_config:
-	tdm->start_ref--;
 	return result;
 }
 
@@ -693,17 +715,42 @@ static int uniperif_tdm_stop(struct snd_pcm_substream *substream)
 
 	dev_dbg(tdm->dev, "%s(substream=%p)", __func__, substream);
 
-	/* The pcm interface should be started */
+	/* The handset must be started and valid */
 	BUG_ON(!(handset->call_valid));
 
-	/* Immediately mark the call as no longer valid */
-	result = dma_telss_handset_control(tdm->dma_channel, handset->id, 0);
-	if (result) {
-		dev_err(tdm->dev, "Failed clear call valid");
-		return result;
+	/* Clear dma call valid flag (player only - not supported on reader) */
+	if (tdm->info->fdma_direction == DMA_MEM_TO_DEV) {
+		/* Clear handset call valid bit */
+		result = dma_telss_handset_control(tdm->dma_channel,
+				handset->id, 0);
+		if (result) {
+			dev_err(tdm->dev, "Failed clear call valid");
+			return result;
+		}
+
+		/* Clear player buffer to prevent old samples being played */
+		memset(substream->runtime->dma_area, 0, handset->buffer_act_sz);
 	}
 
-	/* Is this the last call?*/
+	/*
+	 * The runtime state is usually updated _after_ stop is called. This
+	 * means we cannot use it to determine an xrun state. So, when called
+	 * in running state, we always assume xrun. Any other state will result
+	 * in a normal stop.
+	 *
+	 * For a player, a normal stop will be when in the draining state, but
+	 * for a reader, it will always be in the running state. So to fully
+	 * stop a reader you must also issue a close.
+	 */
+
+	if (substream->runtime->status->state == SNDRV_PCM_STATE_RUNNING) {
+		/* Treat running as xrun and invalidate call */
+		handset->call_xrun = 1;
+		handset->call_valid = 0;
+		return 0;
+	}
+
+	/* Is this the last started call? */
 	if (--tdm->start_ref == 0) {
 		/* Disable interrupts */
 		disable_irq_nosync(tdm->irq);
@@ -714,7 +761,8 @@ static int uniperif_tdm_stop(struct snd_pcm_substream *substream)
 		dmaengine_terminate_all(tdm->dma_channel);
 	}
 
-	/* Indicate the pcm interface is not started */
+	/* Indicate the handset call is stopped and clear any xrun */
+	handset->call_xrun = 0;
 	handset->call_valid = 0;
 
 	return 0;
