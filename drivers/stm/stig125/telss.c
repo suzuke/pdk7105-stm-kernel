@@ -64,16 +64,16 @@ static struct snd_stm_uniperif_tdm_info stig125_uniperif_tdm_player_info = {
 
 	.rising_edge = 1,			/* Tx is on the rising edge */
 	.clk_rate = 49152000,			/* Clock rate */
-	.pclk_rate = 512000,			/* PCLK: 8kHz * 8 slots * 8 */
+	.pclk_rate = 1024000,			/* PCLK: 8kHz * 8 slots * 8 */
 	.fs01_rate = 8000,			/* 8kHz Fsync */
-	.timeslots = 8,				/* Time slots per Fsync */
+	.timeslots = 16,			/* Time slots per Fsync */
 	.fs02_rate = 8000,			/* 8kHz FSync */
-	.fs02_delay_clock = 6,			/* Fsync PCM clocks delay */
+	.fs02_delay_clock = 0,			/* Fsync PCM clocks delay */
 	.fs02_delay_timeslot = 0,		/* Delay timeslot */
 	.msbit_start = 0,			/* Timeslot start position */
 	.timeslot_info = &stig125_telss_timeslot_info,
 
-	.frame_size = 2,			/* 2 words */
+	.frame_size =  4,			/* 4 words */
 	.frame_count = 40,			/* 5ms * FSync / 1000 */
 	.handset_count = 2,			/* Either 2/4/6/8/10 */
 	.handset_info = stig125_telss_handset_info,
@@ -119,11 +119,11 @@ static struct snd_stm_uniperif_tdm_info stig125_uniperif_tdm_reader_info = {
 	.pad_config = NULL,			/* Set by configure function */
 
 	.rising_edge = 0,			/* Rx is on the falling edge */
-	.timeslots = 8,				/* Time slots per Fsync */
+	.timeslots = 16,			/* Time slots per Fsync */
 	.msbit_start = 0,			/* Timeslot start position */
 	.timeslot_info = &stig125_telss_timeslot_info,
 
-	.frame_size = 2,			/* 2 words */
+	.frame_size = 4,			/* 4 words */
 	.frame_count = 40,			/* 5ms * FSync / 1000 */
 	.handset_count = 2,			/* Either 2/4/6/8/10 */
 	.handset_info = stig125_telss_handset_info,
