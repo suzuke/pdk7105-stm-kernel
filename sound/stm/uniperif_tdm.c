@@ -1248,16 +1248,13 @@ static void uniperif_tdm_hw_enable(struct uniperif_tdm *tdm)
 	BUG_ON(!tdm);
 	BUG_ON(!snd_stm_magic_valid(tdm));
 
-	/* If we are a player, prime the FIFO to start things off */
+	/* Prime the FIFO to start internal clocking (player only) */
 	if (tdm->info->fdma_direction == DMA_MEM_TO_DEV)
 		for (i = 0; i < tdm->info->frame_size; ++i)
 			set__AUD_UNIPERIF_FIFO_DATA(tdm, 0x00000000);
 
 	/* The uniperipheral must be on to supply a clock to telss hardware */
 	set__AUD_UNIPERIF_CTRL__OPERATION_PCM_DATA(tdm);
-
-	/* Issue a soft reset to ensure consistent IP internal state */
-	uniperif_tdm_hw_reset(tdm);
 }
 
 static void uniperif_tdm_hw_disable(struct uniperif_tdm *tdm)
