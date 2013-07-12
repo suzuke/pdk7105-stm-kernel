@@ -7,6 +7,8 @@ config STM_FASTPATH
 	select NET_CORE
 	select MII
 	select PHYLIB
+	select FIXED_PHY
+	select STMMAC_ETH
 	---help---
 	  Driver for STM FastPath Ethernet device. This hardware is used
 	  on some STM embedded platforms to route packets from multiple on
