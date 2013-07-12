@@ -910,6 +910,10 @@ static int uniperif_tdm_set_freqs(struct uniperif_tdm *tdm)
 	BUG_ON(!tdm);
 	BUG_ON(!snd_stm_magic_valid(tdm));
 
+	/* We only set the clock frequencies for players */
+	if (tdm->info->fdma_direction == DMA_DEV_TO_MEM)
+		return 0;
+
 	/* Set the FS_REF to the maximum of FS01 and FS02 */
 	if (tdm->info->fs01_rate > tdm->info->fs02_rate)
 		fs_ref = tdm->info->fs01_rate;
@@ -1109,20 +1113,18 @@ static int uniperif_tdm_configure(struct uniperif_tdm *tdm)
 	/* We don't use the memory block read interrupt, so set this to zero */
 	set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(tdm, 0);
 
-	/* Enable the tdm functionality */
-	set__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(tdm);
-
-	/* Only set the frequencies if a player */
-	if (tdm->info->fdma_direction == DMA_MEM_TO_DEV) {
-		result = uniperif_tdm_set_freqs(tdm);
-		if (result) {
-			dev_err(tdm->dev, "Failed to set freqs");
-			return result;
-		}
+	/* Set the clock frequencies */
+	result = uniperif_tdm_set_freqs(tdm);
+	if (result) {
+		dev_err(tdm->dev, "Failed to set freqs");
+		return result;
 	}
 
 	/* Configure the time slots */
 	uniperif_tdm_configure_timeslots(tdm);
+
+	/* Enable the tdm functionality */
+	set__AUD_UNIPERIF_TDM_ENABLE__TDM_ENABLE(tdm);
 
 	return 0;
 }
