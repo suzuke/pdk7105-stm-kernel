@@ -869,6 +869,30 @@
 			st,fix-mac-speed = <&gmac_speed_fixups>;
 		};
 
+		stmfp:ethernet@fee80000 {
+			compatible	= "st,fplite";
+			status = "disabled";
+			device_type = "network";
+
+			reg = <0xfee80000 0x40000>;
+			interrupts = <0 101 0>, <0 102 0>;
+			interrupt-names = "fptxdmairq", "fprxdmairq";
+
+			st,fp_clk_rate = <200>;
+
+			fpdocsis {
+				status = "disabled";
+			};
+
+			fpgige0 {
+				status = "disabled";
+			};
+
+			fpgige1 {
+				status = "disabled";
+			};
+		};
+
 		ethernet_amba_bridge_config: stm-eth-amba-bridge {
 			reg-offset = <0x1ffc>;
 			bridge_type2;

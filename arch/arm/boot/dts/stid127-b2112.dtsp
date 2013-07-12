@@ -97,6 +97,33 @@
 			snps,reset-delays-us = <0 10000 10000>;
 		};
 
+		stmfp:ethernet@fee80000 {
+			status = "okay";
+			device-config = <&fprgmii_dev_config>;
+			phy-mode = "rgmii";
+
+			fpdocsis{
+				status = "okay";
+				st,phy-bus-name = "fixed";
+				st,phy-bus-id = <0>;
+				st,phy-addr = <2>;
+			};
+
+			fpgige0{
+				status = "okay";
+				st,phy-bus-name = "fixed";
+				st,phy-bus-id = <0>;
+				st,phy-addr = <3>;
+			};
+
+			fpgige1{
+				status = "okay";
+				st,phy-bus-name = "stmmac";
+				st,phy-bus-id = <0>;
+				st,phy-addr = <1>;
+			};
+		};
+
 		miphy0: miphy@fef24000 {
 			status = "okay";
 			miphy-modes	= "pcie";

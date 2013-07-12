@@ -171,6 +171,44 @@
 
 		};
 
+		gmac1{
+			padcfg_fprgmii: fprgmii-padcfg {
+				st,pins {
+					 txd0_1  = <&PIO13  0	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd1_1  = <&PIO13  1	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd2_1  = <&PIO13  2	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd3_1  = <&PIO13  3	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txen_1 =	<&PIO13  4	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txclk_1 =<&PIO13  5	OUT 	ALT1	NICLK	3250	CLK_A>;
+
+					 rxd0_1  = <&PIO13  6	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd1_1  = <&PIO13  7	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd2_1  = <&PIO14  0	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd3_1  = <&PIO14  1	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxdv_1 =	<&PIO14  2	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxclk_1 = <&PIO14  3	IN 	ALT1	NICLK	3000	CLK_A>;
+
+					 phyclk_1 =<&PIO14  4	IN 	ALT1	NICLK	0	CLK_A>;
+
+					 txd0_0  = <&PIO7  0	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd1_0  = <&PIO7  1	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd2_0  = <&PIO7  2	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txd3_0  = <&PIO7  3	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txen_0 =	<&PIO6  7	OUT 	ALT1	DE_IO	0 	CLK_A>;
+					 txclk_0 =<&PIO7  4	OUT 	ALT1	NICLK	3250	CLK_A>;
+
+					 rxd0_0  = <&PIO6  2	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd1_0  = <&PIO6  3	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd2_0  = <&PIO6  4	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxd3_0  = <&PIO6  5	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxdv_0 =	<&PIO6  1	IN 	ALT1	DE_IO	0	CLK_A>;
+					 rxclk_0 = <&PIO6  6	IN 	ALT1	NICLK	0	CLK_A>;
+
+					 phyclk_0 =<&PIO6  0	IN 	ALT1	NICLK	0	CLK_A>;
+				};
+			};
+		};
+
 		i2c0 {
 			padcfg_i2c0: i2c0 {
 				st,pins {

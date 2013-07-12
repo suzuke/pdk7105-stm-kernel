@@ -8,6 +8,13 @@
  */
 #include "stm-padcfg.h"
 / {
+	/* FP RGMII config */
+	fprgmii_dev_config: fpgmac-rgmii-pad-config{
+		padcfg-0 = <&padcfg_fprgmii>;
+		sysconfs{
+		};
+	};
+
 	/* RGMII mode Internal Clock */
 	rgmii0_dev_config: gmac0-rgmii-dev-config{
 		padcfg-0 = <&padcfg_rgmii0 &padcfg_rgmii0_phyclk>;

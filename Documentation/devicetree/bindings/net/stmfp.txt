@@ -1,0 +1,44 @@
+* STMicroelectronics 100/1000 Fastpath Ethernet driver (STMFP)
+
+Required properties:
+- compatible: Should be "st,fplite"
+- reg: Address and length of the register set for the device
+- interrupts: Should contain the STMFP interrupts
+- interrupt-names: Should contain the interrupt names "fptxdmairq"
+  "fprxdmairq" if this interrupt is supported in the "interrupts"
+  property
+- st,fp_clk_rate : fastpath clock rate (MHz)
+
+- fpdocsis : DOCSIS interface specific platform info (Interface node)
+- fpgige0 : FPGIGE0 interface specific platform info (Interface node)
+- fpgige1 : FPGIGE1 interface specific platform info (Interface node)
+
+
+
+Interface node(fpdocsis,fpgige0,fpgige1) specific Optional properties:
+- st,phy-bus-name : Name of the mdio bus to connect.
+- st,phy-bus-id : Mdio bus number to connect.
+- st,phy-addr : phy address to connect to.
+
+Examples:
+		stmfp:ethernet@fee80000 {
+			compatible	= "st,fplite";
+			status = "disabled";
+			device_type = "network";
+
+			reg = <0xfee80000 0x40000>;
+			interrupts = <0 101 0>, <0 102 0>;
+			interrupt-names = "fptxdmairq", "fprxdmairq";
+			st,fp_clk_rate = <200>;
+
+			fpdocsis {
+				status = "disabled";
+			};
+
+			fpgige0 {
+				status = "disabled";
+			};
+			fpgige1 {
+				status = "disabled";
+			};
+		};
