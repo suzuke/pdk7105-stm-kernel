@@ -94,7 +94,11 @@ static struct platform_device stig125_uniperif_tdm_player = {
 	.num_resources = 2,
 	.resource = (struct resource []) {
 		STM_PLAT_RESOURCE_MEM(0xfeba4000, 0x150),
-		STIG125_RESOURCE_IRQ(65),
+		{
+			.start = STIG125_IRQMUX(65),
+			.end = STIG125_IRQMUX(65),
+			.flags = IORESOURCE_IRQ,
+		},
 	},
 	.dev.platform_data = &stig125_uniperif_tdm_player_info,
 };
@@ -142,7 +146,11 @@ static struct platform_device stig125_uniperif_tdm_reader = {
 	.num_resources = 2,
 	.resource = (struct resource []) {
 		STM_PLAT_RESOURCE_MEM(0xfeba5000, 0x150),
-		STIG125_RESOURCE_IRQ(66),
+		{
+			.start = STIG125_IRQMUX(66),
+			.end = STIG125_IRQMUX(66),
+			.flags = IORESOURCE_IRQ,
+		},
 	},
 	.dev.platform_data = &stig125_uniperif_tdm_reader_info,
 };
