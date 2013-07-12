@@ -406,8 +406,9 @@ struct snd_stm_uniperif_tdm_info {
 	unsigned int rising_edge;		/* Data on rising edge */
 	unsigned long clk_rate;			/* Clock rate in Hz */
 	unsigned long pclk_rate;		/* PCLK rate in Hz */
-	unsigned long fs01_rate;		/* fs01/fs ref rate in Hz */
+	unsigned long fs_rate;			/* fs ref rate in Hz */
 	unsigned int timeslots;			/* Time slots per fs ref */
+	unsigned long fs01_rate;		/* fs01 rate in Hz */
 	unsigned long fs02_rate;		/* fs02 rate in Hz */
 	unsigned int fs02_delay_clock;		/* fs02 delay from fs01 */
 	unsigned int fs02_delay_timeslot;	/* fs02 delay from fs01 */

@@ -942,8 +942,6 @@ static int uniperif_tdm_lookup_mem_fmt(struct uniperif_tdm *tdm,
 
 static int uniperif_tdm_set_freqs(struct uniperif_tdm *tdm)
 {
-	unsigned long fs_ref;
-
 	dev_dbg(tdm->dev, "%s(tdm=%p)", __func__, tdm);
 
 	BUG_ON(!tdm);
@@ -953,14 +951,8 @@ static int uniperif_tdm_set_freqs(struct uniperif_tdm *tdm)
 	if (tdm->info->fdma_direction == DMA_DEV_TO_MEM)
 		return 0;
 
-	/* Set the FS_REF to the maximum of FS01 and FS02 */
-	if (tdm->info->fs01_rate > tdm->info->fs02_rate)
-		fs_ref = tdm->info->fs01_rate;
-	else
-		fs_ref = tdm->info->fs02_rate;
-
-	/* Set the FS_REF */
-	switch (fs_ref) {
+	/* Set the fs ref */
+	switch (tdm->info->fs_rate) {
 	case UNIPERIF_TDM_FREQ_8KHZ:
 		set__AUD_UNIPERIF_TDM_FS_REF_FREQ__8KHZ(tdm);
 		break;
@@ -974,7 +966,7 @@ static int uniperif_tdm_set_freqs(struct uniperif_tdm *tdm)
 		break;
 
 	default:
-		dev_err(tdm->dev, "Invalid fs_ref (%ld)", fs_ref);
+		dev_err(tdm->dev, "Invalid fs_ref (%ld)", tdm->info->fs_rate);
 		return -EINVAL;
 	}
 
@@ -985,7 +977,10 @@ static int uniperif_tdm_set_freqs(struct uniperif_tdm *tdm)
 	set__AUD_UNIPERIF_TDM_FS_REF_DIV__NUM_TIMESLOT(tdm,
 			tdm->info->timeslots);
 
-	/* Set the frequency parameters (FS_REF == FS01) */
+	/* Ensure fs01 is less than or equal to fs ref */
+	BUG_ON(tdm->info->fs01_rate > tdm->info->fs_rate);
+
+	/* Set the fs01 frequency parameters */
 	switch (tdm->info->fs01_rate) {
 	case UNIPERIF_TDM_FREQ_8KHZ:
 		set__AUD_UNIPERIF_TDM_FS01_FREQ__8KHZ(tdm);
@@ -1003,7 +998,10 @@ static int uniperif_tdm_set_freqs(struct uniperif_tdm *tdm)
 		return -EINVAL;
 	}
 
-	/* Set the frequency parameters (FS_REF == FS01) */
+	/* Ensure fs02 is less than or equal to fs ref */
+	BUG_ON(tdm->info->fs02_rate > tdm->info->fs_rate);
+
+	/* Set the fs02 frequency parameters */
 	switch (tdm->info->fs02_rate) {
 	case UNIPERIF_TDM_FREQ_8KHZ:
 		set__AUD_UNIPERIF_TDM_FS02_FREQ__8KHZ(tdm);
