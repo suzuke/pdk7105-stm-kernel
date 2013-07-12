@@ -74,7 +74,7 @@ static struct snd_stm_uniperif_tdm_info stig125_uniperif_tdm_player_info = {
 	.timeslot_info = &stig125_telss_timeslot_info,
 
 	.frame_size =  4,			/* 4 words */
-	.frame_count = 40,			/* 5ms * FSync / 1000 */
+	.frame_count = 80,			/* 10ms * FSync / 1000 */
 	.handset_count = 2,			/* Either 2/4/6/8/10 */
 	.handset_info = stig125_telss_handset_info,
 };
@@ -124,7 +124,7 @@ static struct snd_stm_uniperif_tdm_info stig125_uniperif_tdm_reader_info = {
 	.timeslot_info = &stig125_telss_timeslot_info,
 
 	.frame_size = 4,			/* 4 words */
-	.frame_count = 40,			/* 5ms * FSync / 1000 */
+	.frame_count = 80,			/* 10ms * FSync / 1000 */
 	.handset_count = 2,			/* Either 2/4/6/8/10 */
 	.handset_info = stig125_telss_handset_info,
 };
@@ -172,6 +172,7 @@ static struct platform_device stig125_telss_glue = {
 
 /*
  * Devices
+ * *** ALWAYS list player device first as reader clock derived from player ***
  */
 
 static struct platform_device *stig125_telss_devices[] __initdata = {
