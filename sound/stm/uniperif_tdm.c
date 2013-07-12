@@ -92,12 +92,12 @@ struct telss_handset {
 	struct snd_pcm_substream *substream;	/* Substream for handset */
 
 	unsigned int call_valid;		/* Call is valid */
-	unsigned int call_ready;		/* Call has been marked valid */
 	unsigned int period_act_sz;		/* Handset actual period size */
 	unsigned int buffer_act_sz;		/* Handset actual buffer size */
 	unsigned int buffer_pad_sz;		/* Handset padded buffer size */
 	unsigned int buffer_offset;		/* Handset buffer offset */
 	struct snd_stm_telss_handset_info *info;
+	struct stm_dma_telss_handset_config config;
 
 	snd_stm_magic_field;
 };
@@ -114,8 +114,6 @@ struct uniperif_tdm {
 	struct stm_pad_state *pads;		/* PIOs */
 
 	struct snd_info_entry *proc_entry;
-
-	int open_ref;				/* No handsets opened */
 
 	int start_ref;				/* No handsets started */
 
@@ -262,11 +260,16 @@ static bool uniperif_tdm_dma_filter_fn(struct dma_chan *chan, void *fn_param)
 	return true;
 }
 
-static int uniperif_tdm_dma_setup(struct uniperif_tdm *tdm)
+static int uniperif_tdm_dma_request(struct uniperif_tdm *tdm)
 {
 	dma_cap_mask_t mask;
 	int result;
 	int i;
+
+	BUG_ON(!tdm);
+	BUG_ON(!snd_stm_magic_valid(tdm));
+
+	dev_dbg(tdm->dev, "%s(tdm=%p)", __func__, tdm);
 
 	/* Set the dma channel capabilities we want */
 	dma_cap_zero(mask);
@@ -281,24 +284,27 @@ static int uniperif_tdm_dma_setup(struct uniperif_tdm *tdm)
 		return -ENODEV;
 	}
 
+	/* Set the handset configuration */
 	for (i = 0; i < tdm->info->handset_count; ++i) {
 		struct telss_handset *handset = &tdm->handsets[i];
-		struct stm_dma_telss_handset_config config;
+		struct stm_dma_telss_handset_config *config = &handset->config;
 
-		/* Set the buffer offset (offset is shifted down 3-bits) */
-		config.buffer_offset	= handset->buffer_offset >> 3;
+		/* Set the buffer offset and period offset to start from */
+		config->buffer_offset = handset->buffer_offset;
+		config->period_offset = 0;
+		config->period_stride = handset->period_act_sz;
 
 		/* Set the remainder of the handset configuration */
-		config.first_slot_id	= handset->info->slot1;
-		config.second_slot_id	= handset->info->slot2;
-		config.second_slot_id_valid = handset->info->slot2_valid;
-		config.duplicate_enable	= handset->info->duplicate;
-		config.data_length	= handset->info->data16;
-		config.call_valid	= false;
+		config->first_slot_id = handset->info->slot1;
+		config->second_slot_id = handset->info->slot2;
+		config->second_slot_id_valid = handset->info->slot2_valid;
+		config->duplicate_enable = handset->info->duplicate;
+		config->data_length = handset->info->data16;
+		config->call_valid = false;
 
 		/* Set the last used handset configuration */
 		result = dma_telss_handset_config(tdm->dma_channel, handset->id,
-				&config);
+				config);
 		if (result) {
 			dev_err(tdm->dev, "Failed to configure handset %d", i);
 			dma_release_channel(tdm->dma_channel);
@@ -307,6 +313,23 @@ static int uniperif_tdm_dma_setup(struct uniperif_tdm *tdm)
 	}
 
 	return 0;
+}
+
+static void uniperif_tdm_dma_release(struct uniperif_tdm *tdm)
+{
+	BUG_ON(!tdm);
+	BUG_ON(!snd_stm_magic_valid(tdm));
+
+	dev_dbg(tdm->dev, "%s(tdm=%p)", __func__, tdm);
+
+	if (tdm->dma_channel) {
+		/* Terminate any dma */
+		dmaengine_terminate_all(tdm->dma_channel);
+
+		/* Release the dma channel */
+		dma_release_channel(tdm->dma_channel);
+		tdm->dma_channel = NULL;
+	}
 }
 
 static int uniperif_tdm_open(struct snd_pcm_substream *substream)
@@ -331,13 +354,12 @@ static int uniperif_tdm_open(struct snd_pcm_substream *substream)
 	/* Set the pcm sync identifier for sound card */
 	snd_pcm_set_sync(substream);
 
-	/* Request dma channel on first load, can't do on probe as will hang */
-	if (tdm->open_ref++ == 0) {
+	/* Setup dma if not already done so (can't do on probe as will hang) */
+	if (tdm->dma_channel == NULL) {
 		/* Request dma channel and set default handset configuration */
-		result = uniperif_tdm_dma_setup(tdm);
+		result = uniperif_tdm_dma_request(tdm);
 		if (result) {
 			dev_err(tdm->dev, "Failed to request DMA channel");
-			/* Close called on open failure - open_ref-- there */
 			return result;
 		}
 	}
@@ -348,7 +370,6 @@ static int uniperif_tdm_open(struct snd_pcm_substream *substream)
 			tdm->info->frame_count, tdm->info->frame_count);
 	if (result < 0) {
 		dev_err(tdm->dev, "Failed to constrain period size");
-		/* Close called on open failure - open_ref-- there */
 		return result;
 	}
 
@@ -409,15 +430,6 @@ static int uniperif_tdm_close(struct snd_pcm_substream *substream)
 	tdm = handset->tdm;
 
 	dev_dbg(tdm->dev, "%s(substream=%p)", __func__, substream);
-
-	/* On last close we must release the dma channel */
-	if (--handset->tdm->open_ref == 0) {
-		if (tdm->dma_channel) {
-			/* Release the dma channel */
-			dma_release_channel(tdm->dma_channel);
-			tdm->dma_channel = NULL;
-		}
-	}
 
 	/* Unlink the substream from the pcm device */
 	handset->substream = NULL;
@@ -481,7 +493,6 @@ static int uniperif_tdm_prepare(struct snd_pcm_substream *substream)
 {
 	struct telss_handset *handset = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct stm_dma_telss_handset_config config;
 	struct uniperif_tdm *tdm;
 	int result;
 
@@ -495,36 +506,28 @@ static int uniperif_tdm_prepare(struct snd_pcm_substream *substream)
 
 	dev_dbg(tdm->dev, "%s(substream=%p)", __func__, substream);
 
-	/* Set the buffer offset (offset is shifted down 3-bits) */
-	config.buffer_offset	= handset->buffer_offset >> 3;
-
-	/* Set the remainder of the handset configuration */
-	config.first_slot_id	= handset->info->slot1;
-	config.second_slot_id	= handset->info->slot2;
-	config.call_valid	= false;
-
-	/* Determine the correct duplicate and data length */
+	/* Update handset configuration with format specific parameters */
 	switch (substream->runtime->format) {
 	case SNDRV_PCM_FORMAT_S8:
 	case SNDRV_PCM_FORMAT_U8:
 		dev_dbg(tdm->dev, "SNDRV_PCM_FORMAT_S8/U8");
-		config.second_slot_id_valid = false;
-		config.duplicate_enable	= false;
-		config.data_length = false;
+		handset->config.second_slot_id_valid = false;
+		handset->config.duplicate_enable = false;
+		handset->config.data_length = false;
 		break;
 
 	case SNDRV_PCM_FORMAT_S16_LE:
 		dev_dbg(tdm->dev, "SNDRV_PCM_FORMAT_S16_LE");
-		config.second_slot_id_valid = false;
-		config.duplicate_enable	= false;
-		config.data_length = true;
+		handset->config.second_slot_id_valid = false;
+		handset->config.duplicate_enable = false;
+		handset->config.data_length = true;
 		break;
 
 	case SNDRV_PCM_FORMAT_S32_LE:
 		dev_dbg(tdm->dev, "SNDRV_PCM_FORMAT_S32_LE");
-		config.second_slot_id_valid = true;
-		config.duplicate_enable	= false;
-		config.data_length = true;
+		handset->config.second_slot_id_valid = true;
+		handset->config.duplicate_enable = false;
+		handset->config.data_length = true;
 		break;
 
 	default:
@@ -536,7 +539,7 @@ static int uniperif_tdm_prepare(struct snd_pcm_substream *substream)
 
 	/* Set the handset configuration */
 	result = dma_telss_handset_config(tdm->dma_channel, handset->id,
-			&config);
+			&handset->config);
 	if (result) {
 		dev_err(tdm->dev, "Failed to configure handset");
 		return result;
@@ -567,37 +570,6 @@ static void uniperif_tdm_dma_callback(void *param)
 		if (!tdm->handsets[i].call_valid)
 			continue;
 
-		/*
-		 * A handset buffer is always filled from period 0 onwards. If
-		 * the FDMA is already running to process another handset with
-		 * a valid call, when the new handset is marked as valid, the
-		 * FDMA will begin processing the new call from the next period.
-		 * Most likely the next period will not be period 0 (where the
-		 * new call data is waiting) and the FDMA will process the new
-		 * call data out of order. To prevent this, we wait until the
-		 * FDMA is processing the last period before marking the new
-		 * call as valid (in reality, the FDMA will cache the next node
-		 * it processes, so we wait for the penultimate period).
-		 */
-
-		/* Check if call is ready */
-		if (!tdm->handsets[i].call_ready) {
-			/* Check if penultimate period... */
-			if (period == (tdm->period_count - 2)) {
-				/* Mark call as active */
-				(void) dma_telss_handset_control(
-						tdm->dma_channel,
-						tdm->handsets[i].id,
-						1);
-
-				/* Indicate call is now ready */
-				tdm->handsets[i].call_ready = 1;
-			}
-
-			continue;
-		}
-
-
 		/* Update the hwptr */
 		snd_pcm_period_elapsed(tdm->handsets[i].substream);
 	}
@@ -623,16 +595,17 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 
 	/* Is this the first call? */
 	if (tdm->start_ref++ == 0) {
-		/* The first call can be immediately marked as valid */
-		result = dma_telss_handset_control(tdm->dma_channel,
-						   handset->id, 1);
-		if (result) {
-			dev_err(tdm->dev, "Failed mark call active");
-			goto error_handset_control;
-		}
+		/* First call so ensure period offset 0 and call valid */
+		handset->config.period_offset = 0;
+		handset->config.call_valid = true;
 
-		/* Indicate the call is ready */
-		handset->call_ready = 1;
+		/* Set the configuration */
+		result = dma_telss_handset_config(tdm->dma_channel, handset->id,
+				&handset->config);
+		if (result) {
+			dev_err(tdm->dev, "Failed to set handset config");
+			goto error_handset_config;
+		}
 
 		/* Reset the fifo error count */
 		tdm->dma_fifo_errors = 0;
@@ -643,7 +616,6 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 				tdm->buffer_phys,
 				tdm->buffer_act_sz,
 				tdm->period_act_sz,
-				handset->period_act_sz, /* stride */
 				tdm->info->fdma_direction);
 		if (!tdm->dma_descriptor) {
 			dev_err(tdm->dev, "Failed to prepare dma descriptor");
@@ -666,6 +638,20 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 		enable_irq(tdm->irq);
 
 		/* The tdm is already running (it supplies telss with clock) */
+	} else {
+		/* Set to period offset to next period and set call valid */
+		handset->config.period_offset =
+				dma_telss_get_period(tdm->dma_channel) + 1;
+		handset->config.period_offset %= tdm->period_count;
+		handset->config.call_valid = true;
+
+		/* Set the configuration */
+		result = dma_telss_handset_config(tdm->dma_channel, handset->id,
+				&handset->config);
+		if (result) {
+			dev_err(tdm->dev, "Failed to set handset config");
+			goto error_handset_config;
+		}
 	}
 
 	/* Indicate the pcm interface is started and the call is valid */
@@ -675,8 +661,7 @@ static int uniperif_tdm_start(struct snd_pcm_substream *substream)
 
 error_prep_dma_cyclic:
 	dma_telss_handset_control(tdm->dma_channel, handset->id, 0);
-	handset->call_ready = 0;
-error_handset_control:
+error_handset_config:
 	tdm->start_ref--;
 	return result;
 }
@@ -719,7 +704,6 @@ static int uniperif_tdm_stop(struct snd_pcm_substream *substream)
 
 	/* Indicate the pcm interface is not started */
 	handset->call_valid = 0;
-	handset->call_ready = 0;
 
 	return 0;
 }
@@ -1402,6 +1386,9 @@ static int uniperif_tdm_disconnect(struct snd_device *snd_device)
 
 	BUG_ON(!tdm);
 	BUG_ON(!snd_stm_magic_valid(tdm));
+
+	/* Release any dma channel */
+	uniperif_tdm_dma_release(tdm);
 
 	/* Disable the tdm device */
 	uniperif_tdm_hw_disable(tdm);
