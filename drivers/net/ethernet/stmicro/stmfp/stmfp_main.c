@@ -119,6 +119,23 @@ static struct fp_qos_queue fp_qos_queue_info[NUM_QOS_QUEUES] = {
 	{32, 32, 32, 32, 6},	/* RECIRC QoS Queue */
 };
 
+static struct fp_qos_queue fpl_qos_queue_info[NUM_QOS_QUEUES] = {
+	 {256, 255, 255, 255, 16},	/* DOCSIS QoS Queue 0 */
+	 {256, 255, 255, 255, 16},		/* DOCSIS QoS Queue 1 */
+	 {256, 255, 255, 255, 16},		/* DOCSIS QoS Queue2 */
+	 {256, 255, 255, 255, 40},	/* DOCSIS QoS Queue3 */
+	 {256, 255, 255, 255, 16},	/* GIGE0 QoS Queue0 */
+	 {256, 255, 255, 255, 16},		/* GIGE0 QoS Queue1 */
+	 {256, 255, 255, 255, 16},		/* GIGE0 QoS Queue2 */
+	 {256, 255, 255, 255, 40},	/* GIGE0 QoS Queue3 */
+	 {256, 255, 255, 255, 16},	/* GIGE1 QoS Queue0 */
+	 {256, 255, 255, 255, 16},		/* GIGE1 QoS Queue1 */
+	 {256, 255, 255, 255, 16},		/* GIGE1 QoS Queue2 */
+	 {256, 255, 255, 255, 40},	/* GIGE1 QoS Queue3 */
+	 {32, 31, 31, 31, 16},	/* DMA0 QoS Queue */
+	 {32, 31, 31, 31, 16},	/* DMA1 QoS Queue */
+	 {32, 31, 31, 31, 16},	/* RECIRC QoS Queue */
+};
 
 #ifdef CONFIG_OF
 static void stmfp_if_config_dt(struct platform_device *pdev,
@@ -338,13 +355,11 @@ static void fp_txdma_setup(struct fpif_priv *priv)
 	txdma_ptr->head_tx = 0;
 	txdma_ptr->last_tx = 0;
 	spin_lock_init(&txdma_ptr->fpif_txlock);
-	spin_lock_init(&txdma_ptr->txcollect);
-	atomic_set(&txdma_ptr->pending_tx, 0);
 	fpif_write_reg(&txdma_ptr->txbase->tx_bpai_clear, 1 << tx_ch);
 	current_tx = readl(&txdma_ptr->txbase->tx_irq_enables[0]);
 	current_tx |= 1 << tx_ch;
 	fpif_write_reg(&txdma_ptr->txbase->tx_irq_enables[0], current_tx);
-	fpif_write_reg(&txdma_ptr->tx_ch_reg->tx_delay, DELAY_TX_INTR);
+	fpif_write_reg(&txdma_ptr->tx_ch_reg->tx_delay, DELAY_TX_INTRH);
 }
 
 static void fp_txdma_release(struct fpif_priv *priv)
@@ -361,7 +376,7 @@ static void fp_txdma_release(struct fpif_priv *priv)
 	current_tx = readl(&txdma_ptr->txbase->tx_irq_enables[0]);
 	current_tx &= ~(1 << tx_ch);
 	fpif_write_reg(&txdma_ptr->txbase->tx_irq_enables[0], current_tx);
-	fpif_write_reg(&txdma_ptr->tx_ch_reg->tx_delay, DELAY_TX_INTR);
+	fpif_write_reg(&txdma_ptr->tx_ch_reg->tx_delay, DELAY_TX_INTRH);
 	txdma_ptr->head_tx = 0;
 	txdma_ptr->last_tx = 0;
 	fpif_txb_release(priv);
@@ -421,35 +436,69 @@ static void fp_rxdma_release(struct fpif_priv *priv)
 
 static void fp_hwinit(struct fpif_grp *fpgrp)
 {
-	int start_q, size_q, idx;
+	int idx;
+	struct fp_qos_queue *fp_qos;
+	int start_q, size_q, num_q;
 
 	if (fpgrp->plat->platinit)
 		fpgrp->plat->platinit(fpgrp);
 
 	/* FP Hardware Init */
-	fpif_write_reg(fpgrp->base + FILT_BADF, 0x1f1e);
-	fpif_write_reg(fpgrp->base + FILT_BADF_DROP, 0x1f1e);
-	fpif_write_reg(fpgrp->base + FP_MISC, 0x20);
+	fpif_write_reg(fpgrp->base + FILT_BADF, PKTLEN_ERR | MALFORM_PKT |
+		       EARLY_EOF | L4_CSUM_ERR | IPV4_L3_CSUM_ERR |
+		       SAMEIP_SRC_DEST | IPSRC_LOOP | TTL0_ERR | IPV4_BAD_HLEN);
+	fpif_write_reg(fpgrp->base + FILT_BADF_DROP, PKTLEN_ERR |
+		       MALFORM_PKT | EARLY_EOF | L4_CSUM_ERR |
+		       IPV4_L3_CSUM_ERR | SAMEIP_SRC_DEST |
+		       IPSRC_LOOP | IPV4_BAD_HLEN);
 
-	fpif_write_reg(fpgrp->base + RGMII_MACINFO0, 0x06c46800);
-	fpif_write_reg(fpgrp->base + RGMII_RX_STAT_RESET, 0);
-	fpif_write_reg(fpgrp->base + RGMII_TX_STAT_RESET, 0);
-	/*
-	   fpif_write_reg(fpgrp->base + RGMII_GLOBAL_MACINFO3, 0x5f6);
-	 */
-	fpif_write_reg(fpgrp->base + RGMII_GLOBAL_MACINFO3,
-		       ETH_DATA_LEN + ETH_HLEN + VLAN_HLEN * 2
-		       + ETH_FCS_LEN);
+	fpif_write_reg(fpgrp->base + FP_MISC, MISC_DEFRAG_EN | MISC_PASS_BAD);
+	fpif_write_reg(fpgrp->base + FP_DEFRAG_CNTRL, DEFRAG_REPLACE |
+		       DEFRAG_PAD_REMOVAL);
 
-	fpif_write_reg(fpgrp->base + FP_IMUX_TXDMA_RATE_CONTROL,
-		       0x00010008);
+	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_MACINFO0,
+		       MACINFO_FULL_DUPLEX | MACINFO_SPEED_1000 |
+		       MACINFO_RXEN | MACINFO_TXEN | MACINFO_RGMII_MODE |
+		       MACINFO_DONTDECAPIQ | MACINFO_MTU1 |
+		       MACINFO_FLOWCTRL_REACTION_EN);
+	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_RX_STAT_RESET, 0);
+	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_TX_STAT_RESET, 0);
+	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_GLOBAL_MACINFO3,
+		       ETH_DATA_LEN + ETH_HLEN + VLAN_HLEN * 2 + ETH_FCS_LEN);
+
+	if (fpgrp->plat->version != FP) {
+		fpif_write_reg(fpgrp->base + RGMII1_OFFSET +
+			       RGMII_MACINFO0, MACINFO_FULL_DUPLEX
+			       | MACINFO_SPEED_1000 | MACINFO_RXEN
+			       | MACINFO_TXEN | MACINFO_RGMII_MODE
+			       | MACINFO_DONTDECAPIQ | MACINFO_MTU1
+			       | MACINFO_FLOWCTRL_REACTION_EN);
+		fpif_write_reg(fpgrp->base + RGMII1_OFFSET +
+			       RGMII_RX_STAT_RESET, 0);
+		fpif_write_reg(fpgrp->base + RGMII1_OFFSET +
+			       RGMII_TX_STAT_RESET, 0);
+		fpif_write_reg(fpgrp->base + RGMII1_OFFSET +
+			       RGMII_GLOBAL_MACINFO3, ETH_DATA_LEN +
+			       ETH_HLEN + VLAN_HLEN * 2 + ETH_FCS_LEN);
+	}
+
+	if (fpgrp->plat->version != FPLITE)
+		fpif_write_reg(fpgrp->base + FP_IMUX_TXDMA_RATE_CONTROL,
+			       IMUX_TXDMA_RATE);
 	fpif_write_reg(fpgrp->base + FP_IMUX_TXDMA_TOE_RATE_CONTROL,
-		       0x00010008);
+		       IMUX_TXDMA_RATE);
 
 	/* QManager Qos Queue Setup */
 	start_q = 0;
-	for (idx = 0; idx < NUM_QOS_QUEUES; idx++) {
-		size_q = fp_qos_queue_info[idx].q_size;
+	if (fpgrp->plat->version == FPLITE) {
+		fp_qos = fpl_qos_queue_info;
+		num_q = 15;
+	} else {
+		fp_qos = fp_qos_queue_info;
+		num_q = 13;
+	}
+	for (idx = 0; idx < num_q; idx++) {
+		size_q = fp_qos[idx].q_size;
 		fpif_write_reg(fpgrp->base + QOS_Q_START_PTR +
 			       idx * QOS_Q_RPT_OFFSET, start_q);
 		fpif_write_reg(fpgrp->base + QOS_Q_END_PTR +
@@ -457,19 +506,15 @@ static void fp_hwinit(struct fpif_grp *fpgrp)
 		fpif_write_reg(fpgrp->base + QOS_Q_CONTROL +
 			       idx * QOS_Q_RPT_OFFSET, 0x00000003);
 		fpif_write_reg(fpgrp->base + QOS_Q_THRES_0 +
-			       idx * QOS_Q_RPT_OFFSET,
-			       fp_qos_queue_info[idx].threshold_0);
+			       idx * QOS_Q_RPT_OFFSET, fp_qos[idx].threshold_0);
 		fpif_write_reg(fpgrp->base + QOS_Q_THRES_1 +
-			       idx * QOS_Q_RPT_OFFSET,
-			       fp_qos_queue_info[idx].threshold_1);
+			       idx * QOS_Q_RPT_OFFSET, fp_qos[idx].threshold_1);
 		fpif_write_reg(fpgrp->base + QOS_Q_THRES_2 +
-			       idx * QOS_Q_RPT_OFFSET,
-			       fp_qos_queue_info[idx].threshold_2);
+			       idx * QOS_Q_RPT_OFFSET, fp_qos[idx].threshold_2);
 		fpif_write_reg(fpgrp->base + QOS_Q_DROP_ENTRY_LIMIT +
 			       idx * QOS_Q_RPT_OFFSET, size_q - 1);
 		fpif_write_reg(fpgrp->base + QOS_Q_BUFF_RSRV +
-			       idx * QOS_Q_RPT_OFFSET,
-			       fp_qos_queue_info[idx].buf_rsvd);
+			       idx * QOS_Q_RPT_OFFSET, fp_qos[idx].buf_rsvd);
 
 		fpif_write_reg(fpgrp->base + QOS_Q_CLEAR_STATS +
 			       idx * QOS_Q_RPT_OFFSET, 0);
@@ -477,27 +522,31 @@ static void fp_hwinit(struct fpif_grp *fpgrp)
 	}
 
 	/* Queue Manager common count setup */
-	fpif_write_reg(fpgrp->base + QOS_Q_COMMON_CNT_THRESH, 60);
-	fpif_write_reg(fpgrp->base + QOS_Q_COMMON_CNT_EMPTY_COUNT, 6);
+	fpif_write_reg(fpgrp->base +
+		       QOS_Q_COMMON_CNT_THRESH, fpgrp->plat->common_cnt);
+	fpif_write_reg(fpgrp->base +
+		       QOS_Q_COMMON_CNT_EMPTY_COUNT, fpgrp->plat->empty_cnt);
 
 	/* Session Startup Queues */
 	for (idx = 0; idx < NUM_STARTUP_QUEUES; idx++) {
 		fpif_write_reg(fpgrp->base + SU_Q_BUSY +
-			       idx * STARTUP_Q_RPT_OFF, 0x00000000);
+			       idx * STARTUP_Q_RPT_OFF, 0);
 	}
 
 	/* Session Startup Queue Control */
 	fpif_write_reg(fpgrp->base + SU_Q_GLOBAL_PACKET_RESERVE,
-		       0x00000040);
+		       SU_Q_MAX_PKT_G);
 	fpif_write_reg(fpgrp->base + SU_Q_GLOBAL_BUFFER_RESERVE,
-		       0x00000080);
-	fpif_write_reg(fpgrp->base + SU_Q_PACKET_RESERVE, 0x00000010);
-	fpif_write_reg(fpgrp->base + SU_Q_BUFFER_RESERVE, 0x00000020);
+		       SU_Q_MAX_BUF_G);
+	fpif_write_reg(fpgrp->base + SU_Q_PACKET_RESERVE, SU_Q_MAX_PKT);
+	fpif_write_reg(fpgrp->base + SU_Q_BUFFER_RESERVE, SU_Q_MAX_BUF);
 
 	/* Interface Settings */
 	for (idx = 0; idx < NUM_PORTS; idx++) {
-		fpif_write_reg(fpgrp->base + FP_PORTSETTINGS_LO +
-			       idx * PORT_SETTINGS_RPT_OFF, 0xF0070011);
+		fpif_write_reg(fpgrp->base + FP_PORTSETTINGS_LO + idx *
+			       PORT_SETTINGS_RPT_OFF, DEF_QOSNONIP |
+			       DEF_QOSIP | DEF_QOS_LBL | DEF_VLAN_ID |
+			       NOVLAN_HW);
 		fpif_write_reg(fpgrp->base + FP_PORTSETTINGS_HI +
 			       idx * PORT_SETTINGS_RPT_OFF,
 			       ETH_DATA_LEN + ETH_HLEN + VLAN_HLEN * 2);
@@ -505,49 +554,69 @@ static void fp_hwinit(struct fpif_grp *fpgrp)
 
 	/* QoS label level settings */
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		0 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 3 << 1 | 1 << 0);
+		       0 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 3 << 1 | 1 << 0);
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		1 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 3 << 1 | 1 << 0);
+		       1 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 3 << 1 | 1 << 0);
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		2 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 2 << 1 | 1 << 0);
+		       2 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 2 << 1 | 1 << 0);
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		3 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 2 << 1 | 1 << 0);
+		       3 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 2 << 1 | 1 << 0);
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		4 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 1 << 1 | 0 << 0);
+		       4 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 1 << 1 | 0 << 0);
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		5 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 1 << 1 | 0 << 0);
+		       5 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 1 << 1 | 0 << 0);
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		6 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 0 << 1 | 0 << 0);
+		       6 * QOS_DESCRIPTOR_RPT_OFF, 0 << 3 | 0 << 1 | 0 << 0);
 	fpif_write_reg(fpgrp->base + QOS_TRANSMIT_DESCRIPTOR +
-		7 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 0 << 1 | 0 << 0);
+		       7 * QOS_DESCRIPTOR_RPT_OFF, 1 << 3 | 0 << 1 | 0 << 0);
 
 	/* DOCSIS SRR bit rate control */
 	fpif_write_reg(fpgrp->base + QOS_Q_SRR_BIT_RATE_CTRL +
-		       0 * QOS_Q_SRR_BIT_RATE_CTRL_OFF,
-		       1 << 28 | 1000 << 16 | FP_CLK_RATE);
+		       DEVID_DOCSIS * QOS_Q_SRR_BIT_RATE_CTRL_OFF,
+		       BW_SHAPING | MAX_MBPS | fpgrp->plat->fp_clk_rate);
 
-	/* GIGE SRR bit rate control */
+	/* GIGE0 SRR bit rate control */
 	fpif_write_reg(fpgrp->base + QOS_Q_SRR_BIT_RATE_CTRL +
-		       1 * QOS_Q_SRR_BIT_RATE_CTRL_OFF,
-		       1 << 28 | 1000 << 16 | FP_CLK_RATE);
+		       DEVID_GIGE0 * QOS_Q_SRR_BIT_RATE_CTRL_OFF,
+		       BW_SHAPING | MAX_MBPS | fpgrp->plat->fp_clk_rate);
+
+	/* GIGE1 SRR bit rate control */
+	fpif_write_reg(fpgrp->base + QOS_Q_SRR_BIT_RATE_CTRL +
+		       DEVID_GIGE1 * QOS_Q_SRR_BIT_RATE_CTRL_OFF,
+		       BW_SHAPING | MAX_MBPS | fpgrp->plat->fp_clk_rate);
 
 	/* EMUX thresholds */
 	fpif_write_reg(fpgrp->base + FP_EMUX_THRESHOLD +
-		       0 * EMUX_THRESHOLD_RPT_OFF, 0x00000180);
+		       DEVID_DOCSIS * EMUX_THRESHOLD_RPT_OFF, EMUX_THR);
 	fpif_write_reg(fpgrp->base + FP_EMUX_THRESHOLD +
-		       1 * EMUX_THRESHOLD_RPT_OFF, 0x00000180);
+		       DEVID_GIGE0 * EMUX_THRESHOLD_RPT_OFF, EMUX_THR);
 	fpif_write_reg(fpgrp->base + FP_EMUX_THRESHOLD +
-		       2 * EMUX_THRESHOLD_RPT_OFF, 0x00000180);
-	fpif_write_reg(fpgrp->base + FP_EMUX_THRESHOLD +
-		       3 * EMUX_THRESHOLD_RPT_OFF, 0x00000180);
+		       DEVID_GIGE1 * EMUX_THRESHOLD_RPT_OFF, EMUX_THR);
+	if (fpgrp->plat->version != FP) {
+		fpif_write_reg(fpgrp->base + FP_EMUX_THRESHOLD +
+			       DEVID_RXDMA * EMUX_THRESHOLD_RPT_OFF, EMUX_THR);
+		fpif_write_reg(fpgrp->base + FP_EMUX_THRESHOLD +
+			       DEVID_RECIRC * EMUX_THRESHOLD_RPT_OFF, EMUX_THR);
+	}
+	fpif_write_reg(fpgrp->base + L2_CAM_CFG_COMMAND, L2CAM_CLEAR);
 
-	fpif_write_reg(fpgrp->base + L2_CAM_CFG_COMMAND, 0x00000002);
+	if (fpgrp->plat->version != FPLITE) {
+		fpif_write_reg(fpgrp->base + FPTXDMA_ENDIANNESS,
+			       DMA_REV_ENDIAN);
+		fpif_write_reg(fpgrp->base + FPTXDMA_T3W_CONFIG,
+			       CONFIG_OP16 | CONFIG_OP32 | CONFIG_MOPEN);
+		fpif_write_reg(fpgrp->base + FPTXDMA_BPAI_PRIORITY, BPAI_PRIO);
+	} else {
+		fpif_write_reg(fpgrp->base + FPTOE_ENDIANNESS, DMA_REV_ENDIAN);
+		fpif_write_reg(fpgrp->base + FPTOE_T3W_CONFIG,
+			       CONFIG_OP16 | CONFIG_OP32 | CONFIG_MOPEN);
+		fpif_write_reg(fpgrp->base + FPTOE_MAX_NONSEG,
+			       DMA_MAX_NONSEG_SIZE);
+	}
 
-	fpif_write_reg(fpgrp->base + FPTXDMA_ENDIANNESS, 1);
-	fpif_write_reg(fpgrp->base + FPTXDMA_T3W_CONFIG, 0xc);
-	fpif_write_reg(fpgrp->base + FPTXDMA_BPAI_PRIORITY, 0x07000000);
-	fpif_write_reg(fpgrp->base + FPRXDMA_T3R_CONFIG, 0x7);
-	fpif_write_reg(fpgrp->base + FPRXDMA_ENDIANNESS, 1);
+	fpif_write_reg(fpgrp->base + FPRXDMA_T3R_CONFIG,
+		       CONFIG_OP16 | CONFIG_OP32 | CONFIG_MOPEN);
+	fpif_write_reg(fpgrp->base + FPRXDMA_ENDIANNESS, DMA_REV_ENDIAN);
 }
 
 
@@ -578,18 +647,9 @@ static inline int fpif_q_tx_buffer(struct fpif_txdma *txdma_ptr,
 				   struct fp_tx_ring *tx_ring_ptr)
 {
 	void __iomem *loptr, *hiptr;
-	int remain;
 	u32 head_tx = txdma_ptr->head_tx;
-	u32 last_tx = txdma_ptr->last_tx;
 	struct tx_buf *bufptr = txdma_ptr->bufptr;
 
-	remain = (head_tx + 1 + FPIF_TX_RING_SIZE - last_tx)
-					& TX_RING_MOD_MASK;
-	if (!remain) {
-		pr_warn("TX buffers are FULL for channel %d\n",
-			txdma_ptr->ch);
-		return NETDEV_TX_BUSY;
-	}
 	loptr = (&bufptr[head_tx].lo);
 	hiptr = (&bufptr[head_tx].hi);
 	fpif_write_reg(loptr, tx_ring_ptr->dma_ptr);
@@ -598,7 +658,6 @@ static inline int fpif_q_tx_buffer(struct fpif_txdma *txdma_ptr,
 	head_tx = (head_tx + 1) & TX_RING_MOD_MASK;
 	fpif_write_reg(&txdma_ptr->tx_ch_reg->tx_cpu, head_tx);
 	txdma_ptr->head_tx = head_tx;
-	atomic_inc(&txdma_ptr->pending_tx);
 
 	return NETDEV_TX_OK;
 }
@@ -610,12 +669,14 @@ static inline void fpif_fill_fphdr(struct fp_hdr *fphdr,
 	u16 temp;
 	u16 len;
 	u32 dmap = priv->dmap;
+	u32 len_mask = 0;
+	u32 ifidx = priv->ifidx;
 
-	fphdr->word0 =
-	    ntohl(((SP_SWDEF << FPHDR_SP_SHIFT) & FPHDR_SP_MASK) |
-			    FPHDR_CSUM_MASK |
-		  FPHDR_BRIDGE_MASK | (dmap & FPHDR_DEST_MASK));
-	fphdr->word1 = ntohl(FPHDR_MANGLELIST_MASK);
+	fphdr->word0 = ntohl((ifidx << FPHDR_IFIDX_SHIFT) |
+			((SP_SWDEF << FPHDR_SP_SHIFT) & FPHDR_SP_MASK) |
+			FPHDR_CSUM_MASK | FPHDR_BRIDGE_MASK |
+			(dmap & FPHDR_DEST_MASK));
+	fphdr->word1 = ntohl(FPHDR_MANGLELIST_MASK | FPHDR_DONE_MASK);
 	fphdr->word2 = ntohl(FPHDR_NEXTHOP_IDX_MASK | FPHDR_SMAC_IDX_MASK);
 	len = skblen;
 	/**
@@ -623,8 +684,14 @@ static inline void fpif_fill_fphdr(struct fp_hdr *fphdr,
 	 * we store this in temp variable and write in word3 with len
 	 */
 	temp = *(u16 *)((u8 *)fphdr + FP_HDR_SIZE);
-	fphdr->word3 = ntohl((len << FPHDR_LEN_SHIFT) | htons(temp));
+	if (priv->plat->tso_enabled)
+		len_mask = FPHDR_TSO_LEN_MASK;
+	fphdr->word3 = ntohl(len_mask | (len << FPHDR_LEN_SHIFT) |
+			htons(temp));
+	fpdbg("TX: hdr0=%x hdr1=%x hdr2=%x hdr3=%x\n", fphdr->word0,
+	      fphdr->word1, fphdr->word2, fphdr->word3);
 }
+
 
 static int put_l2cam(struct fpif_priv *priv, u8 dev_addr[])
 {
@@ -646,7 +713,7 @@ static int put_l2cam(struct fpif_priv *priv, u8 dev_addr[])
 	val = (1 << L2CAM_BRIDGE_SHIFT) | (dp << L2CAM_DP_SHIFT) |
 		(sp << L2CAM_SP_SHIFT) | (dev_addr[0] << 8) | dev_addr[1];
 	fpif_write_reg(priv->fpgrp->base + L2_CAM_MAC_DA_HIGH, val);
-	fpif_write_reg(priv->fpgrp->base + L2_CAM_CFG_COMMAND, 0x00000000);
+	fpif_write_reg(priv->fpgrp->base + L2_CAM_CFG_COMMAND, L2CAM_ADD);
 
 	cam_sts = readl(priv->fpgrp->base + L2_CAM_CFG_STATUS);
 	idx = (cam_sts >> L2CAM_IDX_SHIFT) & L2CAM_IDX_MASK;
@@ -700,6 +767,9 @@ static int fpif_change_mtu(struct net_device *dev, int new_mtu)
 {
 	struct fpif_priv *priv = netdev_priv(dev);
 
+	if (priv->rgmii_base)
+		return -EPERM;
+
 	if (netif_running(dev)) {
 		netdev_err(dev, "must be stopped for MTU change\n");
 		return -EBUSY;
@@ -718,10 +788,8 @@ static int fpif_change_mtu(struct net_device *dev, int new_mtu)
 						VLAN_HLEN * 2;
 	dev->mtu = new_mtu;
 
-	if (priv->sp == SP_GIGE)
-		fpif_write_reg(priv->fpgrp->base + RGMII_GLOBAL_MACINFO3,
-			       new_mtu + ETH_HLEN + VLAN_HLEN * 2 +
-			       ETH_FCS_LEN);
+	fpif_write_reg(priv->rgmii_base + RGMII_GLOBAL_MACINFO3, new_mtu +
+			ETH_HLEN + VLAN_HLEN * 2 + ETH_FCS_LEN);
 
 	fpif_write_reg(priv->fpgrp->base + FP_PORTSETTINGS_HI +
 		       priv->sp * PORT_SETTINGS_RPT_OFF,
@@ -960,10 +1028,6 @@ static int fpif_clean_tx_ring(struct fpif_priv *priv, int tx_work_limit)
 	struct sk_buff *skb;
 	struct fpif_txdma *txdma_ptr = priv->txdma_ptr;
 
-	if (!spin_trylock(&txdma_ptr->txcollect)) {
-		pr_err("Tx already locked for cleanup\n");
-		return 0;
-	}
 	tail_ptr = readl(&txdma_ptr->tx_ch_reg->tx_done);
 	last_tx = txdma_ptr->last_tx;
 	while (last_tx != tail_ptr && tx_work_limit--) {
@@ -982,7 +1046,6 @@ static int fpif_clean_tx_ring(struct fpif_priv *priv, int tx_work_limit)
 		else
 			dma_unmap_single(priv->devptr,
 				(dma_addr_t) dma_addr, len, DMA_TO_DEVICE);
-		atomic_dec(&txdma_ptr->pending_tx);
 		if (eop)
 			dev_kfree_skb_any(skb);
 		txdma_ptr->fp_tx_skbuff[last_tx].skb = 0;
@@ -996,8 +1059,7 @@ static int fpif_clean_tx_ring(struct fpif_priv *priv, int tx_work_limit)
 		tail_ptr = readl(&txdma_ptr->tx_ch_reg->tx_done);
 	}
 	txdma_ptr->last_tx = last_tx;
-	spin_unlock(&txdma_ptr->txcollect);
-
+	fpif_write_reg(&txdma_ptr->tx_ch_reg->tx_delay, DELAY_TX_INTRH);
 	return howmany;
 }
 
@@ -1118,7 +1180,7 @@ static int fpif_xmit_frame_sg(struct fpif_priv *priv, struct sk_buff *skb)
 	u32 len;
 	void *offset;
 	dma_addr_t dma_addr;
-	int f, ret = NETDEV_TX_OK, eop;
+	int f, eop;
 
 	fpdbg2("%s:starts\n", __func__);
 	for (f = 0; f < nr_frags; f++) {
@@ -1144,11 +1206,41 @@ static int fpif_xmit_frame_sg(struct fpif_priv *priv, struct sk_buff *skb)
 		tx_ring.dma_ptr = dma_addr;
 		tx_ring.len_eop = eop << 16 | len;
 		tx_ring.priv = priv;
-		ret = fpif_q_tx_buffer(priv->txdma_ptr, &tx_ring);
-		if (ret == NETDEV_TX_BUSY)
-			break;
+		fpif_q_tx_buffer(priv->txdma_ptr, &tx_ring);
 	}
-	return ret;
+	return 0;
+}
+
+static int check_tx_busy(struct fpif_priv *priv, int nr_pkt)
+{
+	int maxbuf;
+	int remain;
+	struct fpif_txdma *txdma_ptr = priv->txdma_ptr;
+	u32 head_tx = txdma_ptr->head_tx;
+	u32 last_tx = txdma_ptr->last_tx;
+
+	if (head_tx >= last_tx)
+		remain = FPIF_TX_RING_SIZE - (head_tx - last_tx);
+	else
+		remain = last_tx - head_tx - 1;
+	if (nr_pkt > remain) {
+		pr_warn("TXQ FULL nr_frags=%d remain=%d\n", nr_pkt, remain);
+		return NETDEV_TX_BUSY;
+	}
+
+	if (remain < DELAY_TX_THR)
+		fpif_write_reg(&txdma_ptr->tx_ch_reg->tx_delay, DELAY_TX_INTRL);
+
+	maxbuf = readl(priv->fpgrp->base + QOS_Q_MAX_BUFFER_COUNT +
+			QOS_Q_RPT_OFFSET * priv->plat->q_idx);
+	if (maxbuf >= priv->plat->buf_thr) {
+		writel(0, priv->fpgrp->base +
+				QOS_Q_MAX_BUFFER_COUNT +
+				QOS_Q_RPT_OFFSET * priv->plat->q_idx);
+		return NETDEV_TX_BUSY;
+	}
+
+	return NETDEV_TX_OK;
 }
 
 /**
@@ -1161,7 +1253,7 @@ static int fpif_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 	struct fp_tx_ring tx_ring;
 	struct fp_hdr *fphdr;
 	struct device *devptr = priv->devptr;
-	int pending, eop, ret = NETDEV_TX_OK;
+	int eop, ret = NETDEV_TX_OK;
 	dma_addr_t dma_addr, dma_fphdr;
 	u32 data_len, nr_frags;
 	struct fpif_txdma *txdma_ptr = priv->txdma_ptr;
@@ -1173,11 +1265,18 @@ static int fpif_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 	spin_lock(&txdma_ptr->fpif_txlock);
 	nr_frags = skb_shinfo(skb)->nr_frags;
 	fpdbg2("nr_frags=%d\n", nr_frags);
+
+	if (check_tx_busy(priv, nr_frags + 1) == NETDEV_TX_BUSY) {
+		spin_unlock(&txdma_ptr->fpif_txlock);
+		return NETDEV_TX_BUSY;
+	}
+
 	if (unlikely((skb->data - FP_HDR_SIZE) < skb->head)) {
 		fphdr = dma_alloc_coherent(devptr, FP_HDR_SIZE,
 				&dma_fphdr, GFP_ATOMIC);
 		if (fphdr == NULL) {
 			netdev_err(netdev, "dma_alloc_coherent failed for fphdr\n");
+			spin_unlock(&txdma_ptr->fpif_txlock);
 			return NETDEV_TX_BUSY;
 		}
 		fpif_fill_fphdr(fphdr, skb->len, priv);
@@ -1213,10 +1312,6 @@ static int fpif_xmit_frame(struct sk_buff *skb, struct net_device *netdev)
 	if (nr_frags)
 		ret = fpif_xmit_frame_sg(priv, skb);
 	spin_unlock(&txdma_ptr->fpif_txlock);
-
-	pending = atomic_read(&txdma_ptr->pending_tx);
-	if (pending > FP_TX_FREE_LIMIT)
-		fpif_clean_tx_ring(priv, FP_TX_FREE_BUDGET);
 	return ret;
 }
 
@@ -1234,8 +1329,12 @@ static void fpif_adjust_link(struct net_device *dev)
 	unsigned long flags;
 	int new_state = 0;
 	u32 mac_info;
+	void *base = priv->rgmii_base;
 
 	if (unlikely(phydev == NULL))
+		return;
+
+	if (unlikely(base == NULL))
 		return;
 
 	if ((phydev->speed != 10) && (phydev->speed != 100) &&
@@ -1247,7 +1346,7 @@ static void fpif_adjust_link(struct net_device *dev)
 
 	spin_lock_irqsave(&priv->fpif_lock, flags);
 	if (phydev->link) {
-		mac_info = readl(priv->fpgrp->base + RGMII_MACINFO0);
+		mac_info = readl(base + RGMII_MACINFO0);
 
 		if (phydev->duplex != priv->oldduplex) {
 			new_state = 1;
@@ -1266,30 +1365,12 @@ static void fpif_adjust_link(struct net_device *dev)
 			switch (phydev->speed) {
 			case 1000:
 				mac_info |= (MACINFO_SPEED_1000);
-				fpif_write_reg(priv->fpgrp->base +
-					FP_IMUX_TXDMA_RATE_CONTROL,
-					1 << 16 | 8);
-				fpif_write_reg(priv->fpgrp->base +
-					FP_IMUX_TXDMA_TOE_RATE_CONTROL,
-					1 << 16 | 8);
 				break;
 			case 100:
 				mac_info |= (MACINFO_SPEED_100);
-				fpif_write_reg(priv->fpgrp->base +
-					FP_IMUX_TXDMA_RATE_CONTROL,
-					1 << 16 | 80);
-				fpif_write_reg(priv->fpgrp->base +
-					FP_IMUX_TXDMA_TOE_RATE_CONTROL,
-					1 << 16 | 80);
 				break;
 			case 10:
 				mac_info |= (MACINFO_SPEED_10);
-				fpif_write_reg(priv->fpgrp->base +
-					FP_IMUX_TXDMA_RATE_CONTROL,
-					1 << 16 | 800);
-				fpif_write_reg(priv->fpgrp->base +
-					FP_IMUX_TXDMA_TOE_RATE_CONTROL,
-					1 << 16 | 800);
 				break;
 			default:
 				pr_warn("%s:Speed(%d) is not 10/100/1000",
@@ -1303,8 +1384,7 @@ static void fpif_adjust_link(struct net_device *dev)
 		if (new_state) {
 			fpdbg2("Writing %x for speed %d duplex %d\n",
 			       mac_info, phydev->speed, phydev->duplex);
-			fpif_write_reg(priv->fpgrp->base + RGMII_MACINFO0,
-				       mac_info);
+			fpif_write_reg(base + RGMII_MACINFO0, mac_info);
 		}
 
 		if (!priv->oldlink) {
@@ -1340,7 +1420,8 @@ static int fpif_init_phy(struct net_device *dev)
 	char bus_id[MII_BUS_ID_SIZE];
 	int interface = priv->plat->interface;
 
-	snprintf(bus_id, MII_BUS_ID_SIZE, "%x", priv->plat->bus_id);
+	snprintf(bus_id, MII_BUS_ID_SIZE, "%s-%x", priv->plat->phy_bus_name,
+		 priv->plat->bus_id);
 	snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id,
 		 priv->plat->phy_addr);
 	priv->oldlink = 0;
@@ -1385,15 +1466,13 @@ static int fpif_open(struct net_device *netdev)
 			   netdev->name, netdev->dev_addr);
 	}
 
-	if (priv->plat->mdio_enabled) {
-		err = fpif_init_phy(netdev);
-		if (unlikely(err)) {
-			netdev_err(netdev, "Can't attach to PHY\n");
-			return err;
-		}
-		if (priv->phydev)
-			phy_start(priv->phydev);
+	err = fpif_init_phy(netdev);
+	if (unlikely(err)) {
+		netdev_err(netdev, "Can't attach to PHY\n");
+		return err;
 	}
+	if (priv->phydev)
+		phy_start(priv->phydev);
 
 	pr_debug("%s:device MAC address :%p\n", priv->netdev->name,
 						netdev->dev_addr);
@@ -1467,94 +1546,59 @@ static int fpif_close(struct net_device *netdev)
 static struct net_device_stats *fpif_get_stats(struct net_device *dev)
 {
 	struct fpif_priv *priv = netdev_priv(dev);
-	int start_q, end_q, i, sum = 0, sum_tx_errors = 0;
-	int rx_dma_ch = priv->rx_dma_ch;
-	struct fpif_rxdma *rxdma_ptr = priv->rxdma_ptr;
+	int sum = 0, sum_tx_errors = 0;
 
-	/* Ring buffer overrun */
-	dev->stats.rx_over_errors =
-	    readl(&rxdma_ptr->rxbase->rx_errcntr_no_buff[rx_dma_ch]);
-
-	switch (priv->plat->iftype) {
-	case DEVID_GIGE0:
-		start_q = GIGE_QOS_START;
-		end_q = GIGE_QOS_END;
+	dev->stats.rx_dropped = 0;
+	dev->stats.tx_dropped = 0;
+	if (priv->rgmii_base) {
 		dev->stats.tx_dropped = dev->stats.tx_packets -
-		    readl(priv->fpgrp->base + RGMII_TX_CMPL_COUNT_LO);
+		    readl(priv->rgmii_base + RGMII_TX_CMPL_COUNT_LO);
 		dev->stats.rx_errors =
-		    readl(priv->fpgrp->base + RGMII_RX_ERROR_COUNT);
+		    readl(priv->rgmii_base + RGMII_RX_ERROR_COUNT);
 		dev->stats.rx_crc_errors =
-		    readl(priv->fpgrp->base + RGMII_RX_FCS_ERR_CNT);
+		    readl(priv->rgmii_base + RGMII_RX_FCS_ERR_CNT);
 		dev->stats.rx_dropped =
-		    readl(priv->fpgrp->base + RGMII_RX_BCAST_COUNT_LO) +
-		    readl(priv->fpgrp->base + RGMII_RX_MCAST_COUNT_LO) +
-		    readl(priv->fpgrp->base + RGMII_RX_UNICAST_COUNT_LO) -
+		    readl(priv->rgmii_base + RGMII_RX_BCAST_COUNT_LO) +
+		    readl(priv->rgmii_base + RGMII_RX_MCAST_COUNT_LO) +
+		    readl(priv->rgmii_base + RGMII_RX_UNICAST_COUNT_LO) -
 		    dev->stats.rx_packets;
 		/* total number of multicast packets received */
 		dev->stats.multicast =
-		    readl(priv->fpgrp->base + RGMII_RX_MCAST_COUNT_LO);
+		    readl(priv->rgmii_base + RGMII_RX_MCAST_COUNT_LO);
 
 		/* Received length is unexpected */
 		/* TBC:What if receive less than minimum ethernet frame */
 		dev->stats.rx_length_errors =
-		    readl(priv->fpgrp->base + RGMII_RX_OVERSIZED_ERR_CNT);
+		    readl(priv->rgmii_base + RGMII_RX_OVERSIZED_ERR_CNT);
 
 		dev->stats.rx_frame_errors =
-		    readl(priv->fpgrp->base + RGMII_RX_ALIGN_ERR_CNT) +
-		    readl(priv->fpgrp->base + RGMII_RX_SYMBOL_ERR_CNT);
+		    readl(priv->rgmii_base + RGMII_RX_ALIGN_ERR_CNT) +
+		    readl(priv->rgmii_base + RGMII_RX_SYMBOL_ERR_CNT);
 
 		dev->stats.rx_missed_errors =
 		    dev->stats.rx_errors - (dev->stats.rx_frame_errors +
 					    dev->stats.rx_length_errors +
-					    dev->stats.rx_over_errors +
-					    dev->stats.rx_frame_errors);
+					    dev->stats.rx_over_errors);
 
 		/* TBC : How to get rx collisions */
 		dev->stats.collisions =
-		    readl(priv->fpgrp->base + RGMII_TX_1COLL_COUNT) +
-		    readl(priv->fpgrp->base + RGMII_TX_MULT_COLL_COUNT) +
-		    readl(priv->fpgrp->base + RGMII_TX_LATE_COLL) +
-		    readl(priv->fpgrp->base + RGMII_TX_EXCESS_COLL) +
-		    readl(priv->fpgrp->base + RGMII_TX_ABORT_INTERR_COLL);
+		    readl(priv->rgmii_base + RGMII_TX_1COLL_COUNT) +
+		    readl(priv->rgmii_base + RGMII_TX_MULT_COLL_COUNT) +
+		    readl(priv->rgmii_base + RGMII_TX_LATE_COLL) +
+		    readl(priv->rgmii_base + RGMII_TX_EXCESS_COLL) +
+		    readl(priv->rgmii_base + RGMII_TX_ABORT_INTERR_COLL);
 		sum_tx_errors = dev->stats.collisions;
 		dev->stats.tx_aborted_errors =
-		    readl(priv->fpgrp->base + RGMII_TX_ABORT_COUNT);
+		    readl(priv->rgmii_base + RGMII_TX_ABORT_COUNT);
 		sum_tx_errors += dev->stats.tx_aborted_errors;
-		break;
-
-	case DEVID_DOCSIS:
-		dev->stats.rx_dropped = 0;
-		dev->stats.tx_dropped = 0;
-		start_q = DOCSIS_QOS_START;
-		end_q = DOCSIS_QOS_END;
-		break;
-
-	case DEVID_GIGE1:
-		dev->stats.rx_dropped = 0;
-		dev->stats.tx_dropped = 0;
-		start_q = ISIS_QOS_START;
-		end_q = ISIS_QOS_END;
-		break;
-
-	default:
-		netdev_err(dev, "Wrong interface passed\n");
-		return &dev->stats;
-	}
-
-	for (i = start_q; i <= end_q; i++) {
-		sum += readl(priv->fpgrp->base + QOS_Q_DROP_COUNT +
-			     QOS_Q_RPT_OFFSET * i);
+		sum_tx_errors +=
+		    sum + readl(priv->rgmii_base + RGMII_TX_DEFER_COUNT);
 	}
 
 	sum += readl(priv->fpgrp->base + FP_EMUX_DROP_PACKET_COUNT +
 		     EMUX_THRESHOLD_RPT_OFF * priv->sp);
 	dev->stats.tx_fifo_errors = sum;
-	if (priv->plat->iftype == DEVID_GIGE0)
-		sum_tx_errors +=
-		    sum + readl(priv->fpgrp->base + RGMII_TX_DEFER_COUNT);
-	else
-		sum_tx_errors += sum;
-
+	sum_tx_errors += sum;
 	dev->stats.tx_errors = sum_tx_errors;
 
 	return &dev->stats;
@@ -1579,9 +1623,14 @@ static int fpif_init(struct fpif_grp *fpgrp)
 	spin_lock_init(&fpgrp->sched_lock);
 	mutex_init(&fpgrp->mutex);
 	fpgrp->available_l2cam = fpgrp->plat->available_l2cam;
-	fpgrp->txbase = fpgrp->base + FASTPATH_TXDMA_BASE;
+	if (fpgrp->plat->version == FP)
+		fpgrp->txbase = fpgrp->base + FASTPATH_TXDMA_BASE;
+	else
+		fpgrp->txbase = fpgrp->base + FASTPATH_TOE_BASE;
 	fpgrp->rxbase = fpgrp->base + FASTPATH_RXDMA_BASE;
 	for (j = 0; j < NUM_INTFS; j++) {
+		if (!fpgrp->plat->if_data[j])
+			continue;
 		netdev = alloc_etherdev(sizeof(struct fpif_priv));
 		if (!netdev) {
 			err = -ENOMEM;
@@ -1633,14 +1682,18 @@ static int fpif_init(struct fpif_grp *fpgrp)
 		case DEVID_GIGE0:
 			priv->sp = SP_GIGE;
 			priv->dmap = DEST_GIGE;
+			priv->rgmii_base = fpgrp->base + RGMII0_OFFSET;
 			break;
 		case DEVID_DOCSIS:
 			priv->sp = SP_DOCSIS;
 			priv->dmap = DEST_DOCSIS;
+			priv->ifidx = 0xf;
 			break;
 		case DEVID_GIGE1:
 			priv->sp = SP_ISIS;
 			priv->dmap = DEST_ISIS;
+			if (fpgrp->plat->version != FP)
+				priv->rgmii_base = fpgrp->base + RGMII1_OFFSET;
 			break;
 		default:
 			netdev_err(netdev, "port type not correct\n");
@@ -2015,7 +2068,6 @@ static int __devinit fpif_probe(struct platform_device *pdev)
 			fpgrp->plat->if_data[DEVID_DOCSIS]->ifname,
 			fpdocsis_phyaddr);
 	}
-
 	err = fpif_init(fpgrp);
 	if (err < 0) {
 		pr_err("ERROR: %s: err=%d\n", __func__, err);

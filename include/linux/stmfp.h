@@ -28,6 +28,8 @@
 #include <linux/stm/pad.h>
 #include <linux/if.h>
 
+extern int stmfp_claim_resources(void *ptr);
+extern void stmfp_release_resources(void *ptr);
 extern int stid127_fp_claim_resources(void *ptr);
 extern void stid127_fp_release_resources(void *ptr);
 
@@ -52,8 +54,7 @@ struct plat_fpif_data {
 	int interface;
 	int id;
 	int iftype;
-	int mdio_enabled;
-	int ethtool_enabled;
+	int tso_enabled;
 	int tx_dma_ch;
 	int rx_dma_ch;
 	char ifname[IFNAMSIZ];

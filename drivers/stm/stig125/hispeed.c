@@ -932,8 +932,6 @@ static struct plat_fpif_data fpif_docsis_data = {
 };
 
 static struct plat_fpif_data fpif_gige_data = {
-	.mdio_enabled = 1,
-	.ethtool_enabled = 1,
 	.id = 0,
 	.iftype = DEVID_GIGE0,
 	.ifname = "fpgige",
@@ -947,8 +945,6 @@ static struct plat_fpif_data fpif_gige_data = {
 	.rx_dma_ch = 0,
 };
 static struct plat_fpif_data fpif_isis_data = {
-	.mdio_enabled = 0,
-	.ethtool_enabled = 0,
 	.id = 1,
 	.iftype = DEVID_GIGE1,
 	.ifname = "fplan",

@@ -92,8 +92,7 @@ static void fpif_ethtool_gregs(struct net_device *dev,
 	memset(reg_space, 0x0, REG_SPACE_SIZE);
 	/* MAC registers */
 	for (i = 0; i < REG_SPACE_SIZE / sizeof(u32); i++)
-		reg_space[i] = readl(priv->fpgrp->base + RGMII_BASE +
-						i * sizeof(u32));
+		reg_space[i] = readl(priv->rgmii_base + i * sizeof(u32));
 }
 
 static u32 fpif_ethtool_getmsglevel(struct net_device *dev)

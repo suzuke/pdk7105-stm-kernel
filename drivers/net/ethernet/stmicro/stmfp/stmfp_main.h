@@ -38,8 +38,10 @@
 #endif
 
 #define FP_NAPI_BUDGET 32
-#define RXDMA_THRESH (0x100)
-#define DELAY_TX_INTR (0x800000)
+#define RXDMA_THRESH (0x80)
+#define DELAY_TX_INTRL (0x80)
+#define DELAY_TX_INTRH (0x80000)
+#define DELAY_TX_THR (32)
 #define DELAY_RX_INTR (0x8000)
 #define FP_HDR_SIZE 14
 #define FP_L2CAM_SIZE (128)
@@ -102,33 +104,38 @@
 #define FILT_BADF (FP_FILT_BASE + 0x4c)
 #define FILT_BADF_DROP (FP_FILT_BASE + 0x50)
 
-#define RGMII_BASE (FASTPATH_BASE + 0x13000)
-#define RGMII_GLOBAL_MACINFO3 (RGMII_BASE + 0x32c)
-#define RGMII_MACINFO0 (RGMII_BASE + 0x200)
+#define FP_DEFRAG_BASE (FASTPATH_BASE + 0x18000)
+#define FP_DEFRAG_CNTRL (FP_DEFRAG_BASE)
 
-#define RGMII_RX_STAT_RESET (RGMII_BASE + 0x800)
-#define RGMII_RX_ERROR_COUNT (RGMII_BASE + 0x814)
-#define RGMII_RX_UNICAST_COUNT_HI (RGMII_BASE + 0x820)
-#define RGMII_RX_UNICAST_COUNT_LO (RGMII_BASE + 0x824)
-#define RGMII_RX_MCAST_COUNT_HI (RGMII_BASE + 0x828)
-#define RGMII_RX_MCAST_COUNT_LO (RGMII_BASE + 0x82C)
-#define RGMII_RX_BCAST_COUNT_HI (RGMII_BASE + 0x830)
-#define RGMII_RX_BCAST_COUNT_LO (RGMII_BASE + 0x834)
-#define RGMII_RX_FCS_ERR_CNT (RGMII_BASE + 0x83C)
-#define RGMII_RX_OVERSIZED_ERR_CNT (RGMII_BASE + 0x844)
-#define RGMII_RX_SYMBOL_ERR_CNT (RGMII_BASE + 0x84c)
-#define RGMII_RX_ALIGN_ERR_CNT (RGMII_BASE + 0x854)
+#define RGMII0_OFFSET (0x13000)
+#define RGMII1_OFFSET (0x19000)
 
-#define RGMII_TX_STAT_RESET (RGMII_BASE + 0x880)
-#define RGMII_TX_ABORT_COUNT (RGMII_BASE + 0x894)
-#define RGMII_TX_CMPL_COUNT_HI (RGMII_BASE + 0x8b8)
-#define RGMII_TX_CMPL_COUNT_LO (RGMII_BASE + 0x8bc)
-#define RGMII_TX_1COLL_COUNT (RGMII_BASE + 0x8cc)
-#define RGMII_TX_MULT_COLL_COUNT (RGMII_BASE + 0x8d4)
-#define RGMII_TX_DEFER_COUNT (RGMII_BASE + 0x8dc)
-#define RGMII_TX_LATE_COLL (RGMII_BASE + 0x8e4)
-#define RGMII_TX_EXCESS_COLL (RGMII_BASE + 0x8ec)
-#define RGMII_TX_ABORT_INTERR_COLL (RGMII_BASE + 0x8f4)
+#define RGMII_GLOBAL_MACINFO3 (0x32c)
+#define RGMII_MACINFO0 (0x200)
+
+#define RGMII_RX_STAT_RESET (0x800)
+#define RGMII_RX_ERROR_COUNT (0x814)
+#define RGMII_RX_UNICAST_COUNT_HI (0x820)
+#define RGMII_RX_UNICAST_COUNT_LO (0x824)
+#define RGMII_RX_MCAST_COUNT_HI (0x828)
+#define RGMII_RX_MCAST_COUNT_LO (0x82C)
+#define RGMII_RX_BCAST_COUNT_HI (0x830)
+#define RGMII_RX_BCAST_COUNT_LO (0x834)
+#define RGMII_RX_FCS_ERR_CNT (0x83C)
+#define RGMII_RX_OVERSIZED_ERR_CNT (0x844)
+#define RGMII_RX_SYMBOL_ERR_CNT (0x84c)
+#define RGMII_RX_ALIGN_ERR_CNT (0x854)
+
+#define RGMII_TX_STAT_RESET (0x880)
+#define RGMII_TX_ABORT_COUNT (0x894)
+#define RGMII_TX_CMPL_COUNT_HI (0x8b8)
+#define RGMII_TX_CMPL_COUNT_LO (0x8bc)
+#define RGMII_TX_1COLL_COUNT (0x8cc)
+#define RGMII_TX_MULT_COLL_COUNT (0x8d4)
+#define RGMII_TX_DEFER_COUNT (0x8dc)
+#define RGMII_TX_LATE_COLL (0x8e4)
+#define RGMII_TX_EXCESS_COLL (0x8ec)
+#define RGMII_TX_ABORT_INTERR_COLL (0x8f4)
 
 #define L2CAM_BASE (FASTPATH_BASE + 0x16000)
 #define L2_CAM_MAC_DA_LOW (L2CAM_BASE)
@@ -145,6 +152,11 @@
 #define SU_Q_GLOBAL_BUFFER_RESERVE       (QMAN_CTRL_BASE + 0x048)
 #define SU_Q_PACKET_RESERVE              (QMAN_CTRL_BASE + 0x04C)
 #define SU_Q_BUFFER_RESERVE              (QMAN_CTRL_BASE + 0x050)
+#define SU_Q_MAX_PKT_G (0x40)
+#define SU_Q_MAX_BUF_G (0x80)
+#define SU_Q_MAX_PKT (0x10)
+#define SU_Q_MAX_BUF (0x20)
+
 
 #define STARTUP_Q_BASE                   (QMAN_CTRL_BASE + 0x200)
 #define STARTUP_Q_RPT_OFF                (0x40)
@@ -179,13 +191,15 @@
 #define QOS_Q_MAX_BUFFER_COUNT           (QOS_Q_BASE + 0x5C)
 #define QOS_Q_CLEAR_STATS               (QOS_Q_BASE + 0x60)
 
-#define QOS_CTRL_BASE                    (QMAN_BASE + 0xE80)
+#define QOS_CTRL_BASE                    (QMAN_BASE + 0xF80)
 #define QOS_TRANSMIT_DESCRIPTOR          (QOS_CTRL_BASE + 0x00)
 #define QOS_Q_COMMON_CNT_THRESH          (QOS_CTRL_BASE + 0x20)
 #define QOS_Q_COMMON_CNT_EMPTY_COUNT     (QOS_CTRL_BASE + 0x24)
 #define QOS_Q_SRR_BIT_RATE_CTRL          (QOS_CTRL_BASE + 0x38)
 
-#define NUM_QOS_QUEUES (13)
+#define DEVID_RXDMA (3)
+#define DEVID_RECIRC (4)
+#define NUM_QOS_QUEUES (15)
 #define DOCSIS_QOS_START (0)
 #define DOCSIS_QOS_END (3)
 #define GIGE_QOS_START (4)
@@ -224,6 +238,7 @@
 #define FP_EMUX_MIN_LENGTH_RECIRC        (EGRESS_BASE + 0x1C8)
 
 #define FASTPATH_TXDMA_BASE (FASTPATH_BASE + 0xc000)
+#define FASTPATH_TOE_BASE (FASTPATH_BASE + 0xe000)
 
 #define FPTXDMA_IRQ_FLAGS (FASTPATH_TXDMA_BASE + 0x0)
 #define FPTXDMA_IRQ_ENABLES_0 (FASTPATH_TXDMA_BASE + 0x4)
@@ -236,6 +251,13 @@
 #define FPTXDMA_BPAI_DONE_0 (FASTPATH_TXDMA_BASE + 0x88)
 #define FPTXDMA_PKTCNTR_BUFFER_0 (FASTPATH_TXDMA_BASE + 0x100)
 #define FPTXDMA_BUFPTR (FASTPATH_TXDMA_BASE + 0x800)
+
+#define FPTOE_BPAI_CLEAR (FASTPATH_TOE_BASE + 0x50)
+#define FPTOE_BPAI_PRIORITY (FASTPATH_TOE_BASE + 0x54)
+#define FPTOE_T3W_CONFIG (FASTPATH_TOE_BASE + 0x40)
+#define FPTOE_ENDIANNESS (FASTPATH_TOE_BASE + 0x4c)
+#define FPTOE_MAX_NONSEG (FASTPATH_TOE_BASE + 0x5c)
+
 
 #define FASTPATH_RXDMA_BASE (FASTPATH_BASE + 0x11000)
 #define FPRXDMA_IRQ_FLAGS (FASTPATH_RXDMA_BASE + 0x0)
@@ -261,6 +283,9 @@
 #define FPHDR_PROTO_MASK (0xc0000000)
 #define FPHDR_LEN_MASK (0xffff0000)
 #define FPHDR_LEN_SHIFT (16)
+#define FPHDR_IFIDX_SHIFT (16)
+#define FPHDR_DONE_MASK (0x40000)
+#define FPHDR_TSO_LEN_MASK (0xc0000000)
 
 #define FPRXDMA0_IRQ_MASK (7)
 #define FPTXDMA0_IRQ_MASK (7)
@@ -276,6 +301,7 @@
 #define L2CAM_CLEAR (2)
 #define L2CAM_READ (3)
 #define L2CAM_DEL (1)
+#define L2CAM_ADD (0)
 #define SW_MANAGED (1)
 #define HW_MANAGED (0)
 
@@ -286,6 +312,47 @@
 #define MACINFO_SPEED_1000 (2 << 24)
 #define MACINFO_SPEED_100 (1 << 24)
 #define MACINFO_SPEED_10 (0)
+#define MACINFO_RXEN (1 << 23)
+#define MACINFO_TXEN (1 << 22)
+#define MACINFO_RGMII_MODE (1 << 11)
+#define MACINFO_DONTDECAPIQ (1 << 13)
+#define MACINFO_MTU1 (1 << 14)
+#define MACINFO_FLOWCTRL_REACTION_EN (1 << 18)
+
+#define MISC_DEFRAG_EN (1 << 5)
+#define MISC_PASS_BAD (1 << 4)
+
+#define DEFRAG_REPLACE (1 << 4)
+#define DEFRAG_PAD_REMOVAL (1 << 1)
+
+#define PKTLEN_ERR (1 << 12)
+#define MALFORM_PKT (1 << 11)
+#define EARLY_EOF (1 << 10)
+#define L4_CSUM_ERR (1 << 9)
+#define IPV4_L3_CSUM_ERR (1 << 8)
+#define SAMEIP_SRC_DEST (1 << 4)
+#define IPSRC_LOOP (1 << 3)
+#define TTL0_ERR (1 << 2)
+#define IPV4_BAD_HLEN (1 << 1)
+
+#define DEF_QOSNONIP (3 << 30)
+#define DEF_QOSIP (3 << 28)
+#define DEF_QOS_LBL (7 << 16)
+#define DEF_VLAN_ID (1 << 4)
+#define NOVLAN_HW (1 << 0)
+
+#define EMUX_THR (0x180)
+#define IMUX_TXDMA_RATE 0x00010008
+
+#define DMA_REV_ENDIAN (1)
+#define DMA_MAX_NONSEG_SIZE (0x1ff)
+#define CONFIG_OP16 (1 << 0)
+#define CONFIG_OP32 (1 << 1)
+#define CONFIG_MOPEN (1 << 2)
+#define BPAI_PRIO (0x07000000)
+
+#define BW_SHAPING (1 << 28)
+#define MAX_MBPS (1000 << 16)
 
 #define RXBUF_ALIGNMENT (32)
 
@@ -418,9 +485,6 @@ struct fpif_txdma {
 	u32 head_tx;
 	u32 last_tx;
 	struct fp_tx_ring fp_tx_skbuff[FPIF_TX_RING_SIZE];
-	atomic_t pending_tx;
-	/* This lock allow max one execution of clean_tx_ring */
-	spinlock_t txcollect;
 	/* This lock  protect critical region in fpif_xmit_frame */
 	spinlock_t fpif_txlock;
 	atomic_t users;
@@ -480,6 +544,8 @@ struct fpif_priv {
 	/* This lock  protect critical region in fpif_adjust_link */
 	spinlock_t fpif_lock;
 	struct plat_fpif_data *plat;
+	void *rgmii_base;
+	int ifidx;
 };
 
 struct fp_qos_queue {
