@@ -220,7 +220,7 @@ void *stm_pcie_mp_init(struct platform_device *pdev)
 		/* Now switch to Phy interface to SATA HC not PCIe HC */
 		stm_device_sysconf_write(state, "SELECT_SATA", 1);
 		/* Select the Uport to use MiPHY1 */
-		stm_pcie_mp_select(pdev, 1);
+		stm_pcie_mp_select(state, 1);
 		/* Take SATA1 HC out of reset - rst_per_n[30] */
 		stm_device_sysconf_write(state, "SATA1_SOFT_RESET", 1);
 		/* MiPHY1 needs to be using the MiPHY0 reference clock */
