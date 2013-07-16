@@ -769,6 +769,32 @@ static struct platform_device stig125_isve_devices[] = {
 	}
 };
 
+static struct stm_docsis_pdata stig125_docsis_data = {
+	.enabled_queue = {
+	3, 4, 5,
+#ifdef CONFIG_STM_ISVE_EROUTER
+	7,
+#endif
+	},
+};
+
+#define DFWS_OFFSET		0x2E000
+#define UPIIM_OFFSET		0x1A000
+#define STIG125_DOCSIS_DFWS	(STIG125_DOCSIS_BASE_ADD + DFWS_OFFSET)
+#define STIG125_DOCSIS_UPIIM	(STIG125_DOCSIS_BASE_ADD + UPIIM_OFFSET)
+static struct platform_device stig125_docsis_device = {
+		.name = "docsis_queue",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(STIG125_DOCSIS_DFWS, 0x100),
+			STM_PLAT_RESOURCE_MEM(STIG125_DOCSIS_UPIIM, 0x100),
+		},
+		.dev = {
+			.platform_data = &stig125_docsis_data,
+		},
+};
+
 static struct platform_device *stig125_isve_configured_device[] __initdata = {
 	&stig125_isve_devices[0],
 	&stig125_isve_devices[1],
@@ -776,6 +802,7 @@ static struct platform_device *stig125_isve_configured_device[] __initdata = {
 #ifdef CONFIG_STM_ISVE_EROUTER
 	&stig125_isve_devices[3],
 #endif /* CONFIG_STM_ISVE_EROUTER */
+	&stig125_docsis_device,
 };
 
 static int __init stig125_isve_devices_setup(void)
