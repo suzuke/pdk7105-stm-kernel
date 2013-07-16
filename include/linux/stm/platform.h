@@ -748,4 +748,8 @@ struct stm_plat_keyscan_data {
 	struct stm_keyscan_config keyscan_config;
 };
 
+#define STM_DOCSIS_QUEUE	4
+struct stm_docsis_pdata {
+	u32 enabled_queue[STM_DOCSIS_QUEUE];
+};
 #endif /* __LINUX_STM_PLATFORM_H */

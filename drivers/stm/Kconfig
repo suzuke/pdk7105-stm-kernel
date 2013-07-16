@@ -249,4 +249,12 @@ config STM_IRQ_MUX
 	---help---
 	  Enable this option to support IRQ-MUX mapping in the kernel.
 
+config STM_DOCSIS_QUEUE
+	depends on (STM_DRIVERS && (MACH_STM_STID127 || MACH_STM_STIG125))
+	tristate "DOCSIS Downstream/Upstream Module"
+	default n
+	---help---
+	  Enable this option to program some Downstream/Upstream registers
+	  before using ISVE driver.
+
 endmenu
