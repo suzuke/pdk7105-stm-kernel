@@ -40,7 +40,6 @@
 		mmc1 = &sdhci1;
         };
 	soc {
-		power-on-gpio   = <&PIO3 6>;
 		nandbch: nand-bch{
 			/* Most of the properities inherited from stih416.dtsi */
 			status = "okay";
