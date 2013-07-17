@@ -37,11 +37,6 @@
         };
 
 	soc {
-		/*
-		 * gpio-power on board power supplies
-		 * J31 should be not fitted, and J33 set to 1-2
-		 */
-		power-on-gpio	= <&PIO4 3>;
 		nandafm: nandafm@fe901000{
 			status = "okay";
 			st,rbn-flex-connected;
