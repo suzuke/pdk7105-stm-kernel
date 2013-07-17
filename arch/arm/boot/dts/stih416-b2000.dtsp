@@ -39,7 +39,6 @@
         };
 
 	soc {
-		power-on-gpio	= <&PIO4 3>;
 
 		nandafm: nand-afm{
 			 /* Most of the properities inherited from stih415.dtsi */

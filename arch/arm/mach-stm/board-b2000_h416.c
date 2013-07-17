@@ -76,20 +76,8 @@ static struct stm_pad_config stih416_hdmi_hp_pad_config = {
 };
 #endif
 
-static int b2000_power_on_gpio;
 static void __init b2000_dt_init(void)
 {
-	int power_on_gpio;
-	struct device_node *np = of_find_node_by_path("/soc");
-	if (np) {
-		power_on_gpio = of_get_named_gpio(np, "power-on-gpio", 0);
-		if (power_on_gpio > 0) {
-			gpio_request(power_on_gpio, "POWER_PIO");
-			gpio_direction_output(power_on_gpio, 1);
-			b2000_power_on_gpio = power_on_gpio;
-		}
-		of_node_put(np);
-	}
 	of_platform_populate(NULL, of_default_bus_match_table,
 				 stih416_auxdata_lookup, NULL);
 
@@ -169,15 +157,8 @@ MACHINE_END
 
 #include <linux/stm/hom.h>
 
-static int b2000_hom_restore(struct stm_wakeup_devices *dev_wk)
-{
-	gpio_direction_output(b2000_power_on_gpio, 1);
-	return 0;
-}
-
 static struct stm_hom_board b2000_hom = {
 	.lmi_retention_gpio = stih416_gpio(4, 4),
-	.restore = b2000_hom_restore,
 };
 
 static int __init b2000_hom_init(void)
