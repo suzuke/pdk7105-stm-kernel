@@ -73,23 +73,8 @@ struct of_dev_auxdata stih415_auxdata_lookup[] __initdata = {
 	{}
 };
 
-static b2020_power_on_gpio = -EINVAL;
 static void __init b2020_dt_init(void)
 {
-	int power_on_gpio;
-	struct device_node *np = of_find_node_by_path("/soc");
-	if (np) {
-		power_on_gpio = of_get_named_gpio(np, "power-on-gpio", 0);
-		if (power_on_gpio > 0) {
-			gpio_request(power_on_gpio, "POWER_PIO");
-			gpio_direction_output(power_on_gpio, 1);
-			b2020_power_on_gpio = power_on_gpio;
-		}
-		of_node_put(np);
-	} else {
-		WARN_ON(!np);
-	}
-
 	of_platform_populate(NULL, of_default_bus_match_table,
 				 stih415_auxdata_lookup, NULL);
 
@@ -135,15 +120,8 @@ MACHINE_END
 
 #include <linux/stm/hom.h>
 
-static int b2020_hom_restore(struct stm_wakeup_devices *dev_wk)
-{
-	gpio_direction_output(b2020_power_on_gpio, 1);
-	return 0;
-}
-
 static struct stm_hom_board b2020_hom = {
 	.lmi_retention_gpio = stm_gpio(4, 4),
-	.restore = b2020_hom_restore,
 };
 
 static int __init b2020_hom_init(void)
