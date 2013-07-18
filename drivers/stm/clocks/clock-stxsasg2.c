@@ -2053,11 +2053,11 @@ _CLK_P(CLK_S_A0_PLL1, &clkgena0, 800000000,
 _CLK(CLK_S_FDMA_0,	&clkgena0,    400000000,    0),
 _CLK(CLK_S_FDMA_1,	&clkgena0,    400000000,    0),
 _CLK(CLK_S_JIT_SENSE,	&clkgena0,    0,    0),
-_CLK(CLK_S_ICN_REG_0,	&clkgena0,    100000000, 0),
-_CLK(CLK_S_ICN_IF_0,	&clkgena0,    200000000,    0),
-_CLK(CLK_S_ICN_REG_LP_0,	&clkgena0,    100000000,    0),
+_CLK(CLK_S_ICN_REG_0,	&clkgena0,    100000000, CLK_ALWAYS_ENABLED),
+_CLK(CLK_S_ICN_IF_0,	&clkgena0,    200000000, CLK_ALWAYS_ENABLED),
+_CLK(CLK_S_ICN_REG_LP_0, &clkgena0,   100000000, CLK_ALWAYS_ENABLED),
 _CLK(CLK_S_EMISS,	&clkgena0,    100000000,    0),
-_CLK(CLK_S_ETH1_PHY,	&clkgena0,    50000000,    0),
+_CLK(CLK_S_ETH1_PHY,	&clkgena0,    50000000,  CLK_ALWAYS_ENABLED),
 _CLK(CLK_S_MII1_REF_OUT,	&clkgena0,    25000000,    0),
 
 /* Clockgen A1 */
@@ -2070,16 +2070,16 @@ _CLK_P(CLK_S_A1_PLL0LS, &clkgena1, 900000000,
 _CLK_P(CLK_S_A1_PLL1, &clkgena1, 800000000,
 	CLK_RATE_PROPAGATES, &clk_clocks[CLK_S_A1_REF]),
 
-_CLK(CLK_S_ADP_WC_STAC,	&clkgena1,   0,    0),
-_CLK(CLK_S_ADP_WC_VTAC,	&clkgena1,   0,    0),
-_CLK(CLK_S_STAC_TX_CLK_PLL,	&clkgena1,   900000000,    0),
-_CLK(CLK_S_STAC,		&clkgena1,   400000000,    0),
-_CLK(CLK_S_ICN_IF_2,	&clkgena1,   200000000,    0),
+_CLK(CLK_S_ADP_WC_STAC,	&clkgena1, 0, 0),
+_CLK(CLK_S_ADP_WC_VTAC,	&clkgena1, 0, 0),
+_CLK(CLK_S_STAC_TX_CLK_PLL, &clkgena1, 900000000, CLK_ALWAYS_ENABLED),
+_CLK(CLK_S_STAC,	    &clkgena1, 400000000, CLK_ALWAYS_ENABLED),
+_CLK(CLK_S_ICN_IF_2,	&clkgena1,   200000000, CLK_ALWAYS_ENABLED),
 _CLK(CLK_S_CARD_MMC_0,	&clkgena1,   50000000,    0),
-_CLK(CLK_S_ICN_IF_1,	&clkgena1,   200000000,    0),
+_CLK(CLK_S_ICN_IF_1,	&clkgena1,   200000000, CLK_ALWAYS_ENABLED),
 _CLK(CLK_S_GMAC0_PHY,	&clkgena1,   50000000,    0),
 _CLK(CLK_S_NAND_CTRL,	&clkgena1,   200000000,    0),
-_CLK(CLK_S_DCEIMPD_CTRL,	&clkgena1,   0,    0),
+_CLK(CLK_S_DCEIMPD_CTRL,	&clkgena1,   0, CLK_ALWAYS_ENABLED),
 _CLK(CLK_S_MII0_REF_OUT,	&clkgena1,   25000000,    0),
 _CLK(CLK_S_TST_MVTAC_SYS,	&clkgena1,   0,    0),
 _CLK(CLK_S_CARD_MMC_1,	&clkgena1,   50000000,    0),
@@ -2245,10 +2245,7 @@ int __init sasg2_clk_init(struct clk *_sys_clk_in)
 	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
 	printf(" => done\n");
 #else
-	ret = clk_register_table(clk_clocks, CLK_S_B_REF, 1);
-
-	ret |= clk_register_table(&clk_clocks[CLK_S_B_REF],
-				ARRAY_SIZE(clk_clocks) - CLK_S_B_REF, 0);
+	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
 #endif
 	return ret;
 }
