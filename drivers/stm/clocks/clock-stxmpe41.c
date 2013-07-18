@@ -260,8 +260,8 @@ _CLK_P(CLKM_A0_PLL1_PHI3, &clkgena0, 1000000000,
 _CLK(CLKM_APB_PM,	&clkgena0,    50000000,    0),
 _CLK(CLKM_PP_DMU_0,	&clkgena0,    200000000,    0),
 _CLK(CLKM_PP_DMU_1,	&clkgena0,    200000000,    0),
-_CLK(CLKM_ICN_DISP,	&clkgena0,    0, 0),
-_CLK(CLKM_A9_EXT2F,	&clkgena0,    200000000,    0),
+_CLK(CLKM_ICN_DISP,	&clkgena0,    0, CLK_ALWAYS_ENABLED),
+_CLK(CLKM_A9_EXT2F,	&clkgena0,    200000000,    CLK_ALWAYS_ENABLED),
 _CLK_P(CLKM_A9_EXT2F_DIV2,	&clkgena0,    30000000,
 	0, &clk_clocks[CLKM_A9_EXT2F]),
 _CLK(CLKM_ST40RT,	&clkgena0,    500000000,    0),
@@ -272,8 +272,8 @@ _CLK(CLKM_ST231_GP_0,	&clkgena0,    600000000,    0),
 _CLK(CLKM_ST231_GP_1,	&clkgena0,     600000000,    0),
 _CLK(CLKM_ICN_CPU,	&clkgena0,    600000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKM_IC_STAC,	&clkgena0,     200000000, CLK_ALWAYS_ENABLED),
-_CLK(CLKM_ICN_DMU_0,	&clkgena0,     250000000,    0),
-_CLK(CLKM_ICN_DMU_1,	&clkgena0,    250000000,    0),
+_CLK(CLKM_ICN_DMU_0,	&clkgena0,     250000000, CLK_ALWAYS_ENABLED),
+_CLK(CLKM_ICN_DMU_1,	&clkgena0,    250000000,  CLK_ALWAYS_ENABLED),
 _CLK(CLKM_ICN_ERAM,	&clkgena0,    200000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKM_A9_TRACE,	&clkgena0,    200000000,    0),
 
@@ -307,7 +307,7 @@ _CLK(CLKM_FDMA_11,    &clkgena1,   450000000,    0),
 _CLK(CLKM_ICN_LMI,    &clkgena1,   450000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKM_PROC_SC,    &clkgena1,   225000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKM_TP,    &clkgena1,   333333333,    0),
-_CLK(CLKM_ICN_GPU,    &clkgena1,   333333333,    0),
+_CLK(CLKM_ICN_GPU,    &clkgena1,   333333333,    CLK_ALWAYS_ENABLED),
 _CLK(CLKM_ICN_VDP_0,    &clkgena1,   333333333,    0),
 _CLK(CLKM_ICN_VDP_1,  &clkgena1,   250000000,    0),
 _CLK(CLKM_ICN_VDP_2,	  &clkgena1,   250000000,    0),
@@ -359,9 +359,9 @@ _CLK(CLKM_ICN_BDISP_0,    &clkgena2,   200000000,    0),
 _CLK(CLKM_ICN_BDISP_1,    &clkgena2,   200000000,    0),
 _CLK(CLKM_ICN_COMPO,    &clkgena2,   200000000,    0),
 _CLK(CLKM_IC_VDPAUX,    &clkgena2,   0,    0),
-_CLK(CLKM_ICN_TS,    &clkgena2,   200000000,    0),
+_CLK(CLKM_ICN_TS,    &clkgena2,   200000000, 0),
 /* Nominal set to 200Mhz for Orly1/H415 as VTG programmation WA */
-_CLK(CLKM_ICN_REG_LP_10,    &clkgena2,   200000000,    0),
+_CLK(CLKM_ICN_REG_LP_10,    &clkgena2,   200000000,    CLK_ALWAYS_ENABLED),
 _CLK(CLKM_DCEPHY_IMPCTRL,    &clkgena2,   30000000,    0),
 
 /* Clockgen E */
@@ -403,9 +403,9 @@ _CLK_P(CLKM_DDR_IC_LMI0, &clkgenddr, 400000000,
 _CLK_P(CLKM_DDR_IC_LMI1, &clkgenddr, 400000000,
 	CLK_RATE_PROPAGATES, &clk_clocks[CLKM_DDR_REF]),
 _CLK_P(CLKM_DDR_DDR0, &clkgenddr, 1600000000,
-		0, &clk_clocks[CLKM_DDR_IC_LMI0]),
+		CLK_ALWAYS_ENABLED, &clk_clocks[CLKM_DDR_IC_LMI0]),
 _CLK_P(CLKM_DDR_DDR1, &clkgenddr, 1600000000,
-		0, &clk_clocks[CLKM_DDR_IC_LMI1]),
+		CLK_ALWAYS_ENABLED, &clk_clocks[CLKM_DDR_IC_LMI1]),
 
 /* CA9 PLL */
 _CLK(CLKM_A9_REF, &clkgena9, 30000000,
@@ -665,10 +665,7 @@ int __init mpe41_clk_init(clk_t *_sys_clk_in, clk_t *_sys_clkalt_in,
 	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
 	printf(" => done\n");
 #else
-	ret = clk_register_table(clk_clocks, CLKM_E_REF, 1);
-
-	ret |= clk_register_table(&clk_clocks[CLKM_E_REF],
-		ARRAY_SIZE(clk_clocks) - CLKM_E_REF, 0);
+	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
 #endif
 
 #if defined(CONFIG_ARM)

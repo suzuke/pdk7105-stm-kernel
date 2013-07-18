@@ -208,7 +208,7 @@ _CLK(CLKS_ICN_REG_0,	&clkgena0,    100000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKS_ICN_IF_0,	&clkgena0,    200000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKS_ICN_REG_LP_0,	&clkgena0,    100000000, CLK_ALWAYS_ENABLED),
 _CLK(CLKS_EMISS,	&clkgena0,    100000000,    0),
-_CLK(CLKS_ETH1_PHY,	&clkgena0,    50000000,    0),
+_CLK(CLKS_ETH1_PHY,	&clkgena0,    50000000,  CLK_ALWAYS_ENABLED),
 _CLK(CLKS_MII1_REF_CLK_OUT,	&clkgena0,    200000000,    0),
 
 /* Clockgen A1 */
@@ -396,10 +396,7 @@ int __init sasg1_clk_init(clk_t *_sys_clk_in)
 	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
 	printf(" => done\n");
 #else
-	ret = clk_register_table(clk_clocks, CLKS_B_REF, 1);
-
-	ret |= clk_register_table(&clk_clocks[CLKS_B_REF],
-				ARRAY_SIZE(clk_clocks) - CLKS_B_REF, 0);
+	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
 #endif
 	return ret;
 }
