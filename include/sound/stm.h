@@ -338,6 +338,7 @@ struct snd_stm_uniperif_player_info {
 
 	unsigned int channels;
 
+	int s16_swap_lr;			/* S16LE: swap left/right */
 	int parking_enabled;
 
 	const char *fdma_name;

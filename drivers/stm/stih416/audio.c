@@ -138,6 +138,7 @@ static struct platform_device stih416_uni_player_2 = {
 		.card_device = 2,
 		.player_type = SND_STM_UNIPERIF_PLAYER_TYPE_PCM,
 		.channels = 2,
+		.s16_swap_lr = 1,
 		.fdma_name = "stm-fdma.3",
 		.fdma_initiator = 0,
 		.fdma_request_line = 25,

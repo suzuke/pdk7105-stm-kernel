@@ -703,39 +703,21 @@ static int snd_stm_uniperif_player_prepare_pcm(
 	case SNDRV_PCM_FORMAT_S16_LE:
 		/* One data word contains two samples */
 		set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_16(player);
-
-		/* Workaround for a problem with L/R channels swap in case of
-		 * 16/16 memory model: PCM player expects left channel data in
-		 * word's upper two bytes, but due to little endianess
-		 * character of our memory there is right channel data there;
-		 * the workaround is to invert L/R signal, however it is
-		 * cheating, because in such case channel phases are shifted
-		 * by one sample...
-		 * (ask me for more details if above is not clear ;-)
-		 * TODO this somehow better... */
-		if (lr_pol)
-			set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(player);
-		else
-			set__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(player);
 		break;
 
 	case SNDRV_PCM_FORMAT_S32_LE:
 		/* Actually "16 bits/0 bits" means "32/28/24/20/18/16 bits
-		 * on the left than zeros (if less than 32 bites)"... ;-) */
+		 * on the left than zeros (if less than 32 bytes)"... ;-) */
 		set__AUD_UNIPERIF_CONFIG__MEM_FMT_16_0(player);
-
-		/* In x/0 bits memory mode there is no problem with
-		 * L/R polarity */
-		if (lr_pol)
-			set__AUD_UNIPERIF_I2S_FMT__LR_POL_HIG(player);
-		else
-			set__AUD_UNIPERIF_I2S_FMT__LR_POL_LOW(player);
 		break;
 
 	default:
 		snd_BUG();
 		return -EINVAL;
 	}
+
+	/* Set the L/R polarity */
+	set__AUD_UNIPERIF_I2S_FMT__LR_POL(player, lr_pol);
 
 	/* Set the number of samples to read */
 	set__AUD_UNIPERIF_I2S_FMT__NO_OF_SAMPLES_TO_READ(player,
@@ -1538,6 +1520,48 @@ static snd_pcm_uframes_t snd_stm_uniperif_player_pointer(
 	return bytes_to_frames(runtime, hwptr);
 }
 
+static int snd_stm_uniperif_player_copy(struct snd_pcm_substream *substream,
+		int channel, snd_pcm_uframes_t pos,
+		void __user *src, snd_pcm_uframes_t count)
+{
+	struct snd_stm_uniperif_player *player =
+		snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	void *dst;
+	int result;
+	int i;
+
+	BUG_ON(!player);
+	BUG_ON(!snd_stm_magic_valid(player));
+	BUG_ON(channel != -1);
+	BUG_ON(!runtime);
+
+	/* Get a pointer to the dma area to copy the user space data to */
+	dst = runtime->dma_area + frames_to_bytes(runtime, pos);
+
+	/* Perform a normal copy from user */
+	result = copy_from_user(dst, src, frames_to_bytes(runtime, count));
+	BUG_ON(result);
+
+	/* Check if we are a 16-bit format */
+	if (runtime->format == SNDRV_PCM_FORMAT_S16_LE) {
+		/* Check if we should swap left and right channels */
+		if (player->info->s16_swap_lr) {
+			short *dst16 = dst;
+			short tmp;
+
+			/* Swap channels */
+			for (i = 0; i < count; ++i) {
+				tmp = dst16[2 * i];
+				dst16[2 * i] = dst16[2 * i + 1];
+				dst16[2 * i + 1] = tmp;
+			}
+		}
+	}
+
+	return 0;
+}
+
 
 static struct snd_pcm_ops snd_stm_uniperif_player_pcm_ops = {
 	.open =      snd_stm_uniperif_player_open,
@@ -1549,6 +1573,7 @@ static struct snd_pcm_ops snd_stm_uniperif_player_pcm_ops = {
 	.prepare =   snd_stm_uniperif_player_prepare,
 	.trigger =   snd_stm_uniperif_player_trigger,
 	.pointer =   snd_stm_uniperif_player_pointer,
+	.copy =      snd_stm_uniperif_player_copy,
 };
 
 
