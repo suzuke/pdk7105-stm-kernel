@@ -1537,30 +1537,6 @@ static snd_pcm_uframes_t snd_stm_uniperif_player_pointer(
 	return pointer;
 }
 
-static int snd_stm_uniperif_player_silence(struct snd_pcm_substream *substream,
-		int channel, snd_pcm_uframes_t pos, snd_pcm_uframes_t count)
-{
-	int result = 0;
-	struct snd_stm_uniperif_player *player =
-		snd_pcm_substream_chip(substream);
-	struct snd_pcm_runtime *runtime = substream->runtime;
-
-	BUG_ON(!player);
-	BUG_ON(!snd_stm_magic_valid(player));
-	BUG_ON(!runtime);
-	BUG_ON(channel != -1); /* Interleaved buffer */
-
-	/*in normal and RAW mode we are only inserting NULL samples,
-	  for normal mode IP will do formatting*/
-	/*Why for RAW mode formatting is not required ???*/
-	result = snd_pcm_format_set_silence(runtime->format,
-				runtime->dma_area +
-				frames_to_bytes(runtime, pos),
-				runtime->channels * count);
-
-	return result;
-}
-
 
 static struct snd_pcm_ops snd_stm_uniperif_player_pcm_ops = {
 	.open =      snd_stm_uniperif_player_open,
@@ -1572,7 +1548,6 @@ static struct snd_pcm_ops snd_stm_uniperif_player_pcm_ops = {
 	.prepare =   snd_stm_uniperif_player_prepare,
 	.trigger =   snd_stm_uniperif_player_trigger,
 	.pointer =   snd_stm_uniperif_player_pointer,
-	.silence =   snd_stm_uniperif_player_silence,
 };
 
 
