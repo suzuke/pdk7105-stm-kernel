@@ -23,19 +23,13 @@
   Manish Rathi <manish.rathi@st.com>
 
 TBD
-- Multicast Support (All MULTICAST)
-- Promiscuous mode
 - Watchdog
 - VLAN offload
-- Scatter Gather
 - TSO
-- Testing on SMP and optimizations
 - Flow control support
 - ndo_poll_controller callback
 - ioctl for startup queues
-- PHY interrupt handling
 - Power Management
-- Scheduling NAPI based on queue size
 - Change MTU for shared channel
 **************************************************************************/
 
@@ -1197,8 +1191,8 @@ static int fpif_xmit_frame_sg(struct fpif_priv *priv, struct sk_buff *skb)
 		}
 		len = frag->size;
 		offset = &frag;
-		dma_addr = dma_map_single(devptr, offset, len,
-					DMA_TO_DEVICE);
+		dma_addr = skb_frag_dma_map(devptr, frag, 0, len,
+					    DMA_TO_DEVICE);
 		fpdbg2("frag=%d len=%d dmaaddr=%x offset=%p eop=%d\n",
 		       f, len, dma_addr, offset, eop);
 		tx_ring.skb = skb;
@@ -1673,6 +1667,7 @@ static int fpif_init(struct fpif_grp *fpgrp)
 		netdev->netdev_ops = &fpif_netdev_ops;
 		fpif_set_ethtool_ops(netdev);
 		netdev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
+		netdev->hw_features |= NETIF_F_SG;
 		netdev->features |= netdev->hw_features;
 		netdev->hard_header_len += FP_HDR_SIZE;
 		strcpy(netdev->name, priv->plat->ifname);
