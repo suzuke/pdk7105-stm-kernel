@@ -1510,7 +1510,6 @@ static snd_pcm_uframes_t snd_stm_uniperif_player_pointer(
 		snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int residue, hwptr;
-	snd_pcm_uframes_t pointer;
 
 	BUG_ON(!player);
 	BUG_ON(!snd_stm_magic_valid(player));
@@ -1530,11 +1529,13 @@ static snd_pcm_uframes_t snd_stm_uniperif_player_pointer(
 
 		residue = state.residue;
 		hwptr = (runtime->dma_bytes - residue) % runtime->dma_bytes;
+
+		/* Set hwptr to the start of current period */
+		hwptr /= player->period_bytes;
+		hwptr *= player->period_bytes;
 	}
 
-	pointer = bytes_to_frames(runtime, hwptr);
-
-	return pointer;
+	return bytes_to_frames(runtime, hwptr);
 }
 
 
