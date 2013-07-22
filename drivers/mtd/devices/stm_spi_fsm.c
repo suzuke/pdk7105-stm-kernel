@@ -54,6 +54,7 @@ struct stm_spi_fsm {
 	uint32_t		fifo_dir_delay;
 
 	void __iomem		*base;
+	struct clk		*clk;
 	struct mutex		lock;
 	unsigned		partitioned;
 	uint8_t	page_buf[FLASH_PAGESIZE]__aligned(4);
@@ -1901,20 +1902,15 @@ static int fsm_set_mode(struct stm_spi_fsm *fsm, uint32_t mode)
 
 static int fsm_set_freq(struct stm_spi_fsm *fsm, uint32_t freq)
 {
-	struct clk *emi_clk;
 	uint32_t emi_freq;
 	uint32_t clk_div;
 
-	/* Timings set in terms of EMI clock... */
-	emi_clk = clk_get(NULL, "emi_clk");
-
-	if (IS_ERR(emi_clk)) {
-		dev_warn(fsm->dev, "Failed to find EMI clock. "
-			 "Using default 100MHz.\n");
+	if (!fsm->clk) {
+		dev_warn(fsm->dev,
+			"No EMI clock available. Using default 100MHz.\n");
 		emi_freq = 100000000UL;
-	} else {
-		emi_freq = clk_get_rate(emi_clk);
-	}
+	} else
+		emi_freq = clk_get_rate(fsm->clk);
 
 	freq *= 1000000;
 
@@ -2316,6 +2312,17 @@ static int __devinit stm_spi_fsm_probe(struct platform_device *pdev)
 		goto out2;
 	}
 
+	fsm->clk = clk_get(&pdev->dev, "emi_clk");
+	if (IS_ERR(fsm->clk)) {
+		dev_warn(fsm->dev, "Failed to find EMI clock.\n");
+		fsm->clk = NULL;
+	} else if (clk_prepare_enable(fsm->clk)) {
+		dev_warn(fsm->dev, "Failed to enable EMI clock.\n");
+		clk_put(fsm->clk);
+		fsm->clk = NULL;
+	}
+
+
 	if (data->pads) {
 		fsm->pad_state = stm_pad_claim(data->pads, pdev->name);
 		if (!fsm->pad_state) {
@@ -2455,6 +2462,10 @@ static int __devexit stm_spi_fsm_remove(struct platform_device *pdev)
 	fsm_exit(fsm);
 	if (fsm->pad_state)
 		stm_pad_release(fsm->pad_state);
+	if (fsm->clk) {
+		clk_disable_unprepare(fsm->clk);
+		clk_put(fsm->clk);
+	}
 	iounmap(fsm->base);
 	release_resource(fsm->region);
 	platform_set_drvdata(pdev, NULL);
@@ -2474,7 +2485,25 @@ static struct of_device_id spi_fsm_match[] = {
 MODULE_DEVICE_TABLE(of, spi_fsm_match);
 #endif
 
-#ifdef CONFIG_HIBERNATION
+#ifdef CONFIG_PM
+static int stm_spi_fsm_suspend(struct device *dev)
+{
+	struct stm_spi_fsm *fsm = dev_get_drvdata(dev);
+
+	if (fsm->clk)
+		clk_disable_unprepare(fsm->clk);
+	return 0;
+}
+
+static int stm_spi_fsm_resume(struct device *dev)
+{
+	struct stm_spi_fsm *fsm = dev_get_drvdata(dev);
+
+	if (fsm->clk)
+		clk_prepare_enable(fsm->clk);
+	return 0;
+}
+
 static int stm_spi_fsm_restore(struct device *dev)
 {
 	struct stm_spi_fsm *fsm = dev_get_drvdata(dev);
@@ -2487,6 +2516,8 @@ static int stm_spi_fsm_restore(struct device *dev)
 }
 
 static const struct dev_pm_ops stm_spi_fsm_pm_ops = {
+	.suspend = stm_spi_fsm_suspend,
+	.resume = stm_spi_fsm_resume,
 	.thaw =  stm_spi_fsm_restore,
 	.restore = stm_spi_fsm_restore,
 };
