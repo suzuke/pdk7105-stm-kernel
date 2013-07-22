@@ -122,6 +122,7 @@ struct stm_nand_afm_controller {
 	void __iomem		*fifo_cached;
 	unsigned long		fifo_phys;
 
+	struct clk		*clk;
 	/* resources */
 	struct device		*dev;
 	unsigned int		map_base;
@@ -546,6 +547,7 @@ static uint32_t afm_gen_config(struct stm_nand_afm_controller *afm,
  * nand_timing_spec' data.]
  */
 static void afm_calc_timing_registers_legacy(struct stm_nand_timing_data *tm,
+					      struct clk *clk,
 					      uint32_t *ctl_timing,
 					      uint32_t *wen_timing,
 					      uint32_t *ren_timing)
@@ -553,19 +555,15 @@ static void afm_calc_timing_registers_legacy(struct stm_nand_timing_data *tm,
 	uint32_t n;
 	uint32_t reg;
 
-	struct clk *emi_clk;
 	uint32_t emi_t_ns;
 
 	/* Timings set in terms of EMI clock... */
-	emi_clk = clk_get(NULL, "emi_clk");
-
-	if (!emi_clk || IS_ERR(emi_clk)) {
-		printk(KERN_WARNING NAME ": Failed to find EMI clock. "
-		       "Using default 100MHz.\n");
+	if (!clk) {
+		pr_warning(NAME
+			": No EMI clock available. Using default 100MHz.\n");
 		emi_t_ns = 10;
-	} else {
-		emi_t_ns = 1000000000UL / clk_get_rate(emi_clk);
-	}
+	} else
+		emi_t_ns = 1000000000UL / clk_get_rate(clk);
 
 	/* CONTROL_TIMING */
 	n = (tm->sig_setup + emi_t_ns - 1)/emi_t_ns;
@@ -604,12 +602,12 @@ static void afm_calc_timing_registers_legacy(struct stm_nand_timing_data *tm,
 
 /* Derive timing register values from 'nand_timing_spec' data */
 static void afm_calc_timing_registers(struct nand_timing_spec *spec,
+				      struct clk *clk,
 				      int relax,
 				      uint32_t *ctl_timing,
 				      uint32_t *wen_timing,
 				      uint32_t *ren_timing)
 {
-	struct clk *emi_clk;
 	int tCLK;
 
 	int tMAX_HOLD;
@@ -626,14 +624,12 @@ static void afm_calc_timing_registers(struct nand_timing_spec *spec,
 	int n_ren_off;
 
 	/* Get EMI clock (default 100MHz) */
-	emi_clk = clk_get(NULL, "emi_clk");
-	if (!emi_clk || IS_ERR(emi_clk)) {
-		printk(KERN_WARNING NAME
-		       ": Failed to get EMI clock, assuming default 100MHz\n");
+	if (!clk) {
+		pr_warning(NAME
+			": No EMI clock available. Using default 100MHz.\n");
 		tCLK = 10;
-	} else {
-		tCLK = 1000000000 / clk_get_rate(emi_clk);
-	}
+	} else
+		tCLK = 1000000000 / clk_get_rate(clk);
 
 	/*
 	 * CTL_TIMING
@@ -786,6 +782,17 @@ afm_init_resources(struct platform_device *pdev)
 		goto err2;
 	}
 
+	afm->clk = clk_get(&pdev->dev, "emi_clk");
+
+	if (!afm->clk || IS_ERR(afm->clk)) {
+		printk(KERN_WARNING NAME ": Failed to find EMI clock.\n");
+		afm->clk = NULL;
+	} else if (clk_prepare_enable(afm->clk)) {
+		printk(KERN_WARNING NAME ": Failed to enable EMI clock.\n");
+		clk_put(afm->clk);
+		afm->clk = NULL;
+	}
+
 #ifdef CONFIG_STM_NAND_AFM_CACHED
 	/* Setup cached mapping to the AFM data FIFO */
 	afm->fifo_phys = (afm->map_base + NANDHAM_AFM_DATA_FIFO);
@@ -863,6 +870,8 @@ static void afm_exit_controller(struct platform_device *pdev)
 #endif
 	iounmap(afm->base);
 	release_mem_region(afm->map_base, afm->map_size);
+	if (afm->clk)
+		clk_disable_unprepare(afm->clk);
 	kfree(afm);
 }
 
@@ -2949,6 +2958,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm, int bank_nr,
 	if (bank->timing_spec) {
 		dev_info(afm->dev, "Using platform timing data\n");
 		afm_calc_timing_registers(bank->timing_spec, bank->timing_relax,
+					  afm->clk,
 					  &data->ctl_timing,
 					  &data->wen_timing,
 					  &data->ren_timing);
@@ -2956,6 +2966,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm, int bank_nr,
 	} else if (bank->timing_data) {
 		dev_info(afm->dev, "Using legacy platform timing data\n");
 		afm_calc_timing_registers_legacy(bank->timing_data,
+						 afm->clk,
 						 &data->ctl_timing,
 						 &data->wen_timing,
 						 &data->ren_timing);
@@ -2971,6 +2982,7 @@ afm_init_bank(struct stm_nand_afm_controller *afm, int bank_nr,
 
 		dev_info(afm->dev, "Using ONFI Timing Mode %d\n", mode);
 		afm_calc_timing_registers(&nand_onfi_timing_specs[mode],
+					  afm->clk,
 					  bank->timing_relax,
 					  &data->ctl_timing,
 					  &data->wen_timing,
