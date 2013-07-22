@@ -121,6 +121,8 @@ struct stm_nand_flex_controller {
 	struct resource		*mem_region;
 	void __iomem		*base_addr;
 
+	struct clk		*clk;
+
 	int			current_csn;		/* Current chip	      */
 
 	struct nand_hw_control	hwcontrol;		/* Aribitrate access  */
@@ -747,6 +749,7 @@ static int nand_write_oob(struct mtd_info *mtd, loff_t to,
  * nand_timing_spec' data.]
  */
 static void flex_calc_timing_registers_legacy(struct stm_nand_timing_data *tm,
+					      struct clk *clk,
 					      uint32_t *ctl_timing,
 					      uint32_t *wen_timing,
 					      uint32_t *ren_timing)
@@ -754,19 +757,15 @@ static void flex_calc_timing_registers_legacy(struct stm_nand_timing_data *tm,
 	uint32_t n;
 	uint32_t reg;
 
-	struct clk *emi_clk;
 	uint32_t emi_t_ns;
 
 	/* Timings set in terms of EMI clock... */
-	emi_clk = clk_get(NULL, "emi_clk");
-
-	if (!emi_clk || IS_ERR(emi_clk)) {
-		printk(KERN_WARNING NAME ": Failed to find EMI clock. "
-		       "Using default 100MHz.\n");
+	if (!clk) {
+		pr_warning(NAME
+			": No EMI clock available. Using default 100MHz.\n");
 		emi_t_ns = 10;
-	} else {
-		emi_t_ns = 1000000000UL / clk_get_rate(emi_clk);
-	}
+	} else
+		emi_t_ns = 1000000000UL / clk_get_rate(clk);
 
 	/* CONTROL_TIMING */
 	n = (tm->sig_setup + emi_t_ns - 1)/emi_t_ns;
@@ -805,12 +804,12 @@ static void flex_calc_timing_registers_legacy(struct stm_nand_timing_data *tm,
 
 /* Derive timing register values from 'nand_timing_spec' data */
 static void flex_calc_timing_registers(struct nand_timing_spec *spec,
+				       struct clk *clk,
 				       int relax,
 				       uint32_t *ctl_timing,
 				       uint32_t *wen_timing,
 				       uint32_t *ren_timing)
 {
-	struct clk *emi_clk;
 	int tCLK;
 
 	int tMAX_HOLD;
@@ -827,14 +826,12 @@ static void flex_calc_timing_registers(struct nand_timing_spec *spec,
 	int n_ren_off;
 
 	/* Get EMI clock (default 100MHz) */
-	emi_clk = clk_get(NULL, "emi_clk");
-	if (!emi_clk || IS_ERR(emi_clk)) {
-		printk(KERN_WARNING NAME
-		       ": Failed to get EMI clock, assuming default 100MHz\n");
+	if (!clk) {
+		pr_warning(NAME
+			": No EMI clock available. Using default 100MHz.\n");
 		tCLK = 10;
-	} else {
-		tCLK = 1000000000 / clk_get_rate(emi_clk);
-	}
+	} else
+		tCLK = 1000000000UL / clk_get_rate(clk);
 
 	/*
 	 * CTL_TIMING
@@ -1049,6 +1046,17 @@ flex_init_resources(struct platform_device *pdev)
 		goto out2;
 	}
 
+	flex->clk = clk_get(&pdev->dev, "emi_clk");
+
+	if (!flex->clk || IS_ERR(flex->clk)) {
+		printk(KERN_WARNING NAME ": Failed to find EMI clock.\n");
+		flex->clk = NULL;
+	} else if (clk_prepare_enable(flex->clk)) {
+		printk(KERN_WARNING NAME ": Failed to enable EMI clock.\n");
+		clk_put(flex->clk);
+		flex->clk = NULL;
+	}
+
 #ifdef CONFIG_STM_NAND_FLEX_CACHED
 	flex->data_phys = resource->start + NANDHAM_FLEX_DATA;
 	flex->data_cached = ioremap_cache(flex->data_phys, L1_CACHE_BYTES);
@@ -1102,6 +1110,8 @@ static void flex_exit_controller(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 
 	kfree(flex->buf);
+	if (flex->clk)
+		clk_disable_unprepare(flex->clk);
 	iounmap(flex->base_addr);
 #ifdef CONFIG_STM_NAND_FLEX_CACHED
 	iounmap(flex->data_cached);
@@ -1201,6 +1211,7 @@ flex_init_bank(struct stm_nand_flex_controller *flex, int bank_nr,
 	if (bank->timing_spec) {
 		printk(KERN_INFO NAME ": Using platform timing data\n");
 		flex_calc_timing_registers(bank->timing_spec,
+					   flex->clk,
 					   bank->timing_relax,
 					   &data->ctl_timing,
 					   &data->wen_timing,
@@ -1209,6 +1220,7 @@ flex_init_bank(struct stm_nand_flex_controller *flex, int bank_nr,
 	} else if (bank->timing_data) {
 		printk(KERN_INFO NAME ": Using legacy platform timing data\n");
 		flex_calc_timing_registers_legacy(bank->timing_data,
+						  flex->clk,
 						  &data->ctl_timing,
 						  &data->wen_timing,
 						  &data->ren_timing);
@@ -1224,6 +1236,7 @@ flex_init_bank(struct stm_nand_flex_controller *flex, int bank_nr,
 
 		printk(KERN_INFO NAME ": Using ONFI Timing Mode %d\n", mode);
 		flex_calc_timing_registers(&nand_onfi_timing_specs[mode],
+					   flex->clk,
 					   bank->timing_relax,
 					   &data->ctl_timing,
 					   &data->wen_timing,
@@ -1407,7 +1420,24 @@ static int __devexit stm_nand_flex_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_HIBERNATION
+#ifdef CONFIG_PM
+static int stm_nand_flex_suspend(struct device *dev)
+{
+	struct stm_nand_flex_controller *flex = dev_get_drvdata(dev);
+
+	if (flex->clk)
+		clk_disable_unprepare(flex->clk);
+	return 0;
+}
+
+static int stm_nand_flex_resume(struct device *dev)
+{
+	struct stm_nand_flex_controller *flex = dev_get_drvdata(dev);
+	if (flex->clk)
+		clk_prepare_enable(flex->clk);
+	return 0;
+}
+
 static int stm_nand_flex_restore(struct device *dev)
 {
 	struct stm_nand_flex_controller *flex = dev_get_drvdata(dev);
@@ -1419,6 +1449,8 @@ static int stm_nand_flex_restore(struct device *dev)
 }
 
 static struct dev_pm_ops stm_nand_flex_pm_ops = {
+	.suspend = stm_nand_flex_suspend,
+	.resume = stm_nand_flex_resume,
 	.thaw = stm_nand_flex_restore,
 	.restore = stm_nand_flex_restore,
 };
