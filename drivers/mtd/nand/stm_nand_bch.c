@@ -124,6 +124,9 @@ struct nandi_controller {
 	void __iomem		*base;		/* Controller base*/
 	void __iomem		*dma;		/* DMA control base */
 
+	struct clk		*bch_clk;
+	struct clk		*emi_clk;
+
 						/* IRQ-triggered Completions: */
 	struct completion	seq_completed;	/*   SEQ Over */
 	struct completion	rbn_completed;	/*   RBn */
@@ -2541,11 +2544,52 @@ static void bch_calc_timing_registers(struct nand_timing_spec *spec,
 		       (n_telqv & 0xff) << 24);
 }
 
+static void nandi_clk_enable(struct nandi_controller *nandi)
+{
+	if (nandi->emi_clk)
+		clk_prepare_enable(nandi->emi_clk);
+	if (nandi->bch_clk)
+		clk_prepare_enable(nandi->bch_clk);
+}
+
+static void nandi_clk_disable(struct nandi_controller *nandi)
+{
+	if (nandi->emi_clk)
+		clk_disable_unprepare(nandi->emi_clk);
+	if (nandi->bch_clk)
+		clk_disable_unprepare(nandi->bch_clk);
+}
+
+
+static struct clk * __init nandi_clk_setup(struct nandi_controller *nandi,
+	char *clkn)
+{
+	struct clk *clk;
+	int error = 0;
+
+	clk = clk_get(nandi->dev, clkn);
+
+	if (!clk || IS_ERR(clk))
+		error = 1;
+	else if (clk_prepare_enable(clk))
+			error = 2;
+
+	if (error) {
+		dev_warn(nandi->dev, "Failed to %s %s clock\n",
+			error == 1 ? " get" : "enable",
+			clkn);
+		if (error == 2)
+			clk_put(clk);
+		clk = NULL;
+	}
+
+	return clk;
+}
+
 static void flex_configure_timing_registers(struct nandi_controller *nandi,
 					    struct nand_timing_spec *spec,
 					    int relax)
 {
-	struct clk *emi_clk;
 	int emi_t_ns;
 
 	uint32_t ctl_timing;
@@ -2556,14 +2600,12 @@ static void flex_configure_timing_registers(struct nandi_controller *nandi,
 	nandi_select(STM_NANDI_HAMMING);
 
 	/* Get EMI clock (default 100MHz) */
-	emi_clk = clk_get(NULL, "emi_clk");
-	if (!emi_clk || IS_ERR(emi_clk)) {
-		dev_warn(nandi->dev, "Failed to get EMI clock, assuming default 100MHz\n");
+	if (nandi->emi_clk)
+		emi_t_ns = 1000000000UL / clk_get_rate(nandi->emi_clk);
+	else {
+		dev_warn(nandi->dev, "No EMI clock available; assuming default 100MHz\n");
 		emi_t_ns = 10;
-	} else {
-		emi_t_ns = 1000000000 / clk_get_rate(emi_clk);
 	}
-
 	/* Derive timing register values from specification */
 	flex_calc_timing_registers(spec, emi_t_ns, relax,
 				   &ctl_timing, &wen_timing, &ren_timing);
@@ -2581,7 +2623,6 @@ static void bch_configure_timing_registers(struct nandi_controller *nandi,
 					   struct nand_timing_spec *spec,
 					   int relax)
 {
-	struct clk *bch_clk;
 	int bch_t_ns;
 
 	uint32_t ctl_timing;
@@ -2592,14 +2633,12 @@ static void bch_configure_timing_registers(struct nandi_controller *nandi,
 	nandi_select(STM_NANDI_BCH);
 
 	/* Get BCH clock (default 200MHz) */
-	bch_clk = clk_get(NULL, "bch_clk");
-	if (!bch_clk || IS_ERR(bch_clk)) {
-		dev_warn(nandi->dev, "Failed to get BCH clock, assuming default 200MHz\n");
+	if (nandi->bch_clk)
+		bch_t_ns = 1000000000UL / clk_get_rate(nandi->bch_clk);
+	else {
+		dev_warn(nandi->dev, "No BCH clock available; assuming default 200MHz\n");
 		bch_t_ns = 5;
-	} else {
-		bch_t_ns = 1000000000 / clk_get_rate(bch_clk);
 	}
-
 	/* Derive timing register values from specification */
 	bch_calc_timing_registers(spec, bch_t_ns, relax,
 				  &ctl_timing, &wen_timing, &ren_timing);
@@ -2766,6 +2805,9 @@ nandi_init_resources(struct platform_device *pdev)
 		dev_err(&pdev->dev, "irq request failed\n");
 		return ERR_PTR(err);
 	}
+
+	nandi->emi_clk = nandi_clk_setup(nandi, "emi_clk");
+	nandi->bch_clk = nandi_clk_setup(nandi, "bch_clk");
 
 	platform_set_drvdata(pdev, nandi);
 
@@ -3022,10 +3064,29 @@ static int __devexit stm_nand_bch_remove(struct platform_device *pdev)
 	nand_release(&nandi->info.mtd);
 	nandi_exit_controller(nandi);
 
+	nandi_clk_disable(nandi);
+
 	return 0;
 }
 
-#ifdef CONFIG_HIBERNATION
+#ifdef CONFIG_PM
+static int stm_nand_bch_suspend(struct device *dev)
+{
+	struct nandi_controller *nandi = dev_get_drvdata(dev);
+
+	nandi_clk_disable(nandi);
+
+	return 0;
+}
+static int stm_nand_bch_resume(struct device *dev)
+{
+	struct nandi_controller *nandi = dev_get_drvdata(dev);
+
+	nandi_clk_enable(nandi);
+
+	return 0;
+}
+
 static int stm_nand_bch_restore(struct device *dev)
 {
 	struct nandi_controller *nandi = dev_get_drvdata(dev);
@@ -3038,6 +3099,8 @@ static int stm_nand_bch_restore(struct device *dev)
 }
 
 static const struct dev_pm_ops stm_nand_bch_pm_ops = {
+	.suspend = stm_nand_bch_suspend,
+	.resume = stm_nand_bch_resume,
 	.restore = stm_nand_bch_restore,
 };
 #else
