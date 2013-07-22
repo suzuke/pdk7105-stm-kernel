@@ -3,23 +3,35 @@
 ===============================================================================
 
 Required properties:
-- compatible : "pwm".
+- compatible : "st,pwm".
 - reg, reg-names, interrupts, interrupt-names	: Standard way to define device
 			resources with names. look in
 			Documentation/devicetree/bindings/resource-names.txt
 
 Required properties(Per Channel):
 - padcfg	Standard way to pass pad config to the drivers.
-- st,channel-enable : Boolean flag for each pwm channel of four.
+- #address-cells: fixed to 1
+- #size-cells: fixed to 0
+- child nodes for each pwm channel, which may contain following properties
+    - reg: defines the channel number
+    - st,initial-value: initial channel config required to be done during probe
+    - st,retain-hw-value: channel config programmed by bootloader to be retained
+    - st,locked: the channel is readonly for user
 
 Example:
 	pwm {
 		compatible	= "st,pwm", "simple-bus";
 		reg		= <0xfed10000 0x68>;
 		interrupts	=  <0 200 0>;
-		st,channel-enable = <1 0 0 0>;
 		status = "disabled";
 		padcfg-names = "chan0", "chan1";
 		padcfg-0 = <&padcfg_pwm0_chan0>;
 		padcfg-1 = <&padcfg_pwm0_chan1>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        pwm-channel@0 {
+                reg = <0>;
+                st,retain-hw-value;
+                status = "disabled";
+        };
 	}
