@@ -34,6 +34,7 @@
 #include <linux/clk.h>
 #include <linux/gpio.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/semaphore.h>
 #include <linux/stm/dma.h>
 #include <linux/stm/emi.h>
@@ -43,6 +44,7 @@
 #include <asm/dma.h>
 
 #include "stm_nand_bbt.h"
+#include "stm_nand_dt.h"
 
 #define NAME	"stm-nand-emi"
 
@@ -618,9 +620,7 @@ static struct stm_nand_emi * __init nand_probe_bank(
 	struct stm_nand_bank_data *bank, int bank_nr, int rbn_gpio,
 	struct device *dev)
 {
-	const char *name = dev_name(dev);
 	struct stm_nand_emi *data;
-	struct stm_nand_timing_data *tm;
 	struct mtd_part_parser_data ppdata;
 	/* Default EMI config data, for device probing */
 	unsigned long emi_cfg_probe[] = {
@@ -701,10 +701,10 @@ static struct stm_nand_emi * __init nand_probe_bank(
 	data->chip.priv = data;
 	data->mtd.priv = &data->chip;
 	data->mtd.owner = THIS_MODULE;
-	data->mtd.dev.parent = &pdev->dev;
+	data->mtd.dev.parent = dev;
 
 	/* Assign more sensible name (default is string from nand_ids.c!) */
-	data->mtd.name = dev_name(&pdev->dev);
+	data->mtd.name = dev_name(dev);
 
 	data->chip.IO_ADDR_R = data->io_base;
 	data->chip.IO_ADDR_W = data->io_base;
@@ -850,11 +850,11 @@ static void *stm_emi_dt_get_pdata(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct stm_plat_nand_emi_data *data;
 	if (!np)
-		return -ENODEV;
+		return NULL;
 
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 
-	data->emi_rbn_gpio = of_get_named_gpio(phy_bus, "st,emi-rbn-gpio", 0);
+	data->emi_rbn_gpio = of_get_named_gpio(np, "st,emi-rbn-gpio", 0);
 	data->nr_banks = stm_of_get_nand_banks(&pdev->dev, np, &data->banks);
 	return data;
 }
@@ -868,7 +868,6 @@ static void *stm_emi_dt_get_pdata(struct platform_device *pdev)
 static int __devinit stm_nand_emi_probe(struct platform_device *pdev)
 {
 	struct stm_plat_nand_emi_data *pdata ;
-	int res;
 	struct stm_nand_emi_group *group;
 	struct stm_nand_emi *emi;
 	int err;
@@ -901,7 +900,8 @@ static int __devinit stm_nand_emi_probe(struct platform_device *pdev)
 	group->nr_banks = pdata->nr_banks;
 
 	for (n = 0; n < pdata->nr_banks; n++) {
-		emi = nand_probe_bank(&pdata->banks[n], rbn_gpio, pdev);
+		emi = nand_probe_bank(&pdata->banks[n], n, rbn_gpio,
+			&pdev->dev);
 
 		if (IS_ERR(emi)) {
 			err = PTR_ERR(emi);
