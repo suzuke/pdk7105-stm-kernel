@@ -29,8 +29,9 @@ int __init stih415_plat_clk_alias_init(void)
 	clk_add_alias("comms_clk", NULL, "CLKS_ICN_REG_0", NULL);
 	/* sh_tmu.* tmu_fck clocks */
 	clk_add_alias("tmu_fck", NULL, "CLKM_ICN_REG_10", NULL);
-	/* EMI clk */
+	/* EMI/NAND clk */
 	clk_add_alias("emi_clk", NULL, "CLKS_EMISS", NULL);
+	clk_add_alias("bch_clk", NULL, "CLKS_NAND_CTRL", NULL);
 	/* SBC clk */
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
 

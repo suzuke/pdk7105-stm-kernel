@@ -30,8 +30,10 @@ int __init stig125_plat_clk_alias_init(void)
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
 	clk_add_alias("telss_comms_clk", NULL, "CLK_S_A1_IC_LP_ETH", NULL);
 
-	/* EMI clock */
+	/* EMI/NAND clock */
 	clk_add_alias("emi_clk", NULL, "CLK_S_A1_IC_EMI", NULL);
+	clk_add_alias("bch_clk", NULL, "CLK_S_A1_BCH_NAND", NULL);
+
 	/* LPC clock */
 	clk_add_alias("lpc_clk", NULL, "CLK_S_G_DIV_3", NULL);
 	/* SDHCI clocks */

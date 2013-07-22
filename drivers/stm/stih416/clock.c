@@ -21,8 +21,9 @@ int __init stih416_plat_clk_alias_init(void)
 	clk_add_alias("comms_clk", NULL, "CLK_S_ICN_REG_LP_0", NULL);
 	/* SBC clk */
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
-	/* EMI clk */
+	/* EMI/NAND clk */
 	clk_add_alias("emi_clk", NULL, "CLK_S_EMISS", NULL);
+	clk_add_alias("bch_clk", NULL, "CLK_S_NAND_CTRL", NULL);
 
 	/* sdhci */
 	clk_add_alias(NULL, "sdhci-stm.0", "CLK_S_CARD_MMC_0",  NULL);
