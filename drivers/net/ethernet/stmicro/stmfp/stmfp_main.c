@@ -767,7 +767,7 @@ static int fpif_change_mtu(struct net_device *dev, int new_mtu)
 {
 	struct fpif_priv *priv = netdev_priv(dev);
 
-	if (priv->rgmii_base)
+	if (!priv->rgmii_base)
 		return -EPERM;
 
 	if (netif_running(dev)) {
