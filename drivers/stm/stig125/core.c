@@ -873,9 +873,10 @@ void __init stig125_early_device_init(void)
 	stm_soc_set(sysconf_read(sc), -1, -1);
 }
 
-static int stig125_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
+static int stig125_irqmux_config(struct device *dev,
 		long input, long *enable, long *output, long *inv)
 {
+	struct stm_plat_irq_mux_data *pdata = dev_get_platdata(dev);
 	*enable = 1;
 	*inv = 0;
 	*output = input % pdata->num_output;
@@ -883,8 +884,7 @@ static int stig125_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
 	return 0;
 }
 
-static int
-stig125_gpio_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
+static int stig125_gpio_irqmux_config(struct device *dev,
 		long input, long *enable, long *output, long *inv)
 {
 	int i;
@@ -916,7 +916,7 @@ stig125_gpio_irqmux_config(struct stm_plat_irq_mux_data const *pdata,
 	return 0;
 }
 
-static int stig125_cid_config(struct stm_plat_irq_mux_data const *pdata,
+static int stig125_cid_config(struct device *dev,
 		long input, long *enable, long *output, long *inv)
 {
 	*enable = 1;
