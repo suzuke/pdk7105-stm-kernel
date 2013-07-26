@@ -60,23 +60,21 @@ struct stm_rtc {
 	unsigned long periodic_tick; /* periodic frequency in tick */
 	spinlock_t lock;
 	struct rtc_wkalrm alarm;
+	int need_wdt_reset;
 };
 
 static void stm_rtc_set_hw_alarm(struct stm_rtc *rtc,
 		unsigned long msb, unsigned long  lsb)
 {
-	struct stm_plat_rtc_lpc *pdata =
-		rtc->rtc_dev->dev.parent->platform_data;
 
-
-	if (pdata->need_wdt_reset)
+	if (rtc->need_wdt_reset)
 		writel(1, rtc->ioaddr + LPC_WDT_OFF);
 
 	writel(msb, rtc->ioaddr + LPC_LPA_MSB_OFF);
 	writel(lsb, rtc->ioaddr + LPC_LPA_LSB_OFF);
 	writel(1, rtc->ioaddr + LPC_LPA_START_OFF);
 
-	if (pdata->need_wdt_reset)
+	if (rtc->need_wdt_reset)
 		writel(0, rtc->ioaddr + LPC_WDT_OFF);
 
 }
@@ -265,12 +263,11 @@ static int stm_rtc_suspend(struct device *dev)
 static int stm_rtc_resume(struct device *dev)
 {
 	struct stm_rtc *rtc = dev_get_drvdata(dev);
-	struct stm_plat_rtc_lpc *pdata = dev->platform_data;
 
 	 if (device_may_wakeup(dev))
 		rtc_update_irq(rtc->rtc_dev, 1, RTC_AF);
 
-	if (pdata->need_wdt_reset) {
+	if (rtc->need_wdt_reset) {
 		writel(0, rtc->ioaddr + LPC_LPA_MSB_OFF);
 		writel(0, rtc->ioaddr + LPC_LPA_LSB_OFF);
 		writel(1, rtc->ioaddr + LPC_WDT_OFF);
@@ -375,6 +372,7 @@ static int __devinit stm_rtc_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	rtc->need_wdt_reset = plat_data->need_wdt_reset;
 	rtc->irq = res->start;
 	irq_set_irq_type(rtc->irq, plat_data->irq_edge_level);
 	enable_irq_wake(rtc->irq);
