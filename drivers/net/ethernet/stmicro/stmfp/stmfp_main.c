@@ -85,9 +85,9 @@ MODULE_PARM_DESC(fpdocsis_phyaddr, "fpdocsis phy address");
 
 
 enum IFBITMAP {
-	DEST_DOCSIS = 1 << 0,
-	DEST_GIGE = 1 << 1,
-	DEST_ISIS = 1 << 2,
+	DEST_DOCSIS = 1 << DEVID_DOCSIS,
+	DEST_GIGE = 1 << DEVID_GIGE0,
+	DEST_ISIS = 1 << DEVID_GIGE1,
 	DEST_APDMA = 1 << 3,
 	DEST_NPDMA = 1 << 4,
 	DEST_WDMA = 1 << 5,
@@ -95,9 +95,9 @@ enum IFBITMAP {
 };
 
 enum IF_SP {
-	SP_DOCSIS = 0,
-	SP_GIGE = 1,
-	SP_ISIS = 2,
+	SP_DOCSIS = DEVID_DOCSIS,
+	SP_GIGE = DEVID_GIGE0,
+	SP_ISIS = DEVID_GIGE1,
 	SP_SWDEF = 3
 };
 
@@ -782,20 +782,7 @@ static inline void fpif_process_frame(struct fpif_priv *priv,
 
 	src_if = ntohl((buf_ptr->hdr.word0));
 	src_if = (src_if & FPHDR_SP_MASK) >> FPHDR_SP_SHIFT;
-	switch (src_if) {
-	case SP_GIGE:
-		dev_id = DEVID_GIGE;
-		break;
-	case SP_ISIS:
-		dev_id = DEVID_ISIS;
-		break;
-	case SP_DOCSIS:
-		dev_id = DEVID_DOCSIS;
-		break;
-	default:
-		pr_err("Unknown source on dma channel %d\n", priv->rx_dma_ch);
-		return;
-	}
+	dev_id = src_if;
 	dev = fpgrp->netdev[dev_id];
 	priv = netdev_priv(dev);
 
@@ -1401,7 +1388,7 @@ static struct net_device_stats *fpif_get_stats(struct net_device *dev)
 	    readl(&rxdma_ptr->rxbase->rx_errcntr_no_buff[rx_dma_ch]);
 
 	switch (priv->plat->iftype) {
-	case DEVID_GIGE:
+	case DEVID_GIGE0:
 		start_q = GIGE_QOS_START;
 		end_q = GIGE_QOS_END;
 		dev->stats.tx_dropped = dev->stats.tx_packets -
@@ -1454,7 +1441,7 @@ static struct net_device_stats *fpif_get_stats(struct net_device *dev)
 		end_q = DOCSIS_QOS_END;
 		break;
 
-	case DEVID_ISIS:
+	case DEVID_GIGE1:
 		dev->stats.rx_dropped = 0;
 		dev->stats.tx_dropped = 0;
 		start_q = ISIS_QOS_START;
@@ -1474,7 +1461,7 @@ static struct net_device_stats *fpif_get_stats(struct net_device *dev)
 	sum += readl(priv->fpgrp->base + FP_EMUX_DROP_PACKET_COUNT +
 		     EMUX_THRESHOLD_RPT_OFF * priv->sp);
 	dev->stats.tx_fifo_errors = sum;
-	if (priv->plat->iftype == DEVID_GIGE)
+	if (priv->plat->iftype == DEVID_GIGE0)
 		sum_tx_errors +=
 		    sum + readl(priv->fpgrp->base + RGMII_TX_DEFER_COUNT);
 	else
@@ -1556,7 +1543,7 @@ static int fpif_init(struct fpif_grp *fpgrp)
 
 		priv->id = priv->plat->iftype;
 		switch (priv->id) {
-		case DEVID_GIGE:
+		case DEVID_GIGE0:
 			priv->sp = SP_GIGE;
 			priv->dmap = DEST_GIGE;
 			break;
@@ -1564,7 +1551,7 @@ static int fpif_init(struct fpif_grp *fpgrp)
 			priv->sp = SP_DOCSIS;
 			priv->dmap = DEST_DOCSIS;
 			break;
-		case DEVID_ISIS:
+		case DEVID_GIGE1:
 			priv->sp = SP_ISIS;
 			priv->dmap = DEST_ISIS;
 			break;
@@ -1626,7 +1613,7 @@ static struct plat_fpif_data fpif_gige_data = {
 	.mdio_enabled = 1,
 	.ethtool_enabled = 1,
 	.id = 0,
-	.iftype = DEVID_GIGE,
+	.iftype = DEVID_GIGE0,
 	.ifname = "fpgige",
 	.interface = PHY_INTERFACE_MODE_RGMII_ID,
 	.phy_addr = 0x1,
@@ -1639,7 +1626,7 @@ static struct plat_fpif_data fpif_isis_data = {
 	.mdio_enabled = 0,
 	.ethtool_enabled = 0,
 	.id = 1,
-	.iftype = DEVID_ISIS,
+	.iftype = DEVID_GIGE1,
 	.ifname = "fplan",
 	.interface = PHY_INTERFACE_MODE_RGMII_ID,
 	.phy_addr = 0x12,
@@ -1897,16 +1884,16 @@ static int __devinit fpif_probe(struct platform_device *pdev)
 	/* Override phy address with kernel parameters if supplied */
 
 	if((fpgige_phyaddr >= 0) && (fpgige_phyaddr <=31)) {
-		fpgrp->plat->if_data[DEVID_GIGE]->phy_addr = fpgige_phyaddr;
+		fpgrp->plat->if_data[DEVID_GIGE0]->phy_addr = fpgige_phyaddr;
 		dev_dbg(devptr, "setting %s phy_addr 0x%x\n",
-			fpgrp->plat->if_data[DEVID_GIGE]->ifname,
+			fpgrp->plat->if_data[DEVID_GIGE0]->ifname,
 			fpgige_phyaddr);
 	}
 
 	if((fplan_phyaddr >= 0) && (fplan_phyaddr <=31)) {
-		fpgrp->plat->if_data[DEVID_ISIS]->phy_addr = fplan_phyaddr;
+		fpgrp->plat->if_data[DEVID_GIGE1]->phy_addr = fplan_phyaddr;
 		dev_dbg(devptr, "setting %s phy_addr 0x%x\n",
-			fpgrp->plat->if_data[DEVID_ISIS]->ifname,
+			fpgrp->plat->if_data[DEVID_GIGE1]->ifname,
 			fplan_phyaddr);
 	}
 

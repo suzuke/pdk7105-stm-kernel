@@ -54,7 +54,7 @@ static void __init b2112_dt_init(void)
 			     stig125_auxdata_lookup, NULL);
 
 	stig125_configure_fp(&(struct stig125_fp_config) {
-			.if_cfg[DEVID_GIGE] = &(struct fpif_config)
+			.if_cfg[DEVID_GIGE0] = &(struct fpif_config)
 						{ .phy_addr = 0x4 },
 		});
 

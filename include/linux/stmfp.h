@@ -42,7 +42,7 @@ struct stmfp_mdio_bus_data {
 };
 
 
-enum IF_DEVID { DEVID_GIGE = 0, DEVID_ISIS = 1, DEVID_DOCSIS = 2 };
+enum IF_DEVID { DEVID_DOCSIS = 0, DEVID_GIGE0 = 1, DEVID_GIGE1 = 2 };
 
 struct plat_fpif_data {
 	char *phy_bus_name;

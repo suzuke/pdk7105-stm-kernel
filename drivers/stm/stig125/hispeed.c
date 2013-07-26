@@ -935,7 +935,7 @@ static struct plat_fpif_data fpif_gige_data = {
 	.mdio_enabled = 1,
 	.ethtool_enabled = 1,
 	.id = 0,
-	.iftype = DEVID_GIGE,
+	.iftype = DEVID_GIGE0,
 	.ifname = "fpgige",
 	.interface = PHY_INTERFACE_MODE_RGMII_ID,
 	.phy_addr = 0x1,
@@ -950,7 +950,7 @@ static struct plat_fpif_data fpif_isis_data = {
 	.mdio_enabled = 0,
 	.ethtool_enabled = 0,
 	.id = 1,
-	.iftype = DEVID_ISIS,
+	.iftype = DEVID_GIGE1,
 	.ifname = "fplan",
 	.interface = PHY_INTERFACE_MODE_RGMII_ID,
 	.phy_addr = 0x1,
@@ -963,9 +963,9 @@ static struct plat_fpif_data fpif_isis_data = {
 };
 static struct plat_stmfp_data fp_data = {
 	.available_l2cam = 128,
-	.if_data[0] = &fpif_gige_data,
-	.if_data[1] = &fpif_isis_data,
-	.if_data[2] = &fpif_docsis_data,
+	.if_data[DEVID_GIGE0] = &fpif_gige_data,
+	.if_data[DEVID_GIGE1] = &fpif_isis_data,
+	.if_data[DEVID_DOCSIS] = &fpif_docsis_data,
 };
 static struct platform_device stig125_fp_device = {
 	.name = "fpif",
@@ -1010,7 +1010,7 @@ void __init stig125_configure_fp(const struct stig125_fp_config *config)
 	if (config) {
 		fpdata = (struct plat_stmfp_data *)
 				stig125_fp_device.dev.platform_data;
-		for (id = DEVID_GIGE; id <= DEVID_DOCSIS; id++) {
+		for (id = DEVID_DOCSIS; id <= DEVID_GIGE1; id++) {
 			if (!config->if_cfg[id])
 				continue;
 			fpdata->if_data[id]->phy_addr =
