@@ -37,6 +37,8 @@ Required properties:
                           operation.  A value of 0, or if left unspecified, is
                           interpreted by the driver as <ecc-strength>.
 
+  - st,nand-flashss	: use flashSS sub-system instead of emiss (the default).
+
 Properties describing Bank of NAND Flash ("st,nand-banks"):
   - st,nand-csn         : Chip select associated with the Bank.
 

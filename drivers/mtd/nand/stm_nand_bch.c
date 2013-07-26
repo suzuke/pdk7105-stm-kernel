@@ -31,6 +31,7 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
 #include <linux/stm/emi.h>
+#include <linux/stm/flashss.h>
 #include <generated/utsrelease.h>
 
 #include "stm_nand_regs.h"
@@ -78,6 +79,8 @@ static char *bbt_strs[] = {
 	"primary",
 	"mirror",
 };
+
+void (*nandi_select)(enum nandi_controllers);
 
 /* IBBT header */
 struct nand_ibbt_header {
@@ -354,7 +357,7 @@ static uint8_t bch_erase_block(struct nandi_controller *nandi,
 
 	prog->extra = (uint32_t)(offs >> nandi->page_shift);
 
-	emiss_nandi_select(STM_NANDI_BCH);
+	nandi_select(STM_NANDI_BCH);
 
 	nandi_enable_interrupts(nandi, NANDBCH_INT_SEQNODESOVER);
 	INIT_COMPLETION(nandi->seq_completed);
@@ -415,7 +418,7 @@ static int bch_read_page(struct nandi_controller *nandi,
 	BUG_ON((unsigned long)buf & (NANDI_BCH_DMA_ALIGNMENT - 1));
 	BUG_ON(offs & (NANDI_BCH_DMA_ALIGNMENT - 1));
 
-	emiss_nandi_select(STM_NANDI_BCH);
+	nandi_select(STM_NANDI_BCH);
 
 	nandi_enable_interrupts(nandi, NANDBCH_INT_SEQNODESOVER);
 	INIT_COMPLETION(nandi->seq_completed);
@@ -481,7 +484,7 @@ static uint8_t bch_write_page(struct nandi_controller *nandi,
 	BUG_ON((unsigned int)buf & (NANDI_BCH_DMA_ALIGNMENT - 1));
 	BUG_ON(offs & (page_size - 1));
 
-	emiss_nandi_select(STM_NANDI_BCH);
+	nandi_select(STM_NANDI_BCH);
 
 	nandi_enable_interrupts(nandi, NANDBCH_INT_SEQNODESOVER);
 	INIT_COMPLETION(nandi->seq_completed);
@@ -715,7 +718,7 @@ static void flex_command_lp(struct mtd_info *mtd, unsigned int command,
 	struct nand_chip *chip = mtd->priv;
 	struct nandi_controller *nandi = chip->priv;
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 
 	switch (command) {
 	case NAND_CMD_READOOB:
@@ -776,7 +779,7 @@ static uint8_t flex_read_byte(struct mtd_info *mtd)
 	struct nand_chip *chip = mtd->priv;
 	struct nandi_controller *nandi = chip->priv;
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 
 	return (uint8_t)(readl(nandi->base + NANDHAM_FLEX_DATA) & 0xff);
 }
@@ -785,7 +788,7 @@ static int flex_wait_func(struct mtd_info *mtd, struct nand_chip *chip)
 {
 	struct nandi_controller *nandi = chip->priv;
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 
 	flex_wait_rbn(nandi);
 
@@ -806,7 +809,7 @@ static void flex_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 	struct nandi_controller *nandi = chip->priv;
 	int aligned;
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 
 	/* Read bytes until buf is 4-byte aligned */
 	while (len && ((unsigned int)buf & 0x3)) {
@@ -914,7 +917,7 @@ static int flex_check_wp(struct nandi_controller *nandi)
 {
 	uint8_t status;
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 
 	flex_cmd(nandi, NAND_CMD_STATUS);
 
@@ -934,7 +937,7 @@ static int flex_read_raw(struct nandi_controller *nandi,
 	BUG_ON(len & 0x3);
 	BUG_ON((unsigned long)buf & 0x3);
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 	nandi_enable_interrupts(nandi, NAND_INT_RBN);
 	INIT_COMPLETION(nandi->rbn_completed);
 
@@ -971,7 +974,7 @@ static int flex_write_raw(struct nandi_controller *nandi,
 	BUG_ON(len & 0x3);
 	BUG_ON((unsigned long)buf & 0x3);
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 	nandi_enable_interrupts(nandi, NAND_INT_RBN);
 	INIT_COMPLETION(nandi->rbn_completed);
 
@@ -2550,7 +2553,7 @@ static void flex_configure_timing_registers(struct nandi_controller *nandi,
 	uint32_t ren_timing;
 
 	/* Select Hamming Controller */
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 
 	/* Get EMI clock (default 100MHz) */
 	emi_clk = clk_get(NULL, "emi_clk");
@@ -2586,7 +2589,7 @@ static void bch_configure_timing_registers(struct nandi_controller *nandi,
 	uint32_t ren_timing;
 
 	/* Select BCH Controller */
-	emiss_nandi_select(STM_NANDI_BCH);
+	nandi_select(STM_NANDI_BCH);
 
 	/* Get BCH clock (default 200MHz) */
 	bch_clk = clk_get(NULL, "bch_clk");
@@ -2623,7 +2626,7 @@ static void nandi_init_hamming(struct nandi_controller *nandi, int emi_bank)
 {
 	dev_dbg(nandi->dev, "%s\n", __func__);
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
+	nandi_select(STM_NANDI_HAMMING);
 
 	/* Reset and disable boot-mode controller */
 	writel(BOOT_CFG_RESET, nandi->base + NANDHAM_BOOTBANK_CFG);
@@ -2659,7 +2662,7 @@ static void nandi_init_bch(struct nandi_controller *nandi, int emi_bank)
 	dev_dbg(nandi->dev, "%s\n", __func__);
 
 	/* Initialise BCH Controller */
-	emiss_nandi_select(STM_NANDI_BCH);
+	nandi_select(STM_NANDI_BCH);
 
 	/* Reset and disable boot-mode controller */
 	writel(BOOT_CFG_RESET, nandi->base + NANDBCH_BOOTBANK_CFG);
@@ -2801,6 +2804,7 @@ static void *stm_bch_dt_get_pdata(struct platform_device *pdev)
 	else
 		data->bch_ecc_cfg =  BCH_ECC_CFG_AUTO;
 	stm_of_get_nand_banks(&pdev->dev, np, &data->bank);
+	data->flashss = of_property_read_bool(np, "st,nand-flashss");
 
 	of_property_read_u32(np, "st,bch-bitflip-threshold",
 			     &data->bch_bitflip_threshold);
@@ -2836,6 +2840,12 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 	}
 
 	pdata = pdev->dev.platform_data;
+
+	if (pdata->flashss)
+		nandi_select = flashss_nandi_select;
+	else
+		nandi_select = emiss_nandi_select;
+
 	nandi = nandi_init_resources(pdev);
 	if (IS_ERR(nandi)) {
 		dev_err(&pdev->dev, "failed to initialise NANDi resources\n");

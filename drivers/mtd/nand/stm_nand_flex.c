@@ -56,6 +56,7 @@
 #include <linux/stm/platform.h>
 #include <linux/stm/nand.h>
 #include <linux/stm/emi.h>
+#include <linux/stm/flashss.h>
 #include <linux/completion.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
@@ -1322,11 +1323,12 @@ static void *stm_flex_dt_get_pdata(struct platform_device *pdev)
 	struct stm_plat_nand_flex_data *data;
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
-
 	data->flex_rbn_connected = of_property_read_bool(np,
 					"st,rbn-flex-connected");
 	data->nr_banks = stm_of_get_nand_banks(&pdev->dev, np, &data->banks);
+
+	data->flashss = of_property_read_bool(np, "st,nand-flashss");
+
 	return data;
 }
 #else
@@ -1347,6 +1349,11 @@ static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node)
 		pdev->dev.platform_data = stm_flex_dt_get_pdata(pdev);
 	pdata = pdev->dev.platform_data;
+
+	if (pdata->flashss)
+		flashss_nandi_select(STM_NANDI_HAMMING);
+	else
+		emiss_nandi_select(STM_NANDI_HAMMING);
 
 	flex = flex_init_resources(pdev);
 	if (IS_ERR(flex)) {

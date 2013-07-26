@@ -33,6 +33,7 @@
 #include <linux/delay.h>
 #include <asm/cacheflush.h>
 #include <linux/stm/emi.h>
+#include <linux/stm/flashss.h>
 
 #include "stm_nand_ecc.h"
 #include "stm_nand_regs.h"
@@ -3070,11 +3071,12 @@ static void *stm_afm_dt_get_pdata(struct platform_device *pdev)
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 
-	emiss_nandi_select(STM_NANDI_HAMMING);
-
 	data->flex_rbn_connected = of_property_read_bool(np,
 					"st,rbn-flex-connected");
 	data->nr_banks = stm_of_get_nand_banks(&pdev->dev, np, &data->banks);
+
+	data->flashss = of_property_read_bool(np, "st,nand-flashss");
+
 	pdev->dev.platform_data = data;
 	return data;
 }
@@ -3092,6 +3094,11 @@ static int __devinit stm_afm_probe(struct platform_device *pdev)
 	int err = 0;
 
 	pdata = stm_afm_dt_get_pdata(pdev);
+
+	if (pdata->flashss)
+		flashss_nandi_select(STM_NANDI_HAMMING);
+	else
+		emiss_nandi_select(STM_NANDI_HAMMING);
 
 	afm = afm_init_resources(pdev);
 	if (IS_ERR(afm)) {

@@ -371,6 +371,7 @@ struct stm_plat_nand_flex_data {
 	unsigned int nr_banks;
 	struct stm_nand_bank_data *banks;
 	unsigned int flex_rbn_connected:1;
+	bool flashss;
 };
 
 enum stm_nand_bch_ecc_config {
@@ -392,6 +393,7 @@ struct stm_plat_nand_bch_data {
 	 * <ecc-strength>.
 	 */
 	unsigned int bch_bitflip_threshold;
+	bool flashss;
 };
 
 struct stm_plat_nand_emi_data {
