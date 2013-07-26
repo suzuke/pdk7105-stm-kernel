@@ -39,6 +39,26 @@
 #include <mach/common-dt.h>
 #include <mach/hardware.h>
 #include <mach/soc-stid127.h>
+#include <linux/stmfp.h>
+#include <linux/phy.h>
+#include <linux/phy_fixed.h>
+
+static struct fixed_phy_status fpgige0_fixed_phy_status = {
+	.link = 1,
+	.speed = 100,
+	.duplex = 1,
+};
+
+static struct fixed_phy_status fpdocsis_fixed_phy_status = {
+	.link = 1,
+	.speed = 1000,
+	.duplex = 1,
+};
+
+static struct plat_stmfp_data fp_data = {
+	.init = &stid127_fp_claim_resources,
+	.exit = &stid127_fp_release_resources,
+};
 
 struct of_dev_auxdata stid127_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("st,fdma", 0xfe2c0000, "stm-fdma.0", NULL),
@@ -47,6 +67,7 @@ struct of_dev_auxdata stid127_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("st,usb", 0xfe800000, "stm-usb.0", NULL),
 	OF_DEV_AUXDATA("snps,dwmac", 0xfeb00000, "stmmaceth.0",
 		 &ethernet_platform_data),
+	OF_DEV_AUXDATA("st,fplite", 0xfee80000, "fpif", &fp_data),
 	OF_DEV_AUXDATA("st,miphy-mp", 0xfef24000, "st,miphy-mp.0",
 		 &pcie_mp_platform_data),
 	OF_DEV_AUXDATA("st,pcie", 0xfef20000, "st,pcie.0",
@@ -62,6 +83,8 @@ static void __init stid127_board_dt_init(void)
 {
 	of_platform_populate(NULL, of_default_bus_match_table,
 			     stid127_auxdata_lookup, NULL);
+	BUG_ON(fixed_phy_add(PHY_POLL, 2, &fpdocsis_fixed_phy_status));
+	BUG_ON(fixed_phy_add(PHY_POLL, 3, &fpgige0_fixed_phy_status));
 }
 
 /* Setup the Timer */

@@ -28,8 +28,8 @@
 #include <linux/stm/pad.h>
 #include <linux/if.h>
 
-extern int stmfp_claim_resources(void *ptr);
-extern void stmfp_release_resources(void *ptr);
+extern int stid127_fp_claim_resources(void *ptr);
+extern void stid127_fp_release_resources(void *ptr);
 
 #define NUM_INTFS (3)
 
@@ -68,7 +68,11 @@ struct plat_stmfp_data {
 	void (*platinit)(void *fpgrp);
 	void (*preirq)(void *fpgrp);
 	void (*postirq)(void *fpgrp);
+	void *custom_cfg;
+	void *custom_data;
 	struct plat_fpif_data *if_data[NUM_INTFS];
+	int (*init)(void *plat);
+	void (*exit)(void *plat);
 };
 
 
