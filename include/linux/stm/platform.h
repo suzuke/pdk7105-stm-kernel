@@ -172,6 +172,7 @@ struct stm_plat_pwm_channel_config {
 	int enabled;
 	u8 initial_value;
 	bool retain_hw_value;	/* retain register, ignoring initial_value */
+	bool locked;            /* reserved and not available to user */
 };
 
 struct stm_plat_pwm_data {

@@ -85,13 +85,16 @@ static mode_t stm_pwm_is_visible(struct kobject *kobj, struct attribute *attr,
 	if (!pwm->platform_data->pwm_channel_config[channel].enabled)
 		return 0;
 
-	return attr->mode;
+	if (pwm->platform_data->pwm_channel_config[channel].locked)
+		return S_IRUGO;
+
+	return S_IRUGO | S_IWUSR;
 }
 
-static SENSOR_DEVICE_ATTR(pwm0, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 0);
-static SENSOR_DEVICE_ATTR(pwm1, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 1);
-static SENSOR_DEVICE_ATTR(pwm2, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 2);
-static SENSOR_DEVICE_ATTR(pwm3, S_IRUGO | S_IWUSR, show_pwm, store_pwm, 3);
+static SENSOR_DEVICE_ATTR(pwm0, 0, show_pwm, store_pwm, 0);
+static SENSOR_DEVICE_ATTR(pwm1, 0, show_pwm, store_pwm, 1);
+static SENSOR_DEVICE_ATTR(pwm2, 0, show_pwm, store_pwm, 2);
+static SENSOR_DEVICE_ATTR(pwm3, 0, show_pwm, store_pwm, 3);
 
 static struct attribute *stm_pwm_attributes[] = {
 	&sensor_dev_attr_pwm0.dev_attr.attr,
@@ -174,6 +177,7 @@ stm_pwm_dt_get_pdata(struct platform_device *pdev)
 		struct stm_plat_pwm_channel_config *channel_config;
 		u32 initial_value;
 		bool retain_hw_value;
+		bool locked;
 
 		if (!of_device_is_available(node))
 			continue;
@@ -195,12 +199,14 @@ stm_pwm_dt_get_pdata(struct platform_device *pdev)
 		of_property_read_u32(node, "st,initial-value", &initial_value);
 		retain_hw_value = of_property_read_bool(node,
 			"st,retain-hw-value");
+		locked = of_property_read_bool(node, "st,locked");
 
 		channel_config = &data->pwm_channel_config[channel];
 
 		channel_config->enabled = true;
 		channel_config->initial_value = initial_value;
 		channel_config->retain_hw_value = retain_hw_value;
+		channel_config->locked = locked;
 
 		data->pwm_pad_config[channel] =
 			stm_of_get_pad_config_index(&pdev->dev, channel);
