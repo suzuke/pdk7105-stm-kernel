@@ -28,6 +28,7 @@
 #include <linux/seq_file.h>
 #include <linux/err.h>
 #include <linux/pm.h>
+#include <linux/syscore_ops.h>
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
 #include <asm/mmu.h>
@@ -948,53 +949,35 @@ static int __init pmb_debugfs_init(void)
 subsys_initcall(pmb_debugfs_init);
 
 #ifdef CONFIG_PM
-
-static int pmb_sysdev_suspend(struct sys_device *dev, pm_message_t state)
+static void pmb_resume(void)
 {
-	static pm_message_t prev_state;
 	int idx;
-	switch (state.event) {
-	case PM_EVENT_ON:
-		/* Resumeing from hibernation */
-		if (prev_state.event == PM_EVENT_FREEZE) {
-			for (idx = 1; idx < NR_PMB_ENTRIES; ++idx)
-				if (pmbm[idx].usage && pmbm[idx].virt != 0xbf)
-					pmb_mapping_set(&pmbm[idx]);
-			flush_cache_all();
-		}
-	  break;
-	case PM_EVENT_SUSPEND:
-	  break;
-	case PM_EVENT_FREEZE:
-	  break;
-	}
-	prev_state = state;
-	return 0;
+
+	for (idx = 1; idx < NR_PMB_ENTRIES; ++idx)
+		if (pmbm[idx].usage && pmbm[idx].virt != 0xbf)
+			pmb_mapping_set(&pmbm[idx]);
+
+	flush_cache_all();
 }
 
-static int pmb_sysdev_resume(struct sys_device *dev)
-{
-	return pmb_sysdev_suspend(dev, PMSG_ON);
-}
-
-static struct sysdev_driver pmb_sysdev_driver = {
+static struct syscore_ops pmb_syscore = {
+	.resume = pmb_resume,
 };
 
-static int __init pmb_sysdev_init(void)
+static int __init pmb_syscore_init(void)
 {
-	return sysdev_driver_register(&cpu_sysdev_class, &pmb_sysdev_driver);
-}
-
-subsys_initcall(pmb_sysdev_init);
+	register_syscore_ops(&pmb_syscore);
+	return 0;
+};
+subsys_initcall(pmb_syscore_init);
 
 #ifdef CONFIG_HIBERNATION_ON_MEMORY
-
 void  stm_hom_pmb_init(void)
 {
 	call_apply_boot_mappings(uc_mapping, ram_mapping);
 
-	/* Now I can call the pmb_sysdev_resume */
-	pmb_sysdev_suspend(NULL, PMSG_ON);
+	/* Now I can call the pmb_resume */
+	pmb_resume();
 }
 #endif
 #endif
