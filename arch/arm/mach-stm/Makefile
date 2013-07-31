@@ -15,6 +15,7 @@ ifdef CONFIG_MACH_STM_B2020
 obj-$(CONFIG_MACH_STM_STIH415)	+= board-b2020.o
 obj-$(CONFIG_MACH_STM_STIH416)	+= board-b2020_h416.o
 endif
+obj-$(CONFIG_MACH_STM_STID127_BOARD)	+= board-stid127-dt.o
 obj-$(CONFIG_MACH_STM_STIG125_BOARD)	+= board-stig125-dt.o
 obj-$(CONFIG_MACH_STM_STIH415_BOARD)	+= board-stih415-dt.o
 obj-$(CONFIG_MACH_STM_STIH416_BOARD)	+= board-stih416-dt.o
@@ -23,11 +24,8 @@ obj-$(CONFIG_MACH_STM_B2078)	+= board-b2078.o
 obj-$(CONFIG_MACH_STM_B2092)	+= board-b2092.o
 obj-$(CONFIG_MACH_STM_B2105)	+= board-b2105.o
 obj-$(CONFIG_MACH_STM_B2116)	+= board-b2116.o
-ifdef CONFIG_MACH_STM_B2112
 obj-$(CONFIG_MACH_STM_B2112_STIG125)	+= board-b2112_d128xxZ.o
-obj-$(CONFIG_MACH_STM_B2112_STID127)	+= board-stid127-dt.o
-endif
-obj-$(CONFIG_MACH_STM_B2110)	+= board-stid127-dt.o
+
 obj-$(CONFIG_CACHE_L2X0)	+= l2x0.o
 obj-$(CONFIG_PCI)		+= pci-glue.o
 
