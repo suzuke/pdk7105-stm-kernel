@@ -561,18 +561,21 @@ void ilc_disable_all(void)
 static int ilc_resume_from_hibernation(struct ilc *ilc)
 {
 	unsigned long flag;
-	int i, irq;
+	int i;
+
 	local_irq_save(flag);
 	for (i = 0; i < ilc->inputs_num; ++i) {
-		irq = i + ilc->first_irq;
+		int irq = i + ilc->first_irq;
+		struct irq_data *d = irq_get_irq_data(irq);
+
 		ILC_SET_PRI(ilc->base, i, ilc->irqs[i].priority);
 		ILC_SET_TRIGMODE(ilc->base, i, ilc->irqs[i].trigger_mode);
 		if (ilc_is_used(&ilc->irqs[i])) {
-			startup_ilc_irq(irq);
+			startup_ilc_irq(d);
 			if (ilc_is_enabled(&ilc->irqs[i]))
-				unmask_ilc_irq(irq);
+				unmask_ilc_irq(d);
 			else
-				mask_ilc_irq(irq);
+				mask_ilc_irq(d);
 			}
 		}
 	local_irq_restore(flag);
