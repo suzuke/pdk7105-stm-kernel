@@ -123,7 +123,7 @@ SwitchJumpFrom:
 /* END_MARKER */
 DoRet:
 	rts			/* Return point */
-	 add #-8, r4
+	 nop
 
 /* POKE8(A, VAL) */
 DoPoke8:
