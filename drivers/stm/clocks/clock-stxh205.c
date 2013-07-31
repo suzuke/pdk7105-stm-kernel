@@ -169,10 +169,10 @@ _CLK_P(CLK_A0_PLL1LS, &clkgena0, 900000000,
 
 _CLK(CLK_A0_SH4_ICK,        &clkgena0,    550000000,    CLK_ALWAYS_ENABLED),
 _CLK(CLK_A0_HQVDP_PROC,     &clkgena0,    366000000,    0),
-_CLK(CLK_A0_IC_CPU,         &clkgena0,    550000000,    0),
+_CLK(CLK_A0_IC_CPU,         &clkgena0,    550000000,    CLK_ALWAYS_ENABLED),
 _CLK(CLK_A0_LX_DMU_CPU,     &clkgena0,    450000000,    0),
 _CLK(CLK_A0_LX_AUD_CPU,     &clkgena0,    550000000,    0),
-_CLK(CLK_A0_IC_STNOC,       &clkgena0,    450000000,    0),
+_CLK(CLK_A0_IC_STNOC,       &clkgena0,    450000000,    CLK_ALWAYS_ENABLED),
 _CLK(CLK_A0_GDP_PROC,       &clkgena0,    360000000,    0),
 _CLK(CLK_A0_NAND_CTRL,      &clkgena0,    200000000,    0),
 _CLK(CLK_A0_IC_REG_LP_ON,   &clkgena0,    100000000,    CLK_ALWAYS_ENABLED),
@@ -182,7 +182,7 @@ _CLK(CLK_A0_TSOUT_SRC,      &clkgena0,    137000000,    0),
 _CLK(CLK_A0_IC_REG_LP_OFF,  &clkgena0,    100000000,    0),
 _CLK(CLK_A0_DMU_PREPROC,    &clkgena0,    180000000,    0),
 _CLK(CLK_A0_THNS,           &clkgena0,     50000000,    0),
-_CLK(CLK_A0_IC_IF,          &clkgena0,    225000000,    0),
+_CLK(CLK_A0_IC_IF,          &clkgena0,    225000000,    CLK_ALWAYS_ENABLED),
 _CLK(CLK_A0_PMB,            &clkgena0,    100000000,    0),
 _CLK(CLK_A0_SYS_EMISS,      &clkgena0,    100000000,    0),
 _CLK(CLK_A0_MASTER,         &clkgena0,     50000000,    0),
@@ -206,7 +206,7 @@ _CLK(CLK_A1_BDISP_CK,       &clkgena1,   333000000,    0),
 _CLK(CLK_A1_TP,             &clkgena1,   400000000,    0),
 _CLK(CLK_A1_IC_COMPO_DISP,  &clkgena1,   200000000,    0),
 _CLK(CLK_A1_IC_BDISP,	    &clkgena1,   250000000,    0),
-_CLK(CLK_A1_ETH_PHY,        &clkgena1,    50000000,    0),
+_CLK(CLK_A1_ETH_PHY,        &clkgena1,    50000000,    CLK_ALWAYS_ENABLED),
 _CLK(CLK_A1_IC_DMU,         &clkgena1,   266000000,    0),
 _CLK(CLK_A1_IC_GMAC,        &clkgena1,   100000000,    0),
 _CLK(CLK_A1_PTP_REF_CLK,    &clkgena1,   200000000,    0),
@@ -322,7 +322,10 @@ int __init stxh205_plat_clk_init(void)
 	call_platform_sys_claim(478, 14, 14);
 	call_platform_sys_claim(478, 15, 17);
 
-	ret = clk_register_table(clk_clocks, ARRAY_SIZE(clk_clocks), 0);
+	ret = clk_register_table(clk_clocks, CLK_B_REF, 1);
+
+	ret |= clk_register_table(&clk_clocks[CLK_B_REF],
+		ARRAY_SIZE(clk_clocks) - CLK_B_REF, 0);
 
 	return 0;
 }
