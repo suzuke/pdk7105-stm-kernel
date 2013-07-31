@@ -286,6 +286,7 @@ static struct plat_stmmacenet_data stxh205_ethernet_platform_data = {
 	.bugged_jumbo = 1,
 	.pmt = 1,
 	.init = &stmmac_claim_resource,
+	.exit = &stmmac_release_resource,
 	.bus_setup = &stxh205_ethernet_bus_setup,
 };
 
