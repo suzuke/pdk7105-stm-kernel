@@ -38,7 +38,6 @@
 #define dbg_print(fmt, args...)
 #endif
 
-#define SH_TMU_IOBASE		0xffd80000
 
 #ifdef CONFIG_HOM_DEBUG
 unsigned long hom_debug_marker;
@@ -120,21 +119,6 @@ unsigned long stm_hom_boot_stack[THREAD_SIZE / 4]
 static long linux_marker[] = {	0x7a6f7266,	/* froz */
 				0x6c5f6e65,	/* en_l */
 				0x78756e69 };	/* inux */
-
-/*
- * This function restarts the TMU1 in free running mode
- * This is required only for TMU1 because the TMU_0 is
- * managed via clock_event API while the TMU_1 has no initialization
- * via clock_source API therefore the initialization is done here.
- */
-static void stm_hom_tmu1_restart(void)
-{
-	unsigned char tmp;
-	iowrite32(0xffffffff, SH_TMU_IOBASE + 0x14); /* TMU1.TCOR */
-	iowrite32(0xffffffff, SH_TMU_IOBASE + 0x18); /* TMU1.TCNT */
-	tmp = ioread8(SH_TMU_IOBASE + 0x4);
-	iowrite8(tmp | 0x2, SH_TMU_IOBASE + 0x4);
-}
 
 /*
  * Initialize the cache
@@ -277,11 +261,6 @@ static int stm_hom_enter(void)
 	 */
 	if (platform_hom->early_console)
 		platform_hom->early_console();
-
-	/*
-	 * Restart the TMU1 in free running mode
-	 */
-	stm_hom_tmu1_restart();
 
 	flush_cache_all();
 

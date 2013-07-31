@@ -231,6 +231,8 @@ static int sh_tmu_register_clocksource(struct sh_tmu_priv *p,
 	cs->read = sh_tmu_clocksource_read;
 	cs->enable = sh_tmu_clocksource_enable;
 	cs->disable = sh_tmu_clocksource_disable;
+	cs->suspend = sh_tmu_clocksource_disable;
+	cs->resume = sh_tmu_clocksource_enable;
 	cs->mask = CLOCKSOURCE_MASK(32);
 	cs->flags = CLOCK_SOURCE_IS_CONTINUOUS;
 
