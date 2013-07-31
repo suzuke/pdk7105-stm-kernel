@@ -78,7 +78,7 @@ static void stm_hom_check_pmb(void)
 
 	hom_printk("%s ", __func__);
 
-	for (i = 0; i < PMB_ENTRY_MAX; ++i) {
+	for (i = 0; i < NR_PMB_ENTRIES; ++i) {
 		if ((readl(pmb_addr) & PMB_V) || (readl(pmb_data) & PMB_V)) {
 			hom_printk("Valid entry in: %d - ", i);
 			hom_printk("0x%x vs 0x%x ",
@@ -123,12 +123,12 @@ static long linux_marker[] = {	0x7a6f7266,	/* froz */
 /*
  * Initialize the cache
  */
-void __uses_jump_to_uncached stm_hom_cache_init(void)
+void noinline stm_hom_cache_init(void)
 {
 	unsigned long ccr, flags;
 
 	jump_to_uncached();
-	ccr = ctrl_inl(CCR);
+	ccr = __raw_readl(CCR);
 	/*
 	 * Default CCR values .. enable the caches
 	 * and invalidate them immediately..
@@ -151,7 +151,7 @@ void __uses_jump_to_uncached stm_hom_cache_init(void)
 			for (addr = addrstart;
 			     addr < addrstart + waysize;
 			     addr += current_cpu_data.dcache.linesz)
-				ctrl_outl(0, addr);
+				__raw_writel(0, addr);
 
 			addrstart += current_cpu_data.dcache.way_incr;
 		} while (--ways);
@@ -168,7 +168,7 @@ void __uses_jump_to_uncached stm_hom_cache_init(void)
 	flags &= ~CCR_CACHE_ENABLE;
 #endif
 
-	ctrl_outl(flags, CCR);
+	__raw_writel(flags, CCR);
 	back_to_cached();
 }
 
@@ -188,7 +188,7 @@ static void stm_hom_pgd_setup(void)
 static int stm_hom_enter(void)
 {
 	unsigned long *_ztext = (unsigned long *)
-		(CONFIG_HOM_TAG_VIRTUAL_ADDRESS);
+		__va(CONFIG_HOM_TAG_PHYSICAL_ADDRESS);
 	long flag;
 	unsigned long lpj =
 		(cpu_data[raw_smp_processor_id()].loops_per_jiffy * HZ) / 1000;
@@ -223,6 +223,7 @@ static int stm_hom_enter(void)
 
 	local_irq_save(flag);
 
+	pr_info("stm: pm: CPU frozen\n");
 	mdelay(100);
 	BUG_ON(in_irq());
 
@@ -283,6 +284,10 @@ static int stm_hom_enter(void)
 #endif
 
 	memset(empty_zero_page, 0, 0x1000); /* clear the empty_zero_page */
+
+	pr_info("stm: pm: CPU defrost\n");
+	mdelay(10);
+
 	return 0;
 }
 
@@ -299,7 +304,10 @@ int stm_hom_register(struct stm_mem_hibernation *data)
 		platform_hom = NULL;
 		return -EINVAL;
 	}
-	pr_info("[STM]: [PM]: HoM support registered\n");
+
+	pr_info("stm: pm: HoM support registered (Tag @ 0x%x/0x%x)\n",
+		CONFIG_HOM_TAG_PHYSICAL_ADDRESS,
+		__va(CONFIG_HOM_TAG_PHYSICAL_ADDRESS));
 	return 0;
 }
 EXPORT_SYMBOL_GPL(stm_hom_register);
