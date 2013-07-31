@@ -21,6 +21,7 @@
 #include <linux/errno.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <linux/syscore_ops.h>
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -73,17 +74,11 @@ struct ilc {
 	unsigned int first_irq;
 	int disable_wakeup:1;
 	spinlock_t lock;
-	struct device dev;
 	struct ilc_irq *irqs;
-#ifdef CONFIG_HIBERNATION
-	pm_message_t state;
-#endif
 	unsigned long **priority;
 };
 
 static LIST_HEAD(ilcs_list);
-
-static struct bus_type ilc_subsys;
 
 #define dev_to_ilc(x) container_of((x), struct ilc, dev)
 
@@ -445,12 +440,6 @@ static int __devinit ilc_probe(struct platform_device *pdev)
 
 	list_add(&ilc->list, &ilcs_list);
 
-	/* sysdev doesn't appear to like id's of -1 */
-	ilc->dev.id = (pdev->id == -1) ? 0 : pdev->id;
-
-	ilc->dev.bus = &ilc_subsys,
-	error = device_register(&ilc->dev);
-
 	return error;
 }
 
@@ -582,39 +571,32 @@ static int ilc_resume_from_hibernation(struct ilc *ilc)
 	return 0;
 }
 
-static int ilc_sysdev_suspend(struct sys_device *dev, pm_message_t state)
+static void ilc_syscore_resume(void)
 {
-	struct ilc *ilc = dev_to_ilc(dev);
+	struct ilc *ilc;
 
-	ilc->state = state;
-
-	return 0;
-}
-
-static int ilc_sysdev_resume(struct sys_device *dev)
-{
-	struct ilc *ilc = dev_to_ilc(dev);
-	if (ilc->state.event == PM_EVENT_FREEZE) {
+	list_for_each_entry(ilc, &ilcs_list, list)
 		ilc_resume_from_hibernation(ilc);
-		ilc->state = PMSG_ON;
-	}
-	return 0;
 }
 
-#else
-#define ilc_sysdev_suspend NULL
-#define ilc_sysdev_resume NULL
-#endif
-
-static struct bus_type ilc_subsys = {
-	.name = "ilc3",
+static struct syscore_ops ilc_syscore = {
+	.resume = ilc_syscore_resume,
 };
+
+static inline int ilc_syscore_init(void)
+{
+	register_syscore_ops(&ilc_syscore);
+	return 0;
+}
+#else
+static inline int ilc_syscore_init(void) { return 0; }
+#endif
 
 static int __init ilc_init(void)
 {
 	int ret;
 
-	ret = subsys_system_register(&ilc_subsys, NULL);
+	ret = ilc_syscore_init();
 	if (ret)
 		return ret;
 
