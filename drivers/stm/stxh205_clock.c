@@ -20,8 +20,9 @@ int __init stxh205_plat_clk_alias_init(void)
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
 	clk_add_alias("tmu_fck", NULL, "CLK_A0_IC_REG_LP_ON", NULL);
 
-	/* EMI clock */
+	/* EMI/Nand clock */
 	clk_add_alias("emi_clk", NULL, "CLK_A0_SYS_EMISS", NULL);
+	clk_add_alias("bch_clk", NULL, "CLK_A0_NAND_CTRL", NULL);
 
 	/* fdmas clocks */
 	clk_add_alias("fdma_slim_clk", "stm-fdma.0",
