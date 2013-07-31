@@ -39,6 +39,7 @@ config MACH_STM_STID127_BOARD
 	bool "Generic board support for StiD127 based boards via Device trees"
 	depends on OF
 	select MACH_STM_STID127
+	select FIXED_PHY
 	help
 	Include support for a Generic Board based on device trees for StiD127
 
