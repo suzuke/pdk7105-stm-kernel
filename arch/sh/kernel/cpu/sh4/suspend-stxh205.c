@@ -101,7 +101,7 @@ END_MARKER
 
 static int stxh205_suspend_begin(suspend_state_t state)
 {
-	pr_info("[STM][PM] Analyzing the wakeup devices\n");
+	pr_info("stm: pm: Analyzing the wakeup devices\n");
 
 	stm_check_wakeup_devices(&stxh205_wkd);
 
@@ -149,7 +149,7 @@ static int stxh205_suspend_core(suspend_state_t state, int suspending)
 
 	switch_cfg = NULL;
 
-	pr_debug("[STM][PM] ClockGens A: restored\n");
+	pr_debug("stm: pm: ClockGens A: restored\n");
 	return 0;
 
 on_suspending:
@@ -219,7 +219,7 @@ on_suspending:
 
 	iowrite32(pwr_1, cga1 + CKGA_POWER_CFG);
 
-	pr_debug("[STM][PM] ClockGens A: saved\n");
+	pr_debug("stm: pm: ClockGens A: saved\n");
 	return 0;
 error:
 	kfree(switch_cfg);
@@ -297,7 +297,7 @@ static int __init stxh205_suspend_setup(void)
 	return stm_suspend_register(&stxh205_suspend);
 
 error:
-	pr_err("[STM][PM] Error to acquire the sysconf registers\n");
+	pr_err("stm: pm: Error to acquire the sysconf registers\n");
 	for (i = 0; i < ARRAY_SIZE(sc); ++i)
 		if (sc[i])
 			sysconf_release(sc[i]);

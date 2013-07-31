@@ -34,7 +34,7 @@
 
 #ifdef CONFIG_PM_DEBUG
 #define dbg_print(fmt, args...)		\
-		printk(KERN_INFO "%s: " fmt, __func__, ## args)
+		pr_info("%s: " fmt, __func__, ## args)
 #else
 #define dbg_print(fmt, args...)
 #endif
@@ -58,7 +58,7 @@ static int stm_suspend_enter(suspend_state_t state)
 	int err = 0;
 
 	/* Must wait for serial buffers to clear */
-	printk(KERN_INFO "CPU is sleeping\n");
+	pr_info("CPU is sleeping\n");
 	mdelay(100);
 
 	flush_cache_all();
@@ -110,14 +110,14 @@ __stm_again_suspend:
 	if (platform_suspend->post_enter)
 		platform_suspend->post_enter(state);
 
-	printk(KERN_INFO "CPU woken up by: 0x%x\n", wokenup_by);
+	pr_info("CPU woken up by: %d\n", wokenup_by);
 
 	return 0;
 
 on_error:
 	if (platform_suspend->post_enter)
 		platform_suspend->post_enter(state);
-	pr_err("[STM][PM] Error on Core Suspend\n");
+	pr_err("stm: pm: Error on Core Suspend\n");
 	return -EINVAL;
 }
 
@@ -141,7 +141,7 @@ int __init stm_suspend_register(struct stm_platform_suspend_t *_suspend)
 
 	suspend_set_ops(&platform_suspend->ops);
 
-	printk(KERN_INFO "[STM]: [PM]: Suspend support registered\n");
+	pr_info("stm: pm: Suspend support registered\n");
 
 	return 0;
 }

@@ -129,8 +129,7 @@ static int __init hom_stxh205_setup(void)
 
 	ret = gpio_request(LMI_RETENTION_PIN, "LMI retention mode");
 	if (ret) {
-		pr_err("[STM]: [PM]: [HoM]: GPIO for retention mode"
-			"not acquired\n");
+		pr_err("stm: pm: hom: GPIO for retention mode not acquired\n");
 		return ret;
 	};
 
@@ -144,7 +143,7 @@ static int __init hom_stxh205_setup(void)
 
 	early_console_base = (void *)
 		ioremap(stm_asc_console_device->resource[0].start, 0x1000);
-	pr_info("[STM]: [PM]: [HoM]: Early console @ %p\n",
+	pr_info("stm: pm: hom: Early console @ %p\n",
 		early_console_base);
 	stxh205_hom.early_console = stxh205_hom_early_console;
 
