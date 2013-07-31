@@ -35,6 +35,7 @@ static struct platform_device stxh205_ilc3_device = {
 		.inputs_num = ILC_NR_IRQS,
 		.outputs_num = 80,
 		.first_irq = ILC_FIRST_IRQ,
+		.disable_wakeup = 1,
 	},
 };
 
