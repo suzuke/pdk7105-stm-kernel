@@ -24,7 +24,6 @@
 
 #include <linux/stm/pm_notify.h>
 
-#include <asm/system.h>
 #include <asm/cacheflush.h>
 #include <asm-generic/bug.h>
 
@@ -55,9 +54,7 @@ static int stm_suspend_enter(suspend_state_t state)
 	unsigned long tbl, tbl_size;
 	unsigned long lpj =
 		(cpu_data[raw_smp_processor_id()].loops_per_jiffy * HZ) / 1000;
-	enum stm_pm_type type = (state == PM_SUSPEND_STANDBY) ?
-		STM_PM_SUSPEND : STM_PM_MEMSUSPEND;
-	enum stm_pm_notify_return notify_ret;
+	enum stm_pm_notify_ret notify_ret;
 	int err = 0;
 
 	/* Must wait for serial buffers to clear */
@@ -96,10 +93,6 @@ static int stm_suspend_enter(suspend_state_t state)
 	BUG_ON(in_irq());
 
 __stm_again_suspend:
-	notify_ret = stm_pm_prepare_enter(type);
-	if (notify_ret == STM_PM_RET_ERROR)
-		goto __stm_skip_suspend;
-
 	stm_exec_table(tbl, tbl_size, lpj, soc_flags);
 
 	BUG_ON(in_irq());
@@ -110,8 +103,7 @@ __stm_again_suspend:
 	else
 		wokenup_by = evt2irq(wokenup_by);
 
-__stm_skip_suspend:
-	notify_ret = stm_pm_post_enter(type, wokenup_by);
+	notify_ret = stm_pm_early_check(wokenup_by);
 	if (notify_ret == STM_PM_RET_AGAIN)
 		goto __stm_again_suspend;
 
