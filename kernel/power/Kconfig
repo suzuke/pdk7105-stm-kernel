@@ -102,8 +102,9 @@ config HIBERNATION_ON_MEMORY
 config HOM_TAG_PHYSICAL_ADDRESS
 	hex "Hibernation on memory - Tag physical address"
 	depends on HIBERNATION_ON_MEMORY
-	depends on ARM
-	default "0x60001800"
+	depends on ARM || SUPERH
+	default "0x60001800" if ARM
+	default "0x40001800" if SUPERH
 	---help---
 	  Set the Absolute Physical Address where the Hibernation,
 	  writes the HoM maker.
