@@ -18,7 +18,7 @@
 	};
 
 	chosen {
-		bootargs = "                                                                                                                                                                                                                                                                                                                                                                                              ";
+		bootargs = "";
 		linux,stdout-path = &asc8;
 	};
 
