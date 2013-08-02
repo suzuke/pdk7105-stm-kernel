@@ -114,9 +114,9 @@
 			status = "okay";
 		};
 
-		/* TODO: to configure as no-removable card */
 		sdhci1:sdhci@fe81f000 {
 			status = "okay";
+			st,mmc-non-removable;
 		};
 
 		ethernet1:ethernet@fef08000 {
