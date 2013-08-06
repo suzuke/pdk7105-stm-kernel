@@ -483,13 +483,17 @@ struct stm_device_config *stm_of_get_dev_config_from_node(struct device *dev,
 	struct device_node *sysconfs;
 	if (!dc)
 		return NULL;
-	sysconfs = of_get_child_by_name(dc, "sysconfs");
 
 	dev_config = devm_kzalloc(dev, sizeof(*dev_config), GFP_KERNEL);
 
 	dev_config->pad_config = stm_of_get_pad_config_from_node(dev, dc, 0);
-	dev_config->sysconfs_num = stm_of_parse_dev_sysconfs(dev, dc,
+
+	sysconfs = of_get_child_by_name(dc, "sysconfs");
+	if (sysconfs) {
+		dev_config->sysconfs_num = stm_of_parse_dev_sysconfs(dev, dc,
 						sysconfs, dev_config);
+		of_node_put(sysconfs);
+	}
 
 	if (of_parse_phandle(dc, "device-seqs", 0)) {
 		dev_config->init = stm_of_device_init;
@@ -497,7 +501,6 @@ struct stm_device_config *stm_of_get_dev_config_from_node(struct device *dev,
 		dev_config->power = stm_of_device_power;
 	}
 
-	of_node_put(sysconfs);
 	return dev_config;
 }
 EXPORT_SYMBOL(stm_of_get_dev_config_from_node);
