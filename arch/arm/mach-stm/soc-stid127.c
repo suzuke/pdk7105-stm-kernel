@@ -54,6 +54,11 @@ static struct map_desc stid127_io_desc[] __initdata = {
 		.length		= SZ_16K,
 		.type		= MT_DEVICE,
 	}, {
+		.virtual	= IO_ADDRESS(STID127_ASC2_BASE),
+		.pfn		= __phys_to_pfn(STID127_ASC2_BASE),
+		.length		= SZ_16K,
+		.type		= MT_DEVICE,
+	}, {
 		.virtual	= IO_ADDRESS(STID127_PIO_PEAST0_BASE),
 		.pfn		= __phys_to_pfn(STID127_PIO_PEAST0_BASE),
 		.length		= SZ_64K,
