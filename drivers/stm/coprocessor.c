@@ -325,6 +325,7 @@ err_device:
 err_dev_add:
 	return ret;
 }
+EXPORT_SYMBOL(coproc_device_add);
 
 int coproc_device_remove(struct coproc *cop)
 {
@@ -334,6 +335,7 @@ int coproc_device_remove(struct coproc *cop)
 	device_unregister(cop->dev);
 	return 0;
 }
+EXPORT_SYMBOL(coproc_device_remove);
 
 static int __init coproc_init(void)
 {
