@@ -40,6 +40,8 @@ const char *stm_soc(void)
 {
 	if (stm_soc_is_fli7610())
 		return "FLI7610";
+	if (stm_soc_is_stid127())
+		return "STiD127";
 	if (stm_soc_is_stig125())
 		return "STiG125";
 	if (stm_soc_is_stxh205())

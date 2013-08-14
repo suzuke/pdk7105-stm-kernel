@@ -30,6 +30,12 @@ static inline long stm_soc_version_minor(void)
 #define stm_soc_is_fli7610()    (0)
 #endif
 
+#ifdef CONFIG_MACH_STM_STID127
+#define stm_soc_is_stid127()    (1)
+#else
+#define stm_soc_is_stid127()    (0)
+#endif
+
 #ifdef CONFIG_MACH_STM_STIG125
 #define stm_soc_is_stig125()    (1)
 #else
