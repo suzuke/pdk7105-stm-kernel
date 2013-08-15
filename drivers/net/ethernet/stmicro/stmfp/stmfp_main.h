@@ -382,10 +382,21 @@
 #define FP_FC_MAC_D_MASK_L (FP_FCAM_BASE + 0x1c)
 #define FP_FC_CMD (FP_FCAM_BASE + 0xa0)
 
-#define TCAM_FIRST_FREE_IDX_SW (8)
-#define TCAM_PROMISC_OFFSET (NUM_INTFS)
 #define IDX_INV (-1)
 #define TCAM_IDX_INV (-1)
+#define TCAM_FWRULES_IDX (0)
+#define TCAM_SYSTEM_IDX (16)
+#define TCAM_MNGL_SQ_IDX (19)
+#define TCAM_MNGL_VLAN_IDX (20)
+#define TCAM_PROMS_FP_IDX (23)
+#define TCAM_PROMS_FPBR_IDX (26)
+#define TCAM_BRIDGE_IDX (29)
+#define TCAM_PROMS_SP_IDX (61)
+#define TCAM_ALLMULTI_IDX (61)
+#define NUM_TCAM_ENTRIES (64)
+#define MAX_FP_BRIDGE (NUM_INTFS)
+#define TCAM_RD (0x80000000)
+#define TCAM_WR (0)
 
 struct rx_ch_reg {
 	u32 rx_cpu;
@@ -526,6 +537,8 @@ struct fpif_priv {
 	struct fpif_grp *fpgrp;
 	short allmulti_idx;
 	short promisc_idx;
+	short br_l2cam_idx;
+	short br_tcam_idx;
 	short ifaddr_idx;
 	u32 id;
 	u32 dma_port;
@@ -548,6 +561,16 @@ struct fpif_priv {
 	struct plat_fpif_data *plat;
 	void *rgmii_base;
 	int ifidx;
+};
+
+struct fp_tcam_info {
+	u8 sp;
+	u8 dest;
+	u8 redir;
+	u8 bridge;
+	u8 cont;
+	u8 all_multi;
+	unsigned char *dev_addr_d;
 };
 
 struct fp_qos_queue {

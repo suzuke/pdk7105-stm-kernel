@@ -430,6 +430,23 @@ static void fp_rxdma_release(struct fpif_priv *priv)
 	fpif_rxb_release(priv);
 }
 
+
+static void init_tcam(struct fpif_grp *fpgrp)
+{
+	int idx, valid;
+
+	for (idx = 0; idx < NUM_TCAM_ENTRIES; idx++) {
+		fpif_write_reg(fpgrp->base + FP_FC_RST, 0);
+		fpif_write_reg(fpgrp->base + FP_FC_CMD, TCAM_RD | idx);
+		valid = readl(fpgrp->base + FP_FC_CTRL);
+		valid = valid & (1 << FC_CTRL_VALID_SHIFT);
+		if (valid)
+			pr_err("fp:ERROR:TCAM entries already used\n");
+		fpif_write_reg(fpgrp->base + FP_FC_CMD, TCAM_WR | idx);
+	}
+}
+
+
 static void fp_hwinit(struct fpif_grp *fpgrp)
 {
 	int idx;
@@ -613,6 +630,7 @@ static void fp_hwinit(struct fpif_grp *fpgrp)
 	fpif_write_reg(fpgrp->base + FPRXDMA_T3R_CONFIG,
 		       CONFIG_OP16 | CONFIG_OP32 | CONFIG_MOPEN);
 	fpif_write_reg(fpgrp->base + FPRXDMA_ENDIANNESS, DMA_REV_ENDIAN);
+	init_tcam(fpgrp);
 }
 
 
@@ -814,16 +832,115 @@ static int fpif_change_mtu(struct net_device *dev, int new_mtu)
 	return 0;
 }
 
+
+static int is_valid_tcam(struct fpif_grp *fpgrp, int idx)
+{
+	int valid;
+
+	fpif_write_reg(fpgrp->base + FP_FC_RST, 0);
+	fpif_write_reg(fpgrp->base + FP_FC_CMD, TCAM_RD | idx);
+	valid = readl(fpgrp->base + FP_FC_CTRL) & (1 << FC_CTRL_VALID_SHIFT);
+
+	return valid;
+}
+
+
+static void remove_tcam(struct fpif_grp *fpgrp, int idx)
+{
+	int valid;
+
+	valid = is_valid_tcam(fpgrp, idx);
+	if (!valid) {
+		pr_err("fp:ERROR:TCAM idx %d already removed\n", idx);
+		return;
+	}
+	fpdbg("Removing TCAM idx=%d\n", idx);
+	fpif_write_reg(fpgrp->base + FP_FC_RST, 0);
+	fpif_write_reg(fpgrp->base + FP_FC_CMD, TCAM_WR | idx);
+
+	return;
+}
+
+static void mod_tcam(struct fpif_grp *fpgrp, struct fp_tcam_info *tcam_info,
+		int idx)
+{
+	unsigned char *dev_addr = tcam_info->dev_addr_d;
+	u32 fc_ctrl, val, sp = tcam_info->sp;
+
+	fpdbg("mod_tcam: idx=%d\n", idx);
+	if (dev_addr)
+		fpdbg("mod_tcam: MAC %x %x %x %x %x %x\n", dev_addr[0],
+		      dev_addr[1], dev_addr[2], dev_addr[3], dev_addr[4],
+		      dev_addr[5]);
+
+	fpif_write_reg(fpgrp->base + FP_FC_RST, 0);
+	if (sp) {
+		val = FC_SOURCE_SRCP_MASK | sp << FC_SOURCE_SRCP_SHIFT;
+		fpif_write_reg(fpgrp->base + FP_FC_SOURCE, val);
+	}
+	fc_ctrl = readl(fpgrp->base + FP_FC_CTRL) | 1 << FC_CTRL_VALID_SHIFT;
+	fc_ctrl = fc_ctrl | (tcam_info->dest << FC_CTRL_DST_SHIFT);
+	fc_ctrl = fc_ctrl | (tcam_info->bridge << FC_CTRL_BRIDGE_SHIFT);
+	fc_ctrl = fc_ctrl | (tcam_info->redir << FC_CTRL_REDIR_SHIFT);
+	fc_ctrl = fc_ctrl | (tcam_info->cont << FC_CTRL_CONTINUE_SHIFT);
+	fpif_write_reg(fpgrp->base + FP_FC_CTRL, fc_ctrl);
+
+	if (dev_addr) {
+		val = dev_addr[0] << 8 | dev_addr[1];
+		fpif_write_reg(fpgrp->base + FP_FC_MAC_D_H, val);
+		fpif_write_reg(fpgrp->base + FP_FC_MAC_D_MASK_H, 0xffff);
+		val = (dev_addr[2] << 24) | (dev_addr[3] << 16) |
+		       (dev_addr[4] << 8) | dev_addr[5];
+		fpif_write_reg(fpgrp->base + FP_FC_MAC_D_L, val);
+		fpif_write_reg(fpgrp->base + FP_FC_MAC_D_MASK_L, 0xffffffff);
+	}
+
+	if (tcam_info->all_multi) {
+		fpif_write_reg(fpgrp->base + FP_FC_MAC_D_H, 0x100);
+		fpif_write_reg(fpgrp->base + FP_FC_MAC_D_MASK_H, 0x100);
+	}
+
+	fpif_write_reg(fpgrp->base + FP_FC_CMD, TCAM_WR | idx);
+}
+
+
+static void add_tcam(struct fpif_grp *fpgrp, struct fp_tcam_info *tcam_info,
+		     int idx)
+{
+	int valid;
+
+	if (idx >= NUM_TCAM_ENTRIES)
+		pr_err("fp:ERROR:Invalid TCAM idx passed\n");
+	valid = is_valid_tcam(fpgrp, idx);
+	if (!valid)
+		mod_tcam(fpgrp, tcam_info, idx);
+	else
+		pr_err("fp:ERROR:idx %d is already used\n", idx);
+
+	return;
+}
+
+static void remove_tcam_br(struct fpif_priv *priv)
+{
+	int idx;
+	struct fpif_grp *fpgrp = priv->fpgrp;
+
+	if (priv->br_tcam_idx == IDX_INV)
+		return;
+
+	idx = TCAM_PROMS_FPBR_IDX + priv->id;
+	remove_tcam(fpgrp, idx);
+	priv->br_tcam_idx = IDX_INV;
+}
+
+
 static void remove_tcam_promisc(struct fpif_priv *priv)
 {
 	struct fpif_grp *fpgrp = priv->fpgrp;
 
 	if (priv->promisc_idx != TCAM_IDX_INV) {
-		readl(fpgrp->base + FP_FC_RST);
-		writel(priv->promisc_idx, fpgrp->base + FP_FC_CMD);
-		readl(fpgrp->base + FP_FC_RST);
-		writel(priv->promisc_idx + TCAM_PROMISC_OFFSET,
-		       fpgrp->base + FP_FC_CMD);
+		remove_tcam(fpgrp, TCAM_PROMS_SP_IDX + priv->id);
+		remove_tcam(fpgrp, TCAM_PROMS_FP_IDX + priv->id);
 		priv->promisc_idx = TCAM_IDX_INV;
 	}
 }
@@ -834,8 +951,7 @@ static void remove_tcam_allmulti(struct fpif_priv *priv)
 	struct fpif_grp *fpgrp = priv->fpgrp;
 
 	if (priv->allmulti_idx != TCAM_IDX_INV) {
-		readl(fpgrp->base + FP_FC_RST);
-		writel(priv->allmulti_idx, fpgrp->base + FP_FC_CMD);
+		remove_tcam(fpgrp, TCAM_ALLMULTI_IDX + priv->id);
 		priv->allmulti_idx = TCAM_IDX_INV;
 	}
 }
@@ -843,68 +959,48 @@ static void remove_tcam_allmulti(struct fpif_priv *priv)
 
 static void add_tcam_allmulti(struct fpif_priv *priv)
 {
-	struct fpif_grp *fpgrp = priv->fpgrp;
-	u32 fc_ctrl;
+	struct fp_tcam_info tcam_info;
+	int idx;
 
 	if (priv->allmulti_idx == TCAM_IDX_INV) {
-		readl(fpgrp->base + FP_FC_RST);
-		writel(FC_SOURCE_SRCP_MASK | priv->sp << FC_SOURCE_SRCP_SHIFT,
-		       fpgrp->base + FP_FC_SOURCE);
-		fc_ctrl = readl(fpgrp->base + FP_FC_CTRL) |
-			priv->dma_port << FC_CTRL_DST_SHIFT |
-			1 << FC_CTRL_REDIR_SHIFT |
-			1 << FC_CTRL_BRIDGE_SHIFT |
-			1 << FC_CTRL_CONTINUE_SHIFT |
-			1 << FC_CTRL_VALID_SHIFT;
-		writel(fc_ctrl, fpgrp->base + FP_FC_CTRL);
-		writel(0x100, fpgrp->base + FP_FC_MAC_D_H);
-		writel(0x100, fpgrp->base + FP_FC_MAC_D_MASK_H);
-		priv->allmulti_idx = priv->id + TCAM_FIRST_FREE_IDX_SW;
-		writel(priv->allmulti_idx, fpgrp->base + FP_FC_CMD);
+		memset(&tcam_info, 0, sizeof(tcam_info));
+		tcam_info.sp = priv->sp;
+		tcam_info.bridge = 1;
+		tcam_info.cont = 1;
+		tcam_info.redir = 1;
+		tcam_info.dest = priv->dma_port;
+		tcam_info.all_multi = 1;
+		idx = TCAM_ALLMULTI_IDX + priv->id;
+		add_tcam(priv->fpgrp, &tcam_info, idx);
+		priv->allmulti_idx = idx;
 	}
 }
 
 
 static void add_tcam_promisc(struct fpif_priv *priv)
 {
-	struct fpif_grp *fpgrp = priv->fpgrp;
 	struct net_device *netdev = priv->netdev;
-	u8 *dev_addr = netdev->dev_addr;
-	u32 val, fc_ctrl;
+	int idx;
+	struct fp_tcam_info tcam_info;
 
 	if (priv->promisc_idx == TCAM_IDX_INV) {
-		readl(fpgrp->base + FP_FC_RST);
-		writel(FC_SOURCE_SRCP_MASK | priv->sp <<
-				FC_SOURCE_SRCP_SHIFT,
-				fpgrp->base + FP_FC_SOURCE);
-		fc_ctrl = readl(fpgrp->base + FP_FC_CTRL) |
-			priv->dma_port << FC_CTRL_DST_SHIFT |
-			1 << FC_CTRL_REDIR_SHIFT |
-			1 << FC_CTRL_BRIDGE_SHIFT |
-			1 << FC_CTRL_CONTINUE_SHIFT |
-			1 << FC_CTRL_VALID_SHIFT;
-		writel(fc_ctrl, fpgrp->base + FP_FC_CTRL);
-		priv->promisc_idx = priv->id + TCAM_FIRST_FREE_IDX_SW;
-		writel(priv->promisc_idx + TCAM_PROMISC_OFFSET,
-		       fpgrp->base + FP_FC_CMD);
-		readl(fpgrp->base + FP_FC_RST);
-		writel(FC_SOURCE_SRCP_MASK | priv->sp <<
-				FC_SOURCE_SRCP_SHIFT,
-				fpgrp->base + FP_FC_SOURCE);
-		fc_ctrl = readl(fpgrp->base + FP_FC_CTRL) |
-			1 << FC_CTRL_VALID_SHIFT;
-		writel(fc_ctrl, fpgrp->base + FP_FC_CTRL);
-		val = dev_addr[0] << 8 | dev_addr[1];
-		writel(val, fpgrp->base + FP_FC_MAC_D_H);
-		writel(0xffff, fpgrp->base + FP_FC_MAC_D_MASK_H);
-		val = (dev_addr[2] << 24) | (dev_addr[3] << 16) |
-		       (dev_addr[4] << 8) | dev_addr[5];
-		writel(val, fpgrp->base + FP_FC_MAC_D_L);
-		writel(0xffffffff, fpgrp->base + FP_FC_MAC_D_MASK_L);
-		writel(priv->promisc_idx, fpgrp->base + FP_FC_CMD);
+		memset(&tcam_info, 0, sizeof(tcam_info));
+		tcam_info.sp = priv->sp;
+		tcam_info.dev_addr_d = netdev->dev_addr;
+		idx = TCAM_PROMS_FP_IDX + priv->id;
+		add_tcam(priv->fpgrp, &tcam_info, idx);
+
+		memset(&tcam_info, 0, sizeof(tcam_info));
+		tcam_info.sp = priv->sp;
+		tcam_info.bridge = 1;
+		tcam_info.cont = 1;
+		tcam_info.redir = 1;
+		tcam_info.dest = priv->dma_port;
+		idx = TCAM_PROMS_SP_IDX + priv->id;
+		add_tcam(priv->fpgrp, &tcam_info, idx);
+		priv->promisc_idx = idx;
 	}
 }
-
 
 static void fpif_set_multi(struct net_device *dev)
 {
@@ -913,16 +1009,18 @@ static void fpif_set_multi(struct net_device *dev)
 	struct fpif_grp *fpgrp = priv->fpgrp;
 	int idx;
 
-	remove_tcam_promisc(priv);
-	remove_tcam_allmulti(priv);
+	/* promisc and allmulti idx share the same location in TCAM */
 	if (dev->flags & IFF_PROMISC) {
 		add_tcam_promisc(priv);
+		priv->allmulti_idx = TCAM_IDX_INV;
 		return;
 	}
+	remove_tcam_promisc(priv);
 	if (dev->flags & IFF_ALLMULTI) {
 		add_tcam_allmulti(priv);
 		return;
 	}
+	remove_tcam_allmulti(priv);
 	if (netdev_mc_empty(dev))
 		return;
 	if (netdev_mc_count(dev) > fpgrp->available_l2cam) {
@@ -1552,6 +1650,9 @@ static int fpif_close(struct net_device *netdev)
 	fp_rxdma_release(priv);
 	remove_l2cam_if(priv);
 	mutex_unlock(&fpgrp->mutex);
+	remove_tcam_promisc(priv);
+	remove_tcam_allmulti(priv);
+	remove_tcam_br(priv);
 	return 0;
 }
 
@@ -1698,6 +1799,8 @@ static int fpif_init(struct fpif_grp *fpgrp)
 		netdev->hard_header_len += FP_HDR_SIZE;
 		strcpy(netdev->name, priv->plat->ifname);
 
+		priv->promisc_idx = TCAM_IDX_INV;
+		priv->allmulti_idx = TCAM_IDX_INV;
 		priv->ifaddr_idx = IDX_INV;
 		priv->id = priv->plat->iftype;
 		switch (priv->id) {
