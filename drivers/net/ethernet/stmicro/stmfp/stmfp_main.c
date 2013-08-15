@@ -60,6 +60,9 @@ TBD
 #include "stmfp_main.h"
 #include <linux/of.h>
 #include <linux/of_net.h>
+#include <net/netevent.h>
+#include <linux/inetdevice.h>
+#include <../net/bridge/br_private.h>
 
 static const u32 default_msg_level = (NETIF_MSG_LINK |
 				      NETIF_MSG_IFUP | NETIF_MSG_IFDOWN |
@@ -130,6 +133,15 @@ static struct fp_qos_queue fpl_qos_queue_info[NUM_QOS_QUEUES] = {
 	 {32, 31, 31, 31, 16},	/* DMA1 QoS Queue */
 	 {32, 31, 31, 31, 16},	/* RECIRC QoS Queue */
 };
+
+static int is_fpport(struct net_device *netdev)
+{
+	if ((!strcmp(netdev->name, "fpdocsis")) ||
+	    (!strcmp(netdev->name, "fpgige0")) ||
+	     (!strcmp(netdev->name, "fpgige1")))
+		return 1;
+	return 0;
+}
 
 #ifdef CONFIG_OF
 static void stmfp_if_config_dt(struct platform_device *pdev,
@@ -792,6 +804,7 @@ static int remove_l2cam_if(struct fpif_priv *priv)
 		}
 	}
 	priv->ifaddr_idx = IDX_INV;
+	priv->br_l2cam_idx = IDX_INV;
 
 	return 0;
 }
@@ -934,6 +947,22 @@ static void remove_tcam_br(struct fpif_priv *priv)
 }
 
 
+static void add_tcam_br(struct fpif_priv *priv, struct net_device *netdev)
+{
+	struct fp_tcam_info tcam_info;
+	struct fpif_grp *fpgrp = priv->fpgrp;
+	int idx;
+
+	memset(&tcam_info, 0, sizeof(tcam_info));
+	tcam_info.dev_addr_d = netdev->dev_addr;
+	tcam_info.sp = priv->sp;
+	idx = TCAM_PROMS_FPBR_IDX + priv->id;
+	add_tcam(fpgrp, &tcam_info, idx);
+	priv->br_tcam_idx = idx;
+	return;
+}
+
+
 static void remove_tcam_promisc(struct fpif_priv *priv)
 {
 	struct fpif_grp *fpgrp = priv->fpgrp;
@@ -1001,6 +1030,71 @@ static void add_tcam_promisc(struct fpif_priv *priv)
 		priv->promisc_idx = idx;
 	}
 }
+
+
+static int dp_device_event(struct notifier_block *unused, unsigned long event,
+			   void *ptr)
+{
+	struct net_device *netdev = ptr;
+	struct net_bridge *br = netdev_priv(netdev);
+	int reconfig_hw, fp_bridge, bridge_up;
+	struct net_bridge_port *p;
+	struct fpif_priv *priv = NULL;
+	int idx, err;
+
+	fpdbg("netdev=%ld ptr=%p ifindex=%d\n", event, ptr, netdev->ifindex);
+	reconfig_hw = 0;
+	bridge_up = 0;
+	if ((netdev->priv_flags & IFF_EBRIDGE) && (event == NETDEV_UP)) {
+		reconfig_hw = 1;
+		bridge_up = 1;
+	}
+
+	if ((netdev->priv_flags & IFF_EBRIDGE) && (event == NETDEV_DOWN))
+		reconfig_hw = 1;
+
+	if ((netdev->priv_flags & IFF_EBRIDGE) && (netdev->flags & IFF_UP) &&
+	    (event == NETDEV_CHANGEADDR)) {
+		bridge_up = 1;
+		reconfig_hw = 1;
+	}
+
+	fp_bridge = 0;
+	if (!reconfig_hw)
+		return NOTIFY_DONE;
+
+	list_for_each_entry(p, &br->port_list, list) {
+		if (!is_fpport(p->dev))
+			continue;
+
+		fp_bridge = 1;
+		priv = netdev_priv(p->dev);
+		if ((priv->br_l2cam_idx != priv->ifaddr_idx) &&
+		    (priv->br_l2cam_idx != IDX_INV) &&
+		    (p->dev->flags & IFF_UP))
+			remove_l2cam(priv, priv->br_l2cam_idx);
+
+		priv->br_l2cam_idx = IDX_INV;
+		remove_tcam_br(priv);
+
+		if ((bridge_up) && (p->dev->flags & IFF_UP)) {
+			err = put_l2cam(priv, netdev->dev_addr, &idx);
+			if (err < 0) {
+				pr_err("fp:ERROR in putting br mac in l2cam\n");
+				priv->br_l2cam_idx = IDX_INV;
+			} else {
+				priv->br_l2cam_idx = idx;
+				add_tcam_br(priv, netdev);
+			}
+		}
+	}
+
+	return NOTIFY_DONE;
+}
+
+struct notifier_block ovs_dp_device_notifier = {
+	.notifier_call = dp_device_event
+};
 
 static void fpif_set_multi(struct net_device *dev)
 {
@@ -1613,6 +1707,17 @@ static int fpif_open(struct net_device *netdev)
 	priv->ifaddr_idx = idx;
 	fpdbg2("l2_idx=%d\n", idx);
 
+	if (netdev->master) {
+		err = put_l2cam(priv, netdev->master->dev_addr, &idx);
+		if (err < 0) {
+			pr_err("fp:ERROR in putting br mac in l2cam\n");
+			priv->br_l2cam_idx = IDX_INV;
+		} else {
+			priv->br_l2cam_idx = idx;
+			add_tcam_br(priv, netdev->master);
+		}
+	}
+
 	err = fp_rxdma_setup(priv);
 	if (err) {
 		netdev_err(netdev, "Unable to setup buffers\n");
@@ -1801,6 +1906,8 @@ static int fpif_init(struct fpif_grp *fpgrp)
 
 		priv->promisc_idx = TCAM_IDX_INV;
 		priv->allmulti_idx = TCAM_IDX_INV;
+		priv->br_l2cam_idx = IDX_INV;
+		priv->br_tcam_idx = IDX_INV;
 		priv->ifaddr_idx = IDX_INV;
 		priv->id = priv->plat->iftype;
 		switch (priv->id) {
@@ -1862,6 +1969,10 @@ static int fpif_init(struct fpif_grp *fpgrp)
 
 	for (j = 0; j < fpgrp->l2cam_size; j++)
 		fpgrp->l2_idx[j] = NUM_INTFS;
+
+	err = register_netdevice_notifier(&ovs_dp_device_notifier);
+	if (err)
+		pr_err("fp:ERROR in reg notifier for netdev\n");
 
 	return 0;
  err_init:
