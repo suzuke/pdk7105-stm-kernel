@@ -504,6 +504,7 @@ struct fpif_grp {
 	int rx_irq;
 	int tx_irq;
 	int available_l2cam;
+	int l2cam_size;
 	/* This lock  protect critical region in fpif_poll */
 	spinlock_t sched_lock;
 	/* This mutex protect shared data structures for interfaces */

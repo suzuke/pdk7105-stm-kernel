@@ -185,11 +185,13 @@ static int stmfp_probe_config_dt(struct platform_device *pdev,
 	if (of_device_is_compatible(np, "st,fplite")) {
 		plat->version = FPLITE;
 		plat->available_l2cam = 128;
+		plat->l2cam_size = 128;
 		plat->common_cnt = 56;
 		plat->empty_cnt = 16;
 	} else {
 		plat->version = FP;
 		plat->available_l2cam = 256;
+		plat->l2cam_size = 256;
 		plat->common_cnt = 60;
 		plat->empty_cnt = 6;
 	}
@@ -1617,6 +1619,7 @@ static int fpif_init(struct fpif_grp *fpgrp)
 	spin_lock_init(&fpgrp->sched_lock);
 	mutex_init(&fpgrp->mutex);
 	fpgrp->available_l2cam = fpgrp->plat->available_l2cam;
+	fpgrp->l2cam_size = fpgrp->plat->l2cam_size;
 	if (fpgrp->plat->version == FP)
 		fpgrp->txbase = fpgrp->base + FASTPATH_TXDMA_BASE;
 	else

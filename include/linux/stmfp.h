@@ -69,6 +69,7 @@ struct plat_fpif_data {
 
 struct plat_stmfp_data {
 	int available_l2cam;
+	int l2cam_size;
 	int version;
 	u32 fp_clk_rate;
 	int common_cnt;
