@@ -384,6 +384,7 @@
 
 #define TCAM_FIRST_FREE_IDX_SW (8)
 #define TCAM_PROMISC_OFFSET (NUM_INTFS)
+#define IDX_INV (-1)
 #define TCAM_IDX_INV (-1)
 
 struct rx_ch_reg {
@@ -511,6 +512,7 @@ struct fpif_grp {
 	struct mutex mutex;
 	struct fpif_rxdma rxdma_info[MAX_RXDMA];
 	struct fpif_txdma txdma_info[MAX_TXDMA];
+	u8 l2_idx[FP_L2CAM_SIZE];
 	struct plat_stmfp_data *plat;
 };
 
@@ -524,6 +526,7 @@ struct fpif_priv {
 	struct fpif_grp *fpgrp;
 	short allmulti_idx;
 	short promisc_idx;
+	short ifaddr_idx;
 	u32 id;
 	u32 dma_port;
 	u32 sp; /* Fastpath source port */
@@ -531,8 +534,6 @@ struct fpif_priv {
 	u32 rx_buffer_size;
 	struct sk_buff_head rx_recycle;
 	struct device *devptr;
-	u8 l2_idx[FP_L2CAM_SIZE];
-	u8 l2cam_count;
 	struct phy_device *phydev;
 	int oldlink;
 	int speed;

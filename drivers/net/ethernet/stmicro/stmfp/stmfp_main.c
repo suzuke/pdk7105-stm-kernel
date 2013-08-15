@@ -635,6 +635,10 @@ static int fpif_deinit(struct fpif_grp *fpgrp)
 			unregister_netdev(priv->netdev);
 		free_netdev(priv->netdev);
 	}
+
+	for (j = 0; j < fpgrp->l2cam_size; j++)
+		fpgrp->l2_idx[j] = NUM_INTFS;
+
 	return 0;
 }
 
@@ -689,18 +693,21 @@ static inline void fpif_fill_fphdr(struct fp_hdr *fphdr,
 }
 
 
-static int put_l2cam(struct fpif_priv *priv, u8 dev_addr[])
+static int put_l2cam(struct fpif_priv *priv, u8 dev_addr[], int *idx)
 {
 	u32 val;
 	u32 dp = priv->dma_port;
 	u32 sp = priv->sp;
-	int idx, cam_sts;
+	int cam_sts;
 	struct fpif_grp *fpgrp = priv->fpgrp;
 
 	if (!fpgrp->available_l2cam) {
 		pr_err("ERROR : No available L2CAM entries\n");
 		return -EIO;
 	}
+
+	fpdbg("put_l2cam(%d) %x-%x-%x-%x-%x-%x\n", priv->id, dev_addr[0],
+	      dev_addr[1], dev_addr[2], dev_addr[3], dev_addr[4], dev_addr[5]);
 
 	fpif_write_reg(fpgrp->base + L2_CAM_CFG_MODE, HW_MANAGED);
 	val = (dev_addr[2] << 24) | (dev_addr[3] << 16) |
@@ -712,7 +719,8 @@ static int put_l2cam(struct fpif_priv *priv, u8 dev_addr[])
 	fpif_write_reg(priv->fpgrp->base + L2_CAM_CFG_COMMAND, L2CAM_ADD);
 
 	cam_sts = readl(priv->fpgrp->base + L2_CAM_CFG_STATUS);
-	idx = (cam_sts >> L2CAM_IDX_SHIFT) & L2CAM_IDX_MASK;
+	*idx = (cam_sts >> L2CAM_IDX_SHIFT) & L2CAM_IDX_MASK;
+	fpdbg("idx=%d cam_sts=%x\n", *idx, cam_sts);
 	cam_sts = (cam_sts >> L2CAM_STS_SHIFT) & L2CAM_STS_MASK;
 	if (cam_sts) {
 		/* Return in case of Duplicate Entry */
@@ -724,11 +732,10 @@ static int put_l2cam(struct fpif_priv *priv, u8 dev_addr[])
 		}
 	}
 
-	priv->l2_idx[priv->l2cam_count] = idx;
-	priv->l2cam_count++;
+	fpgrp->l2_idx[*idx] = priv->id;
 	fpgrp->available_l2cam--;
 
-	return idx;
+	return 0;
 }
 
 
@@ -738,23 +745,36 @@ static int remove_l2cam(struct fpif_priv *priv, int idx)
 	u32 status;
 	struct fpif_grp *fpgrp = priv->fpgrp;
 
+	if ((idx < 0) || (idx >= fpgrp->l2cam_size)) {
+		pr_err("fp:ERR:Invalid idx %d passed in remove_l2cam\n", idx);
+		return IDX_INV;
+	}
+
 	fpif_write_reg(fpgrp->base + L2_CAM_CFG_MODE, SW_MANAGED);
 	val = (idx << 8) | L2CAM_READ;
 	fpif_write_reg(fpgrp->base + L2_CAM_CFG_COMMAND, val);
 	val = (idx << 8) | L2CAM_DEL;
 	fpif_write_reg(fpgrp->base + L2_CAM_CFG_COMMAND, val);
 	status = readl(fpgrp->base + L2_CAM_CFG_STATUS);
-	priv->l2cam_count--;
 	fpgrp->available_l2cam++;
+	fpdbg("remove_l2cam(%d) %d sts=%x\n", priv->id, idx, status);
 
 	return 0;
 }
 
 static int remove_l2cam_if(struct fpif_priv *priv)
 {
-	int i, cnt = priv->l2cam_count;
-	for (i = 0; i < cnt; i++)
-		remove_l2cam(priv, priv->l2_idx[i]);
+	struct fpif_grp *fpgrp = priv->fpgrp;
+	int i, cnt = fpgrp->l2cam_size;
+
+	for (i = 0; i < cnt; i++) {
+		if (fpgrp->l2_idx[i] == priv->id) {
+			remove_l2cam(priv, i);
+			fpgrp->l2_idx[i] = NUM_INTFS;
+		}
+	}
+	priv->ifaddr_idx = IDX_INV;
+
 	return 0;
 }
 
@@ -891,6 +911,7 @@ static void fpif_set_multi(struct net_device *dev)
 	struct netdev_hw_addr *ha;
 	struct fpif_priv *priv = netdev_priv(dev);
 	struct fpif_grp *fpgrp = priv->fpgrp;
+	int idx;
 
 	remove_tcam_promisc(priv);
 	remove_tcam_allmulti(priv);
@@ -911,7 +932,7 @@ static void fpif_set_multi(struct net_device *dev)
 		return;
 	}
 	netdev_for_each_mc_addr(ha, dev)
-		put_l2cam(priv, ha->addr);
+		put_l2cam(priv, ha->addr, &idx);
 }
 
 /**
@@ -1453,7 +1474,7 @@ static int fpif_open(struct net_device *netdev)
 {
 	struct fpif_priv *priv = netdev_priv(netdev);
 	struct fpif_grp *fpgrp = priv->fpgrp;
-	int err;
+	int err, idx;
 	u8 bcast_macaddr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 	if (!is_valid_ether_addr(netdev->dev_addr)) {
@@ -1477,21 +1498,23 @@ static int fpif_open(struct net_device *netdev)
 	skb_queue_head_init(&priv->rx_recycle);
 	netif_start_queue(netdev);
 	mutex_lock(&fpgrp->mutex);
-	err = put_l2cam(priv, bcast_macaddr);
+	err = put_l2cam(priv, bcast_macaddr, &idx);
 	if (err < 0) {
 		netdev_err(netdev, "Unable to put in l2cam for bcast\n");
 		mutex_unlock(&fpgrp->mutex);
 		return err;
 	}
-	fpdbg2("l2_bcast_idx=%d\n", err);
-	err = put_l2cam(priv, netdev->dev_addr);
+	fpdbg2("l2_bcast_idx=%d\n", idx);
+	err = put_l2cam(priv, netdev->dev_addr, &idx);
 	if (err < 0) {
 		netdev_err(netdev, "Unable to put in l2cam\n");
 		remove_l2cam_if(priv);
 		mutex_unlock(&fpgrp->mutex);
 		return err;
 	}
-	fpdbg2("l2_idx=%d\n", err);
+	priv->ifaddr_idx = idx;
+	fpdbg2("l2_idx=%d\n", idx);
+
 	err = fp_rxdma_setup(priv);
 	if (err) {
 		netdev_err(netdev, "Unable to setup buffers\n");
@@ -1675,6 +1698,7 @@ static int fpif_init(struct fpif_grp *fpgrp)
 		netdev->hard_header_len += FP_HDR_SIZE;
 		strcpy(netdev->name, priv->plat->ifname);
 
+		priv->ifaddr_idx = IDX_INV;
 		priv->id = priv->plat->iftype;
 		switch (priv->id) {
 		case DEVID_GIGE0:
@@ -1732,6 +1756,10 @@ static int fpif_init(struct fpif_grp *fpgrp)
 			}
 		}
 	}
+
+	for (j = 0; j < fpgrp->l2cam_size; j++)
+		fpgrp->l2_idx[j] = NUM_INTFS;
+
 	return 0;
  err_init:
 	fpif_deinit(fpgrp);
