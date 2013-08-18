@@ -1752,7 +1752,7 @@
 				step0 {
 					clk-name = "CLK_S_THSENS";
 					clk-rate = <156250>;
-					clk-parent = "CLK_S_C_FS0_CH2";
+					clk-parent-name = "CLK_S_C_FS0_CH2";
 					clk-parent-rate = <625000>;
 					type = "clock";
 				};
@@ -1776,7 +1776,7 @@
 			sysconfs {
 				TEMP_PWR = <&sysconf 1552 9 9>;
 				DCORRECT = <&sysconf 1552 4 8>;
-				OVERFLOW = <&sysconf 1554 8 8>;
+				OVERFLOW = <&sysconf 1594 8 8>;
 				DATA = <&sysconf 1594 10 16>;
 			};
 		};
