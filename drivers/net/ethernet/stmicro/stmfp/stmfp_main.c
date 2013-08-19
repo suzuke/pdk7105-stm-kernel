@@ -483,9 +483,8 @@ static void fp_hwinit(struct fpif_grp *fpgrp)
 
 	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_MACINFO0,
 		       MACINFO_FULL_DUPLEX | MACINFO_SPEED_1000 |
-		       MACINFO_RXEN | MACINFO_TXEN | MACINFO_RGMII_MODE |
-		       MACINFO_DONTDECAPIQ | MACINFO_MTU1 |
-		       MACINFO_FLOWCTRL_REACTION_EN);
+		       MACINFO_RGMII_MODE | MACINFO_DONTDECAPIQ |
+		       MACINFO_MTU1 | MACINFO_FLOWCTRL_REACTION_EN);
 	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_RX_STAT_RESET, 0);
 	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_TX_STAT_RESET, 0);
 	fpif_write_reg(fpgrp->base + RGMII0_OFFSET + RGMII_GLOBAL_MACINFO3,
@@ -494,8 +493,7 @@ static void fp_hwinit(struct fpif_grp *fpgrp)
 	if (fpgrp->plat->version != FP) {
 		fpif_write_reg(fpgrp->base + RGMII1_OFFSET +
 			       RGMII_MACINFO0, MACINFO_FULL_DUPLEX
-			       | MACINFO_SPEED_1000 | MACINFO_RXEN
-			       | MACINFO_TXEN | MACINFO_RGMII_MODE
+			       | MACINFO_SPEED_1000 | MACINFO_RGMII_MODE
 			       | MACINFO_DONTDECAPIQ | MACINFO_MTU1
 			       | MACINFO_FLOWCTRL_REACTION_EN);
 		fpif_write_reg(fpgrp->base + RGMII1_OFFSET +
@@ -1152,8 +1150,6 @@ static inline void fpif_process_frame(struct fpif_priv *priv,
 	priv = netdev_priv(dev);
 
 	skb->dev = dev;
-	dev->stats.rx_bytes += pkt_len;
-	dev->stats.rx_packets++;
 	skb_reserve(skb, FP_HDR_SIZE);
 	skb_put(skb, pkt_len);
 	dev->last_rx = jiffies;
@@ -1247,8 +1243,6 @@ static int fpif_clean_tx_ring(struct fpif_priv *priv, int tx_work_limit)
 		eop = txdma_ptr->fp_tx_skbuff[last_tx].len_eop >> 16;
 		priv = txdma_ptr->fp_tx_skbuff[last_tx].priv;
 		netdev = priv->netdev;
-		netdev->stats.tx_packets++;
-		netdev->stats.tx_bytes += len - FP_HDR_SIZE;
 		if (skb == NULL)
 			dma_free_coherent(priv->devptr, FP_HDR_SIZE,
 					  buf_ptr, dma_addr);
@@ -1668,6 +1662,7 @@ static int fpif_open(struct net_device *netdev)
 	struct fpif_grp *fpgrp = priv->fpgrp;
 	int err, idx;
 	u8 bcast_macaddr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+	u32 macinfo;
 
 	if (!is_valid_ether_addr(netdev->dev_addr)) {
 		random_ether_addr(netdev->dev_addr);
@@ -1727,6 +1722,11 @@ static int fpif_open(struct net_device *netdev)
 	}
 	fp_txdma_setup(priv);
 	mutex_unlock(&fpgrp->mutex);
+	if (priv->rgmii_base) {
+		macinfo = readl(priv->rgmii_base + RGMII_MACINFO0);
+		macinfo |= MACINFO_TXEN | MACINFO_RXEN;
+		fpif_write_reg(priv->rgmii_base + RGMII_MACINFO0, macinfo);
+	}
 	return 0;
 }
 
@@ -1741,7 +1741,13 @@ static int fpif_close(struct net_device *netdev)
 {
 	struct fpif_priv *priv = netdev_priv(netdev);
 	struct fpif_grp *fpgrp = priv->fpgrp;
+	u32 macinfo;
 
+	if (priv->rgmii_base) {
+		macinfo = readl(priv->rgmii_base + RGMII_MACINFO0);
+		macinfo &= ~(MACINFO_TXEN | MACINFO_RXEN);
+		fpif_write_reg(priv->rgmii_base + RGMII_MACINFO0, macinfo);
+	}
 	netif_stop_queue(netdev);
 	skb_queue_purge(&priv->rx_recycle);
 	napi_disable(&priv->napi);
@@ -1776,17 +1782,23 @@ static struct net_device_stats *fpif_get_stats(struct net_device *dev)
 	dev->stats.rx_dropped = 0;
 	dev->stats.tx_dropped = 0;
 	if (priv->rgmii_base) {
-		dev->stats.tx_dropped = dev->stats.tx_packets -
-		    readl(priv->rgmii_base + RGMII_TX_CMPL_COUNT_LO);
+		dev->stats.tx_packets = readl(priv->rgmii_base +
+					RGMII_TX_CMPL_COUNT_LO);
+		dev->stats.tx_bytes = readl(priv->rgmii_base +
+					RGMII_TX_BYTE_COUNT_LO);
+
 		dev->stats.rx_errors =
 		    readl(priv->rgmii_base + RGMII_RX_ERROR_COUNT);
 		dev->stats.rx_crc_errors =
 		    readl(priv->rgmii_base + RGMII_RX_FCS_ERR_CNT);
-		dev->stats.rx_dropped =
+
+		dev->stats.rx_packets =
 		    readl(priv->rgmii_base + RGMII_RX_BCAST_COUNT_LO) +
 		    readl(priv->rgmii_base + RGMII_RX_MCAST_COUNT_LO) +
-		    readl(priv->rgmii_base + RGMII_RX_UNICAST_COUNT_LO) -
-		    dev->stats.rx_packets;
+		    readl(priv->rgmii_base + RGMII_RX_UNICAST_COUNT_LO);
+
+		dev->stats.rx_bytes = readl(priv->rgmii_base +
+					RGMII_RX_BYTE_COUNT_LO);
 		/* total number of multicast packets received */
 		dev->stats.multicast =
 		    readl(priv->rgmii_base + RGMII_RX_MCAST_COUNT_LO);
@@ -1818,6 +1830,17 @@ static struct net_device_stats *fpif_get_stats(struct net_device *dev)
 		sum_tx_errors += dev->stats.tx_aborted_errors;
 		sum_tx_errors +=
 		    sum + readl(priv->rgmii_base + RGMII_TX_DEFER_COUNT);
+	} else {
+		dev->stats.rx_packets = readl(priv->fpgrp->base + FP_IMUX_PKTC +
+				IMUX_RPT_OFF * priv->sp);
+		dev->stats.rx_bytes = readl(priv->fpgrp->base + FP_IMUX_BYTEC +
+				IMUX_RPT_OFF * priv->sp);
+		dev->stats.tx_packets = readl(priv->fpgrp->base +
+					FP_EMUX_PACKET_COUNT +
+					EMUX_THRESHOLD_RPT_OFF * priv->sp);
+		dev->stats.tx_bytes = readl(priv->fpgrp->base +
+					FP_EMUX_BYTE_COUNT +
+					EMUX_THRESHOLD_RPT_OFF * priv->sp);
 	}
 
 	sum += readl(priv->fpgrp->base + FP_EMUX_DROP_PACKET_COUNT +
