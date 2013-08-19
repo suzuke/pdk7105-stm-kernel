@@ -135,7 +135,7 @@
 					 rxclk = <&PIO12  3	IN 	ALT1	NICLK	500	CLK_A>;
 
 					 phyclk =<&PIO12  4	OUT 	ALT1	NICLK	0	CLK_A>;
-					 mdio=	<&PIO12  5	OUT 	ALT1	BYPASS	0>;
+					 mdio=	<&PIO12  5	BIDIR_PU 	ALT1	BYPASS	0>;
 					 mdc =	<&PIO12  6	OUT 	ALT1	NICLK	0	CLK_A>;
 					 mdint=	<&PIO12  7	IN 	ALT1	BYPASS	0>;
 				};
