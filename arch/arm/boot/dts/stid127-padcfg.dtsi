@@ -41,7 +41,7 @@
 			padcfg_uart2: uart2-0 {
 				st,pins {
 					TX	= <&PIO20 1	OUT	ALT3>;
-					RX	= <&PIO17 5	IN 	ALT3>;
+					RX	= <&PIO20 2	IN 	ALT3>;
 					output-enable	= <&PIO20 5	OUT	ALT3>;
 				};
 			};
