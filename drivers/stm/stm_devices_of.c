@@ -91,17 +91,22 @@ static void stm_of_release_resource(struct platform_device *pdev)
 }
 
 static void *ethernet_bus_setup(void __iomem *ioaddr,
-					struct device *dev, void *data)
+				struct device *dev, void *data)
 {
 	struct stm_amba_bridge *amba;
 	struct device_node *np = dev->of_node;
 	struct stm_amba_bridge_config *config;
-	struct device_node *cn = of_parse_phandle(np, "amba-config", 0);
+	struct device_node *cn;
 	u32 reg_offset;
-	of_property_read_u32(cn, "reg-offset", &reg_offset);
 
 	if (!np)
 		return NULL;
+
+	cn = of_parse_phandle(np, "amba-config", 0);
+	if (!cn)
+		return NULL;
+
+	of_property_read_u32(cn, "reg-offset", &reg_offset);
 
 	if (!data) {
 		config = stm_of_get_amba_config(dev);
@@ -127,6 +132,10 @@ static void ethernet_fix_mac_speed(void *priv, unsigned int speed)
 	struct plat_stmmacenet_data *plat_dat = pdev->dev.platform_data;
 	struct device_node *speed_np;
 	char speed_node_path[512] = "";
+
+	if (!np)
+		return;
+
 	speed_np = of_parse_phandle(np, "st,fix-mac-speed", 0);
 
 	if (!speed_np)
