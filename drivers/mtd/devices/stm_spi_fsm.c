@@ -557,6 +557,8 @@ static struct flash_info __devinitdata flash_types[] = {
 	{ "n25q128", 0x20ba18, 0, 64 * 1024,  256, N25Q_CAPS, 108, n25q_config},
 	{ "n25q256", 0x20ba19, 0, 64 * 1024,  512,
 	  N25Q_CAPS | FLASH_CAPS_32BITADDR, 108, n25q_config},
+	{ "n25q512", 0x20ba20, 0, 64 * 1024,  1024,
+	  N25Q_CAPS | FLASH_CAPS_32BITADDR, 108, n25q_config},
 
 	/* Spansion S25FLxxxP
 	 *     - 256KiB and 64KiB sector variants (identified by ext. JEDEC)
