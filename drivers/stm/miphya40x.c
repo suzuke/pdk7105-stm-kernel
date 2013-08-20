@@ -29,11 +29,6 @@
 
 static int miphya40x_sata_start(struct stm_miphy *miphy)
 {
-	u8 version, revision;
-
-	version = stm_miphy_read(miphy, MIPHY_VERSION);
-	revision = stm_miphy_read(miphy, MIPHY_REVISION);
-
 	/* MIPHYA-40LP series */
 
 	/*
@@ -191,6 +186,9 @@ static int miphya40x_start(struct stm_miphy *miphy)
 	default:
 		BUG();
 	}
+
+	miphy->miphy_version = stm_miphy_read(miphy, MIPHY_VERSION);
+	miphy->miphy_revision = stm_miphy_read(miphy, MIPHY_REVISION);
 
 	return rval;
 }

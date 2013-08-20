@@ -21,9 +21,6 @@
 #include <linux/stm/miphy.h>
 #include "miphy.h"
 
-#define MIPHY_VERSION			0xfb
-#define MIPHY_REVISION			0xfc
-
 static struct class *miphy_class;
 static DEFINE_MUTEX(miphy_list_mutex);
 static LIST_HEAD(miphy_list);
@@ -47,7 +44,7 @@ u8 stm_miphy_read(struct stm_miphy *miphy, u8 addr)
 	return dev->reg_read(miphy, addr);
 }
 
-/* 
+/*
  * Pipe interface, which implements the standard PIPE interface between
  * the PCIE express controller and the actual PCIe phy
  */
@@ -187,15 +184,13 @@ struct stm_miphy *stm_miphy_claim(int port, enum miphy_mode mode,
 		goto _on_error;
 	}
 
-	miphy->miphy_version = stm_miphy_read(miphy, MIPHY_VERSION);
-	miphy->miphy_revision = stm_miphy_read(miphy, MIPHY_REVISION);
+	stm_miphy_start(miphy);
+
 	pr_info("%s, c%d.%d Claimed by %s\n",
 			miphy->dev->style_id,
 			(miphy->miphy_version & 0xf),
 			miphy->miphy_revision,
 			dev_name(miphy->owner));
-
-	stm_miphy_start(miphy);
 
 _on_error:
 	mutex_unlock(&miphy_list_mutex);

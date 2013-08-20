@@ -528,6 +528,9 @@ static int miphy365x_start(struct stm_miphy *miphy)
 		BUG();
 	}
 
+	miphy->miphy_version = stm_miphy_read(miphy, MIPHY_VERSION);
+	miphy->miphy_revision = stm_miphy_read(miphy, MIPHY_REVISION);
+
 	/* Clear the contents of interrupt control register,
 	   excluding fifooverlap_int */
 	stm_miphy_write(miphy, MIPHY_INT_STATUS, 0x77);
