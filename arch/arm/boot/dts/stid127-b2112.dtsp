@@ -65,7 +65,7 @@
 				};
 				partition@500000{
 					label = "Serial Flash 2";
-					reg = <0x00500000 0x02000000>;
+					reg = <0x00500000 0x01b00000>;
 				};
 			};
 		};
