@@ -135,6 +135,12 @@ static void __init b2105_dt_init(void)
 	stih416_configure_audio(&(struct stih416_audio_config) {
 			.uni_player_3_spdif_enabled = 1, });
 
+	stih416_configure_miphy(&(struct stih416_miphy_config) {
+		.id = 0,
+		.iface = UPORT_IF,
+		.mode = SATA_MODE,});
+	stih416_configure_sata(0);
+
 	return;
 }
 
