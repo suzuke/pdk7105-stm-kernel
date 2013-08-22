@@ -43,7 +43,7 @@
 	};
 
 	/* RMII mode internal clock */
-	rmii0_dev_config: gmac0-rmii-dev-config {
+	rmii0_phyclk_int_dev_config: gmac0-rmii-dev-config {
 		padcfg-0 = <&padcfg_rmii0 &padcfg_rmii0_phyclk>;
 		device-seqs = <&rmii0_dev_seqs>;
 		sysconfs{
@@ -69,9 +69,9 @@
 	};
 
 	/* RMII mode external clock */
-	rmii0_dev_config: gmac0-rmii-dev-config {
+	rmii0_phyclk_ext_dev_config: gmac0-rmii-dev-config {
 		padcfg-0 = <&padcfg_rmii0 &padcfg_rmii0_phyclk_ext>;
-		device-seqs = <&rmii0_dev_seqs_ext_clk>;
+		device-seqs = <&rmii0_phyclk_ext_dev_seqs>;
 		sysconfs{
 			 EN_GMAC =	<&sysconf 286   1  1>;
 			 MIIx_PHY_SEL =	<&sysconf 286   2  4>;
@@ -81,7 +81,7 @@
 		};
 	};
 
-	rmii0_dev_seqs_ext_clk: rmii-dev-ext-sequence{
+	rmii0_phyclk_ext_dev_seqs: rmii-phyclk-ext-dev-sequence{
 		init-seq{
 			step0 {
 				EN_GMAC =		<1>;
@@ -126,5 +126,4 @@
 			};
 		};
 	};
-
 };
