@@ -1401,7 +1401,7 @@
 			interrupts	=  <0 84 0>;
 			interrupt-names = "ahci";
 			status		= "disabled";
-			miphy-num	= <0>;
+			st,miphy-num	= <0>;
 			device-config = <&sata0_dev_config>;
 			sata0_dev_config: sata_dev_config-0 {
 				#stm-sysconf-cells = <4>;
@@ -1419,7 +1419,7 @@
 			interrupts	=  <0 91 0>;
 			interrupt-names = "ahci";
 			status		= "disabled";
-			miphy-num	= <1>;
+			st,miphy-num	= <1>;
 			device-config = <&sata1_dev_config>;
 			sata1_dev_config: sata_dev_config-0 {
 				#stm-sysconf-cells = <4>;
