@@ -89,6 +89,29 @@ const static struct sdhci_pltfm_data sdhci_stm_pdata = {
 };
 
 #ifdef CONFIG_OF
+/* Init function used to parse device-config from DT and init syscfg, pad ... */
+static void stm_sdhci_init_conf(struct platform_device *pdev)
+{
+	struct stm_mmc_platform_data *pdata = dev_get_platdata(&pdev->dev);
+
+	if (!pdata->custom_cfg)
+		pdata->custom_cfg = stm_of_get_dev_config(&pdev->dev);
+
+	if (pdata->custom_cfg)
+		pdata->custom_data = devm_stm_device_init(&pdev->dev,
+			(struct stm_device_config *)pdata->custom_cfg);
+}
+
+static void stm_sdhci_release_conf(struct platform_device *pdev)
+{
+	struct stm_mmc_platform_data *pdata = dev_get_platdata(&pdev->dev);
+
+	if (!pdata->custom_data)
+		return;
+	devm_stm_device_exit(&pdev->dev, pdata->custom_data);
+	pdata->custom_data = NULL;
+}
+
 static void __devinit *stm_sdhci_dt_get_pdata(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -100,7 +123,6 @@ static void __devinit *stm_sdhci_dt_get_pdata(struct platform_device *pdev)
 		return ERR_PTR(-ENOMEM);
 	}
 
-	priv_data->custom_cfg = stm_of_get_pad_config(&pdev->dev);
 	priv_data->nonremovable =
 		of_property_read_bool(np, "st,mmc-non-removable");
 	priv_data->amba_config = stm_of_get_amba_config(&pdev->dev);
@@ -111,6 +133,34 @@ static void __devinit *stm_sdhci_dt_get_pdata(struct platform_device *pdev)
 static void __devinit *stm_sdhci_dt_get_pdata(struct platform_device *pdev)
 {
 	return NULL;
+}
+
+/*
+ * Init function used to invoke the platform custom configuration and configure
+ * the pad
+ */
+static void stm_sdhci_init_conf(struct platform_device *pdev)
+{
+	struct stm_mmc_platform_data *pdata = dev_get_platdata(&pdev->dev);
+
+	if (pdata->custom_cfg) {
+		pdata->custom_data = devm_stm_pad_claim(&pdev->dev,
+			(struct stm_pad_config *)(pdata->custom_cfg),
+			dev_name(&pdev->dev));
+		if (!pdata->custom_data) {
+			dev_err(&pdev->dev, "Failed on pad_claim\n");
+			return;
+		}
+	} else
+		pr_warning("%s: no custom_cfg found\n", __func__);
+}
+
+static void stm_sdhci_release_conf(struct platform_device *pdev)
+{
+	struct stm_mmc_platform_data *pdata = dev_get_platdata(&pdev->dev);
+
+	if (pdata->custom_data)
+		devm_stm_pad_release(&pdev->dev, pdata->custom_data);
 }
 #endif
 
@@ -134,16 +184,7 @@ static int __devinit sdhci_stm_probe(struct platform_device *pdev)
 
 	pdata = pdev->dev.platform_data;
 
-	if (pdata->custom_cfg) {
-		pdata->custom_data = devm_stm_pad_claim(&pdev->dev,
-			(struct stm_pad_config *)(pdata->custom_cfg),
-			dev_name(&pdev->dev));
-		if (!pdata->custom_data) {
-			dev_err(&pdev->dev, "Failed on pad_claim\n");
-			return -ENODEV;
-		}
-	} else
-		pr_warning("%s: no custom_cfg found\n", __func__);
+	stm_sdhci_init_conf(pdev);
 
 	host = sdhci_pltfm_init(pdev, &sdhci_stm_pdata);
 	if (IS_ERR(host))
@@ -200,12 +241,10 @@ err_out:
 
 static int __devexit sdhci_stm_remove(struct platform_device *pdev)
 {
-	struct stm_mmc_platform_data *pdata = pdev->dev.platform_data;
 	struct sdhci_host *host = platform_get_drvdata(pdev);
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 
-	if (pdata->custom_data)
-		devm_stm_pad_release(&pdev->dev, pdata->custom_data);
+	stm_sdhci_release_conf(pdev);
 	clk_disable_unprepare(pltfm_host->clk);
 	clk_put(pltfm_host->clk);
 
@@ -248,10 +287,7 @@ static int sdhci_stm_freeze(struct device *dev)
 	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
 	struct platform_device *pdev = to_platform_device(dev);
 
-	if (pdata->custom_data) {
-		devm_stm_pad_release(&pdev->dev, pdata->custom_data);
-		pdata->custom_data = NULL;
-	}
+	stm_sdhci_release_conf(pdev);
 	return sdhci_stm_suspend(dev);
 }
 
@@ -260,10 +296,8 @@ static int sdhci_stm_restore(struct device *dev)
 	struct stm_mmc_platform_data *pdata = dev_get_platdata(dev);
 	struct platform_device *pdev = to_platform_device(dev);
 
-	if (pdata->custom_cfg)
-		pdata->custom_data = devm_stm_pad_claim(&pdev->dev,
-			(struct stm_pad_config *)(pdata->custom_cfg),
-			dev_name(&pdev->dev));
+	stm_sdhci_init_conf(pdev);
+
 	return sdhci_stm_resume(dev);
 }
 
