@@ -1309,8 +1309,11 @@
 			reg	= <0xfe96c000  0x1000>;
 			interrupts	=  <0 156 0>;
 			interrupt-names = "mmcirq";
-			padcfg-names= "default";
-			padcfg-0 	= <&padcfg_mmc>;
+
+			device-config = <&mmc_dev_config>;
+			mmc_dev_config: mmc_dev_config-0 {
+				padcfg-0 	= <&padcfg_mmc>;
+			};
 		};
 
 		miphy0: miphy@fefb2000 {

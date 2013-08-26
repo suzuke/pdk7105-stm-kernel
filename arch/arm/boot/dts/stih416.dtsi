@@ -1645,8 +1645,11 @@
 			reg	= <0xfe81e000  0x1000>;
 			interrupts	=  <0 127 0>;
 			interrupt-names = "mmcirq";
-			padcfg-0 	= <&padcfg_mmc0>;
 			amba-config     = <&mmc_amba_bridge_config>;
+			device-config	= <&mmc0_dev_config>;
+			mmc0_dev_config: mmc0_dev_config-0 {
+				padcfg-0 	= <&padcfg_mmc0>;
+			};
 		};
 
 		sdhci1:sdhci@fe81f000 {
@@ -1655,8 +1658,11 @@
 			reg	= <0xfe81f000  0x1000>;
 			interrupts	=  <0 128 0>;
 			interrupt-names = "mmcirq";
-			padcfg-0 	= <&padcfg_mmc1>;
 			amba-config     = <&mmc_amba_bridge_config>;
+			device-config	= <&mmc1_dev_config>;
+			mmc1_dev_config: mmc1_dev_config-0 {
+				padcfg-0 	= <&padcfg_mmc1>;
+			};
 		};
 
 		mmc_amba_bridge_config: stm-mmc-amba-bridge {
