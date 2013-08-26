@@ -89,7 +89,7 @@ static int ahci_stm_init(struct device *ahci_dev, void __iomem *mmio)
 		return ret;
 
 	drv_data->device_state =
-		devm_stm_device_init(ahci_dev, pdata->device_config);
+		devm_stm_device_init(ahci_dev->parent, pdata->device_config);
 	if (!drv_data->device_state) {
 		ret = -EBUSY;
 		goto fail_clk_disable;
