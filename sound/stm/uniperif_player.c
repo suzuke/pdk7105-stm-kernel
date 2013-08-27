@@ -2350,6 +2350,9 @@ static int snd_stm_uniperif_player_suspend(struct device *dev)
 
 	dev_dbg(dev, "%s(dev=%p)", __func__, dev);
 
+	if (dma_audio_is_parking_active(player->dma_channel))
+		snd_stm_uniperif_player_halt(player->substream);
+
 	/* Abort if the player is still running */
 	if (get__AUD_UNIPERIF_CTRL__OPERATION(player)) {
 		dev_err(player->dev, "Cannot suspend as running");
