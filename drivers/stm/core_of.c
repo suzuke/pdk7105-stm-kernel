@@ -17,6 +17,8 @@
 
 #include "pio-control.h"
 
+#define MAX_ALT_FUNCS		7
+
 static int gpio_banks;
 static struct stm_pio_control *core_of_pio_controls;
 
@@ -26,7 +28,7 @@ static int core_of_pio_config(unsigned gpio,
 	struct stm_pio_control_pad_config *config = priv;
 
 	return stm_pio_control_config_all(gpio, direction, function, config,
-		core_of_pio_controls, gpio_banks, 6);
+		core_of_pio_controls, gpio_banks, MAX_ALT_FUNCS);
 }
 
 #ifdef CONFIG_DEBUG_FS
