@@ -28,7 +28,7 @@ static void stm_pio_control_config_direction(
 	struct sysconf_field *output_enable;
 	struct sysconf_field *pull_up;
 	struct sysconf_field *open_drain;
-	unsigned long oe_value, pu_value, od_value;
+	unsigned long oe_value = 0, pu_value = 0, od_value = 0;
 	unsigned long mask;
 
 	pr_debug("%s(pin=%d, direction=%d)\n",
@@ -40,9 +40,12 @@ static void stm_pio_control_config_direction(
 
 	mask = 1 << pin;
 
-	oe_value = sysconf_read(output_enable);
-	pu_value = sysconf_read(pull_up);
-	od_value = sysconf_read(open_drain);
+	if (output_enable)
+		oe_value = sysconf_read(output_enable);
+	if (pull_up)
+		pu_value = sysconf_read(pull_up);
+	if (open_drain)
+		od_value = sysconf_read(open_drain);
 
 	switch (direction) {
 	case stm_pad_gpio_direction_in:
@@ -82,9 +85,12 @@ static void stm_pio_control_config_direction(
 		break;
 	}
 
-	sysconf_write(output_enable, oe_value);
-	sysconf_write(pull_up, pu_value);
-	sysconf_write(open_drain, od_value);
+	if (output_enable)
+		sysconf_write(output_enable, oe_value);
+	if (pull_up)
+		sysconf_write(pull_up, pu_value);
+	if (open_drain)
+		sysconf_write(open_drain, od_value);
 }
 
 static void stm_pio_control_config_function(
@@ -438,16 +444,8 @@ struct stm_pio_control *of_stm_pio_control_init(void)
 			goto failed;
 
 		pio_control[i].oe = stm_of_sysconf_claim(child, "oe-control");
-		if (!pio_control[i].oe)
-			goto failed;
-
 		pio_control[i].pu = stm_of_sysconf_claim(child, "pu-control");
-		if (!pio_control[i].pu)
-			goto failed;
-
 		pio_control[i].od = stm_of_sysconf_claim(child, "od-control");
-		if (!pio_control[i].od)
-			goto failed;
 
 		of_property_read_u32(child, "retime-pin-mask",
 				&retime_pin_mask);
@@ -460,7 +458,7 @@ struct stm_pio_control *of_stm_pio_control_init(void)
 		else if (strcmp(style, "dedicated") == 0)
 			config->retime_style =
 				stm_pio_control_retime_style_dedicated;
-		else if (strcmp(style, "node") == 0)
+		else if (strcmp(style, "none") == 0)
 			config->retime_style =
 				stm_pio_control_retime_style_none;
 
