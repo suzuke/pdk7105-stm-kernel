@@ -1260,7 +1260,8 @@ static int iic_stm_probe(struct platform_device *pdev)
 	/* If SSC is hard wired, there will be no pad configurations */
 	if (plat_data->pad_config) {
 		i2c_stm->pad_state = devm_stm_pad_claim(&pdev->dev,
-				plat_data->pad_config, "i2c-stm");
+				plat_data->pad_config,
+				dev_name(&pdev->dev));
 		if (!i2c_stm->pad_state) {
 			dev_err(&pdev->dev, "Pads request failed\n");
 			return -ENODEV;
