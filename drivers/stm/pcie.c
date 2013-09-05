@@ -31,6 +31,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include "pcie-regs.h"
+#include "abort.h"
 
 #ifdef CONFIG_ARM
 /* To get chained_irq_enter/exit */
@@ -229,89 +230,6 @@ static int link_up(struct stm_pcie_dev_data *priv)
 	return link_up;
 }
 
-/* Spinlock for access to configuration space. We have to do read-modify-write
- * cycles here, so need to lock out for the duration to prevent races
- */
-static DEFINE_SPINLOCK(stm_pcie_config_lock);
-
-/*
- * On ARM platforms, we actually get a bus error returned when the PCIe IP
- * returns a UR or CRS instead of an OK. What we do to try to work around this
- * is hook the arm async abort exception and then check if the pc value is in
- * the region we expect bus errors could be generated. Fortunately we can
- * constrain the area the CPU will generate the async exception with the use of
- * a barrier instruction
- *
- * The abort_flag is set if we see a bus error returned when we make config
- * requests.  It doesn't need to be an atomic variable, since it can only be
- * looked at safely in the regions protected by the spinlock anyway. However,
- * making it atomic avoids the need for volatile wierdness to prevent the
- * compiler from optimizing incorrectly
- */
-static atomic_t abort_flag;
-
-#ifdef CONFIG_ARM
-
-/*
- * Macro to bung a label at a point in the code. I tried to do this with the
- * computed label extension of gcc (&&label), but it is too vulnerable to the
- * optimizer. The labels are forced to be word aligned to extend the range of
- * the branch instructions in thumb mode.
- */
-#define EMIT_LABEL(label) \
-	__asm__ __volatile__ ( \
-			".align 2;\n" \
-			#label":\n" \
-			)
-/* This vile macro gets the address of a label and puts it into a var */
-#define GET_LABEL_ADDR(label, var) \
-	__asm__ __volatile__ ( \
-			"adr %0, " #label ";\n" \
-			: "=r" (var) \
-			)
-
-/*
- * Holds the addresses where we are expecting an abort to be generated. We only
- * have to cope with one at a time as config read/write are spinlocked so
- * cannot be in the critical code section at the same time
- */
-static unsigned long abort_start, abort_end;
-
-static int stm_pcie_abort(unsigned long addr, unsigned int fsr,
-			  struct pt_regs *regs)
-{
-	unsigned long pc = regs->ARM_pc;
-
-	/*
-	 * If it isn't the expected place, then return 1 which will then fall
-	 * through to the default error handler. This means that if we get a
-	 * bus error for something other than PCIE config read/write accesses
-	 * we will not just carry on silently.
-	 */
-	if (pc < abort_start || pc >= abort_end)
-		return 1;
-
-	/* Again, if it isn't an async abort then return to default handler */
-	if (!((fsr & (1 << 10)) && ((fsr & 0xf) == 0x6)))
-		return 1;
-
-	/* Restart after exception address */
-	regs->ARM_pc += 4;
-
-	/* Set abort flag */
-	atomic_set(&abort_flag, 1) ;
-
-	/* Barrier to ensure propogation */
-	mb();
-
-	return 0;
-}
-
-#else /* CONFIG_ARM */
-#define EMIT_LABEL(label)
-#define GET_LABEL_ADDR(label, var)
-#endif
-
 static struct stm_pcie_dev_data *stm_pci_bus_to_dev_data(struct pci_bus *bus)
 {
 	struct platform_device *pdev;
@@ -406,7 +324,7 @@ retry:
 	/* Claim lock, FUNC[01]_BDF_NUM has to remain unchanged for the whole
 	 * cycle
 	 */
-	spin_lock_irqsave(&stm_pcie_config_lock, flags);
+	spin_lock_irqsave(&stm_abort_lock, flags);
 
 	/* Set the config packet devfn */
 	dbi_writel(priv, bdf, FUNC0_BDF_NUM);
@@ -418,7 +336,7 @@ retry:
 	 */
 	dbi_readl(priv, FUNC0_BDF_NUM);
 
-	atomic_set(&abort_flag, 0);
+	atomic_set(&stm_abort_flag, 0);
 	ret = PCIBIOS_SUCCESSFUL;
 
 	/* Get the addresses of where we expect the aborts to happen. These are
@@ -441,12 +359,12 @@ retry:
 	EMIT_LABEL(config_read_end);
 
 	/* If the trap handler has fired, then set the data to 0xffffffff */
-	if (atomic_read(&abort_flag)) {
+	if (atomic_read(&stm_abort_flag)) {
 		ret = PCIBIOS_DEVICE_NOT_FOUND;
 		data = ~0;
 	}
 
-	spin_unlock_irqrestore(&stm_pcie_config_lock, flags);
+	spin_unlock_irqrestore(&stm_abort_lock, flags);
 
 	/*
 	 * This is truly vile, but I am unable to think of anything better.
@@ -457,8 +375,8 @@ retry:
 	 *
 	 * What is actually happening here is that the ST40 is defined to
 	 * return 0 for a register read that causes a bus error. On the ARM
-	 * we actually get a real bus error, which is what the abort_flag check
-	 * above is checking for.
+	 * we actually get a real bus error, which is what the stm_abort_flag
+	 * check above is checking for.
 	 *
 	 * Unfortunately this means it is impossible to tell the difference
 	 * between when a device doesn't exist (the switch will return a UR
@@ -512,14 +430,14 @@ static int stm_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 	/* Claim lock, FUNC[01]_BDF_NUM has to remain unchanged for the whole
 	 * cycle
 	 */
-	spin_lock_irqsave(&stm_pcie_config_lock, flags);
+	spin_lock_irqsave(&stm_abort_lock, flags);
 
 	/* Set the config packet devfn */
 	dbi_writel(priv, bdf, FUNC0_BDF_NUM);
 	/* See comment in stm_pcie_config_read */
 	dbi_readl(priv, FUNC0_BDF_NUM);
 
-	atomic_set(&abort_flag, 0);
+	atomic_set(&stm_abort_flag, 0);
 
 	GET_LABEL_ADDR(config_write_start, abort_start);
 	GET_LABEL_ADDR(config_write_end, abort_end);
@@ -540,10 +458,10 @@ static int stm_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 
 	EMIT_LABEL(config_write_end);
 
-	ret = atomic_read(&abort_flag) ? PCIBIOS_DEVICE_NOT_FOUND
+	ret = atomic_read(&stm_abort_flag) ? PCIBIOS_DEVICE_NOT_FOUND
 				       : PCIBIOS_SUCCESSFUL;
 
-	spin_unlock_irqrestore(&stm_pcie_config_lock, flags);
+	spin_unlock_irqrestore(&stm_abort_lock, flags);
 
 	return ret;
 }
@@ -821,15 +739,7 @@ static int __devinit stm_pcie_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
-#ifdef CONFIG_ARM
-	/*
-	 * We have to hook the abort handler so that we can intercept bus
-	 * errors when doing config read/write that return UR, which is flagged
-	 * up as a bus error
-	 */
-	hook_fault_code(16+6, stm_pcie_abort, SIGBUS, 0,
-			"imprecise external abort");
-#endif
+	stm_abort_init();
 
 	/* And now hook this into the generic driver */
 	err = stm_pci_register_controller(pdev, &stm_pcie_config_ops,

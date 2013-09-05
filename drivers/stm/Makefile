@@ -10,6 +10,7 @@ obj-y					+= pad.o
 obj-y					+= sysconf.o
 obj-y					+= device.o
 obj-y					+= clk.o
+obj-y					+= abort.o
 obj-y					+= clocks/
 
 obj-$(CONFIG_OF)		+= stm_devices_of.o
