@@ -19,6 +19,7 @@
 #include <linux/types.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/sysconf.h>
+#include "abort.h"
 
 #define DRIVER_NAME "stm-sysconf"
 
@@ -278,6 +279,50 @@ unsigned long sysconf_read(struct sysconf_field *field)
 }
 EXPORT_SYMBOL(sysconf_read);
 
+static int sysconf_read_safe(struct sysconf_field *field, unsigned long *valuep)
+{
+	int field_bits;
+	int result;
+	u32 value;
+	unsigned long flags;
+
+	pr_debug("%s(field=0x%p (%s %d[%d:%d]))\n", __func__, field,
+		 sysconf_groups[field->group].name, field->num,
+		 field->msb, field->lsb);
+
+	BUG_ON(!field);
+	MAGIC_CHECK(field);
+
+	field_bits = field->msb - field->lsb + 1;
+	BUG_ON(field_bits < 1 || field_bits > 32);
+
+	spin_lock_irqsave(&stm_abort_lock, flags);
+	atomic_set(&stm_abort_flag, 0);
+
+	GET_LABEL_ADDR(config_read_start, abort_start);
+	GET_LABEL_ADDR(config_read_end, abort_end);
+	EMIT_LABEL(config_read_start);
+
+	value = readl(field->reg);
+	mb();
+
+	EMIT_LABEL(config_read_end);
+	result = atomic_read(&stm_abort_flag) ? -EINTR : 0;
+	spin_unlock_irqrestore(&stm_abort_lock, flags);
+
+	if (!result) {
+		if (field_bits != 32) {
+			value >>= field->lsb;
+			value &= (1 << field_bits) - 1;
+		}
+
+		*valuep = value;
+	}
+
+	pr_debug("%s()=%d (value 0x%u)\n", __func__, result, value);
+	return result;
+}
+
 int sysconf_reg_name(char *name, int size, int group, int num)
 {
 	BUG_ON(group < 0 || group >= sysconf_groups_num);
@@ -365,6 +410,7 @@ static int sysconf_seq_show_fields(struct seq_file *s)
 
 	list_for_each_entry(field, &sysconf_fields, list) {
 		char name[20];
+		long value;
 
 		sysconf_reg_name(name, sizeof(name), field->group, field->num);
 		seq_printf(s, "- %s[", name);
@@ -374,10 +420,15 @@ static int sysconf_seq_show_fields(struct seq_file *s)
 		else
 			seq_printf(s, "%d:%d", field->msb, field->lsb);
 
-		seq_printf(s, "] = 0x%0*lx (0x%p, %s)\n",
-				(field->msb - field->lsb + 4) / 4,
-				sysconf_read(field),
-				field->reg, field->owner);
+		if (!sysconf_read_safe(field, &value))
+			seq_printf(s, "] = 0x%0*lx (0x%p, %s)\n",
+				   (field->msb - field->lsb + 4) / 4,
+				   value,
+				   field->reg, field->owner);
+		else
+			seq_printf(s, "] = RESERVED (0x%p, %s)\n",
+				   field->reg, field->owner);
+
 	}
 
 	spin_unlock(&sysconf_fields_lock);
@@ -707,6 +758,8 @@ static struct platform_driver sysconf_driver = {
 
 static int __init sysconf_init(void)
 {
+	stm_abort_init();
+
 	return platform_driver_register(&sysconf_driver);
 }
 arch_initcall(sysconf_init);
