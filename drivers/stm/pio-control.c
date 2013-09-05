@@ -270,11 +270,18 @@ static int stm_pio_control_report_direction(struct stm_pio_control *pio_control,
 		int pin, char *buf, int len,
 		enum stm_pad_gpio_direction *direction)
 {
-	unsigned long oe_value, pu_value, od_value;
+	/*
+	 * Note that the OE default value is correct for the FlashSS
+	 * on Cannes - the first part where the sysconf became optional.
+	 */
+	unsigned long oe_value = 0xff, pu_value = 0, od_value = 0;
 
-	oe_value = sysconf_read(pio_control->oe);
-	pu_value = sysconf_read(pio_control->pu);
-	od_value = sysconf_read(pio_control->od);
+	if (pio_control->oe)
+		oe_value = sysconf_read(pio_control->oe);
+	if (pio_control->pu)
+		pu_value = sysconf_read(pio_control->pu);
+	if (pio_control->od)
+		od_value = sysconf_read(pio_control->od);
 
 	if (direction)
 		*direction = oe_value ? stm_pad_gpio_direction_out :
