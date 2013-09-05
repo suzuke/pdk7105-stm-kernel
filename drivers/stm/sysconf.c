@@ -558,8 +558,8 @@ EXPORT_SYMBOL(stm_of_sysconf_claim);
 
 static int of_sysconf_reg_name(char *name, int size, int group, int num)
 {
-	return snprintf(name, size, "SYSCONF%d (%s)",
-		 sysconf_groups[group].start + num, sysconf_groups[group].name);
+	return snprintf(name, size, "SYSCONF%d",
+		 sysconf_groups[group].start + num);
 }
 
 void __init of_sysconf_early_init()
