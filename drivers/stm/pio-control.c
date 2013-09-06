@@ -152,6 +152,38 @@ static unsigned long stm_pio_control_delay_to_bit(unsigned int delay,
 	return closest_index;
 }
 
+static unsigned long stm_pio_control_bit_to_delay(unsigned int index,
+		const struct stm_pio_control_retime_params *retime_params,
+		enum stm_pad_gpio_direction direction)
+{
+	const unsigned int *delay_times;
+	int num_delay_times;
+
+	switch (direction) {
+	case stm_pad_gpio_direction_in:
+	case stm_pad_gpio_direction_in_pull_up:
+		delay_times = retime_params->delay_times_in;
+		num_delay_times = retime_params->num_delay_times_in;
+		break;
+	case stm_pad_gpio_direction_out:
+		delay_times = retime_params->delay_times_out;
+		num_delay_times = retime_params->num_delay_times_out;
+		break;
+	case stm_pad_gpio_direction_bidir:
+	case stm_pad_gpio_direction_bidir_pull_up:
+		return 0;
+	default:
+		if (index != 0)
+			WARN(index, "Attempt to set delay without knowing direction");
+		return 0;
+	}
+
+	if (WARN(index >= num_delay_times, "Delay index too large"))
+		return 0;
+
+	return delay_times[index];
+}
+
 static void stm_pio_control_config_retime_packed(
 		struct stm_pio_control *pio_control,
 		const struct stm_pio_control_retime_params *retime_params,
@@ -265,6 +297,7 @@ static int stm_pio_control_report_retime_packed(
 	unsigned long rt_value[2];
 	unsigned long rt_reduced;
 	int i, j;
+	unsigned long delay_index;
 
 	rt_value[0] = sysconf_read(pio_control->retiming[0]);
 	rt_value[1] = sysconf_read(pio_control->retiming[1]);
@@ -277,15 +310,21 @@ static int stm_pio_control_report_retime_packed(
 		}
 	}
 
+	delay_index =
+		(((rt_reduced >> offset->delay_msb_offset) & 1) << 1) |
+		(((rt_reduced >> offset->delay_lsb_offset) & 1) << 0);
+
 	return snprintf(buf, len,
-		 "rt %ld, c1nc0 %ld, cnd %ld, de %ld, ic %ld, dly %ld%ld",
+		 "rt %ld, c1nc0 %ld, cnd %ld, de %ld, ic %ld, dly %ld%ld (%ldpS)",
 		 (rt_reduced >> offset->retime_offset) & 1,
 		 (rt_reduced >> offset->clk1notclk0_offset) & 1,
 		 (rt_reduced >> offset->clknotdata_offset) & 1,
 		 (rt_reduced >> offset->double_edge_offset) & 1,
 		 (rt_reduced >> offset->invertclk_offset) & 1,
-		 (rt_reduced >> offset->delay_msb_offset) & 1,
-		 (rt_reduced >> offset->delay_lsb_offset) & 1);
+		 delay_index >> 1, delay_index & 1,
+		 stm_pio_control_bit_to_delay(delay_index,
+			retime_params, direction));
+
 }
 
 static int stm_pio_control_report_retime_dedicated(
@@ -299,10 +338,12 @@ static int stm_pio_control_report_retime_dedicated(
 	value = sysconf_read(pio_control->retiming[pin]);
 
 	return snprintf(buf, len,
-		"clk %ld, cnd %ld, dly %ld, dino %ld, de %ld, ic %ld, rt %ld",
+		"clk %ld, cnd %ld, dly %ld (%ldpS), dino %ld, de %ld, ic %ld, rt %ld",
 		((value >> 0) & 0x3),
 		((value >> 2) & 0x1),
 		((value >> 3) & 0xf),
+		stm_pio_control_bit_to_delay((value >> 3) & 0xf,
+			retime_params, direction),
 		((value >> 7) & 0x1),
 		((value >> 8) & 0x1),
 		((value >> 9) & 0x1),
