@@ -7,14 +7,14 @@
  * Below is the bit allocation details for each possible configuration.
  *
  * All the bit fields can be encapsulated into four user-friendly variables
- * (direction, retime-type, retime-clk, retime-delay)
+ * (retime-type, retime-clk, force-delay, retime-delay)
  *
  *        +----------------+
- *[31:28] |   reserved-3   |
+ *[31:26] |   reserved-2   |
  *        +----------------+
- *[27:25] |  direction	   |	[direction]
+ *[25]    |frc-dly-innotout|
  *        +----------------+
- *[24]    |   reserved-2   |
+ *[24]    |  force_delay   |
  *        +----------------+------------¬
  *[23]    |    retime      |		|
  *        +----------------+		|
@@ -41,9 +41,18 @@
 #define ALT6	6
 #define ALT7	7
 
-#define MASK		0x1
-#define SHIFT		23
-#define RT			(1 << SHIFT)
+#define FORCE_DELAY_SHIFT		24
+#define FORCE_DELAY			(1 << FORCE_DELAY_SHIFT)
+
+#define FORCE_DELAY_INNOTOUT_SHIFT	25
+#define FORCE_DELAY_INNOTOUT		(1 << FORCE_DELAY_INNOTOUT_SHIFT)
+
+#define FORCE_INPUT_DELAY		(FORCE_DELAY | FORCE_DELAY_INNOTOUT)
+#define FORCE_OUTPUT_DELAY		(FORCE_DELAY)
+
+#define RT_MASK		0x1
+#define RT_SHIFT	23
+#define RT		(1 << RT_SHIFT)
 
 #define INVERTCLK_MASK	0x1
 #define INVERTCLK_SHIFT	22

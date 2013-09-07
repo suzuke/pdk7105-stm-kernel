@@ -114,31 +114,48 @@ static void stm_pio_control_config_function(
 	sysconf_write(selector, val);
 }
 
-static unsigned long stm_pio_control_delay_to_bit(unsigned int delay,
+static unsigned long stm_pio_control_delay_to_bit(
+		const struct stm_pio_control_retime_config *rt,
 		const struct stm_pio_control_retime_params *retime_params,
-		enum stm_pad_gpio_direction direction)
+		enum stm_pad_gpio_direction direction,
+		bool *innotoutp)
 {
+	int delay = rt->delay;
 	const unsigned int *delay_times;
 	int num_delay_times;
 	int i;
 	unsigned int closest_divergence = UINT_MAX;
 	int closest_index = -1;
+	int input;
 
-	switch (direction) {
-	case stm_pad_gpio_direction_in:
-	case stm_pad_gpio_direction_in_pull_up:
+	if (rt->force_delay) {
+		input = rt->force_delay_innotout;
+	} else {
+		switch (direction) {
+		case stm_pad_gpio_direction_in:
+		case stm_pad_gpio_direction_in_pull_up:
+			input = 1;
+			break;
+		case stm_pad_gpio_direction_out:
+			input = 0;
+			break;
+		default:
+			if (delay != 0)
+				WARN(delay, "Attempt to set delay without knowing direction");
+			return 0;
+		}
+	}
+
+	if (input) {
 		delay_times = retime_params->delay_times_in;
 		num_delay_times = retime_params->num_delay_times_in;
-		break;
-	case stm_pad_gpio_direction_out:
+	} else {
 		delay_times = retime_params->delay_times_out;
 		num_delay_times = retime_params->num_delay_times_out;
-		break;
-	default:
-		if (delay != 0)
-			WARN(delay, "Attempt to set delay without knowing direction");
-		return 0;
 	}
+
+	if (innotoutp)
+		*innotoutp = input;
 
 	for (i = 0; i < num_delay_times; i++) {
 		unsigned int divergence = abs(delay - delay_times[i]);
@@ -203,8 +220,8 @@ static void stm_pio_control_config_retime_packed(
 	unsigned long mask;
 	int i, j;
 
-	unsigned long delay = stm_pio_control_delay_to_bit(
-		rt->delay, retime_params, direction);
+	unsigned long delay = stm_pio_control_delay_to_bit(rt,
+		retime_params, direction, NULL);
 
 	unsigned long retime_config =
 		((rt->clk          & 1) << offset->clk1notclk0_offset) |
@@ -247,11 +264,9 @@ static void stm_pio_control_config_retime_dedicated(
 {
 	struct sysconf_field *reg;
 
-	unsigned long delay = stm_pio_control_delay_to_bit(
-		rt->delay, retime_params, direction);
-	unsigned long rt_input =
-		((direction == stm_pad_gpio_direction_in) ||
-		 (direction == stm_pad_gpio_direction_in_pull_up)) ? 1 : 0;
+	bool rt_input;
+	unsigned long delay = stm_pio_control_delay_to_bit(rt,
+		retime_params, direction, &rt_input);
 
 	unsigned long retime_config =
 		((rt->clk            & 0x3) << 0) |

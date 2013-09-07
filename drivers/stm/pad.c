@@ -1052,6 +1052,11 @@ static struct stm_pio_control_pad_config *stm_of_get_pad_retime(
 
 	rt->delay = STM_PINCONF_UNPACK_RT_DELAY(config);
 	rt->clk = STM_PINCONF_UNPACK_RT_CLK(config);
+
+	rt->force_delay = STM_PINCONF_UNPACK_FORCE_DELAY(config);
+	rt->force_delay_innotout =
+		STM_PINCONF_UNPACK_FORCE_DELAY_INNOTOUT(config);
+
 	return pad_config;
 }
 
@@ -1129,7 +1134,7 @@ struct stm_pad_config *stm_of_get_pad_config_from_node(struct device *dev,
 		if (!gpios)
 			continue;
 
-		/* BANK OFFSET ALTFUNC DIR RT-TYPE DELAY CLK */
+		/* BANK OFFSET DIR ALTFUNC [ RT-TYPE CLK FORCE DELAY ] */
 		for_each_property_of_node(gpios, pp) {
 			if (!stm_pinctrl_is_pin_property(pp))
 				continue;
@@ -1148,15 +1153,10 @@ struct stm_pad_config *stm_of_get_pad_config_from_node(struct device *dev,
 			gpio->direction = be32_to_cpup(list++);
 			/* altfun_np */
 			gpio->function = be32_to_cpup(list++);
-			/* RT-TYPE, RT-DELAY, RT-CLK */
+			/* RT-TYPE, RT-DELAY, RT-CLK, FORCE */
 			if (nr_props > OF_STM_GPIO_ARGS_MIN) {
 				u32 rt_config = 0;
-				/* RT-TYPE */
-				rt_config |= be32_to_cpup(list++);
-				/* RT_DELAY */
-				rt_config |= be32_to_cpup(list++);
-				/* RT_CLK */
-				if (nr_props > OF_STM_GPIO_ARGS_MIN + 2)
+				while (nr_props-- > OF_STM_GPIO_ARGS_MIN)
 					rt_config |= be32_to_cpup(list++);
 				gpio->priv = stm_of_get_pad_retime(dev,
 							rt_config);
@@ -1227,13 +1227,9 @@ void stm_of_pad_config_fixup(struct device *dev,
 			priv = NULL;
 			if (nr_props > (OF_STM_GPIO_ARGS_MIN - 2)) {
 				u32 rt_config = 0;
-				/* RT-TYPE */
-				rt_config |= be32_to_cpup(list++);
-				/* RT_DELAY */
-				rt_config |= be32_to_cpup(list++);
-				/* RT_CLK */
-				if (nr_props > OF_STM_GPIO_ARGS_MIN + 2)
+				while (nr_props-- > (OF_STM_GPIO_ARGS_MIN - 2))
 					rt_config |= be32_to_cpup(list++);
+
 				priv = stm_of_get_pad_retime(dev, rt_config);
 			}
 			stm_pad_update_gpio(state, pp->name, dir, -1,

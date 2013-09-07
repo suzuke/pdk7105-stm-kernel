@@ -19,6 +19,8 @@ struct stm_pio_control_retime_config {
 	unsigned int clknotdata:1;
 	unsigned int double_edge:1;
 	unsigned int invertclk:1;
+	unsigned int force_delay:1;
+	unsigned int force_delay_innotout:1;
 	unsigned int delay:16;
 };
 

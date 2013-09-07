@@ -355,14 +355,14 @@ int stm_pad_config_add_gpio_named(struct stm_pad_config *config,
  * Pinconf is represented in an opaque unsigned long variable.
  * Below is the bit allocation details for each possible configuration.
  * All the bit fields can be encapsulated into four variables
- * (direction, retime-type, retime-clk, retime-delay)
+ * (retime-type, retime-clk, force-delay, retime-delay)
  *
  *        +----------------+
- *[31:28] |   reserved-3   |
+ *[31:24] |   reserved-2   |
  *        +----------------+
- *[27:25] |  direction	   |	[direction]
+ *[25]    |frc-dly-innotout|
  *        +----------------+
- *[24]    |   reserved-2   |
+ *[24]    |  force-delay   |
  *        +----------------+-------------
  *[23]    |    retime      |		|
  *        +----------------+		|
@@ -388,27 +388,22 @@ int stm_pad_config_add_gpio_named(struct stm_pad_config *config,
 				((val & STM_PINCONF_ ##param ##_MASK) << \
 					STM_PINCONF_ ##param ##_SHIFT) }
 
-/* Output enable */
-#define STM_PINCONF_OE_MASK		0x1
-#define STM_PINCONF_OE_SHIFT		27
-#define STM_PINCONF_OE			(1 << STM_PINCONF_OE_SHIFT)
-#define STM_PINCONF_UNPACK_OE(conf)	STM_PINCONF_UNPACK(conf, OE)
-#define STM_PINCONF_PACK_OE(conf, val)	STM_PINCONF_PACK(conf, val, OE)
+#define STM_PINCONF_FORCE_DELAY_MASK		1
+#define STM_PINCONF_FORCE_DELAY_SHIFT		24
+#define STM_PINCONF_FORCE_DELAY			(1 << FORCE_DELAY_SHIFT)
+#define STM_PINCONF_UNPACK_FORCE_DELAY(conf)	\
+			STM_PINCONF_UNPACK(conf, FORCE_DELAY)
+#define STM_PINCONF_PACK_FORCE_DELAY(conf, val)	\
+			STM_PINCONF_PACK(conf, val, FORCE_DELAY)
 
-/* Pull Up */
-#define STM_PINCONF_PU_MASK		0x1
-#define STM_PINCONF_PU_SHIFT		26
-#define STM_PINCONF_PU			(1 << STM_PINCONF_PU_SHIFT)
-#define STM_PINCONF_UNPACK_PU(conf)	STM_PINCONF_UNPACK(conf, PU)
-#define STM_PINCONF_PACK_PU(conf, val)	STM_PINCONF_PACK(conf, val, PU)
-
-/* Open Drain */
-#define STM_PINCONF_OD_MASK		0x1
-#define STM_PINCONF_OD_SHIFT		25
-#define STM_PINCONF_OD			(1 << STM_PINCONF_OD_SHIFT)
-#define STM_PINCONF_UNPACK_OD(conf)	STM_PINCONF_UNPACK(conf, OD)
-#define STM_PINCONF_PACK_OD(conf, val)	STM_PINCONF_PACK(conf, val, OD)
-
+#define STM_PINCONF_FORCE_DELAY_INNOTOUT_MASK	1
+#define STM_PINCONF_FORCE_DELAY_INNOTOUT_SHIFT	25
+#define STM_PINCONF_FORCE_DELAY_INNOTOUT	\
+			(1 << FORCE_DELAY_INNOTOUT_SHIFT)
+#define STM_PINCONF_UNPACK_FORCE_DELAY_INNOTOUT(conf)	\
+			STM_PINCONF_UNPACK(conf, FORCE_DELAY_INNOTOUT)
+#define STM_PINCONF_PACK_FORCE_DELAY_INNOTOUT(conf, val)	\
+			STM_PINCONF_PACK(conf, val, FORCE_DELAY_INNOTOUT)
 
 #define STM_PINCONF_RT_MASK		0x1
 #define STM_PINCONF_RT_SHIFT		23
