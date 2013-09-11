@@ -511,7 +511,6 @@ int __init stih416_configure_ssc_spi(int ssc, struct stih416_ssc_config *config)
 	} else
 		pad_config = &stih416_ssc_spi_pad_configs[ssc];
 
-	plat_data->spi_chipselect = config->spi_chipselect;
 	plat_data->pad_config = pad_config;
 
 	if (ssc > 7)

@@ -101,18 +101,6 @@ static struct stm_plat_spifsm_data b2078_serial_flash =  {
 	},
 };
 
-static void stig125_spi_fst_cs(struct spi_device *spi, int value)
-{
-	gpio_set_value(stm_gpio(23, 3),
-		(spi->mode & SPI_CS_HIGH) ? value : !value);
-}
-
-static void stig125_spi_tel_cs(struct spi_device *spi, int value)
-{
-	gpio_set_value(stm_gpio(16, 3),
-		(spi->mode & SPI_CS_HIGH) ? value : !value);
-}
-
 static void __init b2078_init(void)
 {
 	platform_add_devices(b2078_devices, ARRAY_SIZE(b2078_devices));
@@ -135,13 +123,10 @@ static void __init b2078_init(void)
 
 
 	/* see schematic: SPI_FST - connected with the B2095 (TDA18265) */
-	stig125_configure_ssc_spi(STIG125_SSC(11), &(struct stig125_ssc_config){
-				.spi_chipselect = stig125_spi_fst_cs });
+	stig125_configure_ssc_spi(STIG125_SSC(11));
 
 	/* see schematic: SPI_TEL  */
-	stig125_configure_ssc_spi(STIG125_TELSS_SSC,
-				&(struct stig125_ssc_config){
-					.spi_chipselect = stig125_spi_tel_cs });
+	stig125_configure_ssc_spi(STIG125_TELSS_SSC);
 
 	stig125_configure_spifsm(&b2078_serial_flash);
 }

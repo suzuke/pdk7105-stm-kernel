@@ -174,7 +174,6 @@ struct stih416_ssc_config {
 		} ssc5;
 
 	} routing;
-	void (*spi_chipselect)(struct spi_device *spi, int is_on);
 	unsigned int i2c_speed;
 };
 int stih416_configure_ssc_spi(int ssc, struct stih416_ssc_config *config);

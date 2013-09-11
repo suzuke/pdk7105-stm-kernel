@@ -515,7 +515,6 @@ int __init stxh205_configure_ssc_spi(int ssc, struct stxh205_ssc_config *config)
 		pad_config = &stxh205_ssc_spi_pad_configs[ssc];
 	}
 
-	plat_data->spi_chipselect = config->spi_chipselect;
 	plat_data->pad_config = pad_config;
 
 	platform_device_register(&stxh205_ssc_devices[ssc]);

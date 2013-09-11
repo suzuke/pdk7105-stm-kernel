@@ -161,7 +161,7 @@ static struct platform_device fli7610_ssc_devices[] = {
 
 static int __initdata fli7610_ssc_configured[ARRAY_SIZE(fli7610_ssc_devices)];
 
-int __init fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config)
+int __init fli7610_configure_ssc_i2c(int ssc, unsigned int i2c_speed)
 {
 	static int i2c_busnum;
 	struct stm_plat_ssc_data *plat_data;
@@ -181,8 +181,7 @@ int __init fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config)
 	pad_config = &fli7610_ssc_i2c_pad_configs[ssc];
 
 	plat_data->pad_config = pad_config;
-	if (config)
-		plat_data->i2c_speed = config->i2c_speed;
+	plat_data->i2c_speed = i2c_speed;
 
 	/* I2C bus number reservation (to prevent any hot-plug device
 	 * from using it) */
@@ -197,10 +196,9 @@ int __init fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config)
 }
 
 /* NOT TESTED  */
-int __init fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config)
+int __init fli7610_configure_ssc_spi(int ssc)
 {
 	static int spi_busnum;
-	struct fli7610_ssc_config default_config = {};
 	struct stm_plat_ssc_data *plat_data;
 	struct stm_pad_config *pad_config;
 
@@ -210,9 +208,6 @@ int __init fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config)
 	BUG_ON(fli7610_ssc_configured[ssc]);
 	fli7610_ssc_configured[ssc] = 1;
 
-	if (!config)
-		config = &default_config;
-
 	fli7610_ssc_devices[ssc].name = "spi-stm";
 	fli7610_ssc_devices[ssc].id = spi_busnum;
 
@@ -220,7 +215,6 @@ int __init fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config)
 
 	pad_config = &fli7610_ssc_spi_pad_configs[ssc];
 
-	plat_data->spi_chipselect = config->spi_chipselect;
 	plat_data->pad_config = pad_config;
 
 	if (ssc > 2)

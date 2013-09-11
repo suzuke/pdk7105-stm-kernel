@@ -100,13 +100,9 @@ void fli7610_configure_usb(int port);
 #define FLI7610_SPI3		FLI7610_SSC(2)
 #define FLI7610_SPI1_LPM	FLI7610_SBC_SSC(1)
 
-struct fli7610_ssc_config {
-	void (*spi_chipselect)(struct spi_device *spi, int is_on);
-	unsigned int i2c_speed;
-};
 /* Use the above macros while passing SSC number. */
-int fli7610_configure_ssc_spi(int ssc, struct fli7610_ssc_config *config);
-int fli7610_configure_ssc_i2c(int ssc, struct fli7610_ssc_config *config);
+int fli7610_configure_ssc_spi(int ssc);
+int fli7610_configure_ssc_i2c(int ssc, unsigned int i2c_speed);
 void fli7610_configure_lirc(void);
 enum fli7610_pwm {
 	fli7610_tae_pwm = 0,

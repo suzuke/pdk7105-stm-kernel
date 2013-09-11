@@ -79,12 +79,8 @@ void stig125_configure_asc(int asc, struct stig125_asc_config *config);
 #define STIG125_FE_SSC			(1)
 #define STIG125_BE_SSC			(8)
 
-struct stig125_ssc_config {
-	void (*spi_chipselect)(struct spi_device *spi, int is_on);
-};
-
 int stig125_configure_ssc_i2c(int ssc, unsigned i2c_bus_speed);
-int stig125_configure_ssc_spi(int ssc, struct stig125_ssc_config *config);
+int stig125_configure_ssc_spi(int ssc);
 
 void stig125_configure_keyscan(const struct stm_keyscan_config *config);
 void stig125_configure_spifsm(struct stm_plat_spifsm_data *data);

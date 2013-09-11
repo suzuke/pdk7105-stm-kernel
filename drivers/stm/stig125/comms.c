@@ -211,25 +211,19 @@ int __init stig125_configure_ssc_i2c(int ssc, unsigned i2c_bus_speed)
 	return ret;
 }
 
-int __init stig125_configure_ssc_spi(int ssc, struct stig125_ssc_config *config)
+int __init stig125_configure_ssc_spi(int ssc)
 {
 	int ret = 0;
 	static int spi_busnum;
-	struct stig125_ssc_config default_config = {};
 	struct stm_plat_ssc_data *plat_data;
 
 	BUG_ON(ssc < 0 || ssc >= ARRAY_SIZE(stig125_ssc_devices));
 	BUG_ON(stig125_ssc_configured[ssc]);
 
-
-	if (!config)
-		config = &default_config;
-
 	stig125_ssc_devices[ssc].name = "spi-stm";
 	stig125_ssc_devices[ssc].id = spi_busnum++;
 	plat_data = stig125_ssc_devices[ssc].dev.platform_data;
 	plat_data->pad_config = &stig125_ssc_spi_pad_configs[ssc];
-	plat_data->spi_chipselect = config->spi_chipselect;
 
 	stig125_ssc_set_clk(ssc);
 

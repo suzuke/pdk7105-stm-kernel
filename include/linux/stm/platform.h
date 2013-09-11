@@ -127,7 +127,6 @@ struct stm_plat_rtc_lpc {
 
 struct stm_plat_ssc_data {
 	struct stm_pad_config *pad_config;
-	void (*spi_chipselect)(struct spi_device *, int);
 	unsigned int i2c_speed; /* Bus speed in KHz */
 };
 

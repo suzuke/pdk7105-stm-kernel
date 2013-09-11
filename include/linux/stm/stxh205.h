@@ -101,7 +101,6 @@ struct stxh205_ssc_config {
 			} mrst;
 		} ssc3;
 	} routing;
-	void (*spi_chipselect)(struct spi_device *spi, int is_on);
 	unsigned int i2c_speed;
 };
 

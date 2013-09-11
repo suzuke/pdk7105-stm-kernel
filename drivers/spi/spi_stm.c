@@ -3,23 +3,11 @@
  *  spi_stm.c SPI/SSC driver for STMicroelectronics platforms
  *  ------------------------------------------------------------------------
  *
- *  Copyright (c) 2008 STMicroelectronics Limited
+ *  Copyright (c) 2008-2013 STMicroelectronics Limited
  *  Author: Angus Clark <Angus.Clark@st.com>
  *
  *  May be copied or modified under the terms of the GNU General Public
  *  License Version 2.0 only.  See linux/COPYING for more information.
- *
- *  ------------------------------------------------------------------------
- *  Changelog:
- *  2008-01-24 (angus.clark@st.com)
- *    - Initial version
- *  2008-08-28 (angus.clark@st.com)
- *    - Updates to fit with changes to 'ssc_pio_t'
- *    - SSC accesses now all 32-bit, for compatibility with 7141 Comms block
- *    - Updated to handle 7141 PIO ALT configuration
- *    - Support for user-defined, per-bus, chip_select function.  Specified
- *      in board setup
- *    - Bug fix for rx_bytes_pending updates
  *
  *  ------------------------------------------------------------------------
  */
@@ -74,16 +62,6 @@ static void spi_stm_gpio_chipselect(struct spi_device *spi, int value)
 
 	if (spi->chip_select == (typeof(spi->chip_select))(STM_GPIO_INVALID))
 		return;
-
-	if (!spi->controller_data) {
-		if (gpio_request(spi->chip_select, "spi_stm cs")) {
-			dev_err(&spi->dev, "failed to allocate CS pin\n");
-			return;
-		}
-		spi->controller_data = (void *)1;
-		gpio_direction_output(spi->chip_select,
-				      spi->mode & SPI_CS_HIGH);
-	}
 
 	if (value == BITBANG_CS_ACTIVE)
 		out = spi->mode & SPI_CS_HIGH ? 1 : 0;
@@ -195,6 +173,7 @@ static void spi_stm_cleanup(struct spi_device *spi)
 static int spi_stm_setup(struct spi_device *spi)
 {
 	struct spi_stm *spi_stm;
+	int ret;
 
 	spi_stm = spi_master_get_devdata(spi->master);
 
@@ -211,6 +190,19 @@ static int spi_stm_setup(struct spi_device *spi)
 
 	if (!spi->bits_per_word)
 		spi->bits_per_word = 8;
+
+	if (spi->chip_select != (typeof(spi->chip_select))(STM_GPIO_INVALID) &&
+	    !spi->controller_data) {
+		ret = gpio_request(spi->chip_select, "spi_stm cs");
+		if (ret) {
+			dev_err(&spi->dev, "failed to allocate CS pin\n");
+			return ret;
+		}
+		spi->controller_data = (void *)1;
+		gpio_direction_output(spi->chip_select,
+				      spi->mode & SPI_CS_HIGH);
+	}
+
 
 	return spi_stm_setup_transfer(spi, NULL);
 }
@@ -396,12 +388,8 @@ static int spi_stm_probe(struct platform_device *pdev)
 	spi_stm->bitbang.txrx_bufs = spi_stm_txrx_bufs;
 	spi_stm->bitbang.master->setup = spi_stm_setup;
 	spi_stm->bitbang.master->cleanup = spi_stm_cleanup;
+	spi_stm->bitbang.chipselect = spi_stm_gpio_chipselect;
 	spi_stm->pdev = pdev;
-
-	if (plat_data->spi_chipselect)
-		spi_stm->bitbang.chipselect = plat_data->spi_chipselect;
-	else
-		spi_stm->bitbang.chipselect = spi_stm_gpio_chipselect;
 
 	/* the spi->mode bits understood by this driver: */
 	master->mode_bits = MODEBITS;
