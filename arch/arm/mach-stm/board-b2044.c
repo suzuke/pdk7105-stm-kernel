@@ -49,7 +49,7 @@ static struct spi_board_info spi_core[] =  {
 	{
 		.modalias = "spicore",
 		.bus_num = 0,
-		.chip_select = 0,
+		.controller_data = 0,
 		.max_speed_hz = 4000000,
 		.platform_data = &spi_core_data,
 		.mode = SPI_MODE_3,

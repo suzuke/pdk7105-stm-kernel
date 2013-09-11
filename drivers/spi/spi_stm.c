@@ -29,6 +29,7 @@
 #include <linux/of.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
+#include <linux/spi/spi_gpio.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/ssc.h>
 
@@ -56,24 +57,22 @@ struct spi_stm {
 	struct completion	done;
 };
 
-static void spi_stm_gpio_chipselect(struct spi_device *spi, int value)
-{
-	unsigned int out;
+#define SPI_STM_REQUESTED_CS_GPIO ((void *) -1l)
 
-	if (spi->chip_select == (typeof(spi->chip_select))(STM_GPIO_INVALID))
+static void spi_stm_gpio_chipselect(struct spi_device *spi, int is_active)
+{
+	unsigned cs = (unsigned)spi->controller_data;
+	int out;
+
+	if (cs == SPI_GPIO_NO_CHIPSELECT || cs == STM_GPIO_INVALID)
 		return;
 
-	if (value == BITBANG_CS_ACTIVE)
-		out = spi->mode & SPI_CS_HIGH ? 1 : 0;
-	else
-		out = spi->mode & SPI_CS_HIGH ? 0 : 1;
+	out = (spi->mode & SPI_CS_HIGH) ? is_active : !is_active;
+	gpio_set_value(cs, out);
 
-	gpio_set_value(spi->chip_select, out);
-
-	dev_dbg(&spi->dev, "%s PIO%d[%d] -> %d \n",
-		value == BITBANG_CS_ACTIVE ? "select" : "deselect",
-		stm_gpio_port(spi->chip_select),
-		stm_gpio_pin(spi->chip_select), out);
+	dev_dbg(&spi->dev, "%s PIO%u[%u] -> %d\n",
+		is_active ? "select" : "deselect",
+		stm_gpio_port(cs), stm_gpio_pin(cs), out);
 
 	return;
 }
@@ -162,9 +161,11 @@ static int spi_stm_setup_transfer(struct spi_device *spi,
 
 static void spi_stm_cleanup(struct spi_device *spi)
 {
-	if (spi->controller_data) {
-		gpio_free(spi->chip_select);
-		spi->controller_data = (void *)0;
+	unsigned cs = (unsigned)spi->controller_data;
+
+	if (spi->controller_state == SPI_STM_REQUESTED_CS_GPIO) {
+		gpio_free(cs);
+		spi->controller_state = (void *)0;
 	}
 }
 
@@ -173,6 +174,7 @@ static void spi_stm_cleanup(struct spi_device *spi)
 static int spi_stm_setup(struct spi_device *spi)
 {
 	struct spi_stm *spi_stm;
+	unsigned cs;
 	int ret;
 
 	spi_stm = spi_master_get_devdata(spi->master);
@@ -191,20 +193,32 @@ static int spi_stm_setup(struct spi_device *spi)
 	if (!spi->bits_per_word)
 		spi->bits_per_word = 8;
 
-	if (spi->chip_select != (typeof(spi->chip_select))(STM_GPIO_INVALID) &&
-	    !spi->controller_data) {
-		ret = gpio_request(spi->chip_select, "spi_stm cs");
+	/* Get CS GPIO, if required */
+	cs = (unsigned)spi->controller_data;
+	if (cs != SPI_GPIO_NO_CHIPSELECT &&
+	    cs != STM_GPIO_INVALID &&
+	    spi->controller_state != SPI_STM_REQUESTED_CS_GPIO) {
+		ret = gpio_request(cs, dev_name(&spi->dev));
+		if (ret)
+			return ret;
+
+		ret = gpio_direction_output(cs, spi->mode & SPI_CS_HIGH);
 		if (ret) {
-			dev_err(&spi->dev, "failed to allocate CS pin\n");
+			gpio_free(cs);
 			return ret;
 		}
-		spi->controller_data = (void *)1;
-		gpio_direction_output(spi->chip_select,
-				      spi->mode & SPI_CS_HIGH);
+
+		spi->controller_state = SPI_STM_REQUESTED_CS_GPIO;
 	}
 
+	ret = spi_stm_setup_transfer(spi, NULL);
+	if (ret) {
+		if (spi->controller_state == SPI_STM_REQUESTED_CS_GPIO)
+			gpio_free(cs);
+		return ret;
+	}
 
-	return spi_stm_setup_transfer(spi, NULL);
+	return 0;
 }
 
 /* Load the TX FIFO */
@@ -394,15 +408,20 @@ static int spi_stm_probe(struct platform_device *pdev)
 	/* the spi->mode bits understood by this driver: */
 	master->mode_bits = MODEBITS;
 
-	/* chip_select field of spi_device is declared as u8 and therefore
-	 * limits number of GPIOs that can be used as a CS line. Sorry. */
-	master->num_chipselect =
-		sizeof(((struct spi_device *)0)->chip_select) * 256;
-
-	if (pdev->dev.of_node)
-		master->bus_num = of_alias_get_id(pdev->dev.of_node, "spi");
-	else
+	/* In non-DT environments, the number of potential chip selects is
+	 * limited only by the size of 'master->controller_data', which is used
+	 * to hold the GPIO number.  However, to conform with various
+	 * assumptions made by the SPI framework we set num_chipselect to the
+	 * maximum value supported by the field.
+	 *
+	 * In DT environments, 'bus_num' and 'num_chipselect' are derived later
+	 * from the node data (see
+	 * spi.c:spi_register_master->of_spi_register_master()).
+	 */
+	if (!pdev->dev.of_node) {
+		master->num_chipselect = (u16)-1;
 		master->bus_num = pdev->id;
+	}
 
 	init_completion(&spi_stm->done);
 
