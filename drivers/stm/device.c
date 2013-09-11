@@ -133,12 +133,14 @@ static int stm_device_devres_match(struct device *dev, void *res, void *data)
 struct stm_device_state *devm_stm_device_init(struct device *dev,
 	struct stm_device_config *config)
 {
-	struct stm_device_state *state = devres_alloc(stm_device_devres_exit,
-			sizeof(*state) + sizeof(*state->sysconf_fields) *
-			config->sysconfs_num, GFP_KERNEL);
+	struct stm_device_state *state;
 
 	BUG_ON(!dev);
 	BUG_ON(!config);
+
+	state = devres_alloc(stm_device_devres_exit,
+			sizeof(*state) + sizeof(*state->sysconf_fields) *
+			config->sysconfs_num, GFP_KERNEL);
 
 	if (state) {
 		if (__stm_device_init(state, config, dev) == 0) {
