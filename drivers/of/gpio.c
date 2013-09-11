@@ -103,8 +103,9 @@ unsigned int of_gpio_named_count(struct device_node *np, const char* propname)
 
 		ret = of_parse_phandle_with_args(np, propname, "#gpio-cells",
 						 cnt, NULL);
+
 		/* A hole in the gpios = <> counts anyway. */
-		if (ret < 0 && ret != -EEXIST)
+		if (ret < 0 && ret != -ENOENT)
 			break;
 	} while (++cnt);
 
