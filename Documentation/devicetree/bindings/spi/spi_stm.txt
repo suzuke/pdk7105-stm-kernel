@@ -4,26 +4,62 @@
 ===============================================================================
 
 Required properties:
-- compatible : "st,spi".
-- reg, reg-names, interrupts, interrupt-names	: Standard way to define device
-			resources with names. look in
-			Documentation/devicetree/bindings/resource-names.txt
-- padcfg-0	is the standard way to pass pad config to the drivers.
+
+  - compatible		: "st,spi".
+
+  - reg, reg-names, interrupts, interrupt-names
+			: Standard way to define device resources with names
+                          (see bindings/resource-names.txt)
+
+  - padcfg-0		: Standard way to pass pad config to the drivers.
 
 Optional properties:
-- st,dev-clk		specify device clk or alias clk.
+
+  - st,dev-clk		: Specify device clk or alias clk.
+
+  - cs-gpios		: List of GPIO chip selects (see
+                          bindings/spi/spi-bus.txt)
+
+Child nodes represent devices on the SPI bus.  See (see
+bindings/spi/spi-bus.txt) for supported options.
 
 Example:
 
-	spi0: spi-stm0{
-		#interrupt-cells = <3>;
-        #address-cells = <1>;
-        #size-cells = <1>;
-		interrupt-parent = <&intc>;
-		compatible	= "st,spi", "simple-bus";
-		reg		= <0xfed40000 0x110>;
-		interrupts	=  <0 187 0>;
+	spi0: spi-stm3{
+		compatible	= "st,spi",
+		reg		= <0xfed43000 0x110>;
+		interrupts	= <0 190 0>;
 		status = "disabled";
-
 		padcfg-0 = <&ssc0_pad_config>;
+
+		cs-gpios	 = <&PIO13 3 0>,
+				   <&PIO13 4 0>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		m25p80@0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "n25q128";
+			spi-max-frequency = <1000000>;
+			reg = <0>;
+
+			partition@0 {
+				label = "Serial Flash 1";
+				reg = <0x00000000 0x00500000>;
+			};
+			partition@1{
+				label = "Serial Flash 2";
+				reg = <0x00500000 0x00b00000>;
+			};
+		 };
+
+		spidev@1 {
+			 compatible		= "spidev";
+			 spi-max-frequency	= <1000000>;
+			 reg			= <1>;
+		 };
+
+
 	};

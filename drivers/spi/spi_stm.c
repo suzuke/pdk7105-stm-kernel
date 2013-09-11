@@ -193,6 +193,16 @@ static int spi_stm_setup(struct spi_device *spi)
 	if (!spi->bits_per_word)
 		spi->bits_per_word = 8;
 
+	/* In DT environments, the CS GPIO number is held in spi->cs_gpio, with
+	 * -ENOENT denoting "No CS".
+	 */
+	if (spi->dev.of_node) {
+		if (spi->cs_gpio == -ENOENT)
+			spi->controller_data = (void *)SPI_GPIO_NO_CHIPSELECT;
+		else
+			spi->controller_data = (void *)spi->cs_gpio;
+	}
+
 	/* Get CS GPIO, if required */
 	cs = (unsigned)spi->controller_data;
 	if (cs != SPI_GPIO_NO_CHIPSELECT &&
@@ -397,6 +407,7 @@ static int spi_stm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, master);
 
 	spi_stm = spi_master_get_devdata(master);
+	master->dev.of_node = pdev->dev.of_node;
 	spi_stm->bitbang.master = spi_master_get(master);
 	spi_stm->bitbang.setup_transfer = spi_stm_setup_transfer;
 	spi_stm->bitbang.txrx_bufs = spi_stm_txrx_bufs;
