@@ -731,7 +731,7 @@ static void *stm_pcie_get_pdata(struct platform_device *pdev)
 	stm_of_get_window(np, "st,mem-window",
 		&data->pcie_window.lmi_start, &data->pcie_window.lmi_size);
 
-	data->reset_gpio = of_get_named_gpio(np, "reset-gpio", 0);
+	data->reset_gpio = of_get_named_gpio(np, "st,reset-gpio", 0);
 	of_property_read_u32(np, "st,ahb-fixup", (u32 *)&data->ahb_val);
 	of_property_read_u32(np, "st,miphy-num", &data->miphy_num);
 	return data;
