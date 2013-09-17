@@ -83,6 +83,7 @@
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#include <linux/of_i2c.h>
 #include <linux/stm/platform.h>
 #include <linux/stm/ssc.h>
 
@@ -1304,6 +1305,9 @@ static int iic_stm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Cannot create fastmode sysfs entry\n");
 		return err;
 	}
+
+	i2c_stm->adapter.dev.of_node = pdev->dev.of_node;
+	of_i2c_register_devices(&i2c_stm->adapter);
 
 	/* by default the device is on */
 	pm_runtime_set_active(&pdev->dev);
