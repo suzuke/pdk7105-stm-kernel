@@ -97,8 +97,8 @@ static void docsis_queue_exit_debug_fs(void)
 	debugfs_remove(docsis_queue_status);
 }
 #else
-#define docsis_queue_init_debug_fs	do {} while (0)
-#define docsis_queue_exit_debug_fs	do {} while (0)
+#define docsis_queue_init_debug_fs()	do {} while (0)
+#define docsis_queue_exit_debug_fs()	do {} while (0)
 #endif
 
 static void docsis_queue_enable_downstream_queue(void)
