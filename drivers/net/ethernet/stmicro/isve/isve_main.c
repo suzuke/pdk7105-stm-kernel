@@ -60,7 +60,8 @@ static const u32 default_msg_level = (NETIF_MSG_DRV | NETIF_MSG_PROBE |
 				      NETIF_MSG_IFDOWN | NETIF_MSG_TIMER);
 
 #define ISVE_XMIT_THRESH	8
-static inline int isve_tx_avail(unsigned int dirty_tx, unsigned int cur_tx,
+static inline unsigned int isve_tx_avail(unsigned int dirty_tx,
+				unsigned int cur_tx,
 				unsigned int tx_size)
 {
 	return dirty_tx + tx_size - cur_tx - 1;
@@ -596,7 +597,9 @@ static int isve_poll(struct napi_struct *napi, int budget)
 static void isve_tx_timeout(struct net_device *dev)
 {
 	struct isve_priv *priv = netdev_priv(dev);
+	unsigned long flags;
 
+	spin_lock_irqsave(&priv->tx_lock, flags);
 	netif_stop_queue(priv->dev);
 
 	DBG("isve_tx_timeout...\n");
@@ -605,6 +608,7 @@ static void isve_tx_timeout(struct net_device *dev)
 	priv->dev->stats.tx_errors++;
 
 	netif_wake_queue(priv->dev);
+	spin_unlock_irqrestore(&priv->tx_lock, flags);
 }
 
 /**
