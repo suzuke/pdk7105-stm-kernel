@@ -225,11 +225,40 @@ static void upiim_fill_tx_add(void __iomem *ioaddr, int add, int len)
 
 	writel(len & UPIIM_FILLED_LEN_MASK, ioaddr + UPIIM_FILLED_LEN);
 	writel(add & UPIIM_FIFO_ADD_MASK, ioaddr + UPIIM_FILLED_ADD);
+
+	/* Writing to the FIFO will not automatically update the status
+	 * register. And the status register drives interrupt generation.
+	 * We set all the filled FIFO status bits to make the hardware update
+	 * the register, and possibly raise an interrupt.
+	 */
+	writel(UPIIM_INQ_INT_STAT_FILL_FIFO |
+	       UPIIM_INQ_INT_STAT_FILL_FULL_FIFO |
+	       UPIIM_INQ_INT_STAT_FILL_EMPTY_FIFO, ioaddr + UPIIM_INQ_INT_STAT);
 }
 
 static u32 upiim_freed_tx_add(void __iomem *ioaddr)
 {
-	u32 value = readl(ioaddr + UPIIM_FREED_ADD) & UPIIM_FIFO_ADD_MASK;
+	u32 status;
+	u32 value = 0;		/* FIFO empty */
+
+	/* The address in the FIFO is only valid if the not-empty bit is set
+	 * in the status register.
+	 */
+	status = readl(ioaddr + UPIIM_INQ_INT_STAT);
+	if (status & UPIIM_INQ_INT_STAT_FREE_EMPTY_FIFO) {
+		value = readl(ioaddr + UPIIM_FREED_ADD) & UPIIM_FIFO_ADD_MASK;
+
+		/* Reading the FIFO will not automatically update the status
+		 * register. And the status register drives interrupt
+		 * generation.
+		 * We set all the freed FIFO status bits to make the hardware
+		 * update the register, and maybe lower the interrupt.
+		 */
+		writel(UPIIM_INQ_INT_STAT_FREE_EMPTY_FIFO |
+		       UPIIM_INQ_INT_STAT_FREE_FULL_FIFO |
+		       UPIIM_INQ_INT_STAT_FREE_FIFO,
+		       ioaddr + UPIIM_INQ_INT_STAT);
+	}
 
 	return value;
 }

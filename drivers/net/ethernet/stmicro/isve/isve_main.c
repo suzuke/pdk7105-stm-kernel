@@ -221,16 +221,20 @@ static inline void isve_dump_tx_status(unsigned int addr, unsigned int entry)
  */
 static void isve_tx(struct isve_priv *priv)
 {
+	unsigned int freed_addr;
+
 	spin_lock(&priv->tx_lock);
 
-	while (priv->dirty_tx != priv->cur_tx) {
-		unsigned int freed_addr;
-		unsigned int entry = priv->dirty_tx % priv->upstream_queue_size;
-
+	do {
 		freed_addr = priv->upiim->freed_tx_add(priv->ioaddr_upiim);
-		isve_dump_tx_status(freed_addr, entry);
-		priv->dirty_tx++;
-	}
+		if (freed_addr) {
+			unsigned int entry = priv->dirty_tx %
+				priv->upstream_queue_size;
+
+			isve_dump_tx_status(freed_addr, entry);
+			priv->dirty_tx++;
+		}
+	} while (freed_addr > 0);
 
 	if (netif_queue_stopped(priv->dev) &&
 	    (isve_tx_avail(priv->dirty_tx, priv->cur_tx,
