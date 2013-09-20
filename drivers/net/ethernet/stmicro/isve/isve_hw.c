@@ -181,24 +181,32 @@ static void upiim_dump_regs(void __iomem *ioaddr)
 static int upiim_interrupt(void __iomem *ioaddr, struct isve_extra_stats *x)
 {
 	int status;
-	int ret = in_packet;
+	int ret = no_packet;	/* By default there is no work */
 
-	/* get queue interrupt */
+	/* get queue interrupt reason */
 	status = readl(ioaddr + UPIIM_INQ_INT_STAT);
 	DBG("%s: status 0x%x\n", __func__, status);
 
 	if (status & UPIIM_INQ_INT_STAT_FILL_FIFO)
 		x->upiim_inq_int_fill_fifo++;
-	if (status & UPIIM_INQ_INT_STAT_FILL_FULL_FIFO)
+	if (status & UPIIM_INQ_INT_STAT_FILL_FULL_FIFO) {
 		x->upiim_inq_int_fill_full_fifo++;
+		ret = in_packet_dropped;	/* Stop feeding packets */
+	}
 	if (status & UPIIM_INQ_INT_STAT_FILL_EMPTY_FIFO)
 		x->upiim_inq_int_fill_empty_fifo++;
-	if (status & UPIIM_INQ_INT_STAT_FREE_FIFO)
+	if (status & UPIIM_INQ_INT_STAT_FREE_FIFO) {
 		x->upiim_inq_int_free_fifo++;
-	if (status & UPIIM_INQ_INT_STAT_FREE_FULL_FIFO)
+		ret = in_packet;
+	}
+	if (status & UPIIM_INQ_INT_STAT_FREE_FULL_FIFO) {
 		x->upiim_inq_int_free_full_fifo++;
-	if (status & UPIIM_INQ_INT_STAT_FREE_EMPTY_FIFO)
+		ret = in_packet;
+	}
+	if (status & UPIIM_INQ_INT_STAT_FREE_EMPTY_FIFO) {
 		x->upiim_inq_int_free_empty_fifo++;
+		ret = in_packet;
+	}
 
 	/* Writing a one to the serviced interrupt bit will clear the
 	 * interrupt.

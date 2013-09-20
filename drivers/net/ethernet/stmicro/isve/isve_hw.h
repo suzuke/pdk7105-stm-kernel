@@ -32,6 +32,7 @@
 #define DFWD_REMOVE_SPECIAL_HDR	0x2
 
 enum interrupt_packet_status {
+	no_packet = 0,
 	in_packet = 0x1,
 	in_packet_dropped = 0x2,
 	out_packet = 0x4,
