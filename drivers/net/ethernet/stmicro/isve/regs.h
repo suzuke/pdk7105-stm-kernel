@@ -101,7 +101,9 @@
 #define UPIIM_FREED_ADD		0x20	/* Input queue freed address FIFO */
 #define UPIIM_INQ_FIFO_ENTRY	0x24
 
-/* Input queue control */
+/* Input queue control
+ * For the FIFO bits a 1 will mask the interrupt, and 0 will allow it.
+ */
 #define UPIIM_INQ_CTL_SWAPOUT			(1<<23)
 #define UPIIM_INQ_CTL_NO_FIFO_POINTER		(1<<22)
 #define UPIIM_INQ_CTL_NO_FIFO_POINTER		(1<<22)
@@ -117,9 +119,17 @@
 #define UPIIM_INQ_CTL_FREED_EMPTY_THRES_SHIFT	0
 
 #define	UPIIM_QUEUE_DISABLE	0xffffffff
+/* For the filled FIFO only enable the full interrupt.
+ * For the freed FIFO only enable the almost full interrupt, with a threshold
+ * of 16 packets. If the freed FIFO is completely full the UPIIM will stop
+ * processing the filled FIFO.
+ */
 #define UPIIM_QUEUE_IRQ_DEFAULT	(UPIIM_INQ_CTL_SWAPOUT | \
-			(0x1D << UPIIM_INQ_CTL_FREED_EMPTY_THRES_SHIFT) |\
-			(0x3D << UPIIM_INQ_CTL_FILL_EMPTY_THRES_SHIFT))
+		UPIIM_INQ_CTL_FILL_FIFO | UPIIM_INQ_CTL_FILL_FIFO_EMPTY | \
+		UPIIM_INQ_CTL_FREED_FIFO_FULL | \
+		UPIIM_INQ_CTL_FREED_FIFO_EMPTY | \
+		(0x1D << UPIIM_INQ_CTL_FILL_EMPTY_THRES_SHIFT) | \
+		(0x10 << UPIIM_INQ_CTL_FREED_EMPTY_THRES_SHIFT))
 
 /* Input queue stat */
 #define UPIIM_INQ_INT_STAT_FILL_FIFO		(1<<5)
