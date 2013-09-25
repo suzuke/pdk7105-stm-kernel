@@ -860,8 +860,7 @@
 
 			snps,enh-desc;
 			snps,pbl = <32>;
-			snps,mixed-burst;
-			snps,bugged_sg;
+			snps,fixed-burst;
 
 			amba-config	= <&ethernet_amba_bridge_config>;
 			st,phy-clk-name = "CLK_ETH0";
