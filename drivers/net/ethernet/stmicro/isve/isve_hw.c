@@ -162,6 +162,7 @@ static void upiim_core_init(void __iomem *ioaddr)
 {
 	DBG("%s: init upstream module\n", __func__);
 
+	writel(UPIIM_INQ_FLAGS1_DEFAULT, ioaddr + UPIIM_INQ_DEFAULT_FLAGS1);
 	upiim_enable_int(ioaddr, 1);
 }
 
