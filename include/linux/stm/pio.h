@@ -48,6 +48,14 @@ void stpio_configure_pin(struct stpio_pin *pin, int direction);
 void stpio_set_pin(struct stpio_pin* pin, unsigned int value);
 unsigned int stpio_get_pin(struct stpio_pin* pin);
 
+/*
+ * This can be be passed into irqflags to disable the irq
+ * The value is based on the old IRQ_DISABLED flag used in
+ * the kernel
+ */
+
+#define STPIO_IRQ_DISABLED 0x200
+
 /* Interrupt on external value change */
 int stpio_flagged_request_irq(struct stpio_pin *pin, int comp,
                        void (*handler)(struct stpio_pin *pin, void *dev),

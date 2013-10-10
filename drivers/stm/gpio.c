@@ -34,8 +34,10 @@
 #include "reg_pio.h"
 
 #ifndef CONFIG_ARM
-#define chained_irq_enter(chip, desc)	do { } while (0)
-#define chained_irq_exit(chip, desc)	do { } while (0)
+#define chained_irq_enter(chip, desc)	\
+	do {struct irq_chip __always_unused *d = chip; } while (0)
+#define chained_irq_exit(chip, desc)	\
+	do {struct irq_chip __always_unused *d = chip; } while (0)
 #else
 #include <asm/mach/irq.h>
 #endif
@@ -553,11 +555,11 @@ int stpio_flagged_request_irq(struct stpio_pin *pin, int comp,
 	pin->dev = dev;
 
 	owner = stm_pad_get_gpio_owner(stm_gpio(pin->port_no, pin->pin_no));
-	set_irq_type(irq, comp ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH);
+	irq_set_irq_type(irq, comp ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH);
 	result = request_irq(irq, stpio_irq_wrapper, 0, owner, pin);
 	BUG_ON(result);
 
-	if (flags & IRQ_DISABLED) {
+	if (flags & STPIO_IRQ_DISABLED) {
 		/* This is a race condition waiting to happen... */
 		disable_irq(irq);
 	}
@@ -581,7 +583,7 @@ void stpio_enable_irq(struct stpio_pin *pin, int comp)
 {
 	int irq = stpio_pin_to_irq(pin);
 
-	set_irq_type(irq, comp ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH);
+	irq_set_irq_type(irq, comp ? IRQ_TYPE_LEVEL_LOW : IRQ_TYPE_LEVEL_HIGH);
 	enable_irq(irq);
 }
 EXPORT_SYMBOL(stpio_enable_irq);
@@ -609,7 +611,7 @@ void stpio_set_irq_type(struct stpio_pin* pin, int triggertype)
 {
 	int irq = stpio_pin_to_irq(pin);
 
-	set_irq_type(irq, triggertype);
+	irq_set_irq_type(irq, triggertype);
 }
 EXPORT_SYMBOL(stpio_set_irq_type);
 
