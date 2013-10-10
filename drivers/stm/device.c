@@ -263,6 +263,82 @@ EXPORT_SYMBOL(stm_device_get_dev);
 
 #define STM_OF_STM_DEV_SYCONF_CELLS	(4)
 #define MAX_FEEBACK_RETRY	(100)
+
+int stm_of_run_clk_seq(struct stm_device_state *state,
+			struct device_node *child)
+{
+	struct clk *clk = NULL, *pclk = NULL;
+	int ret = -EINVAL;
+	bool disable;
+	struct device *dev = state->dev;
+	u32 rate = 0, prate = 0;
+	const char *clk_name = NULL, *pclk_name = NULL;
+
+	ret = of_property_read_string(child, "clk-name", &clk_name);
+	if (ret) {
+		dev_err(dev, "Invalid clk sequence\n");
+		return ret;
+	}
+
+	of_property_read_u32(child, "clk-rate", &rate);
+	disable = of_property_read_bool(child, "clk-disable");
+
+	clk = clk_get(NULL, clk_name);
+	if (IS_ERR(clk)) {
+		dev_err(dev, "clk [%s] not found\n", clk_name);
+		return PTR_ERR(clk);
+	}
+
+	/* Check if we need reparenting */
+	ret = of_property_read_string(child, "clk-parent-name", &pclk_name);
+	if (!ret) {
+		of_property_read_u32(child, "clk-parent-rate", &prate);
+
+		pclk = clk_get(NULL, pclk_name);
+		if (IS_ERR(pclk)) {
+			dev_err(dev, "clk [%s] not found\n", pclk_name);
+			ret = PTR_ERR(pclk);
+			goto clk_err;
+		}
+
+		if (prate)
+			clk_set_rate(pclk, prate);
+
+		ret = clk_set_parent(clk, pclk);
+		if (ret)
+			goto pclk_err;
+	}
+
+	if (disable) {
+		clk_disable_unprepare(clk);
+		clk_put(clk);
+		return 0;
+	}
+
+	ret = clk_prepare_enable(clk);
+	if (ret) {
+		dev_err(dev, "enable clk [%s] failed\n", clk_name);
+		goto pclk_err;
+	}
+
+	if (rate)
+		clk_set_rate(clk, rate);
+
+	return 0;
+
+pclk_err:
+	if (pclk)
+		clk_disable_unprepare(pclk);
+pclk_en_err:
+	if (pclk)
+		clk_put(pclk);
+clk_err:
+	clk_put(clk);
+
+	return ret;
+
+}
+
 int stm_of_run_seq(struct stm_device_state *state, struct device_node *seq)
 {
 	struct device_node *child = NULL;
@@ -326,41 +402,13 @@ int stm_of_run_seq(struct stm_device_state *state, struct device_node *seq)
 				}
 			}
 		}
+
 		if (!strcmp(type, "clock")) {
-			struct clk *clk, *pclk;
-			u32 rate = 0, prate = 0;
-			const char *clk_name = NULL, *pclk_name = NULL;
-
-			of_property_read_string(child, "clk-name", &clk_name);
-			of_property_read_u32(child, "clk-rate", &rate);
-			of_property_read_string(child, "clk-parent-name",
-						&pclk_name);
-			of_property_read_u32(child, "clk-parent-rate", &prate);
-
-			if (clk_name) {
-				clk = clk_get(NULL, clk_name);
-				if (IS_ERR(clk))
-					break;
-				/* Check if we need reparenting */
-				if (pclk_name) {
-					pclk = clk_get(NULL, pclk_name);
-					if (IS_ERR(pclk))
-						break;
-
-					if (prate)
-						clk_set_rate(pclk, prate);
-
-					clk_set_parent(clk, pclk);
-					clk_prepare_enable(clk);
-					clk_put(pclk);
-				}
-
-				if (rate)
-					clk_set_rate(clk, rate);
-
-				clk_put(clk);
-			}
+			if (stm_of_run_clk_seq(state, child))
+				dev_err(state->dev, "Failed to run [%s]\n",
+					 step);
 		}
+
 	}
 	return 0;
 }

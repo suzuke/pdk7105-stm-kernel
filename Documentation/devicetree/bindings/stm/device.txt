@@ -32,8 +32,10 @@ Required properties:
 		Each sequence has to be specified as a step node,
 		and each step has to contain a type property.
 
-	-type: type property can take only types of clk, sysconf,
+	-type: type property can take only types of clock, sysconf,
 		and sysconf-feedback.
+
+
 
 Typical sequence node looks like:
 
@@ -56,6 +58,18 @@ supported in stm-device config.
 3. init-seq: List of sequences from step0...stepN while initializing the IP.
 4. exit-seq: List of sequences from step0...stepN to be performed
 		while exiting the driver.
+
+
+sequence node of type == "clock" have the below bindings.
+This sequence enables to set parent of a clock and also set rate for each of
+them. By default this sequence enables the clock, you could change this
+behaviour by adding clk-disable flag.
+
+- clk-name		: Name of the clock to setup.
+- clk-rate		: rate at which clk should be set.
+- clk-disable		: boolean flag to indicate if the clock should be disabled.
+- clk-parent-name	: parent clock name to be used as clk parent for "clk-name"
+- clk-parent-rate	: parent clock rate.
 
 example:
 
