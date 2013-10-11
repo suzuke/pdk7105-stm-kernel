@@ -202,12 +202,6 @@
 					device_type = "ethernet-phy";
 					st,ext_clk;
 				};
-
-				/* B2048 MII/GMII/RGMII mode */
-				b2048: ethernet-phy@3 {
-					reg = <3>;
-					device_type = "ethernet-phy";
-				};
 			};
 		};
 
@@ -234,6 +228,9 @@
 			device-config = <&mii0_ext_clk_dev_config>;
 
 	Also update the status property for enabling appropriate ethernet.
+
+	Note: to use B2048 SD/MMC module on CN22 (remove jumper 17/18 on PCB)
+		disable the ethernet0 and use ethernet1 on CN23.
 	*/
 
 		ethernet0: ethernet@fe810000 {
