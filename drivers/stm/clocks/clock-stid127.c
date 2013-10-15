@@ -2136,6 +2136,7 @@ int __init stid127_plat_clk_init()
 	call_platform_sys_claim(722, 2, 2);
 	call_platform_sys_claim(722, 3, 8);
 	call_platform_sys_claim(722, 9, 16);
+	call_platform_sys_claim(722, 17, 21);
 	call_platform_sys_claim(722, 22, 24);
 	call_platform_sys_claim(760, 0, 0);
 
