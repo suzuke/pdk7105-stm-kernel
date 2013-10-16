@@ -42,6 +42,10 @@
 				st,pins {
 					TX	= <&PIO20 1	OUT	ALT3>;
 					RX	= <&PIO20 2	IN 	ALT3>;
+				};
+			};
+			padcfg_uart2_oe: uart2_oe {
+				st,pins {
 					output-enable	= <&PIO20 5	OUT	ALT3>;
 				};
 			};
@@ -61,6 +65,10 @@
 				st,pins {
 					TX	= <&PIO15 3	OUT	ALT1>;
 					RX	= <&PIO15 4	IN 	ALT1>;
+				};
+			};
+			padcfg_uart3_oe: uart3_oe {
+				st,pins {
 					output-enable	= <&PIO15 0	OUT	ALT3>;
 				};
 			};
