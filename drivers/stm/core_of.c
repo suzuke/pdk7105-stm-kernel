@@ -17,7 +17,7 @@
 
 #include "pio-control.h"
 
-#define MAX_ALT_FUNCS		7
+#define MAX_ALT_FUNCS		8
 
 static int gpio_banks;
 static struct stm_pio_control *core_of_pio_controls;
