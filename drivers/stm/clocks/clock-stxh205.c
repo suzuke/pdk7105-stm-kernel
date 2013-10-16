@@ -1254,13 +1254,15 @@ static int clkgenb_set_rate(clk_t *clk_p, unsigned long freq)
 		if (clk_fs660c32_vco_get_params(clk_p->parent->rate,
 			freq, &ndiv))
 			return CLK_ERR_BAD_PARAMETER;
+		SYSCONF_WRITE(0, 424, 14, 14, 0); /* PLL power down */
 		SYSCONF_WRITE(0, 424, 15, 17, ndiv);
 		SYSCONF_WRITE(0, 424, 14, 14, 1); /* PLL power up */
-		return 0;
+		break;
 	case CLK_B_FS1_VCO:
 		if (clk_fs660c32_vco_get_params(clk_p->parent->rate,
 			freq, &ndiv))
 			return CLK_ERR_BAD_PARAMETER;
+		SYSCONF_WRITE(0, 478, 14, 14, 0); /* PLL power down */
 		SYSCONF_WRITE(0, 478, 15, 17, ndiv);
 		SYSCONF_WRITE(0, 478, 14, 14, 1); /* PLL power up */
 		break;
