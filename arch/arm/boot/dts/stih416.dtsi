@@ -1612,6 +1612,7 @@
 			reg		= <0xfd4fb000 0x2c>;
 			interrupts	=  <0 117 0>;
 			padcfg-0 	= <&padcfg_uart4>;
+			st,clk-id	= "uart10_comms_clk";
 
 		};
 

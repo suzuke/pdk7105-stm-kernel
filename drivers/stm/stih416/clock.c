@@ -19,6 +19,7 @@ int __init stih416_plat_clk_alias_init(void)
 
 	/* comms clk */
 	clk_add_alias("comms_clk", NULL, "CLK_S_ICN_REG_LP_0", NULL);
+	clk_add_alias("uart10_comms_clk", NULL, "CLK_M_ICN_REG_12", NULL);
 	/* SBC clk */
 	clk_add_alias("sbc_comms_clk", NULL, "CLK_SYSIN", NULL);
 	/* EMI/NAND clk */
