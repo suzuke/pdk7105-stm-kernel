@@ -67,7 +67,7 @@
 			#interrupt-cells = <3>;
 			interrupt-parent = <&intc>;
 			compatible = "arm,cortex-a9-pmu";
-			interrupts = <1 31 0x04>;
+			interrupts = <1 15 0x04>;
 			device-config = <&st_pmu_device_config>;
 		};
 	};
