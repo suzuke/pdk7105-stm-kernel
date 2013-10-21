@@ -45,6 +45,7 @@
 #include <linux/stm/fli7610-periphs.h>
 #endif
 
+#ifndef CONFIG_OF
 /* Setup th GIC */
 void __init mpe41_gic_init_irq(void)
 {
@@ -136,3 +137,4 @@ static int __init mpe41_configure_pmu(void)
 device_initcall(mpe41_configure_pmu);
 
 #endif /* CONFIG_HW_PERF_EVENTS */
+#endif /* CONFIG_OF */
