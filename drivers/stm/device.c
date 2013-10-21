@@ -31,12 +31,17 @@ static int __stm_device_init(struct stm_device_state *state,
 {
 	int i;
 
+	dev_dbg(dev, "%s, dev: %s\n", __func__, dev_name(dev));
+
 	state->dev = dev;
 	state->config = config;
 	state->power_state = stm_device_power_off;
 
 	for (i = 0; i < config->sysconfs_num; i++) {
 		struct stm_device_sysconf *sysconf = &config->sysconfs[i];
+
+		dev_dbg(dev, "%s, claim sysconfs[%d]\n",
+				__func__, i);
 
 		state->sysconf_fields[i] = sysconf_claim(sysconf->regtype,
 				sysconf->regnum, sysconf->lsb, sysconf->msb,
@@ -45,8 +50,11 @@ static int __stm_device_init(struct stm_device_state *state,
 			goto sysconf_error;
 	}
 
-	if (config->init && config->init(state))
-		goto sysconf_error;
+	if (config->init) {
+		dev_dbg(dev, "%s, config->init\n", __func__);
+		if (config->init(state))
+			goto sysconf_error;
+	}
 
 	if (config->pad_config &&
 	    (state->pad_state = stm_pad_claim(config->pad_config,
@@ -64,7 +72,7 @@ pad_error:
 sysconf_error:
 	for (i--; i>=0; i--)
 		sysconf_release(state->sysconf_fields[i]);
-
+	dev_err(dev, "%s, sysconf error\n", __func__);
 	return -EBUSY;
 }
 
@@ -88,12 +96,16 @@ static void __stm_device_exit(struct stm_device_state *state)
 struct stm_device_state *stm_device_init(struct stm_device_config *config,
 		struct device *dev)
 {
-	struct stm_device_state *state = kzalloc(sizeof(*state) +
-		sizeof(*state->sysconf_fields) * config->sysconfs_num,
-		GFP_KERNEL);
+	struct stm_device_state *state;
+
+	BUG_ON(!dev);
+	dev_dbg(dev, "%s\n", __func__);
 
 	BUG_ON(!config);
-	BUG_ON(!dev);
+
+	state = kzalloc(sizeof(*state) +
+		sizeof(*state->sysconf_fields) * config->sysconfs_num,
+		GFP_KERNEL);
 
 	if (state && __stm_device_init(state, config, dev) != 0)
 		state = NULL;
@@ -193,6 +205,8 @@ void stm_device_sysconf_write(struct stm_device_state *state,
 		const char* name, unsigned long long value)
 {
 	int i;
+	dev_dbg(state->dev, "%s write %lld to sysconf %s\n",
+			__func__, value, name);
 
 	i = stm_device_find_sysconf(state->config, name);
 	if (i >= 0)
@@ -346,6 +360,8 @@ int stm_of_run_seq(struct stm_device_state *state, struct device_node *seq)
 	char step[10];
 	int num_steps = 0, i, k;
 
+	dev_dbg(state->dev, "%s\n", __func__);
+
 	if (!seq)
 		return 0;
 
@@ -379,6 +395,9 @@ int stm_of_run_seq(struct stm_device_state *state, struct device_node *seq)
 						continue;
 					name = pp->name;
 					val = be32_to_cpup(pp->value);
+					dev_dbg(state->dev,
+						"%s write sysconf %s (i=%d)\n",
+						__func__, name, i);
 					stm_device_sysconf_write(state
 								, name, val);
 				}
@@ -424,10 +443,14 @@ int stm_of_run_device_seq(struct stm_device_state *state, char *seq_name)
 		seqs = of_parse_phandle(devnode, "device-seqs", 0);
 		if (seqs)
 			seqnode = of_get_child_by_name(seqs,  seq_name);
-		else
+		else {
+			dev_err(dev, "%s: cannot find seqnode\n", __func__);
 			return 0;
-	} else
+		}
+	} else {
+		dev_err(dev, "%s: cannot find node\n", __func__);
 		return 0;
+	}
 
 	return stm_of_run_seq(state, seqnode);
 }
@@ -549,8 +572,8 @@ struct stm_device_config *stm_of_get_dev_config_from_node(struct device *dev,
 		dev_config->init = stm_of_device_init;
 		dev_config->exit = stm_of_device_exit;
 		dev_config->power = stm_of_device_power;
-	}
-
+	} else
+		dev_dbg(dev, "%s : NO dev-seqs\n", __func__);
 	return dev_config;
 }
 EXPORT_SYMBOL(stm_of_get_dev_config_from_node);
