@@ -445,11 +445,11 @@ int stm_of_run_device_seq(struct stm_device_state *state, char *seq_name)
 			seqnode = of_get_child_by_name(seqs,  seq_name);
 		else {
 			dev_err(dev, "%s: cannot find seqnode\n", __func__);
-			return 0;
+			return -ENXIO;
 		}
 	} else {
 		dev_err(dev, "%s: cannot find node\n", __func__);
-		return 0;
+		return -ENXIO;
 	}
 
 	return stm_of_run_seq(state, seqnode);
