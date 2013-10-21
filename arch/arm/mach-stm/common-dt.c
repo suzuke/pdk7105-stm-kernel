@@ -69,14 +69,28 @@ struct platform_device *stm_of_platform_device_create(
 {
 	struct stm_device_config *cfg;
 	struct device *dev;
+
+	pr_info("%s: create stm dev:%s\n", __func__, name);
+
 	if (!stm_of_class)
 		stm_of_class = class_create(NULL, "stm-of");
-	dev = device_create(stm_of_class, NULL, 0, NULL, "stm-of-%s", name);
+	dev = device_create(stm_of_class, NULL, 0, NULL, "%s", name);
+
+	if (!dev)
+		return 0;
+
+	/*
+	 * Here we need to asociate the given node to the created dev as there
+	 * are other parsing steps later on during init sequences for this dev
+	 */
+	dev->of_node = np;
 
 	cfg = stm_of_get_dev_config_from_node(dev,
-			of_parse_phandle(np, "st,device-config", 0));
-
-	stm_device_init(cfg, dev);
+			of_parse_phandle(np, "device-config", 0));
+	if (!cfg)
+		pr_err("%s: no cfg to create stm dev:%s\n", __func__, name);
+	else
+		stm_device_init(cfg, dev);
 	of_node_put(np);
 	return of_platform_device_create(np, name, dev);
 }
