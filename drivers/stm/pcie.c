@@ -780,20 +780,20 @@ static DEFINE_SPINLOCK(msi_alloc_lock);
 
 struct stm_msi_info {
 	void __iomem *regs;
-	unsigned first_irq, last_irq, mux_irq;
+	int first_irq, last_irq, mux_irq;
 	int num_irqs_per_ep;
 	int num_eps;
 	int ep_allocated[MSI_NUM_ENDPOINTS];
 	spinlock_t reg_lock;
 };
 
-static inline int irq_to_ep(struct stm_msi_info *msi, unsigned int irq)
+static inline int irq_to_ep(struct stm_msi_info *msi, int irq)
 {
 	return (irq - msi->first_irq) / msi->num_irqs_per_ep;
 }
 
 /* Which bit in the irq, 0 means bit 0 etc */
-static inline int irq_to_bitnum(struct stm_msi_info *msi, unsigned int irq)
+static inline int irq_to_bitnum(struct stm_msi_info *msi, int irq)
 {
 	return (irq - msi->first_irq) % msi->num_irqs_per_ep;
 }
@@ -979,32 +979,51 @@ static int __devinit stm_msi_probe(struct platform_device *pdev)
 	/* Copy over the register pointer for convenience */
 	msi->regs = priv->cntrl;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "msi range");
+	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "msi mux");
 	if (!res)
 		return -ENODEV;
 
-	msi->first_irq = res->start;
-	num_irqs = resource_size(res);
+	msi->mux_irq = res->start;
 
+	/*
+	 * We ask for 8 irqs in total. Since we don't support
+	 * arch_setup_msi_irqs(), there is not a lot of point in allocating
+	 * more than one irq per ep.  If we can't get that number, we keep
+	 * halving until we can get something. The code is robust enough to
+	 * work even if we only manage to get one irq, although obviously more
+	 * is better.
+	 *
+	 * Perhaps this parameter should be tunable, or keyed on SPARSE_IRQ?
+	 *
+	 * The code starts searching from the mux irq rather than zero. This is
+	 * because on the ARM there are some free interrupt slots below 32.
+	 * There is nothing wrong with using them, but it causes confusion. If
+	 * you have two PCI buses present, then the interrupts will appear
+	 * below 32 for one bus and at high numbers for the other. It is also
+	 * a bad idea to have irqs starting at zero, this will cause problems
+	 * since some drivers will assume zero cannot be a valid irq.
+	 */
+	for (num_irqs = 8; num_irqs > 0; num_irqs /= 2) {
+		irq = irq_alloc_descs(-1, msi->mux_irq, num_irqs, 0);
+		if (irq >= 0)
+			break;
+	}
+
+	if (irq < 0) {
+		dev_err(&pdev->dev, "Unable to allocate any irqs for MSI\n");
+		return irq;
+	}
+
+	msi->first_irq = irq;
 	msi->num_eps = min(num_irqs, MSI_NUM_ENDPOINTS);
-
 	msi->num_irqs_per_ep = rounddown_pow_of_two(num_irqs / msi->num_eps);
 
 	/* Maximum of 32 irqs per endpoint */
 	if (msi->num_irqs_per_ep > 32)
 		msi->num_irqs_per_ep = 32;
 
-	if (msi->num_irqs_per_ep == 0)
-		return -ENOSPC;
-
 	num_irqs = msi->num_irqs_per_ep * msi->num_eps;
 	msi->last_irq = msi->first_irq + num_irqs - 1;
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "msi mux");
-	if (!res)
-		return -ENODEV;
-
-	msi->mux_irq = res->start;
 
 	msi_init_one(msi);
 
@@ -1013,9 +1032,6 @@ static int __devinit stm_msi_probe(struct platform_device *pdev)
 	irq_set_handler_data(msi->mux_irq, msi);
 
 	for (irq = msi->first_irq; irq <= msi->last_irq; irq++) {
-		if (irq_get_chip(irq) != &no_irq_chip)
-			dev_err(&pdev->dev, "MSI irq %d in use!!\n", irq);
-
 		irq_set_chip_and_handler_name(irq, &msi_chip,
 					      handle_level_irq, "msi");
 		irq_set_handler_data(irq, msi);

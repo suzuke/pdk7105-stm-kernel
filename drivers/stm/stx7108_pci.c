@@ -87,13 +87,10 @@ static struct stm_plat_pcie_config stx7108_plat_pcie_config = {
 	.pcie_window.lmi_size = LMI_SIZE,
 };
 
-#define MSI_FIRST_IRQ 	(NR_IRQS - 33)
-#define MSI_LAST_IRQ 	(NR_IRQS - 1)
-
 static struct platform_device stx7108_pcie_device = {
 	.name = "pcie_stm",
 	.id = -1,
-	.num_resources = 7,
+	.num_resources = 6,
 	.resource = (struct resource[]) {
 		/* Place 64K Config window at end of memory block */
 		STM_PLAT_RESOURCE_MEM_NAMED("pcie config",
@@ -104,12 +101,6 @@ static struct platform_device stx7108_pcie_device = {
 		STM_PLAT_RESOURCE_IRQ_NAMED("pcie inta", ILC_IRQ(179), -1),
 		STM_PLAT_RESOURCE_IRQ_NAMED("pcie syserr", ILC_IRQ(184), -1),
 		STM_PLAT_RESOURCE_IRQ_NAMED("msi mux", ILC_IRQ(180), -1),
-		{
-			.start = MSI_FIRST_IRQ,
-			.end  = MSI_LAST_IRQ,
-			.name = "msi range",
-			.flags = IORESOURCE_IRQ,
-		}
 	},
 	.dev.platform_data = &stx7108_plat_pcie_config,
 };

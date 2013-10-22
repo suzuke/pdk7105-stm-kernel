@@ -112,11 +112,6 @@ static struct stm_plat_pcie_ops stig125_pcie_ops = {
 
 #define LMI_SIZE  0xbc000000
 
-/* We give 8 MSI irqs to each controller, should be plenty */
-#define MSI_IRQS_PER_CONTROLLER	8
-#define PCIE_MSI_FIRST_IRQ(x) (NR_IRQS - (MSI_IRQS_PER_CONTROLLER * ((3-(x)))))
-#define PCIE_MSI_LAST_IRQ(x) (PCIE_MSI_FIRST_IRQ(x)+(MSI_IRQS_PER_CONTROLLER-1))
-
 #define PCIE_PLAT_CONFIG(id, pci_window)			\
 	[(id)] = {						\
 	.pcie_window.start = pci_window,			\
@@ -140,7 +135,7 @@ static struct stm_plat_pcie_config stig125_plat_pcie_config[3] = {
 	[_id] = {							\
 		.name = "pcie_stm",					\
 		.id = _id,						\
-		.num_resources  = 7,					\
+		.num_resources  = 6,					\
 		.resource = (struct resource[]) {			\
 		STM_PLAT_RESOURCE_MEM_NAMED("pcie config",		\
 			_mem_start + PCIE_MEM_SIZE - PCIE_CONFIG_SIZE,	\
@@ -150,12 +145,6 @@ static struct stm_plat_pcie_config stig125_plat_pcie_config[3] = {
 		STIG125_RESOURCE_IRQ_NAMED("pcie inta", _inta_irq),	\
 		STIG125_RESOURCE_IRQ_NAMED("pcie syserr", _inta_irq - 1),\
 		STIG125_RESOURCE_IRQ_NAMED("msi mux", _inta_irq + 2),	\
-		{							\
-			.start = PCIE_MSI_FIRST_IRQ(_id),		\
-			.end  = PCIE_MSI_LAST_IRQ(_id),			\
-			.name = "msi range",				\
-			.flags = IORESOURCE_IRQ,			\
-		}							\
 		},							\
 	.dev.platform_data = &stig125_plat_pcie_config[_id],		\
 }

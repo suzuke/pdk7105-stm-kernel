@@ -90,11 +90,6 @@ static struct stm_plat_pcie_ops stih416_pcie_ops = {
 #define LMI_START 0x40000000
 #define LMI_SIZE  0x80000000
 
-#define PCIE0_MSI_FIRST_IRQ   (NR_IRQS - 16)
-#define PCIE0_MSI_LAST_IRQ    (NR_IRQS - 1)
-#define PCIE1_MSI_FIRST_IRQ   (NR_IRQS - 32)
-#define PCIE1_MSI_LAST_IRQ    (NR_IRQS - 17)
-
 static struct stm_plat_pcie_config stih416_plat_pcie_config[2] = {
 	[0] = {
 	       .pcie_window.start = 0x30000000,
@@ -111,12 +106,11 @@ static struct stm_plat_pcie_config stih416_plat_pcie_config[2] = {
 	       },
 };
 
-#define PCIE_STM(_id, _base, _mem_start, _inta_irq, _syserr_irq,	\
-		_msi_irq, _msi_first_irq, _msi_last_irq)		\
+#define PCIE_STM(_id, _base, _mem_start, _inta_irq, _syserr_irq, _msi_irq) \
 [_id] = {								\
 	.name = "pcie_stm",						\
 	.id = _id,							\
-	.num_resources  = 7,						\
+	.num_resources  = 6,						\
 	.resource = (struct resource[]) {				\
 		STM_PLAT_RESOURCE_MEM_NAMED("pcie config",		\
 			_mem_start + PCIE_MEM_SIZE - PCIE_CONFIG_SIZE,	\
@@ -126,21 +120,13 @@ static struct stm_plat_pcie_config stih416_plat_pcie_config[2] = {
 		STIH416_RESOURCE_IRQ_NAMED("pcie inta", _inta_irq),	\
 		STIH416_RESOURCE_IRQ_NAMED("pcie syserr", _syserr_irq),\
 		STIH416_RESOURCE_IRQ_NAMED("msi mux", _msi_irq),	\
-		{							\
-			.start = _msi_first_irq,			\
-			.end  = _msi_last_irq,				\
-			.name = "msi range",				\
-			.flags = IORESOURCE_IRQ,			\
-		}							\
 	},								\
 	.dev.platform_data = &stih416_plat_pcie_config[_id],		\
 }
 
 static struct platform_device stih416_pcie_devices[] = {
-	PCIE_STM(0, 0xfe390000, 0x30000000, 158, 161, 159, PCIE0_MSI_FIRST_IRQ,
-		 PCIE0_MSI_LAST_IRQ),
-	PCIE_STM(1, 0xfe800000, 0x20000000, 166, 169, 167, PCIE1_MSI_FIRST_IRQ,
-		 PCIE1_MSI_LAST_IRQ),
+	PCIE_STM(0, 0xfe390000, 0x30000000, 158, 161, 159),
+	PCIE_STM(1, 0xfe800000, 0x20000000, 166, 169, 167),
 };
 
 void __init stih416_configure_pcie(struct stih416_pcie_config *config)
