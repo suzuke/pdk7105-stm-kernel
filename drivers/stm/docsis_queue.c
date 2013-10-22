@@ -37,7 +37,8 @@
 struct stm_docsis_priv {
 	void __iomem *ioaddr_dfwd;
 	void __iomem *ioaddr_upiim;
-	unsigned int *enabled_queue;
+	int *enabled_queue;
+	unsigned int queue_n;
 };
 
 struct stm_docsis_priv *priv;
@@ -110,9 +111,9 @@ static void docsis_queue_enable_downstream_queue(void)
 
 	value = readl(priv->ioaddr_dfwd + DSFWD_ROUTE_MASK);
 
-	for (i = 0; i < STM_DOCSIS_QUEUE; i++) {
+	for (i = 0; i < priv->queue_n; i++) {
 		int q = priv->enabled_queue[i];
-		if (q) {
+		if (q >= 0) {
 			pr_debug("#%d ", q);
 			value |= DSFWD_ENABLE_QUEUE(q);
 		}
@@ -121,7 +122,6 @@ static void docsis_queue_enable_downstream_queue(void)
 	writel(value, priv->ioaddr_dfwd + DSFWD_ROUTE_MASK);
 }
 
-#ifdef CONFIG_OF
 static void docsis_get_queue_dt(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -133,29 +133,13 @@ static void docsis_get_queue_dt(struct platform_device *pdev)
 		count = be32_to_cpup(ip);
 
 	/* Get the queues that have to be enabled */
+	priv->queue_n = count;
 
 	priv->enabled_queue = kmalloc_array(count, sizeof(unsigned int *),
 					    GFP_KERNEL);
 
 	of_property_read_u32_array(np, "docsis,enabled_queue",
 				   (u32 *) priv->enabled_queue, count);
-}
-#else
-static void docsis_get_queue_dt(struct platform_device *pdev)
-{
-}
-#endif
-
-static void docsis_get_queue(struct platform_device *pdev)
-{
-	struct stm_docsis_pdata *plat_dat = pdev->dev.platform_data;
-
-	if (!plat_dat) {
-		pr_err("%s: No platform data found\n", __func__);
-		return;
-	}
-
-	priv->enabled_queue = plat_dat->enabled_queue;
 }
 
 static int __devinit docsis_queue_driver_probe(struct platform_device *pdev)
@@ -202,8 +186,6 @@ static int __devinit docsis_queue_driver_probe(struct platform_device *pdev)
 
 	if (pdev->dev.of_node)
 		docsis_get_queue_dt(pdev);
-	else
-		docsis_get_queue(pdev);
 
 	/* Enable the Downstream queue passed from the platform */
 	if (priv->enabled_queue)
