@@ -96,11 +96,16 @@ static void __init b2116_dt_init(void)
 	stih416_configure_audio(&(struct stih416_audio_config) {
 					.uni_player_3_spdif_enabled = 1, });
 
-	/* 1 SATA */
+	/* 1 PCIe only */
 	stih416_configure_miphy(&(struct stih416_miphy_config) {
 		.id = 0,
-		.mode = SATA_MODE,});
-	stih416_configure_sata(0);
+		.tx_pol_inv = 1,
+		.mode = PCIE_MODE,
+		.iface = UPORT_IF});
+
+	stih416_configure_pcie(&(struct stih416_pcie_config) {
+		.port = 0,
+		.reset_gpio = -1,});
 }
 
 /* Setup the Timer */
