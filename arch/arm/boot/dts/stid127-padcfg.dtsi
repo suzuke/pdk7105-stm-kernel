@@ -210,7 +210,7 @@
 					 rxd2_0  = <&PIO6  4	IN 	ALT1	DE_IO	0	CLK_A>;
 					 rxd3_0  = <&PIO6  5	IN 	ALT1	DE_IO	0	CLK_A>;
 					 rxdv_0 =	<&PIO6  1	IN 	ALT1	DE_IO	0	CLK_A>;
-					 rxclk_0 = <&PIO6  6	IN 	ALT1	NICLK	0	CLK_A>;
+					 rxclk_0 = <&PIO6  6	IN 	ALT1	NICLK	3250	CLK_A>;
 
 					 phyclk_0 =<&PIO6  0	IN 	ALT1	NICLK	0	CLK_A>;
 				};
