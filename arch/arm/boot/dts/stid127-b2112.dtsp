@@ -135,17 +135,5 @@
 		pcie1: pcie@fef30000{
 			status = "okay";
 		};
-		if17: isve_queue_3 {
-			status = "okay";
-		};
-		if18: isve_queue_4 {
-			status = "okay";
-		};
-		if16: isve_queue_5 {
-			status = "okay";
-		};
-		if1: isve_queue_7 {
-			status = "okay";
-		};
 	};
 };

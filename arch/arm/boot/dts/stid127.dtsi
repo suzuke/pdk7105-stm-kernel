@@ -912,7 +912,6 @@
 		*/
 		if17:isve_queue_3 {
 			compatible	= "st,isve";
-			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e460 0x20>, <0xfee1a478 0x20>;
 			interrupts = <0 78 0>, <0 89 0>;
@@ -928,7 +927,6 @@
 
 		if18:isve_queue_4 {
 			compatible	= "st,isve";
-			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e480 0x20>, <0xfee1a4a0 0x20>;
 			interrupts = <0 79 0>, <0 90 0>;
@@ -944,7 +942,6 @@
 
 		if16:isve_queue_5 {
 			compatible	= "st,isve";
-			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e4a0 0x20>, <0xfee1a4c8 0x20>;
 			interrupts = <0 80 0>, <0 91 0>;
@@ -960,7 +957,6 @@
 
 		if1:isve_queue_7 {
 			compatible	= "st,isve";
-			status = "disabled";
 			device_type = "network";
 			reg = <0xfee2e4e0 0x20>, <0xfee1a518 0x20>;
 			interrupts = <0 82 0>, <0 93 0>;
@@ -972,6 +968,21 @@
 			isve,skip_hdr = <0x2>; /* two extra bytes have to be removed */
 			isve,hw_rem_hdr = <0x3>; /* remove docsis and extra HDR */
 			isve,ifname = "if1";
+		};
+
+		if0:isve_queue_0 {
+			compatible         = "st,isve";
+			device_type = "network";
+			reg = <0xfee2e400 0x20>, <0xfee1a400 0x20>;
+			interrupts = <0 75 0>, <0 86 0>;
+			interrupt-names = "isveirq_ds", "isveirq_us";
+
+			isve,downstream_queue_size = <32>;
+			isve,upstream_queue_size = <32>;
+			isve,queue_number = <0>;
+			isve,skip_hdr = <0x2>; /* two extra bytes have to be removed */
+			isve,hw_rem_hdr = <0x3>; /* remove docsis and extra HDR */
+			isve,ifname = "if0";
 		};
 
 		/* temp */
