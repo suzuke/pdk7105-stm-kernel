@@ -81,6 +81,8 @@ static void print_pkt(unsigned char *buf, int len)
 }
 #endif /* CONFIG_ISVE_DEBUG */
 
+static void isve_tx_fault(struct net_device *dev);
+
 /**
  * isve_release_resources: release the rx/tx buffers
  * @priv: private structure
@@ -299,8 +301,8 @@ static irqreturn_t isve_upiim_isr(int irq, void *dev_id)
 	ret = priv->upiim->isr(priv->ioaddr_upiim, &priv->xstats);
 	if (likely(ret == in_packet))
 		isve_tx(priv);
-	else if (ret < 0)	/* never happen */
-		priv->dev->stats.tx_errors++;
+	else if (unlikely(ret == in_packet_dropped))
+		isve_tx_fault(dev);
 
 	return IRQ_HANDLED;
 }
@@ -587,27 +589,41 @@ static int isve_poll(struct napi_struct *napi, int budget)
 }
 
 /**
- *  isve_tx_timeout: watchdog timer
+ *  isve_tx_fault: manage tx fault (e.g. watchdog timer)
  *  @dev : Pointer to net device structure
  *  Description: this function is called when a packet transmission fails to
  *  complete within a reasonable tmrate. The driver will mark the error in the
  *  netdev structure and arrange for the device to be reset to a sane state
  *  in order to transmit a new packet.
  */
-static void isve_tx_timeout(struct net_device *dev)
+static void isve_tx_fault(struct net_device *dev)
 {
 	struct isve_priv *priv = netdev_priv(dev);
 	unsigned long flags;
+	int i;
+
+	DBG("isve_tx_fault...\n");
 
 	spin_lock_irqsave(&priv->tx_lock, flags);
+
 	netif_stop_queue(priv->dev);
 
-	DBG("isve_tx_timeout...\n");
+	priv->dev->stats.tx_errors++;
+	priv->upiim->enable_irq(priv->ioaddr_upiim, 0);
+
+	for (i = 0; i < priv->upstream_queue_size; i++) {
+		dma_addr_t d;
+
+		d = priv->tx_desc[i].buf_addr;
+		if (d)
+			dma_unmap_single(priv->device, d, ISVE_BUF_LEN,
+					 DMA_TO_DEVICE);
+	}
 
 	priv->upiim->upiim_init(priv->ioaddr_upiim);
-	priv->dev->stats.tx_errors++;
 
-	netif_wake_queue(priv->dev);
+	netif_start_queue(priv->dev);
+
 	spin_unlock_irqrestore(&priv->tx_lock, flags);
 }
 
@@ -640,7 +656,7 @@ static const struct net_device_ops isve_netdev_ops = {
 	.ndo_start_xmit = isve_xmit,
 	.ndo_stop = isve_release,
 	.ndo_change_mtu = isve_change_mtu,
-	.ndo_tx_timeout = isve_tx_timeout,
+	.ndo_tx_timeout = isve_tx_fault,
 	.ndo_set_mac_address = eth_mac_addr,
 };
 
