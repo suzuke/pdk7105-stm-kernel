@@ -48,6 +48,7 @@ struct stm_docsis_priv *priv;
 
 #define DSFWD_ROUTE_MASK		0x18
 #define DSFWD_ROUTE_MASK_ROUTE_MASK	0x0000FFFF
+#define USIIM_ARBITRATE_OFFSET		0x2c
 
 #define DSFWD_ENABLE_QUEUE(q)	((1 << q) & DSFWD_ROUTE_MASK_ROUTE_MASK)
 
@@ -107,19 +108,35 @@ static void docsis_queue_enable_downstream_queue(void)
 	int i;
 	u32 value = 0;
 
-	pr_debug("docsis enable Downstream Queue: ");
-
 	value = readl(priv->ioaddr_dfwd + DSFWD_ROUTE_MASK);
 
 	for (i = 0; i < priv->queue_n; i++) {
 		int q = priv->enabled_queue[i];
-		if (q >= 0) {
-			pr_debug("#%d ", q);
+		if (q >= 0)
 			value |= DSFWD_ENABLE_QUEUE(q);
-		}
 	}
-	pr_debug("\n");
 	writel(value, priv->ioaddr_dfwd + DSFWD_ROUTE_MASK);
+}
+
+static void docsis_queue_enable_upstream_queue(void)
+{
+	int i;
+	u32 value, newvalue;
+
+	/* This address can also be written by another CPU. Since both CPUs
+	 * only enable bits we can loop until our changes are accepted.
+	 */
+	do {
+		value = readl(priv->ioaddr_upiim + USIIM_ARBITRATE_OFFSET);
+
+		for (i = 0; i < priv->queue_n; i++) {
+			int q = priv->enabled_queue[i];
+			if (q >= 0)
+				value |= (1 << q);
+		}
+		writel(value, priv->ioaddr_upiim + USIIM_ARBITRATE_OFFSET);
+		newvalue = readl(priv->ioaddr_upiim + USIIM_ARBITRATE_OFFSET);
+	} while (newvalue != value);
 }
 
 static void docsis_get_queue_dt(struct platform_device *pdev)
@@ -147,11 +164,9 @@ static int __devinit docsis_queue_driver_probe(struct platform_device *pdev)
 	struct resource *res, *res1;
 	struct device *dev = &pdev->dev;
 
-	pr_info("docsis queue initialization module\n");
-
-	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv) {
-		dev_err(&pdev->dev, "Unable to allocate platform data\n");
+		dev_err(dev, "Unable to allocate platform data\n");
 		return -ENOMEM;
 	}
 
@@ -159,11 +174,10 @@ static int __devinit docsis_queue_driver_probe(struct platform_device *pdev)
 	if (!res)
 		return -ENODEV;
 
-	pr_info("%s: get dfwd resource: res->start 0x%x\n", __func__,
-		res->start);
+	dev_info(dev, "get dfwd resource: res->start 0x%x\n", res->start);
 	priv->ioaddr_dfwd = devm_request_and_ioremap(dev, res);
 	if (!priv->ioaddr_dfwd) {
-		pr_err("%s: ERROR: dfwd memory mapping failed", __func__);
+		dev_err(dev, ": ERROR: dfwd memory mapping failed");
 		release_mem_region(res->start, resource_size(res));
 		return -ENOMEM;
 	}
@@ -172,11 +186,10 @@ static int __devinit docsis_queue_driver_probe(struct platform_device *pdev)
 	if (!res1)
 		return -ENODEV;
 
-	pr_info("%s: get upiim resource: res->start 0x%x\n", __func__,
-		res1->start);
+	dev_info(dev, "get upiim resource: res->start 0x%x\n", res1->start);
 	priv->ioaddr_upiim = devm_request_and_ioremap(dev, res1);
 	if (!priv->ioaddr_upiim) {
-		pr_err("%s: ERROR: upiim memory mapping failed", __func__);
+		dev_err(dev, "ERROR: upiim mem mapping failed\n");
 		release_mem_region(res->start, resource_size(res));
 		release_mem_region(res1->start, resource_size(res1));
 		return -ENOMEM;
@@ -184,14 +197,15 @@ static int __devinit docsis_queue_driver_probe(struct platform_device *pdev)
 
 	priv->enabled_queue = NULL;
 
-	if (pdev->dev.of_node)
+	if (dev->of_node)
 		docsis_get_queue_dt(pdev);
 
 	/* Enable the Downstream queue passed from the platform */
-	if (priv->enabled_queue)
+	if (priv->enabled_queue) {
 		docsis_queue_enable_downstream_queue();
-	else
-		pr_err("%s: failed to enable queue\n", __func__);
+		docsis_queue_enable_upstream_queue();
+	} else
+		dev_err(dev, "failed to enable queue\n");
 
 	docsis_queue_init_debug_fs();
 
@@ -225,13 +239,7 @@ static struct platform_driver docsis_queue_driver = {
 	.remove = docsis_queue_driver_remove,
 };
 
-static int __init stm_docsis_queue_driver_init(void)
-{
-	return platform_driver_register(&docsis_queue_driver);
-}
-
-late_initcall(stm_docsis_queue_driver_init);
-
+module_platform_driver(docsis_queue_driver);
 MODULE_AUTHOR("Giuseppe Cavallaro <peppe.cavallaro@st.com>");
 MODULE_DESCRIPTION("STM Docsis Queue driver");
 MODULE_LICENSE("GPL");
