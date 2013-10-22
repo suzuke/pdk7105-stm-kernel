@@ -894,11 +894,11 @@
 		};
 
 		docsis: docsis@fee00000 {
-			#docsis-queue-number = <4>;
+			#docsis-queue-number = <5>;
 			compatible = "st,docsis";
 			status = "okay";
 			reg = <0xfee2e000 0x100>, <0xfee1a000 0x100>;
-			docsis,enabled_queue = <3 4 5 7>;
+			docsis,enabled_queue = <0 3 4 5 7>;
 		};
 
 		/*
