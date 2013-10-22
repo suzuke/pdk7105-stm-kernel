@@ -898,6 +898,7 @@
 			compatible = "st,docsis";
 			status = "okay";
 			reg = <0xfee2e000 0x100>, <0xfee1a000 0x100>;
+			reg-names = 	"dfwd-reg", "upiim-reg";
 			docsis,enabled_queue = <0 3 4 5 7>;
 		};
 
