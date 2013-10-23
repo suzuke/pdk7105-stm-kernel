@@ -748,13 +748,21 @@ static void stmmac_adjust_link(struct net_device *dev)
 		priv->oldduplex = -1;
 	}
 
-	if (new_state && netif_msg_link(priv))
-		phy_print_status(phydev);
+	if (new_state) {
+		if (priv->speed)
+			netif_carrier_on(dev);
+		else
+			netif_carrier_off(dev);
+
+		if netif_msg_link(priv)
+			phy_print_status(phydev);
+	}
 
 	/* At this stage, it could be needed to setup the EEE or adjust some
 	 * MAC related HW registers.
 	 */
 	priv->eee_enabled = stmmac_eee_init(priv);
+
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
@@ -1764,6 +1772,7 @@ static int stmmac_open(struct net_device *dev)
 
 	napi_enable(&priv->napi);
 	netif_start_queue(dev);
+	netif_carrier_off(dev);
 
 	return 0;
 
