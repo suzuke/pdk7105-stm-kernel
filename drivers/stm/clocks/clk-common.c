@@ -75,50 +75,10 @@
 	  replace clk_pll800_freq() & clk_pll1600c65_freq().
 */
 
-#if defined(ST_OS21)
-#include "clock.h"
-
-int clk_register_table(struct clk *clks, int num, int enable)
-{
-	int i;
-
-	for (i = 0; i < num; i++) {
-		struct clk *clk = &clks[i];
-		int ret;
-
-		if (!clk->name)
-			continue;
-
-		ret = clk_register(clk);
-		if (ret) {
-			printf("Failed to register clk %s\n", clk->name);
-			return ret;
-		}
-
-		if (enable) {
-			ret = clk_enable(clk);
-			if (ret)
-				printf("Failed to enable clk %s, "
-					"ignoring\n", clk->name);
-		}
-	}
-
-	return 0;
-}
-
-#if !defined VIRTUAL_PLATFORM_TLM
-typedef unsigned long long int uint64_t;
-#endif
-static inline uint64_t div64_u64(uint64_t dividend, uint64_t divisor)
-{
-	return dividend / divisor;
-}
-
-#else   /* Linux */
-
-#include <linux/stm/clk.h>
 #include <linux/clkdev.h>
+#include <linux/stm/clk.h>
 #include "clock-oslayer.h"
+#include "clk-common.h"
 
 struct sysconf_field *(*platform_sys_claim)(int nr, int lsb, int msb);
 int __init clk_register_table(struct clk *clks, int num, int enable)
@@ -163,12 +123,6 @@ int __init clk_register_table(struct clk *clks, int num, int enable)
 
 	return 0;
 }
-
-#endif  /* End Linux */
-
-/* #include "clock-oslayer.h" */
-#include "clk-common.h"
-
 
 /*
  * Prototypes for local functions
