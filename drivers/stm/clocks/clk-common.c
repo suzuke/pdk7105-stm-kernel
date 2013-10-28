@@ -10,6 +10,10 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+18/sep/13 fabrice.charpentier@st.com
+	  clk_fs660c32_vco_get_rate() out of range checks.
+03/jul/13 fabrice.charpentier@st.com
+	  clk_fs216c65_get_params() bug fix; checks if output is 0
 30/oct/12 fabrice.charpentier@st.com
 	  FS660C32 migrated to new API.
 29/oct/12 fabrice.charpentier@st.com
@@ -81,6 +85,7 @@
 #include "clk-common.h"
 
 struct sysconf_field *(*platform_sys_claim)(int nr, int lsb, int msb);
+
 int __init clk_register_table(struct clk *clks, int num, int enable)
 {
 	int i;
@@ -528,11 +533,17 @@ int clk_pll1600c45_get_phi_rate(unsigned long input, struct stm_pll *pll,
    ======================================================================== */
 
 /*
+ * Spec used: PLL_PG_1600x_CMOS065LP_SPECS_1.4.pdf
+ *
  * Rules:
  *   600Mhz <= output (FVCO) <= 1800Mhz
  *   1 <= M (also called R) <= 7
  *   4 <= N <= 255
  *   4Mhz <= PFDIN (input/M) <= 75Mhz
+ *
+ * FVCO = (INFF*LDF) / IDF
+ * LDF = 2*NDIV
+ * => FVCO = (INFF*2*NDIV) / IDF
  */
 
 static int
@@ -544,7 +555,7 @@ clk_pll1600c65_get_params(unsigned long input, unsigned long output,
 	unsigned long new_freq;
 	long new_deviation;
 
-	/* Output clock range: 600Mhz to 1800Mhz */
+	/* FVCO output clock range: 600Mhz to 1800Mhz */
 	if (output < 600000000 || output > 1800000000)
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -735,6 +746,10 @@ static int clk_fs216c65_get_params(unsigned long input, unsigned long output,
 		.type = stm_fs216c65,
 	};
 
+	/* Checks */
+	if (!output)
+		return CLK_ERR_BAD_PARAMETER;
+
 	/*
 	 * fs->nsdiv is a register value ('BIN') which is translated
 	 * to a decimal value according to following rules.
@@ -890,7 +905,7 @@ static int clk_fs432c65_get_params(unsigned long input, unsigned long output,
 			 */
 			for (m = -16, stop = 0; !stop && deviation; m++) {
 				if (!m) {
-					 /* -17 forbidden with 30Mhz */
+					/* -17 forbidden with 30Mhz */
 					if (input > 27000000)
 						break;
 					m = -17; /* 0 is -17 */
@@ -1013,9 +1028,10 @@ static int clk_fs660c32_vco_get_params(unsigned long input, unsigned long output
 
 /* ========================================================================
    Name:	clk_fs660c32_vco_get_rate()
-   Description: Compute VCO frequency of FS660 embeded PLL (PLL660)
+   Description: Compute VCO frequency of FS660 embedded PLL (PLL660)
    Input: ndiv & pdiv registers values
    Output: updated *rate (Hz)
+   Returns: 0=OK, -1=can't compute with given input+ndiv
    ======================================================================== */
 
 static int clk_fs660c32_vco_get_rate(unsigned long input, struct stm_fs *fs,
@@ -1025,6 +1041,8 @@ static int clk_fs660c32_vco_get_rate(unsigned long input, struct stm_fs *fs,
 	unsigned long pdiv = 1; /* Frozen. Not configurable so far */
 
 	*rate = (input * nd) / pdiv;
+	if (*rate < 384000000 || *rate > 660000000)
+		return -1; /* Out of range */
 
 	return 0;
 }
@@ -1046,9 +1064,9 @@ static int clk_fs660c32_vco_get_rate(unsigned long input, struct stm_fs *fs,
 static int clk_fs660c32_dig_get_params(unsigned long input, unsigned long output,
 				struct stm_fs *fs)
 {
-	int si;
+	int si; /* sdiv_reg (8 downto 0) */
 	unsigned long ns; /* nsdiv value (1 or 3) */
-	unsigned long s; /* sdiv value = 1 << sdiv_reg_value */
+	unsigned long s; /* sdiv value = 1 << sdiv_reg */
 	unsigned long m; /* md value */
 	unsigned long new_freq, new_deviation;
 	/* initial condition to say: "infinite deviation" */
@@ -1056,7 +1074,7 @@ static int clk_fs660c32_dig_get_params(unsigned long input, unsigned long output
 	uint64_t p, p2; /* pe value */
 	int ns_search_loop; /* How many ns search trials */
 	struct stm_fs fs_tmp = {
-		.type = stm_fs432c65
+		.type = stm_fs660c32
 	};
 
 	/*
