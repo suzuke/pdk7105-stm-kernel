@@ -587,18 +587,21 @@ static struct pmb_mapping *get_pmb_map(unsigned long req_virt,
 	} else
 		pmb_flags = PMB_WT | PMB_UB;
 
-	DPRINTK("phys: %08lx, size %08lx, flags %08lx->%08x\n",
-		phys, size, flags, pmb_flags);
+	DPRINTK("req: phys %08lx, virt %08lx, size %08lx, flags %08lx->%08x\n",
+		phys, req_virt, size, pgprot_val(flags), pmb_flags);
 
 	write_lock(&pmb_lock);
 
 	for (mapping = pmb_mappings; mapping; mapping=mapping->next) {
 		DPRINTK("check against phys %08lx size %08lx flags %08lx\n",
 			mapping->phys, mapping->size, mapping->flags);
-		if ((phys >= mapping->phys) &&
-		    (req_virt && req_virt >= mapping->virt) &&
-		    (phys+size <= mapping->phys+mapping->size) &&
-		    (pmb_flags == mapping->flags))
+		if (!((phys >= mapping->phys) &&
+		      (phys+size <= mapping->phys+mapping->size) &&
+		      (pmb_flags == mapping->flags)))
+			continue;
+		DPRINTK("check against virt %08lx\n", mapping->virt);
+		if (!req_virt ||
+		    (req_virt == mapping->virt + (phys - mapping->phys)))
 			break;
 	}
 
