@@ -1818,6 +1818,81 @@
 				status = "disabled";
 			};
 		};
+		docsis: docsis@fee00000 {
+			#docsis-queue-number = <5>;
+			compatible = "st,docsis";
+			status = "okay";
+			reg = <0xfee2e000 0x100>, <0xfee1a000 0x100>;
+			reg-names = 	"dfwd-reg", "upiim-reg";
+			docsis,enabled_queue = <3 4 5 7>;
+		};
 
+		/*
+			ISVE - Virtual Interfaces
+
+			Downstream queue:
+				docsis_base + 0x2E400 + (queue * 0x20)
+			Upstream queue:
+				docsis_base + 0x1A400 + (queue * 0x28)
+		*/
+		if17:isve_queue_3 {
+			compatible	= "st,isve";
+			device_type = "network";
+			reg = <0xfee2e460 0x20>, <0xfee1a478 0x20>;
+			interrupts = <0 42 0>, <0 50 0>;
+			interrupt-names = "isveirq_ds", "isveirq_us";
+
+			isve,downstream_queue_size = <32>;
+			isve,upstream_queue_size = <32>;
+			isve,queue_number = <3>;
+			isve,skip_hdr = <0x2>; /* two extra bytes have to be removed */
+			isve,hw_rem_hdr = <0x3>; /* remove docsis and extra HDR */
+			isve,ifname = "if17";
+		};
+
+		if18:isve_queue_4 {
+			compatible	= "st,isve";
+			device_type = "network";
+			reg = <0xfee2e480 0x20>, <0xfee1a4a0 0x20>;
+			interrupts = <0 43 0>, <0 51 0>;
+			interrupt-names = "isveirq_ds", "isveirq_us";
+
+			isve,downstream_queue_size = <32>;
+			isve,upstream_queue_size = <32>;
+			isve,queue_number = <4>;
+			isve,skip_hdr = <0x2>; /* two extra bytes have to be removed */
+			isve,hw_rem_hdr = <0x3>; /* remove docsis and extra HDR */
+			isve,ifname = "if18";
+		};
+
+		if16:isve_queue_5 {
+			compatible	= "st,isve";
+			device_type = "network";
+			reg = <0xfee2e4a0 0x20>, <0xfee1a4c8 0x20>;
+			interrupts = <0 44 0>, <0 52 0>;
+			interrupt-names = "isveirq_ds", "isveirq_us";
+
+			isve,downstream_queue_size = <32>;
+			isve,upstream_queue_size = <32>;
+			isve,queue_number = <5>;
+			isve,skip_hdr = <0x2>; /* two extra bytes have to be removed */
+			isve,hw_rem_hdr = <0x3>; /* remove docsis and extra HDR */
+			isve,ifname = "if16";
+		};
+
+		if1:isve_queue_7 {
+			compatible	= "st,isve";
+			device_type = "network";
+			reg = <0xfee2e4e0 0x20>, <0xfee1a518 0x20>;
+			interrupts = <0 46 0>, <0 54 0>;
+			interrupt-names = "isveirq_ds", "isveirq_us";
+
+			isve,downstream_queue_size = <32>;
+			isve,upstream_queue_size = <32>;
+			isve,queue_number = <7>;
+			isve,skip_hdr = <0x2>; /* two extra bytes have to be removed */
+			isve,hw_rem_hdr = <0x3>; /* remove docsis and extra HDR */
+			isve,ifname = "if1";
+		};
 	};
 };
