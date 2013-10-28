@@ -130,4 +130,32 @@ static inline unsigned long chip_major_version(void)
 	return stm_soc_version_major();
 }
 
+/*
+ * Runtime & debug infos
+ */
+
+/* Clock debug info at runtime ONLY */
+/* #define DEBUG */
+
+/* Clock debug info at early boot stage ONLY.
+ * As early_printk uses the bootconsole that will be disable as soon as the
+ * system console will be configured, all messages printed through early_printk
+ * will not be visible.
+ * It is possible to avoid de-registering the bootconsole by kernel parameter
+ * 'keep_bootcon'
+ * This should be avoid indeed, and DEBUG_EARLY should be enabled just if
+ * something is going wrong in clk-lla in the early stage.
+ */
+
+/* #define DEBUG_EARLY */
+
+#ifdef DEBUG
+/* DEBUG take over DEBUG_EARLY in case both are defined */
+#define clk_debug(fmt, args ...) pr_debug("stm-clk: " fmt, ## args)
+#elif defined DEBUG_EARLY && defined CONFIG_EARLY_PRINTK
+#define clk_debug(fmt, args ...) early_printk("stm-clk: " fmt, ## args)
+#else
+#define clk_debug(...)
+#endif
+
 #endif /* #ifndef __CLKLLA_OSLAYER_H */
