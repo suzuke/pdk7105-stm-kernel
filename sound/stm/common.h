@@ -25,7 +25,7 @@
 
 enum snd_stm_card_type {
 	SND_STM_CARD_TYPE_AUDIO,
-#ifdef CONFIG_SND_STM_TELSS
+#if defined(CONFIG_SND_STM_TELSS) || defined(CONFIG_SND_STM_TELSS_MODULE)
 	SND_STM_CARD_TYPE_TELSS,
 #endif
 	SND_STM_CARD_TYPE_COUNT,	/* Number of different card types */
