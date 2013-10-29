@@ -1471,11 +1471,8 @@ static struct aggregator *ad_agg_selection_test(struct aggregator *best,
 
 static int agg_device_up(const struct aggregator *agg)
 {
-	struct port *port = agg->lag_ports;
-	if (!port)
-		return 0;
-	return (netif_running(port->slave->dev) &&
-		netif_carrier_ok(port->slave->dev));
+	return (netif_running(agg->slave->dev) &&
+		netif_carrier_ok(agg->slave->dev));
 }
 
 /**
@@ -2452,13 +2449,6 @@ int bond_3ad_lacpdu_recv(struct sk_buff *skb, struct net_device *dev, struct pac
 		goto out;
 
 	if (!(dev->flags & IFF_MASTER))
-		goto out;
-
-	skb = skb_share_check(skb, GFP_ATOMIC);
-	if (!skb)
-		goto out;
-
-	if (!pskb_may_pull(skb, sizeof(struct lacpdu)))
 		goto out;
 
 	read_lock(&bond->lock);

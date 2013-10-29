@@ -28,7 +28,6 @@
 #include <linux/path.h> /* struct path */
 #include <linux/slab.h> /* kmem_* */
 #include <linux/types.h>
-#include <linux/sched.h>
 
 #include "inotify.h"
 
@@ -71,9 +70,6 @@ static int inotify_handle_event(struct fsnotify_group *group, struct fsnotify_ev
 		    (ret == -EOVERFLOW))
 			ret = 0;
 	}
-
-	if (entry->mask & IN_ONESHOT)
-		fsnotify_destroy_mark_by_entry(entry);
 
 	/*
 	 * If we hold the entry until after the event is on the queue
@@ -125,7 +121,7 @@ static int idr_callback(int id, void *p, void *data)
 	if (warned)
 		return 0;
 
-	warned = true;
+	warned = false;
 	entry = p;
 	ientry = container_of(entry, struct inotify_inode_mark_entry, fsn_entry);
 
@@ -150,7 +146,6 @@ static void inotify_free_group_priv(struct fsnotify_group *group)
 	idr_for_each(&group->inotify_data.idr, idr_callback, group);
 	idr_remove_all(&group->inotify_data.idr);
 	idr_destroy(&group->inotify_data.idr);
-	free_uid(group->inotify_data.user);
 }
 
 void inotify_free_event_priv(struct fsnotify_event_private_data *fsn_event_priv)

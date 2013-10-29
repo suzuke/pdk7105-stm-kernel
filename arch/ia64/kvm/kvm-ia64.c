@@ -1185,11 +1185,6 @@ out:
 
 #define PALE_RESET_ENTRY    0x80000000ffffffb0UL
 
-bool kvm_vcpu_compatible(struct kvm_vcpu *vcpu)
-{
-	return irqchip_in_kernel(vcpu->kvm) == (vcpu->arch.apic != NULL);
-}
-
 int kvm_arch_vcpu_init(struct kvm_vcpu *vcpu)
 {
 	struct kvm_vcpu *v;
@@ -1802,8 +1797,7 @@ static int kvm_ia64_sync_dirty_log(struct kvm *kvm,
 {
 	struct kvm_memory_slot *memslot;
 	int r, i;
-	long base;
-	unsigned long n;
+	long n, base;
 	unsigned long *dirty_bitmap = (unsigned long *)(kvm->arch.vm_base +
 			offsetof(struct kvm_vm_data, kvm_mem_dirty_log));
 
@@ -1816,7 +1810,7 @@ static int kvm_ia64_sync_dirty_log(struct kvm *kvm,
 	if (!memslot->dirty_bitmap)
 		goto out;
 
-	n = kvm_dirty_bitmap_bytes(memslot);
+	n = ALIGN(memslot->npages, BITS_PER_LONG) / 8;
 	base = memslot->base_gfn / BITS_PER_LONG;
 
 	for (i = 0; i < n/sizeof(long); ++i) {
@@ -1832,7 +1826,7 @@ int kvm_vm_ioctl_get_dirty_log(struct kvm *kvm,
 		struct kvm_dirty_log *log)
 {
 	int r;
-	unsigned long n;
+	int n;
 	struct kvm_memory_slot *memslot;
 	int is_dirty = 0;
 
@@ -1850,7 +1844,7 @@ int kvm_vm_ioctl_get_dirty_log(struct kvm *kvm,
 	if (is_dirty) {
 		kvm_flush_remote_tlbs(kvm);
 		memslot = &kvm->memslots[log->slot];
-		n = kvm_dirty_bitmap_bytes(memslot);
+		n = ALIGN(memslot->npages, BITS_PER_LONG) / 8;
 		memset(memslot->dirty_bitmap, 0, n);
 	}
 	r = 0;

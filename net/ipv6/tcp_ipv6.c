@@ -60,7 +60,6 @@
 #include <net/timewait_sock.h>
 #include <net/netdma.h>
 #include <net/inet_common.h>
-#include <net/secure_seq.h>
 
 #include <asm/uaccess.h>
 
@@ -1391,7 +1390,7 @@ static struct sock * tcp_v6_syn_recv_sock(struct sock *sk, struct sk_buff *skb,
 
 	   First: no IPv4 options.
 	 */
-	newinet->inet_opt = NULL;
+	newinet->opt = NULL;
 	newnp->ipv6_fl_list = NULL;
 
 	/* Clone RX bits */

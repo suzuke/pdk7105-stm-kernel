@@ -176,9 +176,6 @@ static int msr_open(struct inode *inode, struct file *file)
 	struct cpuinfo_x86 *c = &cpu_data(cpu);
 	int ret = 0;
 
-	if (!capable(CAP_SYS_RAWIO))
-		return -EPERM;
-
 	lock_kernel();
 	cpu = iminor(file->f_path.dentry->d_inode);
 
@@ -254,7 +251,7 @@ static int __init msr_init(void)
 	int i, err = 0;
 	i = 0;
 
-	if (__register_chrdev(MSR_MAJOR, 0, NR_CPUS, "cpu/msr", &msr_fops)) {
+	if (register_chrdev(MSR_MAJOR, "cpu/msr", &msr_fops)) {
 		printk(KERN_ERR "msr: unable to get major %d for msr\n",
 		       MSR_MAJOR);
 		err = -EBUSY;
@@ -282,7 +279,7 @@ out_class:
 		msr_device_destroy(i);
 	class_destroy(msr_class);
 out_chrdev:
-	__unregister_chrdev(MSR_MAJOR, 0, NR_CPUS, "cpu/msr");
+	unregister_chrdev(MSR_MAJOR, "cpu/msr");
 out:
 	return err;
 }
@@ -293,7 +290,7 @@ static void __exit msr_exit(void)
 	for_each_online_cpu(cpu)
 		msr_device_destroy(cpu);
 	class_destroy(msr_class);
-	__unregister_chrdev(MSR_MAJOR, 0, NR_CPUS, "cpu/msr");
+	unregister_chrdev(MSR_MAJOR, "cpu/msr");
 	unregister_hotcpu_notifier(&msr_class_cpu_notifier);
 }
 

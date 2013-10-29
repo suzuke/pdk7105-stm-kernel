@@ -103,7 +103,7 @@ qh_update (struct ehci_hcd *ehci, struct ehci_qh *qh, struct ehci_qtd *qtd)
 	if (!(hw->hw_info1 & cpu_to_hc32(ehci, 1 << 14))) {
 		unsigned	is_out, epnum;
 
-		is_out = qh->is_out;
+		is_out = !(qtd->hw_token & cpu_to_hc32(ehci, 1 << 8));
 		epnum = (hc32_to_cpup(ehci, &hw->hw_info1) >> 8) & 0x0f;
 		if (unlikely (!usb_gettoggle (qh->dev, epnum, is_out))) {
 			hw->hw_token &= ~cpu_to_hc32(ehci, QTD_TOGGLE);
@@ -315,6 +315,7 @@ qh_completions (struct ehci_hcd *ehci, struct ehci_qh *qh)
 	int			stopped;
 	unsigned		count = 0;
 	u8			state;
+	const __le32		halt = HALT_BIT(ehci);
 	struct ehci_qh_hw	*hw = qh->hw;
 
 	if (unlikely (list_empty (&qh->qtd_list)))
@@ -421,6 +422,7 @@ qh_completions (struct ehci_hcd *ehci, struct ehci_qh *qh)
 					&& !(qtd->hw_alt_next
 						& EHCI_LIST_END(ehci))) {
 				stopped = 1;
+				goto halt;
 			}
 
 		/* stop scanning when we reach qtds the hc is using */
@@ -453,6 +455,16 @@ qh_completions (struct ehci_hcd *ehci, struct ehci_qh *qh)
 				 * We have to clear it.
 				 */
 				ehci_clear_tt_buffer(ehci, qh, urb, token);
+			}
+
+			/* force halt for unlinked or blocked qh, so we'll
+			 * patch the qh later and so that completions can't
+			 * activate it while we "know" it's stopped.
+			 */
+			if ((halt & hw->hw_token) == 0) {
+halt:
+				hw->hw_token |= halt;
+				wmb ();
 			}
 		}
 
@@ -828,10 +840,9 @@ qh_make (
 				 * But interval 1 scheduling is simpler, and
 				 * includes high bandwidth.
 				 */
-				urb->interval = 1;
-			} else if (qh->period > ehci->periodic_size) {
-				qh->period = ehci->periodic_size;
-				urb->interval = qh->period << 3;
+				dbg ("intr period %d uframes, NYET!",
+						urb->interval);
+				goto done;
 			}
 		} else {
 			int		think_time;
@@ -854,10 +865,6 @@ qh_make (
 					usb_calc_bus_time (urb->dev->speed,
 					is_input, 0, max_packet (maxp)));
 			qh->period = urb->interval;
-			if (qh->period > ehci->periodic_size) {
-				qh->period = ehci->periodic_size;
-				urb->interval = qh->period;
-			}
 		}
 	}
 
@@ -936,7 +943,6 @@ done:
 	hw = qh->hw;
 	hw->hw_info1 = cpu_to_hc32(ehci, info1);
 	hw->hw_info2 = cpu_to_hc32(ehci, info2);
-	qh->is_out = !is_input;
 	usb_settoggle (urb->dev, usb_pipeendpoint (urb->pipe), !is_input, 1);
 	qh_refresh (ehci, qh);
 	return qh;
@@ -1217,8 +1223,6 @@ static void start_unlink_async (struct ehci_hcd *ehci, struct ehci_qh *qh)
 
 	prev->hw->hw_next = qh->hw->hw_next;
 	prev->qh_next = qh->qh_next;
-	if (ehci->qh_scan_next == qh)
-		ehci->qh_scan_next = qh->qh_next.qh;
 	wmb ();
 
 	/* If the controller isn't running, we don't have to wait for it */
@@ -1240,53 +1244,54 @@ static void start_unlink_async (struct ehci_hcd *ehci, struct ehci_qh *qh)
 
 static void scan_async (struct ehci_hcd *ehci)
 {
-	bool			stopped;
 	struct ehci_qh		*qh;
 	enum ehci_timer_action	action = TIMER_IO_WATCHDOG;
 
+	ehci->stamp = ehci_readl(ehci, &ehci->regs->frame_index);
 	timer_action_done (ehci, TIMER_ASYNC_SHRINK);
-	stopped = !HC_IS_RUNNING(ehci_to_hcd(ehci)->state);
+rescan:
+	qh = ehci->async->qh_next.qh;
+	if (likely (qh != NULL)) {
+		do {
+			/* clean any finished work for this qh */
+			if (!list_empty (&qh->qtd_list)
+					&& qh->stamp != ehci->stamp) {
+				int temp;
 
-	ehci->qh_scan_next = ehci->async->qh_next.qh;
-	while (ehci->qh_scan_next) {
-		qh = ehci->qh_scan_next;
-		ehci->qh_scan_next = qh->qh_next.qh;
- rescan:
-		/* clean any finished work for this qh */
-		if (!list_empty(&qh->qtd_list)) {
-			int temp;
+				/* unlinks could happen here; completion
+				 * reporting drops the lock.  rescan using
+				 * the latest schedule, but don't rescan
+				 * qhs we already finished (no looping).
+				 */
+				qh = qh_get (qh);
+				qh->stamp = ehci->stamp;
+				temp = qh_completions (ehci, qh);
+				if (qh->needs_rescan)
+					unlink_async(ehci, qh);
+				qh_put (qh);
+				if (temp != 0) {
+					goto rescan;
+				}
+			}
 
-			/*
-			 * Unlinks could happen here; completion reporting
-			 * drops the lock.  That's why ehci->qh_scan_next
-			 * always holds the next qh to scan; if the next qh
-			 * gets unlinked then ehci->qh_scan_next is adjusted
-			 * in start_unlink_async().
+			/* unlink idle entries, reducing DMA usage as well
+			 * as HCD schedule-scanning costs.  delay for any qh
+			 * we just scanned, there's a not-unusual case that it
+			 * doesn't stay idle for long.
+			 * (plus, avoids some kind of re-activation race.)
 			 */
-			qh = qh_get(qh);
-			temp = qh_completions(ehci, qh);
-			if (qh->needs_rescan)
-				unlink_async(ehci, qh);
-			qh->unlink_time = jiffies + EHCI_SHRINK_JIFFIES;
-			qh_put(qh);
-			if (temp != 0)
-				goto rescan;
-		}
+			if (list_empty(&qh->qtd_list)
+					&& qh->qh_state == QH_STATE_LINKED) {
+				if (!ehci->reclaim
+					&& ((ehci->stamp - qh->stamp) & 0x1fff)
+						>= (EHCI_SHRINK_FRAMES * 8))
+					start_unlink_async(ehci, qh);
+				else
+					action = TIMER_ASYNC_SHRINK;
+			}
 
-		/* unlink idle entries, reducing DMA usage as well
-		 * as HCD schedule-scanning costs.  delay for any qh
-		 * we just scanned, there's a not-unusual case that it
-		 * doesn't stay idle for long.
-		 * (plus, avoids some kind of re-activation race.)
-		 */
-		if (list_empty(&qh->qtd_list)
-				&& qh->qh_state == QH_STATE_LINKED) {
-			if (!ehci->reclaim && (stopped ||
-					time_after_eq(jiffies, qh->unlink_time)))
-				start_unlink_async(ehci, qh);
-			else
-				action = TIMER_ASYNC_SHRINK;
-		}
+			qh = qh->qh_next.qh;
+		} while (qh);
 	}
 	if (action == TIMER_ASYNC_SHRINK)
 		timer_action (ehci, TIMER_ASYNC_SHRINK);
