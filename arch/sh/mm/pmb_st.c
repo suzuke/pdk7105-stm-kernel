@@ -681,7 +681,7 @@ int pmb_unmap(void __iomem *addr)
 
 	if (unlikely(!mapping)) {
 		write_unlock(&pmb_lock);
-		return 0;
+		return -EINVAL;
 	}
 
 	DPRINTK("mapping: phys %08lx, size %08lx, count %d\n",
@@ -695,7 +695,7 @@ int pmb_unmap(void __iomem *addr)
 
 	write_unlock(&pmb_lock);
 
-	return 1;
+	return 0;
 }
 
 static noinline void
