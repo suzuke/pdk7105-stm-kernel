@@ -15,11 +15,14 @@
 #include <linux/phy.h>
 #include <linux/gpio.h>
 #include <linux/leds.h>
+#include <linux/i2c.h>
+#include <linux/i2c-gpio.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/nand.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 #include <linux/stm/platform.h>
+#include <linux/stm/nand_devices.h>
 #include <linux/stm/stxh205.h>
 #include <linux/stm/sysconf.h>
 #include <asm/irq-ilc.h>
@@ -60,6 +63,18 @@ static void __init b2039_setup(char **cmdline_p)
 	 */
 }
 
+static struct platform_device b2039_gpio_i2c_hdmi = {
+	.name = "i2c-gpio",
+	.id = 3,
+	.dev.platform_data = &(struct i2c_gpio_platform_data) {
+		.sda_pin = stm_gpio(12, 1),
+		.scl_pin = stm_gpio(12, 0),
+		.sda_is_open_drain = 0,
+		.scl_is_open_drain = 0,
+		.scl_is_output_only = 1,
+        },
+};
+
 static struct platform_device b2039_leds = {
 	.name = "leds-gpio",
 	.id = -1,
@@ -95,10 +110,15 @@ static struct stm_plat_spifsm_data b2039_serial_flash =  {
 		/* Capabilities may be overriden by SoC configuration */
 		.dual_mode = 1,
 		.quad_mode = 1,
+		.reset_signal = 1, /* SoC reset routed to device reset pad */
 	},
 };
 
-/* NAND Flash (via b2006a/b2007a VPMEM module) */
+/*
+ * NAND Flash
+ *	b2006a/b2007a VPMEM module
+ *	J66 should be 1-2, or open (i.e. 'VPMEM_notWP' not connected)
+ */
 static struct stm_nand_bank_data b2039_nand_flash = {
 	.csn		= 0,
 	.options	= NAND_NO_AUTOINCR | NAND_USE_FLASH_BBT,
@@ -114,17 +134,11 @@ static struct stm_nand_bank_data b2039_nand_flash = {
 			.size	= MTDPART_SIZ_FULL
 		},
 	},
-	.timing_data	=  &(struct stm_nand_timing_data) {
-		.sig_setup	= 50,		/* times in ns */
-		.sig_hold	= 50,
-		.CE_deassert	= 0,
-		.WE_to_RBn	= 100,
-		.wr_on		= 10,
-		.wr_off		= 40,
-		.rd_on		= 10,
-		.rd_off		= 40,
-		.chip_delay	= 30,		/* in us */
-	},
+	/* Timing parameters specified for the Samsung K9F2G08U0C device.
+	 * Please update according to mounted device (numerous population
+	 * options available).
+	 */
+	.timing_spec	= &NAND_TSPEC_SAMSUNG_K9F2G08U0C,
 };
 
 
@@ -210,17 +224,26 @@ static int __init device_init(void)
 			.mdio_bus_data = &stmmac_mdio_bus,
 		});
 #endif
+	/* PHY IRQ has to be triggered LOW */
+	set_irq_type(ILC_IRQ(25), IRQ_TYPE_LEVEL_LOW);
 
+	stxh205_configure_miphy(&(struct stxh205_miphy_config){
+			.mode = SATA_MODE,
+			.iface = UPORT_IF,
+			.tx_pol_inv = 1,
+			});
+	stxh205_configure_sata();
 	/* Need to set J17 1-2 and J19 1-2 */
 	stxh205_configure_usb(0);
 
 	/* Need to set J12 1-2 and J22 1-2 */
 	stxh205_configure_usb(1);
 
-	/* 1: FRONTEND (NIM), CN19, HDMI */
+	/* 1: FRONTEND CN18 (NIM), CN19 */
 	stxh205_configure_ssc_i2c(1, &(struct stxh205_ssc_config) {
 			.routing.ssc1.sclk = stxh205_ssc1_sclk_pio4_6,
 			.routing.ssc1.mtsr = stxh205_ssc1_mtsr_pio4_7, });
+
 	/* 2: FRONTEND_EXT (VPAV), CN28 */
 	stxh205_configure_ssc_i2c(2, &(struct stxh205_ssc_config) {
 			.routing.ssc1.sclk = stxh205_ssc2_sclk_pio9_4,
@@ -230,6 +253,18 @@ static int __init device_init(void)
 	stxh205_configure_ssc_i2c(3, &(struct stxh205_ssc_config) {
 			.routing.ssc1.sclk = stxh205_ssc3_sclk_pio15_0,
 			.routing.ssc1.mtsr = stxh205_ssc3_mtsr_pio15_1, });
+
+	/*
+	 * 1: PIO_HDMI_TX: U4 (HDMI2C1), CN9
+	 * Fit jumpers J8 and J9
+	 * This usage of SSC1 can't be used concurrently with the FRONTEND
+	 * bus above. So drive this bus using gpio i2c.
+	 *
+	 * stxh205_configure_ssc_i2c(1, &(struct stxh205_ssc_config) {
+	 *		.routing.ssc1.sclk = stxh205_ssc1_sclk_pio12_0,
+	 *		.routing.ssc1.mtsr = stxh205_ssc1_mtsr_pio12_1, });
+	 */
+	BUG_ON(platform_device_register(&b2039_gpio_i2c_hdmi));
 
 	stxh205_configure_lirc(&(struct stxh205_lirc_config) {
 #ifdef CONFIG_LIRC_STM_UHF
@@ -255,12 +290,11 @@ static int __init device_init(void)
 
 	stxh205_configure_spifsm(&b2039_serial_flash);
 
-
-#ifdef CONFIG_STM_B2048A_MMC_SLOT
-	stxh205_configure_mmc(0);
-#elif defined(CONFIG_STM_B2048A_MMC_EMMC)
-	stxh205_configure_mmc(1);
+	stxh205_configure_mmc(&(struct stxh205_mmc_config) {
+#ifdef CONFIG_STM_B2039_CN38_B2048A_MMC_EMMC
+			.emmc = 1,
 #endif
+		});
 	return platform_add_devices(b2039_devices,
 			ARRAY_SIZE(b2039_devices));
 }

@@ -46,6 +46,23 @@
 #define H2257141_PIO_PHY1_RESET stm_gpio(15, 7)
 #define STMMAC1_PHY_ADDR 9
 
+#define H2257141_GPIO_FLASH_WP stm_gpio(3, 7)
+
+/*
+ * Flash setup
+ *
+ * boot-from-		| NOR		NAND		SPI
+ * -------------------------------------------------------------------------
+ * J2 (NOR CSA/CSB)	| 1-2		2-3		2-3
+ * J3 (NAND CSA/CSB)	| 1-2		2-3		2-3
+ * J8_2 (data width)	| ON (16bit)	off (8bit)	N/A
+ * J5_1 (mode 16)	| ON		off		N/A (boot from Flash
+ * J5_2 (mode 17)	| ON		ON		N/A  is not supported)
+ * --------------------------------------------------------------------------
+ *
+ */
+
+
 static void __init h225hdk_setup(char **cmdline_p)
 {
 	printk(KERN_INFO "STMicroelectronics STx7141 H225 Reference Board initialisation\n");
@@ -364,6 +381,11 @@ static int __init h225hdk_device_init(void)
 		/* EMI_notCSC */
 		h225hdk_nand_flash_data.csn = 0;
 		break;
+	case 0x2:
+		/* Boot-from-SPI not supported */
+		pr_info("Boot from SPI is not supported on this board.\n");
+		BUG();
+		break;
 	default:
 		pr_info("Invalid boot mode.\n");
 		BUG();
@@ -378,6 +400,14 @@ static int __init h225hdk_device_init(void)
 	h225hdk_nor_flash.resource[0].start += nor_bank_base;
 	h225hdk_nor_flash.resource[0].end += nor_bank_base;
 
+	/*
+	 * FLASH_WP is shared between between NOR and NAND FLASH.  However,
+	 * since NAND MTD has no concept of write-protect, we permanently
+	 * disable WP.
+	 */
+	gpio_request(H2257141_GPIO_FLASH_WP, "FLASH_WP");
+	gpio_direction_output(H2257141_GPIO_FLASH_WP, 1);
+
 	stx7141_configure_nand(&(struct stm_nand_config) {
 					.driver = stm_nand_flex,
 					.nr_banks = 1,
@@ -385,11 +415,11 @@ static int __init h225hdk_device_init(void)
 					.rbn.flex_connected = 1,});
 
 	stx7141_configure_ssc_spi(0, NULL);
-	stx7141_configure_ssc_i2c(2);
-	stx7141_configure_ssc_i2c(3);
-	stx7141_configure_ssc_i2c(4);
-	stx7141_configure_ssc_i2c(5);
-	stx7141_configure_ssc_i2c(6);
+	stx7141_configure_ssc_i2c(2, NULL);
+	stx7141_configure_ssc_i2c(3, NULL);
+	stx7141_configure_ssc_i2c(4, NULL);
+	stx7141_configure_ssc_i2c(5, NULL);
+	stx7141_configure_ssc_i2c(6, NULL);
 
 	stx7141_configure_usb(0, &(struct stx7141_usb_config) {
 		.ovrcur_mode = stx7141_usb_ovrcur_active_low,

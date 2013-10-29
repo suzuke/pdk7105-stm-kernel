@@ -47,7 +47,7 @@ static void stx7108_pio_dump_pad_config(const char *name, int port,
 	for (i = 0; i < gpios_num; i++) {
 		struct stm_pad_gpio *pad_gpio = &pad_config->gpios[i];
 		struct stx7108_pio_config *priv = pad_gpio->priv;
-		struct stx7108_pio_retime_config *retime = priv->retime;
+		struct stm_pio_control_retime_config *retime = priv->retime;
 
 		pr_info("PIO%d[%d]  %d\t\t%d\t\t%d\t%d\t\t%d\t\t%d\n",
 			stm_gpio_port(pad_gpio->gpio),
@@ -519,6 +519,7 @@ struct stx7108_stmmac_priv {
 	struct stm_pad_state *pad_state;
 	struct sysconf_field *mac_speed_sel;
 	void (*txclk_select)(int txclk_250_not_25_mhz);
+	struct stx7108_pio_config pio_config;
 } stx7108_stmmac_priv_data[2];
 
 static void stx7108_ethernet_rmii_speed(void *priv, unsigned int speed)
@@ -538,26 +539,19 @@ static void stx7108_ethernet_gtx_speed(void *priv, unsigned int speed)
 		txclk_select(speed == SPEED_1000);
 }
 
-/*
- * stm_pad_update_gpio() does not copy the priv struct, so these need
- * to survive after stx7108_ethernet_rgmii_gtx_speed() returns. They is
- * never modified however, so can be shared by the two MACs.
- */
-static struct stm_pio_control_retime_config *stx7108_ethernet_rgmii_gtx_niclk =
-	RET_NICLK(-1);
-static struct stm_pio_control_retime_config *stx7108_ethernet_rgmii_gtx_iclk =
-	RET_ICLK(-1);
-
 static void stx7108_ethernet_rgmii_gtx_speed(void *priv, unsigned int speed)
 {
 	struct stx7108_stmmac_priv *stmmac_priv = priv;
-	struct stm_pio_control_retime_config *rt;
+	struct stx7108_pio_config *config = &stmmac_priv->pio_config;
 
 	/* TX Clock inversion is not set for 1000Mbps */
+	if (speed == SPEED_1000)
+		config->retime = RET_NICLK(-1);
+	else
+		config->retime = RET_ICLK(-1);
+
 	stm_pad_update_gpio(stmmac_priv->pad_state, "TXCLK",
-		stm_pad_gpio_direction_ignored, -1, -1, 
-		(speed == SPEED_1000) ? rt = stx7108_ethernet_rgmii_gtx_niclk:
-		stx7108_ethernet_rgmii_gtx_iclk);
+		stm_pad_gpio_direction_ignored, -1, -1, config);
 
 	stx7108_ethernet_gtx_speed(priv, speed);
 }
@@ -783,7 +777,8 @@ static void stx7108_usb_power(struct stm_device_state *device_state,
 static struct stm_plat_usb_data stx7108_usb_platform_data[] = {
 	[0] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+				STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK2 |
+				STM_PLAT_USB_FLAGS_STBUS_CONFIG_LDST64,
 		.device_config = &(struct stm_device_config){
 			.init = stx7108_usb_init,
 			.power = stx7108_usb_power,
@@ -811,7 +806,8 @@ static struct stm_plat_usb_data stx7108_usb_platform_data[] = {
 	},
 	[1] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+				STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK2 |
+				STM_PLAT_USB_FLAGS_STBUS_CONFIG_LDST64,
 		.device_config = &(struct stm_device_config){
 			.init = stx7108_usb_init,
 			.power = stx7108_usb_power,
@@ -839,7 +835,8 @@ static struct stm_plat_usb_data stx7108_usb_platform_data[] = {
 	},
 	[2] = {
 		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+				STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK2 |
+				STM_PLAT_USB_FLAGS_STBUS_CONFIG_LDST64,
 		.device_config = &(struct stm_device_config){
 			.init = stx7108_usb_init,
 			.power = stx7108_usb_power,
@@ -941,10 +938,33 @@ void __init stx7108_configure_usb(int port)
 	static int osc_initialized;
 	static int configured[ARRAY_SIZE(stx7108_usb_devices)];
 	struct sysconf_field *sc;
+	static void *lmi16reg;
+	static int lmi_is_16;
+
 
 	BUG_ON(port < 0 || port >= ARRAY_SIZE(stx7108_usb_devices));
 
 	BUG_ON(configured[port]++);
+
+	if (!lmi16reg) {
+		/* Look at PPCFG ENABLE bit */
+		lmi16reg = ioremap(0xfde50084, 4);
+		if (lmi16reg) {
+			/* Check lmi0 */
+			lmi_is_16 = readl(lmi16reg) & 0x1;
+			iounmap(lmi16reg);
+			/* And now lmi1 */
+			lmi16reg = ioremap(0xfde70084, 4);
+			if (lmi16reg) {
+				lmi_is_16 |= readl(lmi16reg) & 0x1;
+				iounmap(lmi16reg);
+			}
+		}
+	}
+
+	stx7108_usb_platform_data[port].flags |=
+			lmi_is_16 ? STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD16
+				: STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128;
 
 	if (!osc_initialized++) {
 		/* USB2TRIPPHY_OSCIOK */
@@ -985,6 +1005,7 @@ static void stx7108_pcie_mp_select(int port)
 }
 
 struct stm_plat_pcie_mp_data stx7108_pcie_mp_platform_data = {
+	.style_id = ID_MIPHY365X,
 	.miphy_first = 0,
 	.miphy_count = 2,
 	.miphy_modes = stx7108_miphy_modes,
@@ -1020,6 +1041,7 @@ static struct stm_tap_sysconf tap_sysconf = {
 
 
 static struct stm_plat_tap_data stx7108_tap_platform_data = {
+	.style_id = ID_MIPHY365X,
 	.miphy_first = 0,
 	.miphy_count = 2,
 	.miphy_modes = stx7108_miphy_modes,

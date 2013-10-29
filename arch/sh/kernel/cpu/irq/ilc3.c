@@ -119,7 +119,7 @@ int ilc2irq(unsigned int evtcode)
 	defined(CONFIG_CPU_SUBTYPE_STX7111) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7141)
 	unsigned int priority = 7;
-#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
+#elif	defined(CONFIG_CPU_SUBTYPE_FLI75XX) || \
 	defined(CONFIG_CPU_SUBTYPE_STX5197) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7105) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7200)
@@ -154,7 +154,7 @@ void ilc_irq_demux(unsigned int irq, struct irq_desc *desc)
 	defined(CONFIG_CPU_SUBTYPE_STX7111) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7141)
 	unsigned int priority = 7;
-#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
+#elif	defined(CONFIG_CPU_SUBTYPE_FLI75XX) || \
 	defined(CONFIG_CPU_SUBTYPE_STX5197) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7105) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7200)
@@ -236,7 +236,7 @@ static unsigned int startup_ilc_irq(unsigned int irq)
 	/* ILC_EXT_OUT[6] -> IRL[2] (default priority  7 = irq  8) */
 	/* ILC_EXT_OUT[7] -> IRL[3] (default priority  4 = irq 11) */
 	ILC_SET_PRI(ilc->base, input, 0x8007);
-#elif	defined(CONFIG_CPU_SUBTYPE_FLI7510) || \
+#elif	defined(CONFIG_CPU_SUBTYPE_FLI75XX) || \
 	defined(CONFIG_CPU_SUBTYPE_STX5197) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7105) || \
 	defined(CONFIG_CPU_SUBTYPE_STX7200)
@@ -559,7 +559,26 @@ subsys_initcall(ilc_debugfs_init);
 
 #endif /* CONFIG_DEBUG_FS */
 
+#ifdef CONFIG_KEXEC
+void ilc_disable_all(void)
+{
+	unsigned int input;
+	struct ilc *ilc;
 
+	/* Don't care to synch irq status with ILC, as current kernel
+	 * is going to die. Switching-off only the hardware. */
+
+	list_for_each_entry(ilc, &ilcs_list, list) {
+		for (input = 0; input < ilc->inputs_num; ++input) {
+			if (ILC_GET_ENABLE(ilc->base, input) != 0) {
+				DPRINTK("%s: disabling irq %d\n", __func__,
+					input + ilc->first_irq);
+				ILC_CLR_ENABLE(ilc->base, input);
+			}
+		}
+	}
+}
+#endif
 
 #ifdef CONFIG_HIBERNATION
 static int ilc_resume_from_hibernation(struct ilc *ilc)
@@ -598,6 +617,16 @@ static int ilc_restore(void)
 #define ilc_restore		NULL
 #endif
 
+static int ilc_suspend(void)
+{
+	struct irq_desc *desc;
+	int irq;
+	for_each_irq_desc(irq, desc)
+		if (desc->status & IRQ_WAKEUP && desc->chip == &ilc_chip)
+			unmask_ilc_irq(irq);
+	return 0;
+}
+
 static struct stm_system stm_ilc_system = {
 	.name = "ilc3",
 	.priority = 0x1000, /* higher enough to be restored after:
@@ -605,6 +634,7 @@ static struct stm_system stm_ilc_system = {
 			     * - sysconf
 			     * - gpio
 			     */
+	.suspend = ilc_suspend,
 	.restore = ilc_restore,
 };
 

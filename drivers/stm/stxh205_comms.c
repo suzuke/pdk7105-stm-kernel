@@ -475,9 +475,12 @@ int __init stxh205_configure_ssc_i2c(int ssc, struct stxh205_ssc_config *config)
 			(char*[]) {"SCL", "SDA"});
 	} else {
 		pad_config = &stxh205_ssc_i2c_pad_configs[ssc];
+		clk_add_alias_platform_device(NULL, &stxh205_ssc_devices[ssc],
+					"sbc_comms_clk", NULL);
 	}
 
 	plat_data->pad_config = pad_config;
+	plat_data->i2c_fastmode = config->i2c_fastmode;
 
 	/* I2C bus number reservation (to prevent any hot-plug device
 	 * from using it) */
@@ -518,6 +521,8 @@ int __init stxh205_configure_ssc_spi(int ssc, struct stxh205_ssc_config *config)
 			(char*[]) { "SDA", "MTSR", "MRST"});
 	} else {
 		pad_config = &stxh205_ssc_spi_pad_configs[ssc];
+		clk_add_alias_platform_device(NULL, &stxh205_ssc_devices[ssc],
+					"sbc_comms_clk", NULL);
 	}
 
 	plat_data->spi_chipselect = config->spi_chipselect;

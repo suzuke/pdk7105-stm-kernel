@@ -125,6 +125,7 @@ static struct fdma_llu_node *fdma_extrapolate_sg_src(
 	int i;
 	struct scatterlist *sg = params->srcsg;
 	struct fdma_llu_node *last_llu_node = llu_node;
+	int offset = 0;
 
 	for (i = 0; i < params->sglen; i++) {
 		struct fdma_llu_entry *dest_llu = llu_node->virt_addr;
@@ -132,13 +133,16 @@ static struct fdma_llu_node *fdma_extrapolate_sg_src(
 		dest_llu->control = desc->template_llu.control;
 		dest_llu->size_bytes = sg_dma_len(sg);
 		dest_llu->saddr	= sg_dma_address(sg);
-		dest_llu->daddr	= params->dar;
+		dest_llu->daddr	= params->dar + offset;
 		if (desc->extrapolate_line_len)
 			dest_llu->line_len = sg_dma_len(sg);
 		else
 			dest_llu->line_len = desc->template_llu.line_len;
 		dest_llu->sstride = desc->template_llu.sstride;
 		dest_llu->dstride = 0;
+
+		if (DIM_DST(params->dim) != 0)
+			offset += sg_dma_len(sg);
 
 		last_llu_node = llu_node++;
 		dest_llu->next_item = llu_node->dma_addr;
@@ -156,13 +160,14 @@ static struct fdma_llu_node *fdma_extrapolate_sg_dst(
 	int i;
 	struct scatterlist *sg = params->dstsg;
 	struct fdma_llu_node *last_llu_node = llu_node;
+	int offset = 0;
 
 	for (i = 0; i < params->sglen; i++) {
 		struct fdma_llu_entry *dest_llu = llu_node->virt_addr;
 
 		dest_llu->control = desc->template_llu.control;
 		dest_llu->size_bytes = sg_dma_len(sg);
-		dest_llu->saddr	 = params->sar;
+		dest_llu->saddr	 = params->sar + offset;
 		dest_llu->daddr	 = sg_dma_address(sg);
 		if (desc->extrapolate_line_len)
 			dest_llu->line_len = sg_dma_len(sg);
@@ -170,6 +175,9 @@ static struct fdma_llu_node *fdma_extrapolate_sg_dst(
 			dest_llu->line_len = desc->template_llu.line_len;
 		dest_llu->sstride = 0;
 		dest_llu->dstride = desc->template_llu.dstride;
+
+		if (DIM_SRC(params->dim) != 0)
+			offset += sg_dma_len(sg);
 
 		last_llu_node = llu_node++;
 		dest_llu->next_item = llu_node->dma_addr;
@@ -245,7 +253,7 @@ static void fdma_start_channel(struct fdma_channel *channel,
 
 	/* See comment in fdma_get_residue() for why we do this. */
 	writel(initial_count, fdma->io_base + (channel->chan_num *
-			NODE_DATA_OFFSET) + fdma->regs.cntn);
+			fdma->regs.node_size) + fdma->regs.cntn);
 
 	writel(cmd_sta_value, CMD_STAT_REG(channel->chan_num));
 	writel(MBOX_CMD_START_CHANNEL << (channel->chan_num * 2),
@@ -490,6 +498,15 @@ static void fdma_reset_channels(struct fdma *fdma)
 
 	for (chan_num = fdma->ch_min; chan_num <= fdma->ch_max; chan_num++)
 		writel(0, CMD_STAT_REG(chan_num));
+}
+
+static void fdma_reset_all(struct fdma *fdma)
+{
+	fdma_disable_all_channels(fdma);
+	fdma_reset_channels(fdma);
+	/* reset the CPU program counter and all the
+	 * instruction pipeline registers */
+	writel(5, fdma->io_base + fdma->regs.clk_gate);
 }
 
 static struct stm_dma_req *fdma_configure_pace_channel(
@@ -763,7 +780,7 @@ static int fdma_get_residue(struct dma_channel *dma_chan)
 		struct fdma_xfer_descriptor *desc =
 			(struct fdma_xfer_descriptor *)params->priv;
 		void __iomem *chan_base = fdma->io_base +
-				(channel->chan_num * NODE_DATA_OFFSET);
+				(channel->chan_num * fdma->regs.node_size);
 		unsigned long current_node_phys;
 		unsigned long stat1, stat2;
 		struct fdma_llu_node *current_node;
@@ -1305,11 +1322,11 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	fdma->phys_mem = request_mem_region(res->start,
-			res->end - res->start + 1, pdev->name);
+				resource_size(res), pdev->name);
 	if (fdma->phys_mem == NULL)
 		return -EBUSY;
 
-	fdma->io_base = ioremap_nocache(res->start, res->end - res->start + 1);
+	fdma->io_base = ioremap_nocache(res->start, resource_size(res));
 	if (fdma->io_base == NULL)
 		return -EINVAL;
 
@@ -1334,6 +1351,7 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 	fdma->regs.cntn = fdma->fw->cntn;
 	fdma->regs.saddrn = fdma->fw->saddrn;
 	fdma->regs.daddrn = fdma->fw->daddrn;
+	fdma->regs.node_size = fdma->fw->node_size ? : LEGACY_NODE_DATA_SIZE;
 	fdma->regs.sync_reg = fdma->hw->periph_regs.sync_reg;
 	fdma->regs.cmd_sta = fdma->hw->periph_regs.cmd_sta;
 	fdma->regs.cmd_set = fdma->hw->periph_regs.cmd_set;
@@ -1386,8 +1404,7 @@ static int __init fdma_driver_probe(struct platform_device *pdev)
 		panic("Cant Register irq %d for FDMA engine err %d\n",
 				fdma->irq, err);
 
-	fdma_disable_all_channels(fdma);
-	fdma_reset_channels(fdma);
+	fdma_reset_all(fdma);
 	fdma_register_caps(fdma);
 
 	fdma_check_firmware_state(fdma);
@@ -1401,7 +1418,7 @@ static int fdma_driver_remove(struct platform_device *pdev)
 {
 	struct fdma *fdma = platform_get_drvdata(pdev);
 
-	fdma_disable_all_channels(fdma);
+	fdma_reset_all(fdma);
 	stm_fdma_clk_disable(fdma);
 	iounmap(fdma->io_base);
 	dma_pool_destroy(fdma->llu_pool);

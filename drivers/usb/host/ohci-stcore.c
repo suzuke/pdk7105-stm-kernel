@@ -56,7 +56,7 @@ static int stm_ohci_bus_suspend(struct usb_hcd *hcd)
 
 static const struct hc_driver ohci_st40_hc_driver = {
 	.description =		hcd_name,
-	.product_desc =		"stm-ohci",
+	.product_desc =		"STMicroelectronics OHCI Host Controller",
 	.hcd_priv_size =	sizeof(struct ohci_hcd),
 
 	/* generic hardware linkage */
@@ -165,6 +165,7 @@ static struct platform_driver ohci_hcd_stm_driver = {
 	.shutdown = usb_hcd_platform_shutdown,
 	.driver = {
 		.name = "stm-ohci",
+		.owner = THIS_MODULE,
 	},
 };
 

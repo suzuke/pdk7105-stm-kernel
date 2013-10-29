@@ -177,7 +177,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 	{
 		/* SBC system configuration bank 0 registers */
 		/* SYSCFG_BANK0 (aka SYSCFG_SBC, Sapphire): 0-42 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 0,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -196,7 +196,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* SYSCFG_BANK1 (aka Coral): 100-176 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 1,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -215,7 +215,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* SYSCFG_BANK2 (aka Perl): 200-243 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 2,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -234,7 +234,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* SYSCFG_BANK3 (aka Opal): 400-510 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 3,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -253,7 +253,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* LPM Configuration registers */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 4,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -332,7 +332,7 @@ static struct platform_device stxh205_emi = {
 	.num_resources = 3,
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM_NAMED("emi memory", 0, 256 * 1024 * 1024),
-		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfe90000, 0x874),
+		STM_PLAT_RESOURCE_MEM_NAMED("emi4 config", 0xfe900000, 0x874),
 		STM_PLAT_RESOURCE_MEM_NAMED("emiss config", 0xfdaa9000 , 0x80),
 	},
 	.dev.platform_data = &(struct stm_device_config){
@@ -348,6 +348,27 @@ static struct platform_device stxh205_emi = {
 /*
  * Temperature sensor
  */
+static int stxh205_temp_init(struct stm_device_state *device_state)
+{
+	struct clk *clk = clk_get(NULL, "CLK_A0_THNS");
+	struct clk *osc;
+
+	if (!IS_ERR(clk))
+		return -ENODEV;
+
+	osc = clk_get(NULL, "CLK_A0_REF");
+	if (!IS_ERR(osc)) {
+		clk_put(clk);
+		return -ENODEV;
+	}
+
+	clk_enable(clk);
+	clk_set_parent(clk, osc);
+	clk_set_rate(clk, clk_get_rate(osc) / 30);
+
+	return 0;
+}
+
 static void stxh205_temp_power(struct stm_device_state *device_state,
 		enum stm_device_power_state power)
 {
@@ -360,11 +381,13 @@ static struct platform_device sth205_temp = {
 	.name	= "stm-temp",
 	.id	= 0,
 	.dev.platform_data = &(struct plat_stm_temp_data) {
+		.correction_factor = -103,
 		.dcorrect = { SYSCONF(140), 4, 8 },
 		.overflow = { SYSCONF(148), 9, 9 },
 		.data = { SYSCONF(148), 11, 18 },
 		.device_config = &(struct stm_device_config) {
 			.sysconfs_num = 1,
+			.init = stxh205_temp_init,
 			.power = stxh205_temp_power,
 			.sysconfs = (struct stm_device_sysconf []){
 				STM_DEVICE_SYSCONF(SYSCONF(140),
@@ -375,7 +398,101 @@ static struct platform_device sth205_temp = {
 };
 
 /* MMC/SD */
+#define STXH205_PIO_MMC_CLK_OUT(_port, _pin, funct) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = funct, \
+		.name = "MMCCLK", \
+		.priv = &(struct stxh205_pio_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 0, \
+				.od = 0, \
+			}, \
+		}, \
+	}
+#define STXH205_PIO_MMC_OUT_NAME(_port, _pin, funct, _name)	\
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = funct, \
+		.name = _name, \
+		.priv = &(struct stxh205_pio_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 0, \
+				.od = 0, \
+			}, \
+		}, \
+	}
+#define STXH205_PIO_MMC_OUT(_port, _pin, funct) \
+	STXH205_PIO_MMC_OUT_NAME(_port, _pin, funct, NULL)
+#define STXH205_PIO_MMC_BIDIR(_port, _pin, funct) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_custom, \
+		.function = funct, \
+		.priv = &(struct stxh205_pio_config) {	\
+			.mode = &(struct stm_pio_control_mode_config) { \
+				.oe = 1, \
+				.pu = 1, \
+				.od = 0, \
+			}, \
+			.retime = &(struct stm_pio_control_retime_config) { \
+				.retime = 0, \
+				.clk1notclk0 = 0, \
+				.clknotdata = 0, \
+				.double_edge = 0, \
+				.invertclk = 0, \
+				.delay_input = 3, \
+			}, \
+		}, \
+	}
+#define STXH205_PIO_MMC_IN(_port, _pin, funct) \
+	{ \
+		.gpio = stm_gpio(_port, _pin), \
+		.direction = stm_pad_gpio_direction_in, \
+		.function = funct, \
+	}
+
+static struct stm_pad_config stxh205_mmc_pad_config  = {
+	.gpios_num = 15,
+	.gpios = (struct stm_pad_gpio []) {
+		STXH205_PIO_MMC_BIDIR(13, 0, 1),	/* MMC Data[0]*/
+		STXH205_PIO_MMC_BIDIR(13, 1, 1),	/* MMC Data[1]*/
+		STXH205_PIO_MMC_BIDIR(13, 2, 1),	/* MMC Data[2]*/
+		STXH205_PIO_MMC_BIDIR(13, 3, 1),	/* MMC Data[3]*/
+		STXH205_PIO_MMC_BIDIR(13, 4, 1),	/* MMC Data[4]*/
+		STXH205_PIO_MMC_BIDIR(13, 5, 1),	/* MMC Data[5]*/
+		STXH205_PIO_MMC_BIDIR(13, 6, 1),	/* MMC Data[6]*/
+		STXH205_PIO_MMC_BIDIR(13, 7, 1),	/* MMC Data[7]*/
+		STXH205_PIO_MMC_OUT(14, 0, 1),		/* MMC LED on */
+		STXH205_PIO_MMC_CLK_OUT(14, 1, 1),	/* MMC clk */
+		STXH205_PIO_MMC_BIDIR(14, 2, 1),	/* MMC command */
+		STXH205_PIO_MMC_IN(14, 3, 1),	/* MMC Write Protection */
+		STXH205_PIO_MMC_OUT_NAME(14, 4, 1, "BDE"),	/* MMC boot data error */
+		STXH205_PIO_MMC_OUT(14, 5, 1),	/* MMC Card PWR */
+		STXH205_PIO_MMC_IN(14, 6, 1),	/* MMC Card Detect */
+	},
+	.sysconfs_num = 1,
+	.sysconfs = (struct stm_pad_sysconf []) {
+		/* Disable boot from eMMC to allow access to ARASAN HC */
+		STM_PAD_SYSCONF(SYSCONF(242), 0, 4, 1),
+	},
+};
+
+static int mmc_pad_resources(struct sdhci_host *sdhci)
+{
+	if (!devm_stm_pad_claim(sdhci->mmc->parent, &stxh205_mmc_pad_config,
+				dev_name(sdhci->mmc->parent)))
+		return -ENODEV;
+
+	return 0;
+}
+
 static struct sdhci_pltfm_data stxh205_mmc_platform_data = {
+		.init = mmc_pad_resources,
 		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC |
 			  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
 			  SDHCI_QUIRK_FORCE_MAX_VDD,
@@ -395,19 +512,16 @@ static struct platform_device stxh205_mmc_device = {
 		}
 };
 
-void __init stxh205_configure_mmc(int emmc)
+void __init stxh205_configure_mmc(struct stxh205_mmc_config *config)
 {
 	struct sdhci_pltfm_data *plat_data;
-	struct sysconf_field *sc;
 
 	plat_data = &stxh205_mmc_platform_data;
 
-	if (unlikely(emmc))
+	if (unlikely(config->emmc))
 		plat_data->quirks |= SDHCI_QUIRK_NONREMOVABLE_CARD;
-
-	/* Disable boot from eMMC to allow access to ARASAN HC */
-	sc = sysconf_claim(SYSCONF(242), 0, 0, "mmc");
-	sysconf_write(sc, 0);
+	if (unlikely(config->no_mmc_boot_data_error))
+		stm_pad_set_pio_ignored(&stxh205_mmc_pad_config, "BDE");
 
 	platform_device_register(&stxh205_mmc_device);
 }
@@ -447,17 +561,23 @@ static struct platform_device stxh205_spifsm_device = {
 
 void __init stxh205_configure_spifsm(struct stm_plat_spifsm_data *data)
 {
+	struct sysconf_field *sc;
+
 	stxh205_spifsm_device.dev.platform_data = data;
 
 	data->pads = &stxh205_spifsm_pad_config;
 
+	sc = sysconf_claim(SYSCONF(40), 2, 6, "mode-pins");
+
 	/* SoC/IP Capabilities */
 	data->capabilities.no_read_repeat = 1;
 	data->capabilities.no_write_repeat = 1;
-	data->capabilities.no_sw_reset = 1;
+	data->capabilities.no_sw_reset = 0;
 	data->capabilities.read_status_bug = spifsm_read_status_clkdiv4;
-	data->capabilities.no_poll_mode_change = 1;
+	data->capabilities.no_poll_mode_change = 0;
+	data->capabilities.boot_from_spi = (sysconf_read(sc) == 0x1a) ? 1 : 0;
 
+	sysconf_release(sc);
 	platform_device_register(&stxh205_spifsm_device);
 }
 
@@ -501,6 +621,8 @@ void __init stxh205_configure_nand(struct stm_nand_config *config)
 		emiss_nandi_select(STM_NANDI_BCH);
 		stxh205_nand_bch_data.bank = config->banks;
 		stxh205_nand_bch_data.bch_ecc_cfg = config->bch_ecc_cfg;
+		stxh205_nand_bch_data.bch_bitflip_threshold =
+			config->bch_bitflip_threshold;
 		stxh205_nandi_device.dev.platform_data =
 			&stxh205_nand_bch_data;
 		stxh205_nandi_device.name = "stm-nand-bch";
@@ -511,6 +633,106 @@ void __init stxh205_configure_nand(struct stm_nand_config *config)
 		return;
 	}
 }
+
+
+/* FDMA resources --------------------------------------------------------- */
+
+static struct stm_plat_fdma_fw_regs stxh205_fdma_fw = {
+	.rev_id    = 0x10000,
+	.cmd_statn = 0x10200,
+	.req_ctln  = 0x10240,
+	.ptrn      = 0x10800,
+	.cntn      = 0x10808,
+	.saddrn    = 0x1080c,
+	.daddrn    = 0x10810,
+	.node_size = 128,
+};
+
+static struct stm_plat_fdma_hw stxh205_fdma_hw = {
+	.slim_regs = {
+		.id       = 0x0000 + (0x000 << 2), /* 0x0000 */
+		.ver      = 0x0000 + (0x001 << 2), /* 0x0004 */
+		.en       = 0x0000 + (0x002 << 2), /* 0x0008 */
+		.clk_gate = 0x0000 + (0x003 << 2), /* 0x000c */
+	},
+	.dmem = {
+		.offset = 0x10000,
+		.size   = 0xc00 << 2, /* 3072 * 4 = 12K */
+	},
+	.periph_regs = {
+		.sync_reg = 0x17f88,
+		.cmd_sta  = 0x17fc0,
+		.cmd_set  = 0x17fc4,
+		.cmd_clr  = 0x17fc8,
+		.cmd_mask = 0x17fcc,
+		.int_sta  = 0x17fd0,
+		.int_set  = 0x17fd4,
+		.int_clr  = 0x17fd8,
+		.int_mask = 0x17fdc,
+	},
+	.imem = {
+		.offset = 0x18000,
+		.size   = 0x2000 << 2, /* 8192 * 4 = 32K (24K populated) */
+	},
+};
+
+static struct stm_plat_fdma_data stxh205_fdma_platform_data = {
+	.hw = &stxh205_fdma_hw,
+	.fw = &stxh205_fdma_fw,
+};
+
+static struct platform_device stxh205_fdma_devices[] = {
+	{
+		.name = "stm-fdma",
+		.id = 0,
+		.num_resources = 2,
+		.resource = (struct resource[]) {
+			STM_PLAT_RESOURCE_MEM(0xfda00000, 0x20000),
+			STM_PLAT_RESOURCE_IRQ(ILC_IRQ(27), -1),
+		},
+		.dev.platform_data = &stxh205_fdma_platform_data,
+	}, {
+		.name = "stm-fdma",
+		.id = 1,
+		.num_resources = 2,
+		.resource = (struct resource[2]) {
+			STM_PLAT_RESOURCE_MEM(0xfd9e0000, 0x20000),
+			STM_PLAT_RESOURCE_IRQ(ILC_IRQ(29), -1),
+		},
+		.dev.platform_data = &stxh205_fdma_platform_data,
+	}
+};
+
+static struct platform_device stxh205_fdma_xbar_device = {
+	.name = "stm-fdma-xbar",
+	.id = -1,
+	.num_resources = 1,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM(0xfdabb000, 0x1000),
+	},
+};
+
+
+/* Hardware RNG resources ------------------------------------------------- */
+
+static struct platform_device stxh205_devhwrandom_device = {
+	.name		= "stm-hwrandom",
+	.id		= -1,
+	.num_resources	= 1,
+	.resource	= (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfdabd000, 0x1000),
+	}
+};
+
+static struct platform_device stxh205_devrandom_device = {
+	.name		= "stm-rng",
+	.id		= 0,
+	.num_resources	= 1,
+	.resource	= (struct resource []) {
+		STM_PLAT_RESOURCE_MEM(0xfdabd000, 0x1000),
+	}
+};
+
 
 /* Pre-arch initialisation ------------------------------------------------ */
 
@@ -536,6 +758,11 @@ static struct platform_device *stxh205_devices[] __initdata = {
 	&stxh205_sysconf_devices[3],
 	&stxh205_sysconf_devices[4],
 	&sth205_temp,
+	&stxh205_fdma_devices[0],
+	&stxh205_fdma_devices[1],
+	&stxh205_fdma_xbar_device,
+	&stxh205_devhwrandom_device,
+	&stxh205_devrandom_device,
 };
 
 static int __init stxh205_devices_setup(void)

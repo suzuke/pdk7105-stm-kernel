@@ -191,6 +191,8 @@ typedef enum {
 #define NAND_MULTIPLANE_PROG_ERASE	0x00004000
 /* Deivce supports multi-LUN operations */
 #define NAND_MULTILUN		0x00008000
+/* Micron '4-bit On-die ECC' device */
+#define NAND_MICRON_4BITONDIEECC	0x00080000
 
 
 /* Options valid for Samsung large page devices */
@@ -207,7 +209,8 @@ typedef enum {
 					&& (chip->page_shift > 9))
 
 /* Mask to zero out the chip options, which come from the id table */
-#define NAND_CHIPOPTIONS_MSK	(0x0000ffff & ~NAND_NO_AUTOINCR)
+#define NAND_CHIPOPTIONS_MSK	(0x0000ffff & ~NAND_NO_AUTOINCR & \
+				 NAND_MICRON_4BITONDIEECC)
 
 /* Non chip related options */
 /* Use a flash based bad block table. This option is passed to the
@@ -319,6 +322,40 @@ struct nand_onfi_params {
 } __attribute__((packed));
 
 #define ONFI_CRC_BASE	0x4F4E
+
+/*
+ * NAND Device Timing Specification
+ *
+ * All values in nano seconds, except where specified.
+ */
+struct nand_timing_spec {
+	int	tR;		/* Max Page Read delay [us]*/
+	int	tCLS;		/* Min CLE setup time */
+	int	tCS;		/* Min CE setup time */
+	int	tALS;		/* Min ALE setup time */
+	int	tDS;		/* Min Data setup time */
+	int	tWP;		/* Min WE pulse width */
+	int	tCLH;		/* Min CLE hold time */
+	int	tCH;		/* Min CE hold time */
+	int	tALH;		/* Min ALE hold time */
+	int	tDH;		/* Min Data hold time */
+	int	tWB;		/* Max WE high to busy */
+	int	tWH;		/* Min WE hold time */
+	int	tWC;		/* Min Write cycle time */
+	int	tRP;		/* Min RE pulse width */
+	int	tREH;		/* Min RE high hold time */
+	int	tRC;		/* Min Read cycle time */
+	int	tREA;		/* Max Read access time */
+	int	tRHOH;		/* Min RE high to output hold */
+	int	tCEA;		/* Max CE access time */
+	int	tCOH;		/* Min CE high to output hold */
+	int	tCHZ;		/* Max CE high to output high Z */
+	int	tCSD;		/* Min CE high to ALE/CLE don't care */
+};
+
+/* ONFI define 6 timing modes */
+#define NAND_ONFI_TIMING_MODES		6
+extern struct nand_timing_spec nand_onfi_timing_specs[];
 
 /**
  * struct nand_hw_control - Control structure for hardware controller (e.g ECC generator) shared among independent devices
@@ -678,6 +715,13 @@ extern void nand_release_device(struct mtd_info *mtd);
 extern int nand_suspend(struct mtd_info *mtd);
 extern void nand_resume(struct mtd_info *mtd);
 extern void nand_sync(struct mtd_info *mtd);
+extern uint8_t *nand_transfer_oob(struct nand_chip *chip, uint8_t *oob,
+				  struct mtd_oob_ops *ops, size_t len);
+extern int nand_check_wp(struct mtd_info *mtd);
+extern uint8_t *nand_fill_oob(struct nand_chip *chip, uint8_t *oob,
+			      struct mtd_oob_ops *ops);
+extern int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
+			     struct mtd_oob_ops *ops);
 extern u8 nand_erasebb;
 
 /*

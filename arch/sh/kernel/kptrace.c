@@ -97,8 +97,11 @@ static int suspended;
 static size_t dropped;
 static size_t subbuf_size = 262144;
 static size_t n_subbufs = 4;
+static size_t overwrite_subbufs;
 #define KPTRACE_MAXSUBBUFSIZE 16777216
 #define KPTRACE_MAXSUBBUFS 256
+#define MAX_BUFFER_FULL_WARNINGS 10
+static int buffer_full_warning_ratelimit = MAX_BUFFER_FULL_WARNINGS;
 
 /* channel-management control files */
 static struct dentry *enabled_control;
@@ -106,19 +109,21 @@ static struct dentry *create_control;
 static struct dentry *subbuf_size_control;
 static struct dentry *n_subbufs_control;
 static struct dentry *dropped_control;
+static struct dentry *overwrite_control;
 
 /* produced/consumed control files */
 static struct dentry *produced_control;
 static struct dentry *consumed_control;
 
 /* control file fileop declarations */
-static struct file_operations enabled_fops;
-static struct file_operations create_fops;
-static struct file_operations subbuf_size_fops;
-static struct file_operations n_subbufs_fops;
-static struct file_operations dropped_fops;
-static struct file_operations produced_fops;
-static struct file_operations consumed_fops;
+static const struct file_operations enabled_fops;
+static const struct file_operations create_fops;
+static const struct file_operations subbuf_size_fops;
+static const struct file_operations n_subbufs_fops;
+static const struct file_operations dropped_fops;
+static const struct file_operations overwrite_fops;
+static const struct file_operations produced_fops;
+static const struct file_operations consumed_fops;
 
 /* forward declarations */
 static int create_controls(void);
@@ -774,6 +779,8 @@ static void start_tracing(void)
 		}
 	}
 
+	buffer_full_warning_ratelimit = MAX_BUFFER_FULL_WARNINGS;
+
 	logging = 1;
 }
 
@@ -1041,13 +1048,8 @@ static int exit_thread_pre_handler(struct kprobe *p, struct pt_regs *regs)
 static int daemonize_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
 	char tbuf[KPTRACE_SMALL_BUF];
-	char name[KPTRACE_SMALL_BUF];
 
-	if (strncpy_from_user(name, (char *)regs->regs[4],
-			      KPTRACE_SMALL_BUF) < 0)
-		snprintf(name, KPTRACE_SMALL_BUF, "<copy_from_user failed>");
-
-	snprintf(tbuf, KPTRACE_SMALL_BUF, "KD %s\n", name);
+	snprintf(tbuf, KPTRACE_SMALL_BUF, "KD %s\n", (char*)regs->regs[4]);
 	write_trace_record(p, regs, tbuf);
 	return 0;
 }
@@ -1065,14 +1067,10 @@ static int kthread_create_rp_handler(struct kretprobe_instance *ri,
 				     struct pt_regs *regs)
 {
 	char tbuf[KPTRACE_SMALL_BUF];
-	char name[KPTRACE_SMALL_BUF];
 	struct task_struct *new_task = (struct task_struct *)regs->regs[0];
 
-	if (strncpy_from_user(name, (char *)new_task->comm,
-			      KPTRACE_SMALL_BUF) < 0)
-		snprintf(name, KPTRACE_SMALL_BUF, "<copy_from_user failed>");
-
-	snprintf(tbuf, KPTRACE_SMALL_BUF, "Kc %d %s\n", new_task->pid, name);
+	snprintf(tbuf, KPTRACE_SMALL_BUF, "Kc %d %s\n", new_task->pid,
+			new_task->comm);
 	write_trace_record_no_callstack(tbuf);
 	return 0;
 }
@@ -2296,6 +2294,16 @@ cleanup_control_files:
 
 /*
  * subbuf_start() relay callback.
+ *
+ * If all the sub-buffers are full, we don't overwrite them - no
+ * more trace is recorded until userspace has consumed some of the
+ * existing sub-buffers. The exception is in flight-recorder mode, where
+ * the whole point is that nothing is consumed until the end.
+ *
+ * We printk a warning if the buffer is full, as trace data is being lost
+ * (and a larger buffer would prevent it). Those messages can be frequent if
+ * the buffer fills, so we limit the number of warnings emitted per trace
+ * session.
  */
 static int subbuf_start_handler(struct rchan_buf *buf,
 				void *subbuf,
@@ -2303,6 +2311,18 @@ static int subbuf_start_handler(struct rchan_buf *buf,
 {
 	if (prev_subbuf)
 		*((unsigned *)prev_subbuf) = prev_padding;
+
+	if (!overwrite_subbufs && relay_buf_full(buf)) {
+		if (buffer_full_warning_ratelimit) {
+			printk(KERN_WARNING "kptrace: trace buffer full. "
+				"Consider increasing the buffer size.\n");
+			buffer_full_warning_ratelimit--;
+			if (!buffer_full_warning_ratelimit)
+				printk(KERN_WARNING "kptrace: disabling "
+						"buffer full warnings.\n");
+		}
+		return 0;
+	}
 
 	subbuf_start_reserve(buf, sizeof(unsigned int));
 
@@ -2412,6 +2432,9 @@ static void remove_controls(void)
 
 	if (dropped_control)
 		debugfs_remove(dropped_control);
+
+	if (overwrite_control)
+		debugfs_remove(overwrite_control);
 }
 
 /**
@@ -2454,6 +2477,14 @@ static int create_controls(void)
 					      NULL, &dropped_fops);
 	if (!dropped_control) {
 		printk("Couldn't create relay control file 'dropped'.\n");
+		goto fail;
+	}
+
+	overwrite_control = debugfs_create_file("overwrite", 0, dir,
+					      NULL, &overwrite_fops);
+	if (!overwrite_control) {
+		printk(KERN_WARNING "Couldn't create relay control "
+					"file 'overwrite'.\n");
 		goto fail;
 	}
 
@@ -2515,7 +2546,7 @@ static ssize_t enabled_write(struct file *filp, const char __user * buffer,
  *
  *  toggles logging to the relay channel
  */
-static struct file_operations enabled_fops = {
+static const struct file_operations enabled_fops = {
 	.owner = THIS_MODULE,
 	.read = enabled_read,
 	.write = enabled_write,
@@ -2566,7 +2597,7 @@ static ssize_t create_write(struct file *filp, const char __user * buffer,
  *
  *  creates/destroys the relay channel
  */
-static struct file_operations create_fops = {
+static const struct file_operations create_fops = {
 	.owner = THIS_MODULE,
 	.read = create_read,
 	.write = create_write,
@@ -2612,7 +2643,7 @@ static ssize_t subbuf_size_write(struct file *filp, const char __user * buffer,
  *
  *  gets/sets the subbuffer size to use in channel creation
  */
-static struct file_operations subbuf_size_fops = {
+static const struct file_operations subbuf_size_fops = {
 	.owner = THIS_MODULE,
 	.read = subbuf_size_read,
 	.write = subbuf_size_write,
@@ -2658,7 +2689,7 @@ static ssize_t n_subbufs_write(struct file *filp, const char __user * buffer,
  *
  *  gets/sets the number of subbuffers to use in channel creation
  */
-static struct file_operations n_subbufs_fops = {
+static const struct file_operations n_subbufs_fops = {
 	.owner = THIS_MODULE,
 	.read = n_subbufs_read,
 	.write = n_subbufs_write,
@@ -2674,12 +2705,38 @@ static ssize_t dropped_read(struct file *filp, char __user * buffer,
 	return simple_read_from_buffer(buffer, count, ppos, buf, strlen(buf));
 }
 
+static ssize_t overwrite_write(struct file *filp, const char __user *buffer,
+			       size_t count, loff_t *ppos)
+{
+	char buf;
+
+	if (count > 1)
+		return -EINVAL;
+
+	if (copy_from_user(&buf, buffer, count))
+		return -EFAULT;
+
+	if (buf == '0')
+		overwrite_subbufs = 0;
+	else if (buf == '1')
+		overwrite_subbufs = 1;
+	else
+		return -EINVAL;
+
+	return count;
+}
+
+static const struct file_operations overwrite_fops = {
+	.owner = THIS_MODULE,
+	.write = overwrite_write,
+};
+
 /*
  * 'dropped' file operations - r
  *
  *  gets the number of dropped events seen
  */
-static struct file_operations dropped_fops = {
+static const struct file_operations dropped_fops = {
 	.owner = THIS_MODULE,
 	.read = dropped_read,
 };
@@ -2712,7 +2769,7 @@ static ssize_t produced_read(struct file *filp, char __user * buffer,
  *  Reading a .produced file returns the number of sub-buffers so far
  *  produced for the associated relay buffer.
  */
-static struct file_operations produced_fops = {
+static const struct file_operations produced_fops = {
 	.owner = THIS_MODULE,
 	.open = produced_open,
 	.read = produced_read
@@ -2758,7 +2815,7 @@ static ssize_t consumed_write(struct file *filp, const char __user * buffer,
  *  Reading a .consumed file returns the number of sub-buffers so far
  *  consumed for the associated relay buffer.
  */
-static struct file_operations consumed_fops = {
+static const struct file_operations consumed_fops = {
 	.owner = THIS_MODULE,
 	.open = consumed_open,
 	.read = consumed_read,

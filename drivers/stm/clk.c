@@ -187,17 +187,8 @@ void _clk_disable(struct clk *clk)
 {
 	int ret;
 
-	if (clk_is_always_enabled(clk)) {
-		/*
-		 * this clock can not be disabled;
-		 * This means this is:
-		 * - an external oscillator
-		 * - a system critical clock
-		 */
-		if (--clk->usage_counter == 0)
-			clk->usage_counter = 1;
+	if (WARN_ON(clk->usage_counter == 0))
 		return;
-	}
 
 	if (--clk->usage_counter == 0) {
 		ret = __clk_disable(clk);
@@ -317,7 +308,6 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 	unsigned long flags;
 	int ret = -EINVAL;
 	struct clk *old_parent;
-	unsigned long old_rate;
 
 	if (!parent || !clk)
 		return 0;
@@ -327,24 +317,24 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 
 	spin_lock_irqsave(&clock_lock, flags);
 	old_parent = clk_get_parent(clk);
-	old_rate = clk_get_rate(clk);
 
-	if (old_rate)
+	if (clk->usage_counter)
 		/* enable the new parent if required */
 		_clk_enable(parent);
 
 	ret = __clk_set_parent(clk, parent);
 
-	/* update the parent field */
-	clk->parent = (ret ? old_parent : parent);
+	if (!ret) {
+		/* update the parent/child lists */
+		list_del(&clk->children_node);
+		clk->parent = parent;
+		list_add(&clk->children_node, &clk->parent->children);
 
-	if (old_rate)
-		/* notify to the parent the 'disable' clock */
-		_clk_disable(ret ? parent : old_parent);
-
-	/* propagate if required */
-	if (!ret)
 		clk_propagate(clk);
+	}
+	if (clk->usage_counter)
+		/* disable the right parent if required */
+		_clk_disable(ret ? parent : old_parent);
 
 	spin_unlock_irqrestore(&clock_lock, flags);
 
@@ -416,14 +406,10 @@ static void clk_seq_show_clk(struct seq_file *s, struct clk *clk, int depth)
 	unsigned long rate = clk_get_rate(clk);
 	struct clk *child_clk;
 
-	seq_printf(s, "%*s%-*s: %4ld.%02ldMHz",
+	seq_printf(s, "%*s%-*s: %4ld.%02ldMHz users=%ld\n",
 		depth*2, "", 30-(depth*2), clk->name,
-		rate / 1000000, (rate % 1000000) / 10000);
-	if (clk_is_always_enabled(clk))
-		seq_printf(s, " always enabled");
-	else
-		seq_printf(s, " users=%ld", clk->usage_counter);
-	seq_printf(s, "\n");
+		rate / 1000000, (rate % 1000000) / 10000,
+		clk->usage_counter);
 
 	list_for_each_entry(child_clk, &clk->children, children_node)
 		clk_seq_show_clk(s, child_clk, depth+1);

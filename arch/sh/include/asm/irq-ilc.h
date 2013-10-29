@@ -12,7 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/hardirq.h>
 
-#if defined(CONFIG_CPU_SUBTYPE_FLI7510)
+#if defined(CONFIG_CPU_SUBTYPE_FLI75XX)
 #define ILC_FIRST_IRQ	44
 #define ILC_NR_IRQS	136
 #define ILC_IRQ(x)	(ILC_FIRST_IRQ + (x))
@@ -66,5 +66,6 @@
 
 void __init ilc_early_init(struct platform_device* pdev);
 int ilc2irq(unsigned int evtcode);
+void ilc_disable_all(void);
 
 #endif

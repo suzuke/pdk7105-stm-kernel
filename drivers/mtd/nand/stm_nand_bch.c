@@ -20,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/io.h>
 #include <linux/device.h>
+#include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/mtd/mtd.h>
@@ -31,6 +32,7 @@
 #include <linux/utsrelease.h>
 
 #include "stm_nand_regs.h"
+#include "stm_nand_bbt.h"
 
 #define NAME	"stm-nand-bch"
 
@@ -45,6 +47,11 @@
 static int bch_ecc_sizes[] = {
 	[BCH_18BIT_ECC] = 32,
 	[BCH_30BIT_ECC] = 54,
+	[BCH_NO_ECC] = 0,
+};
+static int bch_ecc_strength[] = {
+	[BCH_18BIT_ECC] = 18,
+	[BCH_30BIT_ECC] = 30,
 	[BCH_NO_ECC] = 0,
 };
 
@@ -117,6 +124,13 @@ struct nandi_controller {
 	struct device		*dev;
 
 	int			bch_ecc_mode;	/* ECC mode */
+	int			extra_addr;	/* 'Extra' address cycle */
+
+	/* The threshold at which the number of corrected bit-flips per sector
+	 * is deemed to have reached an excessive level (triggers '-EUCLEAN'
+	 * return code).
+	 */
+	int			bitflip_threshold;
 
 	uint32_t		page_shift;	/* Some working variables */
 	uint32_t		block_shift;
@@ -127,6 +141,9 @@ struct nandi_controller {
 	uint8_t			*page_buf;
 	uint8_t			*oob_buf;
 	uint32_t		*buf_list;
+
+	int			cached_page;	/* page number of page in
+						 *  'page_buf' */
 
 	struct nandi_info	info;		/* NAND device info */
 };
@@ -226,6 +243,29 @@ static void bch_configure_progs(struct nandi_controller *nandi)
 	bch_prog_read_page.gen_cfg |= gen_cfg_ecc;
 	bch_prog_write_page.gen_cfg |= gen_cfg_ecc;
 	bch_prog_erase_block.gen_cfg |= gen_cfg_ecc;
+
+	/* The template sequences above are defined for devices that require an
+	 * "extra" address cycle: that is, 5 address cycles for page Read/Write
+	 * operations, and 3 address cycles for Erase operations.  Here, we
+	 * update the sequences for devices that do not require an extra address
+	 * cycle.
+	 */
+	if (!nandi->extra_addr) {
+		/* Clear 'GEN_CFG_EXTRA_ADD_CYCLE' flag */
+		bch_prog_read_page.gen_cfg &= ~GEN_CFG_EXTRA_ADD_CYCLE;
+		bch_prog_write_page.gen_cfg &= ~GEN_CFG_EXTRA_ADD_CYCLE;
+		bch_prog_erase_block.gen_cfg &= ~GEN_CFG_EXTRA_ADD_CYCLE;
+
+		/* Configure Erase sequence for 2 address cycles (page
+		 * address) */
+		bch_prog_erase_block.seq[0] = BCH_CL_CMD_1;
+		bch_prog_erase_block.seq[1] = BCH_AL_EX_0;
+		bch_prog_erase_block.seq[2] = BCH_AL_EX_1;
+		bch_prog_erase_block.seq[3] = BCH_CL_CMD_2;
+		bch_prog_erase_block.seq[4] = BCH_CL_CMD_3;
+		bch_prog_erase_block.seq[5] = BCH_OP_ERR;
+		bch_prog_erase_block.seq[6] = BCH_STOP;
+	}
 }
 
 /*
@@ -318,20 +358,31 @@ static uint8_t bch_erase_block(struct nandi_controller *nandi,
 	return status;
 }
 
-/* Attempt to establish if a page is empty (likely to have been erased), while
- * tolerating a number of bits stuck at, or drifted to, 0.
+/*
+ * Detect an erased page, tolerating and correcting up to a specified number of
+ * bits at '0'.  (For many devices, it is now deemed within spec for an erased
+ * page to include a number of bits at '0', either as a result of read-disturb
+ * behaviour or 'stuck-at-zero' failures.)  Returns the number of corrected
+ * bits, or a '-1' if we have exceeded the maximum number of bits at '0' (likely
+ * to be a genuine uncorrectable ECC error).  In the latter case, the data must
+ * be returned unmodified, in accordance with the MTD API.
  */
-static int is_page_empty(uint8_t *data, uint32_t page_size, int max_bit_errors)
+static int check_erased_page(uint8_t *data, uint32_t page_size, int max_zeros)
 {
-	int e = 0;
+	uint8_t *b = data;
+	int i;
+	int zeros = 0;
 
-	while (page_size--) {
-		e += hweight8(~*data++);
-		if (e > max_bit_errors)
-			return 0;
+	for (i = 0; i < page_size; i++) {
+		zeros += hweight8(~*b++);
+		if (zeros > max_zeros)
+			return -1;
 	}
 
-	return 1;
+	if (zeros)
+		memset(data, 0xff, page_size);
+
+	return zeros;
 }
 
 /* Returns the number of ECC errors, or '-1' for uncorrectable error */
@@ -386,16 +437,15 @@ static int bch_read_page(struct nandi_controller *nandi,
 	/* Use the maximum per-sector ECC count! */
 	ecc_err = readl(nandi->base + NANDBCH_ECC_SCORE_REG_A) & 0xff;
 	if (ecc_err == 0xff) {
-		/* Do we have a genuine uncorrectable ECC error, or is it just
-		 * an erased page?
+		/* Downgrade uncorrectable ECC error for an erased page,
+		 * tolerating 'sectors_per_page' bits at zero.
 		 */
-		if (is_page_empty(buf, page_size, nandi->sectors_per_page)) {
-			dev_dbg(nandi->dev, "%s: detected uncorrectable error, "
-				"but looks like an erased page\n", __func__);
-			ret = 0;
-		} else {
-			ret = -1;
-		}
+		ret = check_erased_page(buf, page_size,
+					nandi->sectors_per_page);
+		if (ret >= 0)
+			dev_dbg(nandi->dev, "%s: erased page detected: "
+				"downgrading uncorrectable ECC error.\n",
+				__func__);
 	} else {
 		ret = (int)ecc_err;
 	}
@@ -460,8 +510,9 @@ static int bch_read(struct nandi_controller *nandi,
 	struct mtd_ecc_stats stats;
 	loff_t page_mask;
 	loff_t page_offs;
+	int page_num;
 	uint32_t col_offs;
-	int ecc_errs;
+	int ecc_errs, max_ecc_errs = 0;
 	size_t bytes;
 	uint8_t *p;
 
@@ -474,6 +525,7 @@ static int bch_read(struct nandi_controller *nandi,
 	page_mask = (loff_t)page_size - 1;
 	col_offs = (uint32_t)(from & page_mask);
 	page_offs = from & ~page_mask;
+	page_num = (int)(page_offs >> nandi->page_shift);
 
 	if (retlen)
 		*retlen = 0;
@@ -488,27 +540,38 @@ static int bch_read(struct nandi_controller *nandi,
 		else
 			bounce = 0;
 
-		p = bounce ? nandi->page_buf : buf;
-
-		ecc_errs = bch_read_page(nandi, page_offs, p);
-		if (ecc_errs < 0) {
-			/* Might be better to break/return here... but we follow
-			 * approach in nand_base.c:do_nand_read_ops()
-			 */
-			dev_err(nandi->dev, "%s: uncorrectable error at "
-				"0x%012llx\n", __func__, page_offs);
-			nandi->info.mtd.ecc_stats.failed++;
+		if (page_num == nandi->cached_page) {
+			memcpy(buf, nandi->page_buf + col_offs, bytes);
 		} else {
-			if (ecc_errs) {
-				dev_info(nandi->dev, "%s: corrected %u "
-					 "error(s) at 0x%012llx\n",
-					 __func__, ecc_errs, page_offs);
-				nandi->info.mtd.ecc_stats.corrected += ecc_errs;
+			p = bounce ? nandi->page_buf : buf;
+
+			ecc_errs = bch_read_page(nandi, page_offs, p);
+			if (bounce)
+				memcpy(buf, p + col_offs, bytes);
+
+			if (ecc_errs < 0) {
+				dev_err(nandi->dev, "%s: uncorrectable error "
+					"at 0x%012llx\n", __func__, page_offs);
+				nandi->info.mtd.ecc_stats.failed++;
+
+				/* Do not cache uncorrectable pages */
+				if (bounce)
+					nandi->cached_page = -1;
+			} else {
+				if (ecc_errs) {
+					dev_info(nandi->dev, "%s: corrected %u "
+						 "error(s) at 0x%012llx\n",
+						 __func__, ecc_errs, page_offs);
+					nandi->info.mtd.ecc_stats.corrected +=
+						ecc_errs;
+					if (ecc_errs > max_ecc_errs)
+						max_ecc_errs = ecc_errs;
+				}
+
+				if (bounce)
+					nandi->cached_page = page_num;
 			}
 		}
-
-		if (bounce)
-			memcpy(buf, p + col_offs, bytes);
 
 		buf += bytes;
 		len -= bytes;
@@ -518,17 +581,22 @@ static int bch_read(struct nandi_controller *nandi,
 
 		/* We are now page-aligned */
 		page_offs += page_size;
+		page_num++;
 		col_offs = 0;
 	}
 
+	/* Return '-EBADMSG' if we have encountered an uncorrectable error. */
 	if (nandi->info.mtd.ecc_stats.failed - stats.failed)
 		return -EBADMSG;
 
-	if (nandi->info.mtd.ecc_stats.corrected - stats.corrected)
+	/* Return '-EUCLEAN' if we have reached bit-flips threshold. */
+	if ((nandi->bch_ecc_mode != BCH_NO_ECC) &&
+	    (max_ecc_errs >= nandi->bitflip_threshold))
 		return -EUCLEAN;
 
 	return 0;
 }
+
 
 /* Helper function for mtd_write, to handle multi-page and non-aligned writes */
 static int bch_write(struct nandi_controller *nandi,
@@ -536,6 +604,7 @@ static int bch_write(struct nandi_controller *nandi,
 		     size_t *retlen, const uint8_t *buf)
 {
 	uint32_t page_size = nandi->info.mtd.writesize;
+	int page_num;
 	int bounce;
 	const uint8_t *p = NULL;
 
@@ -553,21 +622,28 @@ static int bch_write(struct nandi_controller *nandi,
 	}
 
 	if (retlen)
-		*retlen = 0
-			;
+		*retlen = 0;
+
+	page_num = (int)(to >> nandi->page_shift);
+
 	while (len > 0) {
 
 		if (bounce) {
 			memcpy(nandi->page_buf, buf, page_size);
 			p = nandi->page_buf;
+			nandi->cached_page = -1;
 		} else {
 			p = buf;
 		}
+
+		if (nandi->cached_page == page_num)
+			nandi->cached_page = -1;
 
 		if (bch_write_page(nandi, to, p) & NAND_STATUS_FAIL)
 			return -EIO;
 
 		to += page_size;
+		page_num++;
 		buf += page_size;
 		len -= page_size;
 
@@ -666,7 +742,7 @@ static void flex_command_lp(struct mtd_info *mtd, unsigned int command,
 		flex_addr(nandi, column,
 			  (command == NAND_CMD_READID) ? 1 : 2);
 	if (page != -1)
-		flex_addr(nandi, page, (chip->chipsize > (128 << 20)) ? 3 : 2);
+		flex_addr(nandi, page, nandi->extra_addr ? 3 : 2);
 
 	/* Complete 'READ0' command */
 	if (command == NAND_CMD_READ0)
@@ -856,7 +932,7 @@ static int flex_read_raw(struct nandi_controller *nandi,
 
 	flex_cmd(nandi, NAND_CMD_READ0);
 	flex_addr(nandi, col_addr, 2);
-	flex_addr(nandi, page_addr, 3);
+	flex_addr(nandi, page_addr, nandi->extra_addr ? 3 : 2);
 	flex_cmd(nandi, NAND_CMD_READSTART);
 
 	flex_wait_rbn(nandi);
@@ -893,7 +969,7 @@ static int flex_write_raw(struct nandi_controller *nandi,
 
 	flex_cmd(nandi, NAND_CMD_SEQIN);
 	flex_addr(nandi, col_addr, 2);
-	flex_addr(nandi, page_addr, 3);
+	flex_addr(nandi, page_addr, nandi->extra_addr ? 3 : 2);
 
 	writesl(nandi->base + NANDHAM_FLEX_DATA, buf, len/4);
 
@@ -949,6 +1025,7 @@ static int nandi_scan_bad_block_markers_page(struct nandi_controller *nandi,
 	struct mtd_info *mtd = &nandi->info.mtd;
 	uint8_t *oob_buf = nandi->oob_buf;
 	int i;
+	int e;
 	int ret = 0;
 
 	/* Read the OOB area */
@@ -968,29 +1045,26 @@ static int nandi_scan_bad_block_markers_page(struct nandi_controller *nandi,
 		ret = 1;
 	}
 
-#ifdef NANDI_BBM_TOLERATE_BCH_DATA
-	/* Check for valid BCH ECC data by performing a page read */
+	/* Tolerate 'alien' Hamming Boot Mode ECC */
 	if (ret == 1) {
-		loff_t offs = (loff_t)page << nandi->page_shift;
-		uint8_t *page_buf = nandi->page_buf;
-		if (bch_read_page(nandi, offs, page_buf) >= 0) {
-			/* All 0x00s leads to valid BCH ECC, but likely to be
-			 * bad-block marker */
+		e = 0;
+		for (i = 0; i < mtd->oobsize; i += 16)
+			e += hweight8(oob_buf[i + 3] ^ 'B');
+		if (e <= 1)
 			ret = 0;
-			for (i = 0; i < mtd->writesize; i++) {
-				if (page_buf[i] != 0x00) {
-					ret = 1;
-					break;
-				}
-			}
-
-			/* No uncorrectable errors, assume valid BCH ECC data */
-			if (ret == 0)
-				dev_info(nandi->dev, "BBM @ 0x%012llx: valid "
-					 "BCH ECC data, treat as good\n", offs);
-		}
 	}
-#endif
+
+	/* Tolerate 'alien' Hamming AFM ECC */
+	if (ret == 1) {
+		e = 0;
+		for (i = 0; i < mtd->oobsize; i += 16) {
+			e += hweight8(oob_buf[i + 3] ^ 'A');
+			e += hweight8(oob_buf[i + 4] ^ 'F');
+			e += hweight8(oob_buf[i + 5] ^ 'M');
+		}
+		if (e <= 1)
+			ret = 0;
+	}
 
 	return ret;
 }
@@ -1072,6 +1146,8 @@ static int bch_write_bbt_data(struct nandi_controller *nandi,
 	struct nand_ibbt_bch_header *ibbt_header =
 		(struct nand_ibbt_bch_header *)nandi->page_buf;
 	loff_t offs;
+
+	nandi->cached_page = -1;
 
 	/* Write BBT contents to first page of block*/
 	offs = (loff_t)block << nandi->block_shift;
@@ -1231,6 +1307,8 @@ static int bch_find_ibbt_sig(struct nandi_controller *nandi,
 	int match_sig;
 	unsigned int b;
 	unsigned int i;
+
+	nandi->cached_page = -1;
 
 	/* Load last page of block */
 	offs = 	(loff_t)block << nandi->block_shift;
@@ -1444,23 +1522,33 @@ static int flex_do_read_ops(struct nandi_controller *nandi,
 	struct mtd_info *mtd = &nandi->info.mtd;
 	uint32_t page_addr = from >> nandi->page_shift;
 	int pages;
-	uint32_t oob_bytes_per_sector = mtd->oobsize / nandi->sectors_per_page;
-	uint32_t oob_pad_per_page = mtd->oobsize % nandi->sectors_per_page;
 	int ecc_size = bch_ecc_sizes[nandi->bch_ecc_mode];
+	uint32_t oob_remainder;
 	uint8_t *o = ops->oobbuf;
 	uint8_t *p = ops->datbuf;
 	uint8_t *t;
+	int unified_buf;
 	int s;
+
+	nandi->cached_page = -1;
 
 	pages = ops->datbuf ?
 		(ops->len >> nandi->page_shift) :
 		(ops->ooblen / mtd->oobsize);
+
+	/* Allow page:oob:page:oob... convention */
+	unified_buf = (p == o) ? 1 : 0;
+
+	oob_remainder = mtd->oobsize - (nandi->sectors_per_page * ecc_size);
 
 	while (pages) {
 		t = nandi->page_buf;
 
 		flex_read_raw(nandi, page_addr, 0, t,
 			      mtd->writesize + mtd->oobsize);
+
+		if (unified_buf)
+			o = p + mtd->writesize;
 
 		for (s = 0; s < nandi->sectors_per_page; s++) {
 			if (p) {
@@ -1472,19 +1560,20 @@ static int flex_do_read_ops(struct nandi_controller *nandi,
 
 			if (o) {
 				memcpy(o, t, ecc_size);
-				memset(o + ecc_size, 0xff,
-				       oob_bytes_per_sector - ecc_size);
-
-				ops->oobretlen += oob_bytes_per_sector;
-				o += oob_bytes_per_sector;
+				ops->oobretlen += ecc_size;
+				o += ecc_size;
 			}
 			t += ecc_size;
 		}
 
-		if (oob_pad_per_page && o) {
-			memset(o, 0xff, oob_pad_per_page);
-			o += oob_pad_per_page;
+		if (oob_remainder && o) {
+			memcpy(o, t, oob_remainder);
+			o += oob_remainder;
+			ops->oobretlen += oob_remainder;
 		}
+
+		if (unified_buf)
+			p += mtd->oobsize;
 
 		page_addr++;
 		pages--;
@@ -1502,18 +1591,21 @@ static int flex_do_write_ops(struct nandi_controller *nandi,
 	struct mtd_info *mtd = &nandi->info.mtd;
 	uint32_t page_addr = to >> nandi->page_shift;
 	int pages;
-	uint32_t oob_bytes_per_sector = mtd->oobsize / nandi->sectors_per_page;
-	uint32_t oob_pad_per_page = mtd->oobsize % nandi->sectors_per_page;
 	int ecc_size = bch_ecc_sizes[nandi->bch_ecc_mode];
+	uint32_t oob_remainder;
 	uint8_t *o = ops->oobbuf;
 	uint8_t *p = ops->datbuf;
 	uint8_t *t;
 	uint8_t status;
 	int s;
 
+	nandi->cached_page = -1;
+
 	pages = ops->datbuf ?
 		(ops->len >> nandi->page_shift) :
 		(ops->ooblen / mtd->oobsize);
+
+	oob_remainder = mtd->oobsize - (nandi->sectors_per_page * ecc_size);
 
 	while (pages) {
 		t = nandi->page_buf;
@@ -1530,18 +1622,22 @@ static int flex_do_write_ops(struct nandi_controller *nandi,
 
 			if (o) {
 				memcpy(t, o, ecc_size);
-				ops->oobretlen += oob_bytes_per_sector;
-				o += oob_bytes_per_sector;
+				o += ecc_size;
+				ops->oobretlen += ecc_size;
 			} else {
 				memset(t, 0xff, ecc_size);
 			}
 			t += ecc_size;
 		}
 
-		if (oob_pad_per_page) {
-			memset(t, 0xff, oob_pad_per_page);
-			if (o)
-				o += oob_pad_per_page;
+		if (oob_remainder) {
+			if (o) {
+				memcpy(t, o, oob_remainder);
+				o += oob_remainder;
+				ops->oobretlen += oob_remainder;
+			} else {
+				memset(t, 0xff, oob_remainder);
+			}
 		}
 
 		status = flex_write_raw(nandi, page_addr, 0, nandi->page_buf,
@@ -1572,17 +1668,20 @@ static int mtd_read_oob(struct mtd_info *mtd, loff_t from,
 		(ops->oobbuf ? ops->ooblen : 0),
 		mtd_oob_mode_strs[ops->mode]);
 
+	if (!ops->oobbuf && ops->mode != MTD_OOB_RAW)
+		return mtd_read(mtd, from, ops->len, &ops->retlen, ops->datbuf);
+
 	ops->oobretlen = 0;
 	ops->retlen = 0;
 
 	/* We report OOB as unavailable (i.e. oobavail = 0), therefore nothing
 	 * should call this */
-	if (ops->mode == MTD_OOB_AUTO)
+	if (ops->oobbuf && ops->mode == MTD_OOB_AUTO)
 		return -ENOTSUPP;
 
 	/* Not currently supported by MTD.  Note, will have to fake support if
 	 * backporting 'in-band' nand_bbt.c... */
-	if (ops->datbuf && ops->mode == MTD_OOB_PLACE)
+	if (ops->datbuf && ops->oobbuf && ops->mode == MTD_OOB_PLACE)
 		return -ENOTSUPP;
 
 	/* Do not allow oob reads with ooboffs */
@@ -1642,17 +1741,20 @@ static int mtd_write_oob(struct mtd_info *mtd, loff_t to,
 		(ops->oobbuf ? ops->ooblen : 0),
 		mtd_oob_mode_strs[ops->mode]);
 
+	if (!ops->oobbuf && ops->mode != MTD_OOB_RAW)
+		return mtd_write(mtd, to, ops->len, &ops->retlen, ops->datbuf);
+
 	ops->oobretlen = 0;
 	ops->retlen = 0;
 
 	/* We report OOB as unavailable (i.e. oobavail = 0), therefore nothing
 	 * should call this */
-	if (ops->mode == MTD_OOB_AUTO)
+	if (ops->oobbuf && ops->mode == MTD_OOB_AUTO)
 		return -ENOTSUPP;
 
 	/* Not currently supported by MTD.  Note, will have to fake support if
 	 * backporting wavefront nand_bbt.c... */
-	if (ops->datbuf && ops->mode == MTD_OOB_PLACE)
+	if (ops->datbuf && ops->oobbuf && ops->mode == MTD_OOB_PLACE)
 		return -ENOTSUPP;
 
 	/* Do not allow oob writes with ooboffs */
@@ -1754,9 +1856,10 @@ static int mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 	struct nand_chip *chip = mtd->priv;
 	struct nandi_controller *nandi = chip->priv;
 
-	uint32_t block_mask = mtd->erasesize - 1;
+	uint64_t block_mask = mtd->erasesize - 1;
 	loff_t offs = instr->addr;
 	size_t len = instr->len;
+	uint64_t offs_cached;
 	uint8_t status;
 	int ret;
 
@@ -1789,6 +1892,10 @@ static int mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 		goto erase_exit;
 	}
 
+	/* Offset of block containing cached page */
+	offs_cached = ((uint64_t)nandi->cached_page << nandi->page_shift) &
+		~block_mask;
+
 	instr->state = MTD_ERASING;
 	while (len) {
 		if (!nand_erasebb && mtd_block_isbad(mtd, offs)) {
@@ -1798,6 +1905,9 @@ static int mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 			instr->fail_addr = offs;
 			goto erase_exit;
 		}
+
+		if (offs == offs_cached)
+			nandi->cached_page = -1;
 
 		status = bch_erase_block(nandi, offs);
 
@@ -2065,6 +2175,8 @@ static void nandi_dump_info(struct nandi_controller *nandi)
 		nandi->sectors_per_page);
 	pr_info("\t%-20s: %s\n", "BCH ECC mode",
 		bch_ecc_strs[nandi->bch_ecc_mode]);
+	pr_info("\t%-20s: %u\n", "Bit-flips threshold",
+		nandi->bitflip_threshold);
 	pr_info("\n");
 	nandi_dump_bch_progs(nandi);
 	pr_info("--------------------------------------------------"
@@ -2165,6 +2277,7 @@ static void nandi_set_mtd_defaults(struct nandi_controller *nandi,
 	chip->block_bad = flex_block_bad_BUG; /**/
 	chip->block_markbad = flex_block_markbad_BUG; /**/
 	chip->verify_buf = flex_verify_buf_BUG; /**/
+	chip->options |= NAND_USE_FLASH_BBT;
 	chip->scan_bbt = flex_scan_bbt_BUG; /**/
 
 	/* mtd_info */
@@ -2190,6 +2303,320 @@ static void nandi_set_mtd_defaults(struct nandi_controller *nandi,
 	mtd->sync = nand_sync;
 	mtd->suspend = nand_suspend;
 	mtd->resume = nand_resume;
+}
+
+static int nandi_examine_bbts(struct nandi_controller *nandi,
+			      struct mtd_info *mtd)
+{
+	int bch_remap;
+
+	switch (nandi->bch_ecc_mode) {
+	case BCH_18BIT_ECC:
+		bch_remap = BCH_REMAP_18BIT;
+		break;
+	case BCH_30BIT_ECC:
+		bch_remap = BCH_REMAP_30BIT;
+		break;
+	default:
+		bch_remap = BCH_REMAP_NONE;
+	}
+
+	return stmnand_examine_bbts(mtd, bch_remap);
+}
+
+/*
+ * Timing Configuration
+ */
+
+/* Derive Hamming-FLEX timing register values from 'nand_timing_spec' data */
+static void flex_calc_timing_registers(struct nand_timing_spec *spec,
+				       int tCLK, int relax,
+				       uint32_t *ctl_timing,
+				       uint32_t *wen_timing,
+				       uint32_t *ren_timing)
+{
+	int tMAX_HOLD;
+	int n_ctl_setup;
+	int n_ctl_hold;
+	int n_ctl_wb;
+
+	int tMAX_WEN_OFF;
+	int n_wen_on;
+	int n_wen_off;
+
+	int tMAX_REN_OFF;
+	int n_ren_on;
+	int n_ren_off;
+
+	/*
+	 * CTL_TIMING
+	 */
+
+	/*	- SETUP */
+	n_ctl_setup = (spec->tCLS - spec->tWP + tCLK - 1)/tCLK;
+	if (n_ctl_setup < 1)
+		n_ctl_setup = 1;
+	n_ctl_setup += relax;
+
+	/*	- HOLD */
+	tMAX_HOLD = spec->tCLH;
+	if (spec->tCH > tMAX_HOLD)
+		tMAX_HOLD = spec->tCH;
+	if (spec->tALH > tMAX_HOLD)
+		tMAX_HOLD = spec->tALH;
+	if (spec->tDH > tMAX_HOLD)
+		tMAX_HOLD = spec->tDH;
+	n_ctl_hold = (tMAX_HOLD + tCLK - 1)/tCLK + relax;
+
+	/*	- CE_deassert_hold = 0 */
+
+	/*	- WE_high_to_RBn_low */
+	n_ctl_wb = (spec->tWB + tCLK - 1)/tCLK;
+
+	*ctl_timing = ((n_ctl_setup & 0xff) |
+		       (n_ctl_hold & 0xff) << 8 |
+		       (n_ctl_wb & 0xff) << 24);
+
+	/*
+	 * WEN_TIMING
+	 */
+
+	/*	- ON */
+	n_wen_on = (spec->tWH + tCLK - 1)/tCLK + relax;
+
+	/*	- OFF */
+	tMAX_WEN_OFF = spec->tWC - spec->tWH;
+	if (spec->tWP > tMAX_WEN_OFF)
+		tMAX_WEN_OFF = spec->tWP;
+	n_wen_off = (tMAX_WEN_OFF + tCLK - 1)/tCLK + relax;
+
+	*wen_timing = ((n_wen_on & 0xff) |
+		       (n_wen_off & 0xff) << 8);
+
+	/*
+	 * REN_TIMING
+	 */
+
+	/*	- ON */
+	n_ren_on = (spec->tREH + tCLK - 1)/tCLK + relax;
+
+	/*	- OFF */
+	tMAX_REN_OFF = spec->tRC - spec->tREH;
+	if (spec->tRP > tMAX_REN_OFF)
+		tMAX_REN_OFF = spec->tRP;
+	if (spec->tREA > tMAX_REN_OFF)
+		tMAX_REN_OFF = spec->tREA;
+	n_ren_off = (tMAX_REN_OFF + tCLK - 1)/tCLK + 1 + relax;
+
+	*ren_timing = ((n_ren_on & 0xff) |
+		       (n_ren_off & 0xff) << 8);
+}
+
+/* Derive BCH timing register values from 'nand_timing_spec' data */
+static void bch_calc_timing_registers(struct nand_timing_spec *spec,
+				      int tCLK, int relax,
+				      uint32_t *ctl_timing,
+				      uint32_t *wen_timing,
+				      uint32_t *ren_timing)
+{
+	int tMAX_HOLD;
+	int n_ctl_setup;
+	int n_ctl_hold;
+	int n_ctl_wb;
+
+	int n_wen_on;
+	int n_wen_off;
+	int wen_half_on;
+	int wen_half_off;
+
+	int tMAX_REN_ON;
+	int tMAX_CS_DEASSERT;
+	int n_d_latch;
+	int n_telqv;
+	int n_ren_on;
+	int n_ren_off;
+	int ren_half_on;
+	int ren_half_off;
+
+	/*
+	 * CTL_TIMING
+	 */
+
+	/*	- SETUP */
+	if (spec->tCLS > spec->tWP)
+		n_ctl_setup = (spec->tCLS - spec->tWP + tCLK - 1)/tCLK;
+	else
+		n_ctl_setup = 0;
+	n_ctl_setup += relax;
+
+	/*	- HOLD */
+	tMAX_HOLD = spec->tCLH;
+	if (spec->tCH > tMAX_HOLD)
+		tMAX_HOLD = spec->tCH;
+	if (spec->tALH > tMAX_HOLD)
+		tMAX_HOLD = spec->tALH;
+	if (spec->tDH > tMAX_HOLD)
+		tMAX_HOLD = spec->tDH;
+	n_ctl_hold = (tMAX_HOLD + tCLK - 1)/tCLK + relax;
+	/*	- CE_deassert_hold = 0 */
+
+	/*	- WE_high_to_RBn_low */
+	n_ctl_wb = (spec->tWB + tCLK - 1)/tCLK;
+
+	*ctl_timing = ((n_ctl_setup & 0xff) |
+		       (n_ctl_hold & 0xff) << 8 |
+		       (n_ctl_wb & 0xff) << 24);
+
+	/*
+	 * WEN_TIMING
+	 */
+
+	/*	- ON */
+	n_wen_on = (2 * spec->tWH + tCLK - 1)/tCLK;
+	wen_half_on = n_wen_on % 2;
+	n_wen_on /= 2;
+	n_wen_on += relax;
+
+	/*	- OFF */
+	n_wen_off = (2 * spec->tWP + tCLK - 1)/tCLK;
+	wen_half_off = n_wen_off % 2;
+	n_wen_off /= 2;
+	n_wen_off += relax;
+
+	*wen_timing = ((n_wen_on & 0xff) |
+		       (n_wen_off & 0xff) << 8 |
+		       (wen_half_on << 16) |
+		       (wen_half_off << 17));
+
+	/*
+	 * REN_TIMING
+	 */
+
+	/*	- ON */
+	tMAX_REN_ON = spec->tRC - spec->tRP;
+	if (spec->tREH > tMAX_REN_ON)
+		tMAX_REN_ON = spec->tREH;
+
+	n_ren_on = (2 * tMAX_REN_ON + tCLK - 1)/tCLK;
+	ren_half_on = n_ren_on % 2;
+	n_ren_on /= 2;
+	n_ren_on += relax;
+
+	/*	- OFF */
+	n_ren_off = (2 * spec->tREA + tCLK - 1)/tCLK;
+	ren_half_off = n_ren_off % 2;
+	n_ren_off /= 2;
+	n_ren_off += relax;
+
+	/*	- DATA_LATCH */
+	if (spec->tREA <= (spec->tRP - (2 * tCLK)))
+		n_d_latch = 0;
+	else if (spec->tREA <= (spec->tRP - tCLK))
+		n_d_latch = 1;
+	else if ((spec->tREA <= spec->tRP) && (spec->tRHOH >= 2 * tCLK))
+		n_d_latch = 2;
+	else
+		n_d_latch = 3;
+
+	/*	- TELQV */
+	tMAX_CS_DEASSERT = spec->tCOH;
+	if (spec->tCHZ > tMAX_CS_DEASSERT)
+		tMAX_CS_DEASSERT = spec->tCHZ;
+	if (spec->tCSD > tMAX_CS_DEASSERT)
+		tMAX_CS_DEASSERT = spec->tCSD;
+
+	n_telqv = (tMAX_CS_DEASSERT + tCLK - 1)/tCLK;
+
+	*ren_timing = ((n_ren_on & 0xff) |
+		       (n_ren_off & 0xff) << 8 |
+		       (n_d_latch & 0x3) << 16 |
+		       (wen_half_on << 18) |
+		       (wen_half_off << 19) |
+		       (n_telqv & 0xff) << 24);
+}
+
+static void flex_configure_timing_registers(struct nandi_controller *nandi,
+					    struct nand_timing_spec *spec,
+					    int relax)
+{
+	struct clk *emi_clk;
+	int emi_t_ns;
+
+	uint32_t ctl_timing;
+	uint32_t wen_timing;
+	uint32_t ren_timing;
+
+	/* Select Hamming Controller */
+	emiss_nandi_select(STM_NANDI_HAMMING);
+
+	/* Get EMI clock (default 100MHz) */
+	emi_clk = clk_get(NULL, "emi_clk");
+	if (!emi_clk || IS_ERR(emi_clk)) {
+		dev_warn(nandi->dev, "Failed to get EMI clock, assuming "
+		"default 100MHz\n");
+		emi_t_ns = 10;
+	} else {
+		emi_t_ns = 1000000000 / clk_get_rate(emi_clk);
+	}
+
+	/* Derive timing register values from specification */
+	flex_calc_timing_registers(spec, emi_t_ns, relax,
+				   &ctl_timing, &wen_timing, &ren_timing);
+
+	dev_dbg(nandi->dev, "updating FLEX timing configuration "
+		"[0x%08x, 0x%08x, 0x%08x]\n",
+		ctl_timing, wen_timing, ren_timing);
+
+	/* Program timing registers */
+	writel(ctl_timing, nandi->base + NANDHAM_CTL_TIMING);
+	writel(wen_timing, nandi->base + NANDHAM_WEN_TIMING);
+	writel(ren_timing, nandi->base + NANDHAM_REN_TIMING);
+}
+
+static void bch_configure_timing_registers(struct nandi_controller *nandi,
+					   struct nand_timing_spec *spec,
+					   int relax)
+{
+	struct clk *bch_clk;
+	int bch_t_ns;
+
+	uint32_t ctl_timing;
+	uint32_t wen_timing;
+	uint32_t ren_timing;
+
+	/* Select BCH Controller */
+	emiss_nandi_select(STM_NANDI_BCH);
+
+	/* Get BCH clock (default 200MHz) */
+	bch_clk = clk_get(NULL, "bch_clk");
+	if (!bch_clk || IS_ERR(bch_clk)) {
+		dev_warn(nandi->dev, "Failed to get BCH clock, assuming "
+		"default 200MHz\n");
+		bch_t_ns = 5;
+	} else {
+		bch_t_ns = 1000000000 / clk_get_rate(bch_clk);
+	}
+
+	/* Derive timing register values from specification */
+	bch_calc_timing_registers(spec, bch_t_ns, relax,
+				  &ctl_timing, &wen_timing, &ren_timing);
+
+	dev_dbg(nandi->dev, "updating BCH timing configuration"
+		"[0x%08x, 0x%08x, 0x%08x]\n",
+		ctl_timing, wen_timing, ren_timing);
+
+	/* Program timing registers */
+	writel(ctl_timing, nandi->base + NANDBCH_CTL_TIMING);
+	writel(wen_timing, nandi->base + NANDBCH_WEN_TIMING);
+	writel(ren_timing, nandi->base + NANDBCH_REN_TIMING);
+}
+
+static void nandi_configure_timing_registers(struct nandi_controller *nandi,
+					     struct nand_timing_spec *spec,
+					     int relax)
+{
+	bch_configure_timing_registers(nandi, spec, relax);
+	flex_configure_timing_registers(nandi, spec, relax);
 }
 
 static void nandi_init_hamming(struct nandi_controller *nandi, int emi_bank)
@@ -2254,15 +2681,6 @@ static void nandi_init_bch(struct nandi_controller *nandi, int emi_bank)
 	/* Enable AFM */
 	writel(CFG_ENABLE_AFM, nandi->base + NANDBCH_CONTROLLER_CFG);
 
-	/* Timing parameters */
-	/* Values from validation found not to work on some parts.  Awaiting
-	 * clarification.  Use reset values for the time being.
-	 *
-	 * writel(0x14000205, nandi->base + NANDBCH_CTL_TIMING);
-	 * writel(0x00020304, nandi->base + NANDBCH_WEN_TIMING);
-	 * writel(0x060b0304, nandi->base + NANDBCH_REN_TIMING);
-	 */
-
 	/* Configure Read DMA Plugs (values supplied by Validation)*/
 	writel(0x00000005, nandi->dma + EMISS_NAND_RD_DMA_PAGE_SIZE);
 	writel(0x00000005, nandi->dma + EMISS_NAND_RD_DMA_MAX_OPCODE_SIZE);
@@ -2307,7 +2725,7 @@ static int __devinit remap_named_resource(struct platform_device *pdev,
 	return 0;
 }
 
-static struct nandi_controller * __init
+static struct nandi_controller * __devinit
 nandi_init_resources(struct platform_device *pdev)
 {
 	struct nandi_controller *nandi;
@@ -2351,13 +2769,13 @@ nandi_init_resources(struct platform_device *pdev)
 	return nandi;
 }
 
-static void __devexit nandi_exit_controller(struct nandi_controller *nandi)
+static void nandi_exit_controller(struct nandi_controller *nandi)
 {
 
 }
 
-static void __devinit nandi_init_controller(struct nandi_controller *nandi,
-					    int emi_bank)
+static void nandi_init_controller(struct nandi_controller *nandi,
+				  int emi_bank)
 {
 	nandi_init_bch(nandi, emi_bank);
 	nandi_init_hamming(nandi, emi_bank);
@@ -2397,17 +2815,51 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 	mtd = &info->mtd;
 	mtd->priv = chip;
 	mtd->name = dev_name(&pdev->dev);
+	mtd->dev.parent = &pdev->dev;
 
 	nandi_set_mtd_defaults(nandi, mtd, chip);
 
 	if (nand_scan_ident(mtd, 1) != 0)
 		return -ENODEV;
 
+	/*
+	 * Configure timing registers
+	 */
+	if (bank->timing_spec) {
+		dev_info(&pdev->dev, "Using platform timing data\n");
+		nandi_configure_timing_registers(nandi, bank->timing_spec,
+						 bank->timing_relax);
+	} else if (chip->onfi_version) {
+		struct nand_onfi_params *onfi = &chip->onfi_params;
+		int mode;
+
+		mode = fls(le16_to_cpu(onfi->async_timing_mode)) - 1;
+
+		/* Modes 4 and 5 (EDO) are not supported on our H/W */
+		if (mode > 3)
+			mode = 3;
+
+		dev_info(&pdev->dev, "Using ONFI Timing Mode %d\n", mode);
+		nandi_configure_timing_registers(nandi,
+						 &nand_onfi_timing_specs[mode],
+						 bank->timing_relax);
+	} else {
+		dev_warn(&pdev->dev, "No timing data available\n");
+	}
+
+	if (mtd->writesize < NANDI_BCH_SECTOR_SIZE) {
+		dev_err(nandi->dev, "page size incompatible with BCH ECC "
+			"sector\n");
+		return -EINVAL;
+	}
+
 	/* Derive some working variables */
 	nandi->sectors_per_page = mtd->writesize / NANDI_BCH_SECTOR_SIZE;
 	nandi->blocks_per_device = mtd->size >> chip->phys_erase_shift;
 	nandi->page_shift = chip->page_shift;
 	nandi->block_shift = chip->phys_erase_shift;
+	nandi->extra_addr = ((chip->chipsize >> nandi->page_shift) >
+			     0x10000) ? 1 : 0;
 
 	/* Set ECC mode */
 	switch (pdata->bch_ecc_cfg) {
@@ -2427,6 +2879,22 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 		nandi->bch_ecc_mode = BCH_30BIT_ECC;
 		break;
 	}
+
+	/*
+	 * Get bit-flips threshold. A value of '0' is interpreted as
+	 * <ecc_strength>.
+	 */
+	if (pdata->bch_bitflip_threshold) {
+		nandi->bitflip_threshold = pdata->bch_bitflip_threshold;
+	} else {
+		dev_warn(nandi->dev, "WARNING: bit-flips threshold not specified.  Defaulting to ECC strength [%d]\n",
+			 bch_ecc_strength[nandi->bch_ecc_mode]);
+		nandi->bitflip_threshold =
+			bch_ecc_strength[nandi->bch_ecc_mode];
+	}
+
+	info->ecclayout.eccbytes = nandi->sectors_per_page *
+		bch_ecc_sizes[nandi->bch_ecc_mode];
 
 	/* Check compatibility */
 	if (bch_check_compatibility(nandi, mtd, chip) != 0) {
@@ -2467,6 +2935,13 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 				  NANDI_BCH_DMA_ALIGNMENT);
 	nandi->buf_list = (uint32_t *) PTR_ALIGN(bbt_info->bbt + bbt_buf_size,
 						 NANDI_BCH_DMA_ALIGNMENT);
+	nandi->cached_page = -1;
+	if (nandi_examine_bbts(nandi, mtd) != 0) {
+		dev_err(nandi->dev, "incompatible BBTs detected\n");
+		dev_err(nandi->dev, "initiating NAND Recovery Mode\n");
+		mtd->name = "NAND RECOVERY MODE";
+		return add_mtd_device(mtd);
+	}
 
 	/* Load Flash-resident BBT */
 	err = bch_load_bbt(nandi, bbt_info);
@@ -2531,8 +3006,8 @@ static int __devinit stm_nand_bch_probe(struct platform_device *pdev)
 
 static int __devexit stm_nand_bch_remove(struct platform_device *pdev)
 {
-	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
-	struct stm_nand_bank_data *bank = pdata->banks;
+	struct stm_plat_nand_bch_data *pdata = pdev->dev.platform_data;
+	struct stm_nand_bank_data *bank = pdata->bank;
 	struct nandi_controller *nandi = platform_get_drvdata(pdev);
 	struct nandi_info *info = &nandi->info;
 
@@ -2549,12 +3024,32 @@ static int __devexit stm_nand_bch_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_HIBERNATION
+static int stm_nand_bch_restore(struct device *dev)
+{
+	struct nandi_controller *nandi = dev_get_drvdata(dev);
+	struct stm_plat_nand_bch_data *pdata = dev->platform_data;
+	struct stm_nand_bank_data *bank = pdata->bank;;
+
+	nandi_init_controller(nandi, bank->csn);
+
+	return 0;
+}
+
+static struct dev_pm_ops stm_nand_bch_pm_ops = {
+	.restore = stm_nand_bch_restore,
+};
+#else
+static struct dev_pm_ops stm_nand_bch_pm_ops;
+#endif
+
 static struct platform_driver stm_nand_bch_driver = {
 	.probe		= stm_nand_bch_probe,
 	.remove		= stm_nand_bch_remove,
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+		.pm	= &stm_nand_bch_pm_ops,
 	},
 };
 

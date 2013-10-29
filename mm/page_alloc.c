@@ -4698,9 +4698,15 @@ static void __init setup_per_zone_inactive_ratio(void)
  * 4096MB:	8192k
  * 8192MB:	11584k
  * 16384MB:	16384k
+ *
+ * It can also be set from Kconfig, useful for users who don't have /proc
+ * mounted.
  */
 static int __init init_per_zone_wmark_min(void)
 {
+#ifdef CONFIG_MIN_FREE_KBYTES_VAL
+	min_free_kbytes = CONFIG_MIN_FREE_KBYTES_VAL;
+#else
 	unsigned long lowmem_kbytes;
 
 	lowmem_kbytes = nr_free_buffer_pages() * (PAGE_SIZE >> 10);
@@ -4710,6 +4716,7 @@ static int __init init_per_zone_wmark_min(void)
 		min_free_kbytes = 128;
 	if (min_free_kbytes > 65536)
 		min_free_kbytes = 65536;
+#endif
 	setup_per_zone_wmarks();
 	setup_per_zone_lowmem_reserve();
 	setup_per_zone_inactive_ratio();

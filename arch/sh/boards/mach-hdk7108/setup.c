@@ -25,6 +25,7 @@
 #include <linux/spi/spi_gpio.h>
 #include <linux/spi/flash.h>
 #include <linux/stm/nand.h>
+#include <linux/stm/nand_devices.h>
 #include <linux/stm/emi.h>
 #include <linux/stm/pci-glue.h>
 #include <linux/stm/platform.h>
@@ -91,6 +92,7 @@
 #define HDK7108_GPIO_MII_SPEED_SEL stm_gpio(21, 7)
 #define HDK7108_GPIO_SPI_HOLD stm_gpio(2, 2)
 #define HDK7108_GPIO_SPI_WRITE_PRO stm_gpio(2, 3)
+#define HDK7108_GPIO_LPM	stm_gpio(26, 7)
 
 static void __init hdk7108_setup(char **cmdline_p)
 {
@@ -283,17 +285,7 @@ static struct stm_nand_bank_data hdk7108_nand_flash = {
 			.size	= MTDPART_SIZ_FULL
 		},
 	},
-	.timing_data = &(struct stm_nand_timing_data) {
-		.sig_setup      = 10,           /* times in ns */
-		.sig_hold       = 10,
-		.CE_deassert    = 0,
-		.WE_to_RBn      = 100,
-		.wr_on          = 10,
-		.wr_off         = 30,
-		.rd_on          = 10,
-		.rd_off         = 30,
-		.chip_delay     = 30,           /* in us */
-	},
+	.timing_spec = &NAND_TSPEC_ST_NAND08GW3B2CN6,
 };
 
 
@@ -405,33 +397,6 @@ int pcibios_map_platform_irq(struct pci_dev *dev, u8 slot, u8 pin)
 }
 
 #endif
-
-/* Mali parameters */
-
-/* Memory allocated by Linux Kernel */
-static struct stm_mali_resource hdk7108_mali_mem[1] = {
-	{
-		.name 	= "OS_MEMORY",
-		.start 	=  0,
-		.end	=  CONFIG_STM_HDK7108_MALI_OS_MEMORY_SIZE - 1,
-	},
-};
-
-static struct stm_mali_resource hdk7108_mali_ext_mem[] = {
-	{
-		.name 	= "EXTERNAL_MEMORY_RANGE",
-		.start 	=  0x40000000,
-		.end	=  0xbfffffff,
-	}
-};
-
-static struct stm_mali_config hdk7108_mali_config = {
-	.num_mem_resources = ARRAY_SIZE(hdk7108_mali_mem),
-	.mem = hdk7108_mali_mem,
-	.num_ext_resources = ARRAY_SIZE(hdk7108_mali_ext_mem),
-	.ext_mem = hdk7108_mali_ext_mem,
-};
-
 
 
 static int __init device_init(void)
@@ -574,6 +539,20 @@ static int __init device_init(void)
 				SATA_MODE, PCIE_MODE },
 			});
 	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
+
+	stx7108_configure_pcie(&(struct stx7108_pcie_config) {
+					.reset_gpio = stm_gpio(24, 6)
+				});
+#endif
+
+#if !defined(CONFIG_SH_ST_HDK7108_VER1_BOARD) && \
+	!defined(CONFIG_SH_ST_HDK7108_VER1_1_BOARD)
+
+	stx7108_configure_lpm_i2c_interface(&(struct stx7108_lpm_i2c_config) {
+					.number_i2c = 2,
+					.number_gpio = HDK7108_GPIO_LPM,
+				});
+
 #endif
 
 
@@ -627,11 +606,12 @@ static int __init device_init(void)
 	gpio_request(HDK7108_GPIO_FLASH_WP, "FLASH_WP");
 	gpio_direction_output(HDK7108_GPIO_FLASH_WP, 1);
 
-#if defined(CONFIG_SH_ST_HDK7108_VER1_BOARD) || \
-	defined(CONFIG_SH_ST_HDK7108_VER1_1_BOARD)
+#if defined(CONFIG_SH_ST_HDK7108_VER1_BOARD) ||	      \
+	defined(CONFIG_SH_ST_HDK7108_VER1_1_BOARD) || \
+	defined(CONFIG_SH_ST_HDK7108_VER2_2_BOARD)
 	/*
-	 * Rev 1.x boards only; Rev 2.x boards are populated with MLC NAND which
-	 * is not supported.
+	 * NAND only supported on Rev 1.0, 1.1, and 2.2 boards; Rev 2.0 and 2.1A
+	 * are populated with MLC NAND which is not supported.
 	 */
 	stx7108_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_flex,
@@ -668,8 +648,6 @@ static int __init device_init(void)
 #elif defined(CONFIG_SH_ST_HDK7108_MMC_EMMC)
 	stx7108_configure_mmc(1);
 #endif
-
-	stx7108_configure_mali(&hdk7108_mali_config);
 
 	stx7108_configure_audio(&(struct stx7108_audio_config) {
 			.spdif_player_output_enabled = 1, });

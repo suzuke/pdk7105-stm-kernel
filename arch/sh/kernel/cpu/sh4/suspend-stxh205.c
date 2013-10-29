@@ -154,7 +154,7 @@ static int stxh205_suspend_core(suspend_state_t state, int suspending)
 
 on_suspending:
 
-	cfg_0_0 = 0xf00fffcc;
+	cfg_0_0 = 0xc00fffcc;
 	cfg_0_1 = 0x3ffff;
 	cfg_1_0 = 0xffffffff;
 	cfg_1_1 = 0xfffffff;
@@ -179,16 +179,24 @@ on_suspending:
 /* A1 */
 	/*
 	 * WOL is totally based on A1. To be working it needs:
-	 * - eth1.phy_clk and eth1.mac_clk enabled
-	 * - eth1.phy_clk @ 25 MHz
+	 * - eth.phy_clk and eth1.mac_clk enabled
+	 * - eth.phy_clk @ 25 MHz
 	 */
-	if (stxh205_wkd.eth1_phy_can_wakeup) {
+	if (stxh205_wkd.stm_mac0_can_wakeup) {
 		int pll_id = (a1_pll1_ls_clk == clk_get_parent(a1_eth_phy_clk) ?
 			2 : 1);
 		cfg_1_0 &= ~(0x3 << (CLK_A1_ETH_PHY * 2));
 		cfg_1_0 &= ~(0x3 << (CLK_A1_GMAC * 2));
 		cfg_1_0 |= (pll_id << (CLK_A1_ETH_PHY * 2));
 		cfg_1_0 |= (pll_id << (CLK_A1_GMAC * 2));
+		pwr_1 &= ~pll_id;
+	}
+	/* WoL+ is supported so the MAC clk can be disabled */
+	if (stxh205_wkd.stm_phy_can_wakeup) {
+		int pll_id = (a1_pll1_ls_clk == clk_get_parent(a1_eth_phy_clk) ?
+			2 : 1);
+		cfg_1_0 &= ~(0x3 << (CLK_A1_ETH_PHY * 2));
+		cfg_1_0 |= (pll_id << (CLK_A1_ETH_PHY * 2));
 		pwr_1 &= ~pll_id;
 	}
 

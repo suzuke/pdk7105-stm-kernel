@@ -51,6 +51,7 @@ struct sh_cpuinfo cpu_data[NR_CPUS] __read_mostly = {
 	[0] = {
 		.type			= CPU_SH_NONE,
 		.family			= CPU_FAMILY_UNKNOWN,
+		.variant		= CPU_VARIANT_UNKNOWN,
 		.loops_per_jiffy	= 10000000,
 		.phys_bits		= MAX_PHYSMEM_BITS,
 	},
@@ -489,6 +490,7 @@ static const char *cpu_name[] = {
 	[CPU_SH4_202]	= "SH4-202",	[CPU_SH4_501]	= "SH4-501",
 	[CPU_FLI7510]	= "Freeman-510", [CPU_FLI7520]	= "Freeman-520",
 	[CPU_FLI7530]	= "Freeman-530", [CPU_FLI7540]	= "Freeman-540",
+	[CPU_FLI7560]	= "Freeman-560",
 	[CPU_ST40RA]	= "ST40RA",	[CPU_ST40GX1]	= "ST40GX1",
 	[CPU_STX5197]	= "STx5197",	[CPU_STX5206]	= "STx5206",
 	[CPU_STI5528]	= "STi5528",	[CPU_STM8000]	= "STm8000",
@@ -514,6 +516,19 @@ const char *get_cpu_subtype(struct sh_cpuinfo *c)
 	return cpu_name[c->type];
 }
 EXPORT_SYMBOL(get_cpu_subtype);
+
+static const char *cpu_variant[] = {
+	[CPU_VARIANT_SH4_102] = "sh4-102",
+	[CPU_VARIANT_SH4_103] = "sh4-103",
+	[CPU_VARIANT_SH4_202] = "sh4-202",
+	[CPU_VARIANT_ST40_300] = "st40-300",
+	[CPU_VARIANT_UNKNOWN] = "Unknown",
+};
+
+const char *get_cpu_variant(struct sh_cpuinfo *c)
+{
+	return cpu_variant[c->variant];
+}
 
 #ifdef CONFIG_PROC_FS
 /* Symbolic CPU flags, keep in sync with asm/cpu-features.h */
@@ -569,6 +584,7 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 
 	seq_printf(m, "processor\t: %d\n", cpu);
 	seq_printf(m, "cpu family\t: %s\n", init_utsname()->machine);
+	seq_printf(m, "cpu variant\t: %s\n", get_cpu_variant(c));
 	seq_printf(m, "cpu type\t: %s\n", get_cpu_subtype(c));
 	if (c->cut_major == -1)
 		seq_printf(m, "cut\t\t: unknown\n");

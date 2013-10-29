@@ -12,6 +12,8 @@ obj-y					+= clocks/
 
 obj-$(CONFIG_STM_DMA)			+= fdma.o fdma-xbar.o
 obj-$(CONFIG_STM_MIPHY)			+= miphy.o
+obj-$(CONFIG_STM_MIPHY365X)		+= miphy365x.o
+obj-$(CONFIG_STM_MIPHYA40X)		+= miphya40x.o
 obj-$(CONFIG_STM_MIPHY_TAP)		+= miphy_tap.o tap.o
 obj-$(CONFIG_STM_MIPHY_PCIE_MP)		+= miphy_pcie_mp.o
 obj-$(CONFIG_STM_MIPHY_DUMMY)		+= miphy_dummy.o
@@ -30,8 +32,15 @@ obj-$(CONFIG_PM_RUNTIME)		+= pm_runtime.o
 obj-$(CONFIG_STM_PCI_EMISS)		+= pci-emiss.o
 obj-$(CONFIG_STM_PCIE)			+= pcie.o
 
-obj-$(CONFIG_CPU_SUBTYPE_FLI7510)	+= fli7510.o fli7510_clock.o fli7510_audio.o fli7510_comms.o fli7510_hispeed.o fli7510_pci.o
-obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= stxh205.o stxh205_clock.o stxh205_comms.o stxh205_hispeed.o pio-control.o
+obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= stxh205_lpm.o
+obj-$(CONFIG_CPU_SUBTYPE_STX7108)	+= stx7108_lpm.o
+obj-$(CONFIG_STM_LPM)			+= lpm_com.o
+obj-$(CONFIG_STM_LPM_MB)		+= lpm_mb.o
+obj-$(CONFIG_STM_LPM_I2C)		+= lpm_i2c.o
+obj-$(CONFIG_STM_LPM_RD_MONITOR)	+= lpm_gpio_monitor.o
+
+obj-$(CONFIG_CPU_SUBTYPE_FLI75XX)	+= fli75xx.o fli75xx_clock.o fli75xx_audio.o fli75xx_comms.o fli75xx_hispeed.o fli75xx_pci.o
+obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= stxh205.o stxh205_clock.o stxh205_comms.o stxh205_hispeed.o stxh205_pci.o pio-control.o
 obj-$(CONFIG_CPU_SUBTYPE_STX5197)	+= stx5197.o stx5197_clock.o
 obj-$(CONFIG_CPU_SUBTYPE_STX5206)	+= stx5206.o stx5206_clock.o stx5206_comms.o stx5206_hispeed.o stx5206_pci.o
 obj-$(CONFIG_CPU_SUBTYPE_STX7100)	+= stx7100.o stx7100_clock.o stx7100_audio.o stx7100_comms.o stx7100_hispeed.o

@@ -110,6 +110,7 @@ struct stm_plat_rtc_lpc {
 struct stm_plat_ssc_data {
 	struct stm_pad_config *pad_config;
 	void (*spi_chipselect)(struct spi_device *, int);
+	unsigned int i2c_fastmode:1;
 };
 
 
@@ -166,6 +167,7 @@ struct plat_stm_temp_data {
 	int calibration_value;
 	void (*custom_set_dcorrect)(void *priv);
 	unsigned long (*custom_get_data)(void *priv);
+	int correction_factor; /* add a signed correction to data read */
 	void *custom_priv;
 };
 
@@ -175,15 +177,46 @@ struct plat_stm_temp_data {
 #define STM_PLAT_USB_FLAGS_STRAP_16BIT			(2<<0)
 #define STM_PLAT_USB_FLAGS_STRAP_PLL			(1<<2)
 #define STM_PLAT_USB_FLAGS_OPC_MSGSIZE_CHUNKSIZE	(1<<3)
-#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128	(1<<4)
-#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256	(2<<4)
+/* Threshold values */
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD_MASK  (0xf << 4)
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD(x) 	(((x) & \
+			STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD_MASK) >> 4)
+
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD16	(4<<4)
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128	(7<<4)
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD256	(8<<4)
+/* Packets in chunk */
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK_MASK	(0xf<<8)
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK(x)	(((x) & \
+			STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK_MASK) >> 8)
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK2		(1<<8)
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_CHUNK8		(3<<8) /* Default */
+/* LD/ST32 is default */
+#define STM_PLAT_USB_FLAGS_STBUS_CONFIG_LDST64		(1<<8)
 
 struct stm_plat_usb_data {
 	unsigned long flags;
 	struct stm_device_config *device_config;
 };
 
-
+/**
+ * struct stm_lpm_i2c_data - i2c information for SBC
+ * @number_i2c : i2c number connected with external SBC
+ * @number_gpio: gpio which is connected with external SBC for power key.
+ *               This gpio will be controlled by SBC,
+ *		 Host will read status of it
+ * @status_gpio: status of gpio which is connected with SBC for power key
+ * @i2c_adap   : i2c_adapter which is connected with number_i2c
+ *
+ * This struct hold the parameters which are specific to external SBC.
+ * This external SBC is connected with SOC via i2c interface
+ */
+struct stm_lpm_i2c_data {
+	int number_i2c;
+	int number_gpio;
+	int status_gpio;
+	struct i2c_adapter *i2c_adap;
+};
 
 /*** TAP platform data ***/
 
@@ -208,6 +241,7 @@ struct stm_plat_tap_data {
 	int miphy_first, miphy_count;
 	enum miphy_mode *miphy_modes;
 	struct stm_tap_sysconf *tap_sysconf;
+	char *style_id;
 };
 
 
@@ -217,6 +251,9 @@ struct stm_plat_pcie_mp_data {
 	int miphy_first, miphy_count;
 	enum miphy_mode *miphy_modes;
 	void (*mp_select)(int port);
+	int tx_pol_inv;	/* invert polarity of TXN/TXP differential outputs */
+	int rx_pol_inv;	/* invert polarity of RXN/RXP differential inputs */
+	char *style_id;
 };
 
 
@@ -293,6 +330,15 @@ enum stm_nand_bch_ecc_config {
 struct stm_plat_nand_bch_data {
 	struct stm_nand_bank_data *bank;
 	enum stm_nand_bch_ecc_config bch_ecc_cfg;
+
+	/* The threshold at which the number of corrected bit-flips per sector
+	 * is deemed to have reached an excessive level (triggers '-EUCLEAN' to
+	 * be returned to the caller).  The value should be in the range 1 to
+	 * <ecc-strength> where <ecc-strength> is 18 or 30, depending on the BCH
+	 * ECC mode in operation.  A value of 0 is interpreted by the driver as
+	 * <ecc-strength>.
+	 */
+	unsigned int bch_bitflip_threshold;
 };
 
 struct stm_plat_nand_emi_data {
@@ -315,6 +361,9 @@ struct stm_nand_config {
 		int flex_connected;
 	} rbn;
 	enum stm_nand_bch_ecc_config bch_ecc_cfg;
+	unsigned int bch_bitflip_threshold; /* See description in
+					     * 'stm_plat_nand_bch_data'.
+					     */
 };
 
 
@@ -325,8 +374,14 @@ struct stm_spifsm_caps {
 	int dual_mode:1;		/* DUAL mode */
 	int quad_mode:1;		/* QUAD mode */
 
+	/* Board capabilities */
+	int reset_signal:1;		/* SoC reset routed to device reset */
+	int reset_por:1;		/* SoC reset forces device POR (e.g.
+					 *   on-board logic/controller) */
+	int boot_from_spi:1;		/* Boot device is SPI */
+
 	/* IP capabilities */
-	int addr_32bit:1;		/* 32bit addressing supported */
+	int addr_32bit:1;		/* native 32-bit addressing supported */
 	int no_poll_mode_change:1;	/* Polling MODE_CHANGE broken */
 	int no_clk_div_4:1;		/* Bug prevents ClK_DIV=4 */
 	int no_sw_reset:1;		/* S/W reset not possible */
@@ -391,6 +446,7 @@ struct stm_plat_fdma_fw_regs {
 	unsigned long cntn;
 	unsigned long saddrn;
 	unsigned long daddrn;
+	unsigned long node_size;
 };
 
 struct stm_plat_fdma_data {

@@ -109,11 +109,18 @@ config MTD_STM_SPI_FSM
 	depends on (CPU_SUBTYPE_STX7105 || \
 		    CPU_SUBTYPE_STX5206 || \
 		    CPU_SUBTYPE_STX7108 || \
-		    CPU_SUBTYPE_FLI7510 || \
+		    CPU_SUBTYPE_FLI75XX || \
 		    CPU_SUBTYPE_STXH205)
 	help
 	  This provides a MTD device driver for the ST Microelectronics SPI
 	  FSM Serial Flash Controller, and connected Serial Flash device.
+
+config STM_SPI_FSM_DEBUG
+	bool "STM SPI FSM debug support"
+	depends on MTD_STM_SPI_FSM
+	default n
+	help
+	  Display debug messages on the console.
 
 config MTD_SST25L
 	tristate "Support SST25L (non JEDEC) SPI Flash chips"

@@ -107,6 +107,7 @@ struct stxh205_ssc_config {
 		} ssc3;
 	} routing;
 	void (*spi_chipselect)(struct spi_device *spi, int is_on);
+	unsigned int i2c_fastmode:1;
 };
 
 #define STXH205_SSC(x)	(((x) < 10) ? (x) : ((x)-10+4))
@@ -148,10 +149,37 @@ void stxh205_configure_ethernet(struct stxh205_ethernet_config *config);
 
 void stxh205_configure_usb(int port);
 
-void stxh205_configure_mmc(int emmc);
+struct stxh205_mmc_config {
+	unsigned int emmc:1;
+	unsigned int no_mmc_boot_data_error:1;
+};
+void stxh205_configure_mmc(struct stxh205_mmc_config *config);
 
 void stxh205_configure_spifsm(struct stm_plat_spifsm_data *data);
 
 void stxh205_configure_nand(struct stm_nand_config *config);
+
+/* Only ONE Port */
+void stxh205_configure_sata(void);
+/* mode is one of SATA_MODE/PCIE_MODE.
+ * iface is UPORT_IF */
+
+struct stxh205_miphy_config {
+	int mode;
+	int iface;
+	/* 1 if TXN/TXP has inverted polarity */
+	int tx_pol_inv;
+	/* 1 if RXN/RXP has inverted polarity */
+	int rx_pol_inv;
+};
+void stxh205_configure_miphy(struct stxh205_miphy_config *config);
+
+struct stxh205_pcie_config {
+	unsigned reset_gpio;
+	void (*reset)(void);
+};
+
+void stxh205_configure_pcie(struct stxh205_pcie_config *config);
+
 
 #endif

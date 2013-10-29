@@ -326,6 +326,7 @@ static struct platform_device stx7141_temp_devices[] = {
 		.name			= "stm-temp",
 		.id			= 0,
 		.dev.platform_data	= &(struct plat_stm_temp_data) {
+			.correction_factor = 20,
 			.dcorrect = { SYS_CFG, 41, 5, 9 },
 			.overflow = { SYS_STA, 12, 8, 8 },
 			.data = { SYS_STA, 12, 10, 16 },
@@ -342,6 +343,7 @@ static struct platform_device stx7141_temp_devices[] = {
 		.name			= "stm-temp",
 		.id			= 1,
 		.dev.platform_data	= &(struct plat_stm_temp_data) {
+			.correction_factor = 20,
 			.dcorrect = { SYS_CFG, 41, 15, 19 },
 			.overflow = { SYS_STA, 12, 26, 26 },
 			.custom_get_data = stx7141_temp1_get_data,
@@ -358,6 +360,7 @@ static struct platform_device stx7141_temp_devices[] = {
 		.name			= "stm-temp",
 		.id			= 2,
 		.dev.platform_data	= &(struct plat_stm_temp_data) {
+			.correction_factor = 20,
 			.dcorrect = { SYS_CFG, 41, 25, 29 },
 			.overflow = { SYS_STA, 13, 12, 12 },
 			.data = { SYS_STA, 13, 14, 20 },
@@ -766,7 +769,7 @@ void __init stx7141_early_device_init(void)
 	sysconf_early_init(&stx7141_sysconf_device, 1);
 	stm_gpio_early_init(stx7141_pio_devices,
 			ARRAY_SIZE(stx7141_pio_devices),
-			ILC_FIRST_IRQ + ILC_NR_IRQS);
+			COMMS_ILC_FIRST_IRQ + COMMS_ILC_NR_IRQS);
 	stm_pad_init(ARRAY_SIZE(stx7141_pio_devices) * STM_GPIO_PINS_PER_PORT,
 		     -1, 0, stx7141_pio_config);
 

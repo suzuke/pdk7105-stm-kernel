@@ -94,6 +94,22 @@ static __always_inline unsigned long mk_pmb_data(unsigned int entry)
 	return mk_pmb_entry(entry) | PMB_DATA;
 }
 
+static __always_inline unsigned long pmb_size(unsigned long data)
+{
+	switch(data & PMB_SZ_MASK) {
+	case PMB_SZ_16M:
+		return 16 * 1024 * 1024;
+	case PMB_SZ_64M:
+		return 64 * 1024 * 1024;
+	case PMB_SZ_128M:
+		return 128 * 1024 * 1024;
+	case PMB_SZ_512M:
+		return 512 * 1024 * 1024;
+	default:
+		return 0;
+	}
+}
+
 static __always_inline void __set_pmb_entry(unsigned long vpn,
 	unsigned long ppn, unsigned long flags, int pos)
 {
@@ -118,6 +134,17 @@ static __always_inline void __set_pmb_entry(unsigned long vpn,
 	 * but when resuming from hibernation it appears to fix a problem.
 	 */
 	ctrl_inl(mk_pmb_addr(pos));
+}
+
+static __always_inline void __get_pmb_entry(unsigned long *vpn,
+	unsigned long *ppn, unsigned long *flags, int pos)
+{
+	ctrl_barrier();
+	*vpn   = ctrl_inl(mk_pmb_addr(pos)) & PMB_VPN;
+	*ppn   = ctrl_inl(mk_pmb_data(pos)) & PMB_PPN;
+	*flags = ctrl_inl(mk_pmb_data(pos)) &
+	     (PMB_SZ_MASK|PMB_C|PMB_WT|PMB_UB|PMB_V);
+	ctrl_barrier();
 }
 
 static void __uses_jump_to_uncached set_pmb_entry(unsigned long vpn,
@@ -239,7 +266,7 @@ static struct {
  * address which accomodates the mapping we're interested in.
  */
 static struct pmb_mapping* pmb_calc(unsigned long phys, unsigned long size,
-				    unsigned long req_virt, int *req_pos,
+				    unsigned long req_virt, int req_pos,
 				    unsigned long pmb_flags)
 {
 	struct pmb_mapping *new_mapping;
@@ -298,7 +325,8 @@ next:
 
 	DPRINTK("found space at %08lx to %08lx\n", new_start, new_end);
 
-	BUG_ON(req_pos && (*req_pos != PMB_VIRT2POS(new_start)));
+	BUG_ON((req_pos != PMB_NO_ENTRY) &&
+	       (req_pos != PMB_VIRT2POS(new_start)));
 
 	phys &= ~(pmb_size - 1);
 	new_start &= ~(pmb_size - 1);
@@ -350,7 +378,7 @@ static struct {
 };
 
 static struct pmb_mapping* pmb_calc(unsigned long phys, unsigned long size,
-				    unsigned long req_virt, int *req_pos,
+				    unsigned long req_virt, int req_pos,
 				    unsigned long pmb_flags)
 {
 	unsigned long orig_phys = phys;
@@ -407,7 +435,8 @@ static struct pmb_mapping* pmb_calc(unsigned long phys, unsigned long size,
 		if (entry == NULL) {
 			int pos;
 
-			pos = pmb_alloc(req_pos ? *req_pos++ : PMB_NO_ENTRY);
+			pos = pmb_alloc((req_pos != PMB_NO_ENTRY) ?
+					req_pos++ : PMB_NO_ENTRY);
 			if (pos == PMB_NO_ENTRY)
 				goto failed_give_up;
 			entry = &pmbe[pos];
@@ -578,7 +607,7 @@ long pmb_remap(unsigned long phys,
 		write_unlock(&pmb_lock);
 		return 0;
 	} else {
-		mapping = pmb_calc(phys, size, 0, NULL, pmb_flags);
+		mapping = pmb_calc(phys, size, 0, PMB_NO_ENTRY, pmb_flags);
 		if (!mapping) {
 			write_unlock(&pmb_lock);
 			return 0;
@@ -642,18 +671,52 @@ int pmb_unmap(unsigned long addr)
 static void noinline __uses_jump_to_uncached
 apply_boot_mappings(struct pmb_mapping *uc_mapping, struct pmb_mapping *ram_mapping)
 {
-	register int i __asm__("r1");
-	register unsigned long c2uc __asm__("r2");
-	register struct pmb_entry *entry __asm__("r3");
-	register unsigned long flags __asm__("r4");
+	int i;
+	unsigned long c2uc;
+	struct pmb_entry *entry;
+	unsigned long flags;
+	unsigned int trash;
+
+	/*
+	 * We are currenly running with the mappings set up by the
+	 * boot loader. These may be excessive, so indentify the
+	 * minimum subset needed to map the kernel text uncached and
+	 * delete the rest.
+	 */
+	trash = 0;
+	for (i=0; i<NR_PMB_ENTRIES; i++) {
+		unsigned long addr, data;
+		unsigned int size;
+		char *start, *end;
+
+		addr = ctrl_inl(mk_pmb_addr(i));
+		data = ctrl_inl(mk_pmb_data(i));
+		if (! (addr & PMB_V))
+			continue;
+
+		size = pmb_size(data);
+		start = (char*)(addr & ~(size-1));
+		end = start + size;
+
+		if ((end <= __uncached_start) || (start >= __uncached_end))
+			__clear_pmb_entry(i);
+		else
+			trash |= 1<<i;
+	}
 
 	/* We can execute this directly, as the current PMB is uncached */
-	__pmb_mapping_set(uc_mapping);
+	if (uc_mapping)
+		__pmb_mapping_set(uc_mapping);
 
-	cached_to_uncached = uc_mapping->virt -
-		(((unsigned long)&__uncached_start) & ~(uc_mapping->entries->size-1));
+	/*
+	 * The caches may or may not be enabled, so write back the
+	 * data we will need to access through the uncached mapping.
+	 */
+	for (i = 0; i < sizeof(pmbe); i += L1_CACHE_BYTES)
+		__ocbwb(((void *)pmbe) + i);
 
 	jump_to_uncached();
+	__asm__ __volatile__("add	%0, r15" : : "r"(cached_to_uncached));
 
 	/*
 	 * We have to be cautious here, as we will temporarily lose access to
@@ -666,8 +729,11 @@ apply_boot_mappings(struct pmb_mapping *uc_mapping, struct pmb_mapping *ram_mapp
 	entry = ram_mapping->entries;
 	flags = ram_mapping->flags;
 
-	for (i=0; i<NR_PMB_ENTRIES-1; i++)
+	for (i=0; i<NR_PMB_ENTRIES; i++) {
+		if (!(trash & (1<<i)))
+			continue;
 		__clear_pmb_entry(i);
+	}
 
 	do {
 		entry = (struct pmb_entry*)(((unsigned long)entry) + c2uc);
@@ -682,15 +748,38 @@ apply_boot_mappings(struct pmb_mapping *uc_mapping, struct pmb_mapping *ram_mapp
 	ctrl_outl(i, MMUCR);
 
 	back_to_cached();
+	__asm__ __volatile__("sub	%0, r15" : : "r"(cached_to_uncached));
 }
 
 struct pmb_mapping *uc_mapping, *ram_mapping
 	__attribute__ ((__section__ (".uncached.data")));
+unsigned int uc_stack[128]
+	__attribute__ ((__section__ (".uncached.data")));
+
+static void call_apply_boot_mappings(struct pmb_mapping *uc_mapping,
+		struct pmb_mapping *ram_mapping)
+{
+	register struct pmb_mapping *p1 asm("r4") = uc_mapping;
+	register struct pmb_mapping *p2 asm("r5") = ram_mapping;
+
+	asm volatile(
+		"mov	r15, r8;"
+		"jsr	@%1;"
+		" mov	%0, r15;"
+		"mov	r8, r15;"
+		:
+		: "r"(&uc_stack[ARRAY_SIZE(uc_stack)]),
+		  "r"(&apply_boot_mappings),
+		  "r"(p1), "r"(p2)
+		: "r0", "r1", "r2", "r3", "r8", "t");
+}
 
 void __init pmb_init(void)
 {
 	int i;
-	int entry;
+	struct pmb_entry *entry;
+	unsigned long uc_vpn, uc_ppn, uc_flags;
+	int uc_mapping_present;
 
 	/* Create the free list of mappings */
 	pmb_mappings_free = &pmbm[0];
@@ -703,11 +792,37 @@ void __init pmb_init(void)
 		pmbe[i].pos = i;
 
 	/* Create the initial mappings */
-	entry = NR_PMB_ENTRIES-1;
-	uc_mapping = pmb_calc(__pa(&__uncached_start), &__uncached_end - &__uncached_start,
-		 P3SEG-pmb_sizes[0].size, &entry, PMB_WT | PMB_UB);
-	ram_mapping = pmb_calc(__MEMORY_START, __MEMORY_SIZE, P1SEG, 0, PMB_C);
-	apply_boot_mappings(uc_mapping, ram_mapping);
+#ifdef CONFIG_PMB_LARGE_UNCACHED_MAPPING
+	uc_mapping = pmb_calc(__MEMORY_START, __MEMORY_SIZE, P2SEG,
+			      8, PMB_WT | PMB_UB);
+#else
+	uc_mapping = pmb_calc(__pa(__uncached_start), __uncached_end - __uncached_start,
+		P3SEG-pmb_sizes[0].size, NR_PMB_ENTRIES-1, PMB_WT | PMB_UB);
+#endif
+	ram_mapping = pmb_calc(__MEMORY_START, __MEMORY_SIZE, P1SEG,
+			       PMB_NO_ENTRY, PMB_C);
+
+	/*
+	 * If we already have the uncached mapping there is no need to set
+	 * it up again. This is also a pretty good indication that we are
+	 * restarting after a kexec, and so the main ram mapping could be
+	 * cached, and it wouldn't be safe to manipulate the PMB directly.
+	 */
+	uc_mapping_present = 1;
+	for (entry = uc_mapping->entries; entry; entry=entry->next) {
+	     __get_pmb_entry(&uc_vpn, &uc_ppn, &uc_flags, entry->pos);
+	     if (((entry->vpn != uc_vpn) ||
+		  (entry->ppn != uc_ppn) ||
+		  (entry->flags != uc_flags)))
+		  uc_mapping_present = 0;
+	}
+
+	cached_to_uncached = uc_mapping->virt -
+		(((unsigned long)&__uncached_start) &
+		 ~(uc_mapping->entries->size-1));
+
+	call_apply_boot_mappings(uc_mapping_present ? NULL : uc_mapping,
+				 ram_mapping);
 }
 
 int pmb_virt_to_phys(void *addr, unsigned long *phys, unsigned long *flags)
@@ -755,22 +870,16 @@ static int pmb_seq_show(struct seq_file *file, void *iter)
 	for (i = 0; i < NR_PMB_ENTRIES; i++) {
 		unsigned long addr, data;
 		unsigned int size;
-		char *sz_str = NULL;
 
 		addr = ctrl_inl(mk_pmb_addr(i));
 		data = ctrl_inl(mk_pmb_data(i));
-
-		size = data & PMB_SZ_MASK;
-		sz_str = (size == PMB_SZ_16M)  ? " 16MB":
-			 (size == PMB_SZ_64M)  ? " 64MB":
-			 (size == PMB_SZ_128M) ? "128MB":
-					         "512MB";
+		size = pmb_size(data);
 
 		/* 02: V 0x88 0x08 128MB C CB  B */
-		seq_printf(file, "%02d: %c 0x%02lx 0x%02lx %s %c %s %s\n",
+		seq_printf(file, "%02d: %c 0x%02lx 0x%02lx %3dMB %c %s %s\n",
 			   i, ((addr & PMB_V) && (data & PMB_V)) ? 'V' : ' ',
 			   (addr >> 24) & 0xff, (data >> 24) & 0xff,
-			   sz_str, (data & PMB_C) ? 'C' : ' ',
+			   size/(1024*1024), (data & PMB_C) ? 'C' : ' ',
 			   (data & PMB_WT) ? "WT" : "CB",
 			   (data & PMB_UB) ? "UB" : " B");
 	}
@@ -852,7 +961,7 @@ subsys_initcall(pmb_sysdev_init);
 
 void __uses_jump_to_uncached stm_hom_pmb_init(void)
 {
-	apply_boot_mappings(uc_mapping, ram_mapping);
+	call_apply_boot_mappings(uc_mapping, ram_mapping);
 
 	/* Now I can call the pmb_sysdev_resume */
 	pmb_sysdev_suspend(NULL, PMSG_ON);

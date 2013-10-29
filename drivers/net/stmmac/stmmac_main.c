@@ -131,6 +131,18 @@ static const u32 default_msg_level = (NETIF_MSG_DRV | NETIF_MSG_PROBE |
 				      NETIF_MSG_LINK | NETIF_MSG_IFUP |
 				      NETIF_MSG_IFDOWN | NETIF_MSG_TIMER);
 
+static int eee_timer = 1000;
+module_param(eee_timer, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(eee_timer, "LPI tx expiration time in msec");
+#define STMMAC_LPI_TIMER(x) (jiffies + msecs_to_jiffies(x))
+
+/* Enable this option the driver could use the WoL+ feature
+ * available in some new PHY drivers. This allows to completely power-off
+ * the mac when suspend and the WoL will be done by the PHY device directly. */
+static int wol_plus_en;
+module_param(wol_plus_en, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(wol_plus_en, "Driver can use the WoL+ feature");
+
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id);
 static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev);
 #ifdef CONFIG_STMMAC_DEBUG_FS
@@ -194,6 +206,82 @@ static inline void stmmac_hw_fix_mac_speed(struct stmmac_priv *priv)
 					  phydev->speed);
 }
 
+static void stmmac_enable_eee_mode(struct stmmac_priv *priv)
+{
+	/* Check and enter in LPI mode */
+	if ((priv->dirty_tx == priv->cur_tx) &&
+	    (priv->tx_path_in_lpi_mode == false))
+		priv->hw->mac->set_eee_mode(priv->ioaddr);
+}
+
+void stmmac_disable_eee_mode(struct stmmac_priv *priv)
+{
+	/* Exit and disable EEE in case of we are are in LPI state. */
+	priv->hw->mac->reset_eee_mode(priv->ioaddr);
+	del_timer_sync(&priv->eee_ctrl_timer);
+	priv->tx_path_in_lpi_mode = false;
+}
+
+/**
+ * stmmac_eee_ctrl_timer
+ * @arg : data hook
+ * Description:
+ *  If there is no data transfer and if we are not in LPI state,
+ *  then MAC Transmitter can be moved to LPI state.
+ */
+static void stmmac_eee_ctrl_timer(unsigned long arg)
+{
+	struct stmmac_priv *priv = (struct stmmac_priv *)arg;
+
+	stmmac_enable_eee_mode(priv);
+	mod_timer(&priv->eee_ctrl_timer, STMMAC_LPI_TIMER(eee_timer));
+}
+
+/**
+ * stmmac_eee_init
+ * @priv: private device pointer
+ * Description:
+ *  If the EEE support has been enabled while configuring the driver,
+ *  if the GMAC actually supports the EEE (from the HW cap reg) and the
+ *  phy can also manage EEE, so enable the LPI state and start the timer
+ *  to verify if the tx path can enter in LPI state.
+ */
+bool stmmac_eee_init(struct stmmac_priv *priv)
+{
+	bool ret = false;
+
+	/* MAC core supports the EEE feature. */
+	if (priv->dma_cap.eee) {
+
+		/* Check if the PHY supports EEE*/
+		if (phy_check_eee(priv->phydev))
+			goto out;
+
+		init_timer(&priv->eee_ctrl_timer);
+		priv->eee_ctrl_timer.function = stmmac_eee_ctrl_timer;
+		priv->eee_ctrl_timer.data = (unsigned long)priv;
+		priv->eee_ctrl_timer.expires = STMMAC_LPI_TIMER(eee_timer);
+		add_timer(&priv->eee_ctrl_timer);
+
+		priv->hw->mac->set_eee_timer(priv->ioaddr, 0x3e8, 0);
+
+		pr_info("stmmac: Energy-Efficient Ethernet initialized\n");
+
+		ret = true;
+	}
+out:
+	return ret;
+}
+
+static void stmmac_eee_adjust(struct stmmac_priv *priv)
+{
+	/* When the EEE has been already initialised we have to
+	 * modify the PLS bit in the LPI ctrl & status reg according
+	 * to the PHY link status. For this reason. */
+	if (priv->eee_enabled)
+		priv->hw->mac->set_eee_pls(priv->ioaddr, priv->phydev->link);
+}
+
 /**
  * stmmac_adjust_link
  * @dev: net device structure
@@ -214,6 +302,7 @@ static void stmmac_adjust_link(struct net_device *dev)
 	    phydev->addr, phydev->link);
 
 	spin_lock_irqsave(&priv->lock, flags);
+
 	if (phydev->link) {
 		u32 ctrl = readl(priv->ioaddr + MAC_CTRL_REG);
 
@@ -280,6 +369,8 @@ static void stmmac_adjust_link(struct net_device *dev)
 	if (new_state && netif_msg_link(priv))
 		phy_print_status(phydev);
 
+	stmmac_eee_adjust(priv);
+
 	spin_unlock_irqrestore(&priv->lock, flags);
 
 	DBG(probe, DEBUG, "stmmac_adjust_link: exiting\n");
@@ -297,7 +388,7 @@ static int stmmac_init_phy(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 	struct phy_device *phydev;
-	char phy_id[MII_BUS_ID_SIZE + 3];
+	char phy_id_fmt[MII_BUS_ID_SIZE + 3];
 	char bus_id[MII_BUS_ID_SIZE];
 	int interface = priv->plat->interface;
 	priv->oldlink = 0;
@@ -305,11 +396,13 @@ static int stmmac_init_phy(struct net_device *dev)
 	priv->oldduplex = -1;
 
 	snprintf(bus_id, MII_BUS_ID_SIZE, "%x", priv->plat->bus_id);
-	snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id,
+	snprintf(phy_id_fmt, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id,
 		 priv->plat->phy_addr);
-	pr_debug("stmmac_init_phy:  trying to attach to %s\n", phy_id);
+	/* (mii bus id:phy device id)  */
+	pr_debug("stmmac_init_phy:  trying to attach to %s\n", phy_id_fmt);
 
-	phydev = phy_connect(dev, phy_id, &stmmac_adjust_link, 0, interface);
+	phydev = phy_connect(dev, phy_id_fmt, &stmmac_adjust_link,
+			     0, interface);
 
 	if (IS_ERR(phydev)) {
 		pr_err("%s: Could not attach to PHY\n", dev->name);
@@ -338,6 +431,10 @@ static int stmmac_init_phy(struct net_device *dev)
 
 	priv->phydev = phydev;
 
+	if ((priv->phydev->drv->wol_supported) && (wol_plus_en)) {
+		pr_info("stmmac: attached PHY supports WoL Plus\n");
+		priv->phy_wol_plus = priv->phydev->drv->wol_supported;
+	}
 	return 0;
 }
 
@@ -636,7 +733,7 @@ static void stmmac_tx(struct stmmac_priv *priv)
 
 		priv->hw->desc->release_tx_desc(p);
 
-		entry = (++priv->dirty_tx) % txsize;
+		priv->dirty_tx++;
 	}
 	if (unlikely(netif_queue_stopped(priv->dev) &&
 		     stmmac_tx_avail(priv) > STMMAC_TX_THRESH(priv))) {
@@ -647,6 +744,11 @@ static void stmmac_tx(struct stmmac_priv *priv)
 			netif_wake_queue(priv->dev);
 		}
 		netif_tx_unlock(priv->dev);
+	}
+
+	if ((priv->eee_enabled) && (!priv->tx_path_in_lpi_mode)) {
+		stmmac_enable_eee_mode(priv);
+		mod_timer(&priv->eee_ctrl_timer, STMMAC_LPI_TIMER(eee_timer));
 	}
 	spin_unlock(&priv->tx_lock);
 }
@@ -676,14 +778,16 @@ static int stmmac_has_work(struct stmmac_priv *priv)
 	unsigned int has_work = 0;
 	int rxret, tx_work = 0;
 
-	rxret = priv->hw->desc->get_rx_owner(priv->dma_rx +
-		(priv->cur_rx % priv->dma_rx_size));
+	if (likely(priv->dma_rx)) {
+		rxret = priv->hw->desc->get_rx_owner(priv->dma_rx +
+			(priv->cur_rx % priv->dma_rx_size));
 
-	if (priv->dirty_tx != priv->cur_tx)
-		tx_work = 1;
+		if (priv->dirty_tx != priv->cur_tx)
+			tx_work = 1;
 
-	if (likely(!rxret || tx_work))
-		has_work = 1;
+		if (likely(!rxret || tx_work))
+			has_work = 1;
+	}
 
 	return has_work;
 }
@@ -792,8 +896,9 @@ static u32 stmmac_get_synopsys_id(struct stmmac_priv *priv)
 
 /**
  * stmmac_selec_desc_mode
- * @dev : device pointer
- * Description: select the Enhanced/Alternate or Normal descriptors */
+ * @priv : private structure
+ * Description: select the Enhanced/Alternate or Normal descriptors
+ */
 static void stmmac_selec_desc_mode(struct stmmac_priv *priv)
 {
 	if (priv->plat->enh_desc) {
@@ -898,12 +1003,6 @@ static int stmmac_open(struct net_device *dev)
 	stmmac_check_ether_addr(priv);
 
 	/* MDIO bus Registration */
-	ret = stmmac_mdio_register(dev);
-	if (ret < 0) {
-		pr_debug("%s: MDIO bus (id: %d) registration failed",
-			 __func__, priv->plat->bus_id);
-		return ret;
-	}
 
 #ifdef CONFIG_STMMAC_TIMER
 	priv->tm = kzalloc(sizeof(struct stmmac_timer *), GFP_KERNEL);
@@ -974,6 +1073,17 @@ static int stmmac_open(struct net_device *dev)
 		}
 	}
 
+	/* Request the IRQ lines */
+	if (priv->lpi_irq != -ENXIO) {
+		ret = request_irq(priv->lpi_irq, stmmac_interrupt, IRQF_SHARED,
+				  dev->name, dev);
+		if (unlikely(ret < 0)) {
+			pr_err("%s: ERROR: allocating the LPI IRQ %d"
+			       " (error: %d)\n", __func__, priv->lpi_irq, ret);
+			goto open_error_lpiirq;
+		}
+	}
+
 	/* Enable the MAC Rx/Tx */
 	stmmac_set_mac(priv->ioaddr, true);
 
@@ -1010,11 +1120,17 @@ static int stmmac_open(struct net_device *dev)
 	if (priv->phydev)
 		phy_start(priv->phydev);
 
+	priv->eee_enabled = stmmac_eee_init(priv);
+
 	napi_enable(&priv->napi);
 	skb_queue_head_init(&priv->rx_recycle);
 	netif_start_queue(dev);
 
 	return 0;
+
+open_error_lpiirq:
+	if (priv->wol_irq != dev->irq)
+		free_irq(priv->wol_irq, dev);
 
 open_error_wolirq:
 	free_irq(dev->irq, dev);
@@ -1039,6 +1155,9 @@ static int stmmac_release(struct net_device *dev)
 {
 	struct stmmac_priv *priv = netdev_priv(dev);
 
+	if (priv->eee_enabled)
+		del_timer_sync(&priv->eee_ctrl_timer);
+
 	/* Stop and disconnect the PHY */
 	if (priv->phydev) {
 		phy_stop(priv->phydev);
@@ -1061,6 +1180,8 @@ static int stmmac_release(struct net_device *dev)
 	free_irq(dev->irq, dev);
 	if (priv->wol_irq != dev->irq)
 		free_irq(priv->wol_irq, dev);
+	if (priv->lpi_irq != -ENXIO)
+		free_irq(priv->lpi_irq, dev);
 
 	/* Stop TX/RX DMA and clear the descriptors */
 	priv->hw->dma->stop_tx(priv->ioaddr);
@@ -1077,8 +1198,6 @@ static int stmmac_release(struct net_device *dev)
 #ifdef CONFIG_STMMAC_DEBUG_FS
 	stmmac_exit_fs();
 #endif
-	stmmac_mdio_unregister(dev);
-
 	return 0;
 }
 
@@ -1147,6 +1266,9 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 		}
 		return NETDEV_TX_BUSY;
 	}
+
+	if (priv->tx_path_in_lpi_mode)
+		stmmac_disable_eee_mode(priv);
 
 	entry = priv->cur_tx % txsize;
 
@@ -1517,10 +1639,37 @@ static irqreturn_t stmmac_interrupt(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
-	if (priv->plat->has_gmac)
-		/* To handle GMAC own interrupts */
-		priv->hw->mac->host_irq_status((void __iomem *) dev->base_addr);
+	/* To handle GMAC own interrupts */
+	if (priv->plat->has_gmac) {
+		int status = priv->hw->mac->host_irq_status((void __iomem *)
+							    dev->base_addr);
+		if (unlikely(status)) {
+			if (status & core_mmc_tx_irq)
+				priv->xstats.mmc_tx_irq_n++;
+			if (status & core_mmc_rx_irq)
+				priv->xstats.mmc_rx_irq_n++;
+			if (status & core_mmc_rx_csum_offload_irq)
+				priv->xstats.mmc_rx_csum_offload_irq_n++;
+			if (status & core_irq_receive_pmt_irq)
+				priv->xstats.irq_receive_pmt_irq_n++;
 
+			/* For LPI we need to save the tx status */
+			if (status & core_irq_tx_path_in_lpi_mode) {
+				priv->xstats.irq_tx_path_in_lpi_mode_n++;
+				priv->tx_path_in_lpi_mode = true;
+			}
+			if (status & core_irq_tx_path_exit_lpi_mode) {
+				priv->xstats.irq_tx_path_exit_lpi_mode_n++;
+				priv->tx_path_in_lpi_mode = false;
+			}
+			if (status & core_irq_rx_path_in_lpi_mode)
+				priv->xstats.irq_rx_path_in_lpi_mode_n++;
+			if (status & core_irq_rx_path_exit_lpi_mode)
+				priv->xstats.irq_rx_path_exit_lpi_mode_n++;
+		}
+	}
+
+	/* To handle DMA interrupts */
 	stmmac_dma_interrupt(priv);
 
 	return IRQ_HANDLED;
@@ -1842,6 +1991,8 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 /**
  * stmmac_dvr_probe
  * @device: device pointer
+ * @plat_dat: platform data pointer
+ * @addr: iobase memory address
  * Description: this is the main probe function used to
  * call the alloc_etherdev, allocate the priv structure,
  * init the MDIO bus etc.
@@ -1908,15 +2059,23 @@ struct stmmac_priv *stmmac_dvr_probe(struct device *device,
 	ret = register_netdev(ndev);
 	if (ret) {
 		pr_err("%s: ERROR %i registering the device\n", __func__, ret);
-		goto error;
+		goto netdev_error;
+	}
+
+	ret = stmmac_mdio_register(ndev);
+	if (ret < 0) {
+		pr_err("%s: MDIO bus (id: %d) registration failed",
+			__func__, priv->plat->bus_id);
+		goto exit_error;
 	}
 
 	return priv;
 
-error:
+exit_error:
+	unregister_netdev(ndev);
+netdev_error:
 	netif_napi_del(&priv->napi);
 
-	unregister_netdev(ndev);
 	free_netdev(ndev);
 
 	return NULL;
@@ -1940,6 +2099,7 @@ int stmmac_dvr_remove(struct net_device *ndev)
 
 	stmmac_set_mac(priv->ioaddr, false);
 	netif_carrier_off(ndev);
+	stmmac_mdio_unregister(ndev);
 	unregister_netdev(ndev);
 	free_netdev(ndev);
 
@@ -1978,8 +2138,13 @@ int stmmac_suspend(struct net_device *ndev)
 				     dis_ic);
 	priv->hw->desc->init_tx_desc(priv->dma_tx, priv->dma_tx_size);
 
-	/* Enable Power down mode by programming the PMT regs */
-	if (device_may_wakeup(priv->device))
+	/* If the wake-up On Lan can be done by the PHY device
+	 * (that supports WoL+) there is no reason to program the PMT
+	 * registers. This means that to enable Power down mode programming
+	 * the PMT regs either the phy doesn't support WoL+ or the PHY
+	 * supports that but not the WoL mode required by the user.
+	 */
+	if (device_may_wakeup(priv->device) && (!priv->phy_wol_plus))
 		priv->hw->mac->pmt(priv->ioaddr, priv->wolopts);
 	else
 		stmmac_set_mac(priv->ioaddr, false);
@@ -1997,12 +2162,12 @@ int stmmac_resume(struct net_device *ndev)
 
 	spin_lock(&priv->lock);
 
-	/* Power Down bit, into the PM register, is cleared
-	 * automatically as soon as a magic packet or a Wake-up frame
-	 * is received. Anyway, it's better to manually clear
-	 * this bit because it can generate problems while resuming
-	 * from another devices (e.g. serial console). */
-	if (device_may_wakeup(priv->device))
+	if (device_may_wakeup(priv->device) && (!priv->phy_wol_plus))
+		/* Power Down bit, into the PM register, is cleared
+		 * automatically as soon as a magic packet or a Wake-up frame
+		 * is received. Anyway, it's better to manually clear
+		 * this bit because it can generate problems while resuming
+		 * from another devices (e.g. serial console). */
 		priv->hw->mac->pmt(priv->ioaddr, 0);
 
 	netif_device_attach(ndev);
@@ -2085,6 +2250,10 @@ static int __init stmmac_cmdline_opt(char *str)
 				goto err;
 		} else if (!strncmp(opt, "pause:", 6)) {
 			if (strict_strtoul(opt + 6, 0, (unsigned long *)&pause))
+				goto err;
+		} else if (!strncmp(opt, "wol_plus_en:", 12)) {
+			if (strict_strtoul(opt + 12, 0,
+					   (unsigned long *)&wol_plus_en))
 				goto err;
 #ifdef CONFIG_STMMAC_TIMER
 		} else if (!strncmp(opt, "tmrate:", 7)) {

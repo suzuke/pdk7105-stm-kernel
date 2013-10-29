@@ -21,6 +21,7 @@
 #include <asm/mmu_context.h>
 #include <asm/io.h>
 #include <asm/cacheflush.h>
+#include <asm/irq-ilc.h>
 
 typedef void (*relocate_new_kernel_t)(unsigned long indirection_page,
 				      unsigned long reboot_code_buffer,
@@ -33,6 +34,7 @@ extern void *vbr_base;
 
 void machine_shutdown(void)
 {
+	ilc_disable_all();
 }
 
 void machine_crash_shutdown(struct pt_regs *regs)
@@ -116,6 +118,7 @@ void machine_kexec(struct kimage *image)
 
 	kexec_info(image);
 	flush_cache_all();
+	stm_l2_disable();
 
 #if defined(CONFIG_SH_STANDARD_BIOS)
 	asm volatile("ldc %0, vbr" :

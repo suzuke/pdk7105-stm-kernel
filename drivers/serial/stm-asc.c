@@ -27,10 +27,6 @@
 #include <linux/stm/platform.h>
 #include <linux/clk.h>
 
-#ifdef CONFIG_SH_STANDARD_BIOS
-#include <asm/sh_bios.h>
-#endif
-
 #include "stm-asc.h"
 
 #define DRIVER_NAME "stm-asc"
@@ -63,43 +59,48 @@ static int __init asc_console_setup(struct console *, char *);
  */
 static inline void asc_disable_tx_interrupts(struct uart_port *port)
 {
-	unsigned long intenable;
+	struct asc_port *ascport = container_of(port, struct asc_port, port);
 
 	/* Clear TE (Transmitter empty) interrupt enable in INTEN */
-	intenable = asc_in(port, INTEN);
-	intenable &= ~ASC_INTEN_THE;
-	asc_out(port, INTEN, intenable);
+	if (ascport->inten & ASC_INTEN_THE) {
+		ascport->inten &= ~ASC_INTEN_THE;
+		asc_out(port, INTEN, ascport->inten);
+		(void)asc_in(port, INTEN);	/* Defeat write posting */
+	}
 }
 
 static inline void asc_enable_tx_interrupts(struct uart_port *port)
 {
-	unsigned long intenable;
+	struct asc_port *ascport = container_of(port, struct asc_port, port);
 
 	/* Set TE (Transmitter empty) interrupt enable in INTEN */
-	intenable = asc_in(port, INTEN);
-	intenable |= ASC_INTEN_THE;
-	asc_out(port, INTEN, intenable);
+	if (! (ascport->inten & ASC_INTEN_THE)) {
+		ascport->inten |= ASC_INTEN_THE;
+		asc_out(port, INTEN, ascport->inten);
+	}
 }
 
 static inline void asc_disable_rx_interrupts(struct uart_port *port)
 {
-	unsigned long intenable;
+	struct asc_port *ascport = container_of(port, struct asc_port, port);
 
 	/* Clear RBE (Receive Buffer Full Interrupt Enable) bit in INTEN */
-	intenable = asc_in(port, INTEN);
-	intenable &= ~ASC_INTEN_RBE;
-	asc_out(port, INTEN, intenable);
+	if (ascport->inten & ASC_INTEN_RBE) {
+		ascport->inten &= ~ASC_INTEN_RBE;
+		asc_out(port, INTEN, ascport->inten);
+		(void)asc_in(port, INTEN);	/* Defeat write posting */
+	}
 }
-
 
 static inline void asc_enable_rx_interrupts(struct uart_port *port)
 {
-	unsigned long intenable;
+	struct asc_port *ascport = container_of(port, struct asc_port, port);
 
 	/* Set RBE (Receive Buffer Full Interrupt Enable) bit in INTEN */
-	intenable = asc_in(port, INTEN);
-	intenable |= ASC_INTEN_RBE;
-	asc_out(port, INTEN, intenable);
+	if (! (ascport->inten & ASC_INTEN_RBE)) {
+		ascport->inten |= ASC_INTEN_RBE;
+		asc_out(port, INTEN, ascport->inten);
+	}
 }
 
 /*----------------------------------------------------------------------*/
@@ -145,7 +146,6 @@ static void asc_start_tx(struct uart_port *port)
 		asc_fdma_tx_start(port);
 	else {
 		struct circ_buf *xmit = &port->state->xmit;
-		asc_transmit_chars(port);
 		if (!uart_circ_empty(xmit))
 			asc_enable_tx_interrupts(port);
 	}
@@ -436,7 +436,6 @@ static int asc_serial_suspend(struct device *dev)
 	local_irq_save(flags);
 	mdelay(10);
 	ascport->pm_ctrl = asc_in(port, CTL);
-	ascport->pm_irq = asc_in(port, INTEN);
 
 	/* disable the FIFO to resume on a first button */
 	asc_out(port, CTL, ascport->pm_ctrl & ~ASC_CTL_FIFOENABLE);
@@ -472,7 +471,7 @@ static int asc_serial_resume(struct device *dev)
 	local_irq_save(flags);
 	asc_out(port, CTL, ascport->pm_ctrl);
 	asc_out(port, TIMEOUT, 20);		/* hardcoded */
-	asc_out(port, INTEN, ascport->pm_irq);
+	asc_out(port, INTEN, ascport->inten);
 	asc_set_baud(port, ascport->pm_baud, clk_get_rate(ascport->clk));
 	ascport->suspended = 0;
 	local_irq_restore(flags);
@@ -486,7 +485,6 @@ static int asc_serial_freeze(struct device *dev)
 	struct uart_port *port   = &(ascport->port);
 
 	ascport->pm_ctrl = asc_in(port, CTL);
-	ascport->pm_irq = asc_in(port, INTEN);
 
 	clk_disable(ascport->clk);
 	return 0;
@@ -502,7 +500,7 @@ static int asc_serial_restore(struct device *dev)
 	/* program the port but do not enable it */
 	asc_out(port, CTL, ascport->pm_ctrl & ~ASC_CTL_RUN);
 	asc_out(port, TIMEOUT, 20);		/* hardcoded */
-	asc_out(port, INTEN, ascport->pm_irq);
+	asc_out(port, INTEN, ascport->inten);
 	asc_set_baud(port, ascport->pm_baud, clk_get_rate(ascport->clk));
 	/* reset fifo rx & tx */
 	asc_out(port, TXRESET, 1);
@@ -846,6 +844,7 @@ static inline void asc_receive_chars(struct uart_port *port)
 static irqreturn_t asc_interrupt(int irq, void *ptr)
 {
 	struct uart_port *port = ptr;
+	struct asc_port *ascport = container_of(port, struct asc_port, port);
 	unsigned long status;
 
 	spin_lock(&port->lock);
@@ -867,7 +866,7 @@ static irqreturn_t asc_interrupt(int irq, void *ptr)
 		}
 
 		if ((status & ASC_STA_THE) &&
-				(asc_in(port, INTEN) & ASC_INTEN_THE)) {
+		    (ascport->inten & ASC_INTEN_THE)) {
 			/* Transmitter FIFO at least half empty */
 			asc_transmit_chars(port);
 		}
@@ -897,36 +896,6 @@ static void asc_free_irq(struct uart_port *port)
 
 /*----------------------------------------------------------------------*/
 
-#if defined(CONFIG_SH_STANDARD_BIOS)
-
-static int get_char(struct uart_port *port)
-{
-	int c;
-	unsigned long status;
-
-	do {
-		status = asc_in(port, STA);
-	} while (!(status & ASC_STA_RBF));
-
-	c = asc_in(port, RXBUF);
-
-	return c;
-}
-
-/* Taken from sh-stub.c of GDB 4.18 */
-static const char hexchars[] = "0123456789abcdef";
-
-static __inline__ char highhex(int  x)
-{
-	return hexchars[(x >> 4) & 0xf];
-}
-
-static __inline__ char lowhex(int  x)
-{
-	return hexchars[x & 0xf];
-}
-#endif
-
 #ifdef CONFIG_SERIAL_STM_ASC_CONSOLE
 static int asc_txfifo_is_full(struct asc_port *ascport, unsigned long status)
 {
@@ -936,81 +905,68 @@ static int asc_txfifo_is_full(struct asc_port *ascport, unsigned long status)
 	return status & ASC_STA_TF;
 }
 
-static void put_char(struct uart_port *port, char c)
+static void asc_console_putchar(struct uart_port *port, int ch)
 {
-	unsigned long flags;
-	unsigned long status;
 	struct asc_port *ascport = container_of(port, struct asc_port, port);
 
-	if (ascport->suspended)
-		return;
-try_again:
-	do {
+	unsigned int timeout;
+	unsigned long status;
+
+	/* Wait for upto 1 second in case flow control is stopping us. */
+	for (timeout = 1000000; timeout; timeout--) {
 		status = asc_in(port, STA);
-	} while (asc_txfifo_is_full(ascport, status));
-
-	spin_lock_irqsave(&port->lock, flags);
-
-	status = asc_in(port, STA);
-	if (asc_txfifo_is_full(ascport, status)) {
-		spin_unlock_irqrestore(&port->lock, flags);
-		goto try_again;
+		if (!asc_txfifo_is_full(ascport, status))
+			break;
+		udelay(1);
 	}
 
-	asc_out(port, TXBUF, c);
-
-	spin_unlock_irqrestore(&port->lock, flags);
+	asc_out(port, TXBUF, ch);
 }
 
 /*
- * Send the packet in buffer.  The host gets one chance to read it.
- * This routine does not wait for a positive acknowledge.
+ *  Print a string to the serial port trying not to disturb
+ *  any possible real use of the port...
  */
 
-static void put_string(struct uart_port *port, const char *buffer, int count)
+static void asc_console_write(struct console *co, const char *s, unsigned count)
 {
-	int i;
-	const unsigned char *p = buffer;
-#if defined(CONFIG_SH_STANDARD_BIOS)
-	int checksum;
-	int usegdb = 0;
+	struct uart_port *port = &asc_ports[co->index].port;
+	struct asc_port *ascport = container_of(port, struct asc_port, port);
+	unsigned long flags;
+	unsigned long status;
+	int locked = 1;
+	unsigned long intenable;
 
-	/* This call only does a trap the first time it is
-	 * called, and so is safe to do here unconditionally */
-	usegdb |= sh_bios_in_gdb_mode();
+	if (ascport->suspended)
+		return;
 
-	if (usegdb) {
-	    /*  $<packet info>#<checksum>. */
-	    do {
-		unsigned char c;
-
-		put_char(port, '$');
-		put_char(port, 'O'); /* 'O'utput to console */
-		checksum = 'O';
-
-		/* Don't use run length encoding */
-		for (i = 0; i < count; i++) {
-			int h, l;
-
-			c = *p++;
-			h = highhex(c);
-			l = lowhex(c);
-			put_char(port, h);
-			put_char(port, l);
-			checksum += h + l;
-		}
-		put_char(port, '#');
-		put_char(port, highhex(checksum));
-		put_char(port, lowhex(checksum));
-	    } while  (get_char(port) != '+');
+	local_irq_save(flags);
+	if (port->sysrq) {
+		/* asc_interrupt has already claimed the lock */
+		locked = 0;
+	} else if (oops_in_progress) {
+		locked = spin_trylock(&port->lock);
 	} else
-#endif /* CONFIG_SH_STANDARD_BIOS */
+		spin_lock(&port->lock);
 
-	for (i = 0; i < count; i++) {
-		if (*p == 10)
-			put_char(port, '\r');
-		put_char(port, *p++);
-	}
+	/*
+	 * Disable interrupts so we don't get the IRQ line bouncing
+	 * up and down while interrupts are disabled.
+	 */
+	asc_out(port, INTEN, 0);
+	(void)asc_in(port, INTEN);	/* Defeat write posting */
+
+	uart_console_write(port, s, count, asc_console_putchar);
+
+	do {
+		status = asc_in(port, STA);
+	} while (!(status & ASC_STA_TE));
+
+	asc_out(port, INTEN, ascport->inten);
+
+	if (locked)
+		spin_unlock(&port->lock);
+	local_irq_restore(flags);
 }
 
 /*----------------------------------------------------------------------*/
@@ -1046,17 +1002,5 @@ static int __init asc_console_setup(struct console *co, char *options)
 		uart_parse_options(options, &baud, &parity, &bits, &flow);
 
 	return uart_set_options(&ascport->port, co, baud, parity, bits, flow);
-}
-
-/*
- *  Print a string to the serial port trying not to disturb
- *  any possible real use of the port...
- */
-
-static void asc_console_write(struct console *co, const char *s, unsigned count)
-{
-	struct uart_port *port = &asc_ports[co->index].port;
-
-	put_string(port, s, count);
 }
 #endif /* CONFIG_SERIAL_STM_ASC_CONSOLE */

@@ -35,7 +35,9 @@ struct asc_port {
 	struct stm_pad_config *pad_config;
 	struct stm_pad_state *pad_state;
 	struct clk *clk;
+	unsigned long inten;
 	int hw_flow_control:1;
+	/* GNBvd77004: UART tx fifo full status flag unusable */
 	int txfifo_bug:1;
 	int suspended:1;
 	int check_parity:1;
@@ -45,7 +47,6 @@ struct asc_port {
 #ifdef CONFIG_PM
 	unsigned long pm_ctrl;
 	unsigned long pm_baud;
-	unsigned long pm_irq;
 #endif
 };
 

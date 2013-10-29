@@ -116,13 +116,13 @@ void stm_pio_control_config_retime(struct stm_pio_control *pio_control,
 	int i, j;
 
 	unsigned long retime_mask =
-		(rt->clk1notclk0   > 0 ? 1<<offset->clk1notclk0_offset : 0) |
-		(rt->clknotdata    > 0 ? 1<<offset->clknotdata_offset : 0) |
-		((rt->delay_input & 1) ? 1<<offset->delay_lsb_offset : 0) |
-		((rt->delay_input & 2) ? 1<<offset->delay_msb_offset : 0) |
-		(rt->double_edge   > 0 ? 1<<offset->double_edge_offset : 0) |
-		(rt->invertclk     > 0 ? 1<<offset->invertclk_offset : 0) |
-		(rt->retime        > 0 ? 1<<offset->retime_offset : 0);
+		(rt->clk1notclk0   >= 0 ? 1<<offset->clk1notclk0_offset : 0) |
+		(rt->clknotdata    >= 0 ? 1<<offset->clknotdata_offset : 0) |
+		(rt->delay_input   >= 0 ? (1<<offset->delay_lsb_offset |
+		                           1<<offset->delay_msb_offset) : 0) |
+		(rt->double_edge   >= 0 ? 1<<offset->double_edge_offset : 0) |
+		(rt->invertclk     >= 0 ? 1<<offset->invertclk_offset : 0) |
+		(rt->retime        >= 0 ? 1<<offset->retime_offset : 0);
 
 	unsigned long retime_config =
 		(rt->clk1notclk0       ? 1<<offset->clk1notclk0_offset : 0) |
@@ -177,11 +177,11 @@ void __init stm_pio_control_init(const struct stm_pio_control_config *config,
 			"PIO Output Enable Control");
 		if (!pio_control[i].oe) goto failed;
 		pio_control[i].pu = sysconf_claim(config[i].pu.group,
-			config[i].pu.num, config[i].oe.lsb, config[i].pu.msb,
+			config[i].pu.num, config[i].pu.lsb, config[i].pu.msb,
 			"PIO Pull Up Control");
 		if (!pio_control[i].pu) goto failed;
 		pio_control[i].od = sysconf_claim(config[i].od.group,
-			config[i].od.num, config[i].oe.lsb, config[i].od.msb,
+			config[i].od.num, config[i].od.lsb, config[i].od.msb,
 			"PIO Open Drain Control");
 		if (!pio_control[i].od) goto failed;
 

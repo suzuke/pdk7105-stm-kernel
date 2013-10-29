@@ -62,6 +62,7 @@
 #include <linux/delay.h>
 
 #include "stm_nand_regs.h"
+#include "stm_nand_bbt.h"
 
 #ifdef CONFIG_MTD_PARTITIONS
 #include <linux/mtd/partitions.h>
@@ -84,6 +85,11 @@ struct ecc_params {
 	/* mtd_info params */
 	u_int32_t		subpage_sft;
 };
+
+/* Module parameter for specifying name of boot partition */
+static char *nbootpart;
+module_param(nbootpart, charp, 0000);
+MODULE_PARM_DESC(nbootpart, "MTD name of NAND boot-mode ECC partition");
 #endif /* CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT */
 
 /* NAND device connected to STM NAND Controller operatring in FLEX mode.  (There
@@ -95,7 +101,9 @@ struct stm_nand_flex_device {
 	struct mtd_info		mtd;
 	int			csn;
 
-	struct stm_nand_timing_data *timing_data;
+	uint32_t		ctl_timing;
+	uint32_t		wen_timing;
+	uint32_t		ren_timing;
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
 	unsigned long		boot_start;
@@ -135,10 +143,6 @@ struct stm_nand_flex_controller {
 	struct stm_nand_flex_device *devices[0];
 };
 
-#ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
-/* The command line passed to nboot_setup() */
-__initdata static char *cmdline;
-#endif
 
 static struct stm_nand_flex_controller* mtd_to_flex(struct mtd_info *mtd)
 {
@@ -245,7 +249,7 @@ static int flex_rbn(struct mtd_info *mtd)
 	struct stm_nand_flex_controller *flex = mtd_to_flex(mtd);
 
 	/* Apply a small delay before sampling RBn signal */
-	ndelay(100);
+	ndelay(200);
 	return (flex_readreg(NANDHAM_RBN_STA) & (0x4)) ? 1 : 0;
 }
 
@@ -437,46 +441,6 @@ static struct nand_ecclayout boot_oob_64 = {
 	},
 	.oobfree = {{0, 0} },	/* No free OOB bytes */
 };
-
-static uint8_t scan_ff_pattern[] = { 0xff, 0xff };
-static struct nand_bbt_descr bbt_scan_sp = {
-	.options = NAND_BBT_SCAN2NDPAGE | NAND_BBT_SCANSTMBOOTECC,
-	.offs = 5,
-	.len = 1,
-	.pattern = scan_ff_pattern
-};
-
-static struct nand_bbt_descr bbt_scan_lp = {
-	.options = NAND_BBT_SCAN2NDPAGE | NAND_BBT_SCANSTMBOOTECC,
-	.offs = 0,
-	.len = 2,
-	.pattern = scan_ff_pattern
-};
-
-/* Update 'badblock_pattern' to handle STM boot-mode ECC prior to bad-block
- * scanning */
-static int scan_bbt_stmecc(struct mtd_info *mtd)
-{
-	struct nand_chip *chip = mtd->priv;
-
-	chip->badblock_pattern = (mtd->writesize > 512) ?
-		&bbt_scan_lp : &bbt_scan_sp;
-
-	return nand_default_bbt(mtd);
-}
-
-
-/* Replicated from ../mtdpart.c: required here to get slave MTD offsets and
- * determine which ECC mode to use.
- */
-struct mtd_part {
-	struct mtd_info mtd;
-	struct mtd_info *master;
-	u_int32_t offset;
-	struct list_head list;
-};
-
-#define PART(x)  ((struct mtd_part *)(x))
 
 /* Boot mode ECC calc/correct function */
 int boot_calc_ecc(struct mtd_info *mtd, const unsigned char *buf,
@@ -783,10 +747,15 @@ static int nand_write_oob(struct mtd_info *mtd, loff_t to,
 
 #endif /* CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT */
 
-
-/* Configure NAND controller timing registers */
-static void flex_set_timings(struct stm_nand_flex_controller *flex,
-			     struct stm_nand_timing_data *tm)
+/* Derive timing register values from 'stm_nand_timing_data' data.
+ *
+ * [DEPRECATED in favour of flex_calc_timing_registers() based on 'struct
+ * nand_timing_spec' data.]
+ */
+static void flex_calc_timing_registers_legacy(struct stm_nand_timing_data *tm,
+					      uint32_t *ctl_timing,
+					      uint32_t *wen_timing,
+					      uint32_t *ren_timing)
 {
 	uint32_t n;
 	uint32_t reg;
@@ -818,8 +787,7 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->WE_to_RBn + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 24;
 
-	DEBUG(MTD_DEBUG_LEVEL0, "%s: CTL_TIMING = 0x%08x\n", NAME, reg);
-	flex_writereg(reg, NANDHAM_CTL_TIMING);
+	*ctl_timing = reg;
 
 	/* WEN_TIMING */
 	n = (tm->wr_on + emi_t_ns - 1)/emi_t_ns;
@@ -828,8 +796,8 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->wr_off + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 8;
 
-	DEBUG(MTD_DEBUG_LEVEL0, "%s: WEN_TIMING = 0x%08x\n", NAME, reg);
-	flex_writereg(reg, NANDHAM_WEN_TIMING);
+	*wen_timing = reg;
+
 
 	/* REN_TIMING */
 	n = (tm->rd_on + emi_t_ns - 1)/emi_t_ns;
@@ -838,8 +806,105 @@ static void flex_set_timings(struct stm_nand_flex_controller *flex,
 	n = (tm->rd_off + emi_t_ns - 1)/emi_t_ns;
 	reg |= (n & 0xff) << 8;
 
-	DEBUG(MTD_DEBUG_LEVEL0, "%s: REN_TIMING = 0x%08x\n", NAME, reg);
-	flex_writereg(reg, NANDHAM_REN_TIMING);
+	*ren_timing = reg;
+}
+
+/* Derive timing register values from 'nand_timing_spec' data */
+static void flex_calc_timing_registers(struct nand_timing_spec *spec,
+				       int relax,
+				       uint32_t *ctl_timing,
+				       uint32_t *wen_timing,
+				       uint32_t *ren_timing)
+{
+	struct clk *emi_clk;
+	int tCLK;
+
+	int tMAX_HOLD;
+	int n_ctl_setup;
+	int n_ctl_hold;
+	int n_ctl_wb;
+
+	int tMAX_WEN_OFF;
+	int n_wen_on;
+	int n_wen_off;
+
+	int tMAX_REN_OFF;
+	int n_ren_on;
+	int n_ren_off;
+
+	/* Get EMI clock (default 100MHz) */
+	emi_clk = clk_get(NULL, "emi_clk");
+	if (!emi_clk || IS_ERR(emi_clk)) {
+		printk(KERN_WARNING NAME
+		       ": Failed to get EMI clock, assuming default 100MHz\n");
+		tCLK = 10;
+	} else {
+		tCLK = 1000000000 / clk_get_rate(emi_clk);
+	}
+
+	/*
+	 * CTL_TIMING
+	 */
+
+	/*	- SETUP */
+	n_ctl_setup = (spec->tCLS - spec->tWP + tCLK - 1)/tCLK;
+	if (n_ctl_setup < 1)
+		n_ctl_setup = 1;
+	n_ctl_setup += relax;
+
+	/*	- HOLD */
+	tMAX_HOLD = spec->tCLH;
+	if (spec->tCH > tMAX_HOLD)
+		tMAX_HOLD = spec->tCH;
+	if (spec->tALH > tMAX_HOLD)
+		tMAX_HOLD = spec->tALH;
+	if (spec->tDH > tMAX_HOLD)
+		tMAX_HOLD = spec->tDH;
+	n_ctl_hold = (tMAX_HOLD + tCLK - 1)/tCLK + relax;
+
+	/*	- CE_deassert_hold = 0 */
+
+	/*	- WE_high_to_RBn_low */
+	n_ctl_wb = (spec->tWB + tCLK - 1)/tCLK;
+
+	*ctl_timing = ((n_ctl_setup & 0xff) |
+		       (n_ctl_hold & 0xff) << 8 |
+		       (n_ctl_wb & 0xff) << 24);
+
+	/*
+	 * WEN_TIMING
+	 */
+
+	/*	- ON */
+	n_wen_on = (spec->tWH + tCLK - 1)/tCLK + relax;
+
+	/*	- OFF */
+	tMAX_WEN_OFF = spec->tWC - spec->tWH;
+	if (spec->tWP > tMAX_WEN_OFF)
+		tMAX_WEN_OFF = spec->tWP;
+	n_wen_off = (tMAX_WEN_OFF + tCLK - 1)/tCLK + relax;
+
+	*wen_timing = ((n_wen_on & 0xff) |
+		       (n_wen_off & 0xff) << 8);
+
+	/*
+	 * REN_TIMING
+	 */
+
+	/*	- ON */
+	n_ren_on = (spec->tREH + tCLK - 1)/tCLK + relax;
+
+	/*	- OFF */
+	tMAX_REN_OFF = spec->tRC - spec->tREH;
+	if (spec->tRP > tMAX_REN_OFF)
+		tMAX_REN_OFF = spec->tRP;
+	if (spec->tREA > tMAX_REN_OFF)
+		tMAX_REN_OFF = spec->tREA;
+	n_ren_off = (tMAX_REN_OFF + tCLK - 1)/tCLK + 1 + relax;
+
+	*ren_timing = ((n_ren_on & 0xff) |
+		       (n_ren_off & 0xff) << 8);
+
 }
 
 /* FLEX mode chip select: For now we only support 1 chip per
@@ -868,9 +933,17 @@ static void flex_select_chip(struct mtd_info *mtd, int chipnr)
 		flex->current_csn = data->csn;
 		flex_writereg(0x1 << data->csn, NANDHAM_FLEX_MUXCTRL);
 
-		/* Set up timing parameters */
-		flex_set_timings(flex, data->timing_data);
-
+		/* Configure timing registers */
+		if (data->ctl_timing) {
+			pr_debug("Updating timing configuration "
+				 "[0x%08x, 0x%08x, 0x%08x]\n",
+				 data->ctl_timing,
+				 data->wen_timing,
+				 data->ren_timing);
+			flex_writereg(data->ctl_timing, NANDHAM_CTL_TIMING);
+			flex_writereg(data->wen_timing, NANDHAM_WEN_TIMING);
+			flex_writereg(data->ren_timing, NANDHAM_REN_TIMING);
+		}
 	} else {
 		printk(KERN_ERR NAME ": attempt to select chipnr = %d\n",
 		       chipnr);
@@ -888,13 +961,13 @@ static void flex_print_regs(struct stm_nand_flex_controller *flex)
 	printk(KERN_INFO "\trbn_status = 0x%08x\n",
 	       (unsigned int)flex_readreg(NANDHAM_RBN_STA));
 	printk(KERN_INFO "\tinterrupt_enable = 0x%08x\n",
-	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_ENABLE));
+	       (unsigned int)flex_readreg(NANDHAM_INT_EN));
 	printk(KERN_INFO "\tinterrupt_status = 0x%08x\n",
-	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_STATUS));
+	       (unsigned int)flex_readreg(NANDHAM_INT_STA));
 	printk(KERN_INFO "\tinterrupt_clear = 0x%08x\n",
-	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_CLEAR));
+	       (unsigned int)flex_readreg(NANDHAM_INT_CLR));
 	printk(KERN_INFO "\tinterrupt_edgeconfig = 0x%08x\n",
-	       (unsigned int)flex_readreg(NANDHAM_INTERRUPT_EDGECONFIG));
+	       (unsigned int)flex_readreg(NANDHAM_INT_EDGE_CFG));
 	printk(KERN_INFO "\tcontrol_timing = 0x%08x\n",
 	       (unsigned int)flex_readreg(NANDHAM_CTL_TIMING));
 	printk(KERN_INFO "\twen_timing = 0x%08x\n",
@@ -902,11 +975,9 @@ static void flex_print_regs(struct stm_nand_flex_controller *flex)
 	printk(KERN_INFO "\tren_timing = 0x%08x\n",
 	       (unsigned int)flex_readreg(NANDHAM_REN_TIMING));
 	printk(KERN_INFO "\tflexmode_config = 0x%08x\n",
-	       (unsigned int)flex_readreg(NANDHAM_FLEXMODE_CONFIG));
+	       (unsigned int)flex_readreg(NANDHAM_FLEXMODE_CFG));
 	printk(KERN_INFO "\tmuxcontrol_reg = 0x%08x\n",
-	       (unsigned int)flex_readreg(NANDHAM_MUXCTL));
-	printk(KERN_INFO "\tcsn_alternate_reg = 0x%08x\n",
-	       (unsigned int)flex_readreg(NANDHAM_CSN_ALTERNATE));
+	       (unsigned int)flex_readreg(NANDHAM_FLEX_MUXCTRL));
 	printk(KERN_INFO "\tmulti_cs_config_reg = 0x%08x\n",
 	       (unsigned int)flex_readreg(NANDHAM_MULTI_CS_CONFIG_REG));
 	printk(KERN_INFO "\tversion_reg = 0x%08x\n",
@@ -914,8 +985,33 @@ static void flex_print_regs(struct stm_nand_flex_controller *flex)
 }
 #endif /* CONFIG_MTD_DEBUG */
 
-static struct stm_nand_flex_controller * __init
-flex_init_controller(struct platform_device *pdev)
+void flex_init_controller(struct stm_nand_flex_controller *flex)
+{
+	/* Disable boot_not_flex */
+	flex_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
+
+	/* Reset FLEX Controller */
+	flex_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
+	udelay(1);
+	flex_writereg(0x00, NANDHAM_FLEXMODE_CFG);
+
+	/* Set Controller to FLEX mode */
+	flex_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
+
+	/* Not using interrupts in FLEX mode */
+	flex_writereg(0x00, NANDHAM_INT_EN);
+
+	/* To fit with MTD framework, configure FLEX_DATA reg for 1-byte
+	 * read/writes, and deassert CSn
+	 */
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAWRITE_CONFIG);
+	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
+		      NANDHAM_FLEX_DATAREAD_CONFIG);
+}
+
+static struct stm_nand_flex_controller * __devinit
+flex_init_resources(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
 	struct resource *resource;
@@ -977,37 +1073,18 @@ flex_init_controller(struct platform_device *pdev)
 		goto out4;
 	}
 
-	flex->current_csn = -1;
-
 	/* Initialise 'controller' structure */
 	spin_lock_init(&flex->hwcontrol.lock);
 	init_waitqueue_head(&flex->hwcontrol.wq);
 
-	/* Disable boot_not_flex */
-	flex_writereg(0x00000000, NANDHAM_BOOTBANK_CFG);
+	flex->current_csn = -1;
 
-	/* Reset FLEX Controller */
-	flex_writereg((0x1 << 3), NANDHAM_FLEXMODE_CFG);
-	udelay(1);
-	flex_writereg(0x00, NANDHAM_FLEXMODE_CFG);
-
-	/* Set Controller to FLEX mode */
-	flex_writereg(0x00000001, NANDHAM_FLEXMODE_CFG);
-
-	/* Not using interrupts in FLEX mode */
-	flex_writereg(0x00, NANDHAM_INT_EN);
-
-	/* To fit with MTD framework, configure FLEX_DATA reg for 1-byte
-	 * read/writes, and deassert CSn
-	 */
-	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
-		      NANDHAM_FLEX_DATAWRITE_CONFIG);
-	flex_writereg(FLEX_DATA_CFG_BEATS_1 | FLEX_DATA_CFG_CSN,
-		      NANDHAM_FLEX_DATAREAD_CONFIG);
+	flex_init_controller(flex);
 
 #ifdef CONFIG_MTD_DEBUG
 	flex_print_regs(flex);
 #endif
+	platform_set_drvdata(pdev, flex);
 
 	return flex;
  out4:
@@ -1019,12 +1096,16 @@ flex_init_controller(struct platform_device *pdev)
  out2:
 	release_resource(flex->mem_region);
  out1:
+	kfree(flex);
+
 	return ERR_PTR(res);
 }
 
-static void __devexit flex_exit_controller(struct platform_device *pdev)
+static void flex_exit_controller(struct platform_device *pdev)
 {
 	struct stm_nand_flex_controller *flex = platform_get_drvdata(pdev);
+
+	platform_set_drvdata(pdev, NULL);
 
 	kfree(flex->buf);
 	iounmap(flex->base_addr);
@@ -1032,19 +1113,21 @@ static void __devexit flex_exit_controller(struct platform_device *pdev)
 	iounmap(flex->data_cached);
 #endif
 	release_resource(flex->mem_region);
+
+	kfree(flex);
 }
 
-static struct stm_nand_flex_device * __init
+static struct stm_nand_flex_device * __devinit
 flex_init_bank(struct stm_nand_flex_controller *flex,
 	       struct stm_nand_bank_data *bank,
-	       int rbn_connected, const char *name)
+	       int rbn_connected, struct platform_device *pdev)
 {
 	struct stm_nand_flex_device *data;
 	int res;
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
 	struct mtd_info *slave;
-	struct mtd_part *part;
+	uint64_t slave_offset;
 	char *boot_part_name;
 #endif
 
@@ -1061,28 +1144,22 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	data->chip.priv = data;
 	data->mtd.priv = &data->chip;
 	data->mtd.owner = THIS_MODULE;
+	data->mtd.dev.parent = &pdev->dev;
 
 	/* Assign more sensible name (default is string from nand_ids.c!) */
-	data->mtd.name = name;
+	data->mtd.name = dev_name(&pdev->dev);
 	data->csn = bank->csn;
 
 	/* Use hwcontrol structure to manage access to FLEX Controller */
 	data->chip.controller = &flex->hwcontrol;
 	data->chip.state = FL_READY;
 
-	/* Get chip's timing data */
-	data->timing_data = bank->timing_data;
-
 	/* Copy over chip specific platform data */
-	data->chip.chip_delay = data->timing_data->chip_delay;
 	data->chip.options = bank->options;
 	data->chip.options |= NAND_NO_AUTOINCR;      /* Not tested, disable */
 
-#ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
-	/* Handle STM H/W ECC layouts when performing initial scan for
-	 * bad-blocks */
-	data->chip.scan_bbt = scan_bbt_stmecc;
-#endif
+	data->chip.scan_bbt = stmnand_scan_bbt;
+
 	/* Callbacks for FLEX mode operation */
 	data->chip.cmd_ctrl = flex_cmd_ctrl;
 	data->chip.select_chip = flex_select_chip;
@@ -1098,6 +1175,9 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	if (rbn_connected)
 		data->chip.dev_ready = flex_rbn;
 
+	/* Safe default chip_delay */
+	data->chip.chip_delay = 50;
+
 	/* For now, use NAND_ECC_SOFT. Callbacks filled in during scan() */
 	data->chip.ecc.mode = NAND_ECC_SOFT;
 
@@ -1111,11 +1191,69 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	memset(flex->base_addr + NANDHAM_AFM_SEQUENCE_REG_1, 0, 32);
 #endif
 
-	/* Scan to find existance of the device */
-	if (nand_scan(&data->mtd, 1)) {
-		printk(KERN_ERR NAME ":nand_scan failed\n");
+	/* Scan to find existence of device */
+	if (nand_scan_ident(&data->mtd, 1) != 0) {
+		res = -ENODEV;
+		goto out2;
+	}
+
+	/*
+	 * Configure timing registers
+	 */
+	if (bank->timing_spec) {
+		printk(KERN_INFO NAME ": Using platform timing data\n");
+		flex_calc_timing_registers(bank->timing_spec,
+					   bank->timing_relax,
+					   &data->ctl_timing,
+					   &data->wen_timing,
+					   &data->ren_timing);
+		data->chip.chip_delay = bank->timing_spec->tR;
+	} else if (bank->timing_data) {
+		printk(KERN_INFO NAME ": Using legacy platform timing data\n");
+		flex_calc_timing_registers_legacy(bank->timing_data,
+						  &data->ctl_timing,
+						  &data->wen_timing,
+						  &data->ren_timing);
+		data->chip.chip_delay = bank->timing_data->chip_delay;
+	} else if (data->chip.onfi_version) {
+		struct nand_onfi_params *onfi = &data->chip.onfi_params;
+		int mode;
+
+		mode = fls(le16_to_cpu(onfi->async_timing_mode)) - 1;
+		/* Modes 4 and 5 (EDO) are not supported on our H/W */
+		if (mode > 3)
+			mode = 3;
+
+		printk(KERN_INFO NAME ": Using ONFI Timing Mode %d\n", mode);
+		flex_calc_timing_registers(&nand_onfi_timing_specs[mode],
+					   bank->timing_relax,
+					   &data->ctl_timing,
+					   &data->wen_timing,
+					   &data->ren_timing);
+		data->chip.chip_delay = le16_to_cpu(data->chip.onfi_params.t_r);
+	} else {
+		printk(KERN_WARNING NAME ": No timing data available\n");
+	}
+
+	/* Ensure 'complete' chip-specific configuration on next select_chip()
+	 * activation */
+	flex->current_csn = -1;
+
+	/* Complete scan */
+	if (nand_scan_tail(&data->mtd) != 0) {
 		res = -ENXIO;
 		goto out2;
+	}
+
+	/* If all blocks are marked bad, mount as "recovery" partition */
+	if (stmnand_blocks_all_bad(&data->mtd)) {
+		printk(KERN_ERR NAME ": initiating NAND Recovery Mode\n");
+		data->mtd.name = "NAND RECOVERY MODE";
+		res = add_mtd_device(&data->mtd);
+		if (res)
+			goto out2;
+
+		return data;
 	}
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
@@ -1135,9 +1273,10 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	data->mtd.write_oob = nand_write_oob;
 
 	/* Set name of boot partition */
-	boot_part_name = cmdline ? cmdline : CONFIG_STM_NAND_FLEX_BOOTPARTITION;
+	boot_part_name = nbootpart ? nbootpart :
+		CONFIG_STM_NAND_FLEX_BOOTPARTITION;
 	printk(KERN_INFO NAME ": Using boot partition name [%s] (from %s)\n",
-	       boot_part_name, cmdline ? "command line" : "kernel config");
+	       boot_part_name, nbootpart ? "command line" : "kernel config");
 
 #endif
 
@@ -1161,15 +1300,15 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 
 #ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
 		/* Update boot-mode slave partition */
-		slave = get_mtd_partition_slave(&data->mtd, boot_part_name);
+		slave = get_mtd_partition_slave(&data->mtd, boot_part_name,
+						&slave_offset);
 		if (slave) {
 			printk(KERN_INFO NAME ": Found BOOT parition"
 			       "[%s], updating ECC paramters\n",
 			       slave->name);
 
-			part = PART(slave);
-			data->boot_start = part->offset;
-			data->boot_end = part->offset + slave->size;
+			data->boot_start = slave_offset;
+			data->boot_end = slave_offset + slave->size;
 
 			slave->oobavail =
 				data->ecc_boot.ecc_ctrl.layout->oobavail;
@@ -1205,32 +1344,48 @@ flex_init_bank(struct stm_nand_flex_controller *flex,
 	return ERR_PTR(res);
 }
 
-static int __init stm_nand_flex_probe(struct platform_device *pdev)
+static int __devinit stm_nand_flex_probe(struct platform_device *pdev)
 {
 	struct stm_plat_nand_flex_data *pdata = pdev->dev.platform_data;
-	int res;
-	int n;
 	struct stm_nand_bank_data *bank;
 	struct stm_nand_flex_controller *flex;
+	struct stm_nand_flex_device *data;
+	int err;
+	int n;
 
-	flex = flex_init_controller(pdev);
+	flex = flex_init_resources(pdev);
 	if (IS_ERR(flex)) {
 		dev_err(&pdev->dev, "Failed to initialise NAND Controller.\n");
-		res = PTR_ERR(flex);
-		return res;
+		err = PTR_ERR(flex);
+		return err;
 	}
 
 	bank = pdata->banks;
 	for (n=0; n<pdata->nr_banks; n++) {
-		flex->devices[n] = flex_init_bank(flex, bank,
-						  pdata->flex_rbn_connected,
-						  dev_name(&pdev->dev));
+		data = flex_init_bank(flex, bank, pdata->flex_rbn_connected,
+				      pdev);
+
+		if (IS_ERR(data)) {
+			err = PTR_ERR(data);
+			goto err1;
+		}
+
+		flex->devices[n] = data;
 		bank++;
 	}
 
-	platform_set_drvdata(pdev, flex);
-
 	return 0;
+
+ err1:
+	while (--n > 0) {
+		data = flex->devices[n];
+		nand_release(&data->mtd);
+		kfree(data);
+	}
+
+	flex_exit_controller(pdev);
+
+	return err;
 }
 
 static int __devexit stm_nand_flex_remove(struct platform_device *pdev)
@@ -1239,7 +1394,7 @@ static int __devexit stm_nand_flex_remove(struct platform_device *pdev)
 	struct stm_nand_flex_controller *flex = platform_get_drvdata(pdev);
 	int n;
 
-	for (n=0; n<pdata->nr_banks; n++) {
+	for (n = 0; n < pdata->nr_banks; n++) {
 		struct stm_nand_flex_device *data = flex->devices[n];
 		nand_release(&data->mtd);
 
@@ -1253,10 +1408,26 @@ static int __devexit stm_nand_flex_remove(struct platform_device *pdev)
 
 	flex_exit_controller(pdev);
 
-	platform_set_drvdata(pdev, NULL);
+	return 0;
+}
+
+#ifdef CONFIG_HIBERNATION
+static int stm_nand_flex_restore(struct device *dev)
+{
+	struct stm_nand_flex_controller *flex = dev_get_drvdata(dev);
+
+	flex->current_csn = -1;
+	flex_init_controller(flex);
 
 	return 0;
 }
+
+static struct dev_pm_ops stm_nand_flex_pm = {
+	.restore = stm_nand_flex_restore,
+};
+#else
+static struct dev_pm_ops stm_nand_flex_pm;
+#endif
 
 static struct platform_driver stm_nand_flex_driver = {
 	.probe		= stm_nand_flex_probe,
@@ -1264,18 +1435,9 @@ static struct platform_driver stm_nand_flex_driver = {
 	.driver		= {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
+		.pm	= &stm_nand_flex_pm,
 	},
 };
-
-#ifdef CONFIG_STM_NAND_FLEX_BOOTMODESUPPORT
-static int __init bootpart_setup(char *s)
-{
-	cmdline = s;
-	return 1;
-}
-
-__setup("nbootpart=", bootpart_setup);
-#endif
 
 static int __init stm_nand_flex_init(void)
 {
