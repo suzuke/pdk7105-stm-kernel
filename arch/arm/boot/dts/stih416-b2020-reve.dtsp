@@ -1,0 +1,95 @@
+/*
+ * Copyright (C) 2013 STMicroelectronics Limited.
+ * Author: Shiraz Hashim <shiraz.hashim@st.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This platform is new revision of stih416-b2020.dtsp with few minor
+ * changes,
+ *   - PHY reset PIO (Change from PIO30 to PIO07)
+ *   - DDR Power control PIO (Change from PIO21 to PIO12)
+ *   - Power LED(Green) Control(Change from PIO47 to PIO13)
+ *   - I2C for NIM3 (change from PIO45/46 to PIO31/32
+ *   - DVDD_1V0_AVS add in PIO30
+ *   - CPU_1V0_AVS add in PIO46
+ *   - D_1V2_AVS add in PIO47
+ */
+
+#include "stih416-b2020.dtsp"
+/ {
+	model = "Stih416 B2020 REV. E";
+	compatible = "st,stih416", "st,stih416-b2020";
+
+        aliases {
+		i2c0 = &i2c1;		/* HDMI */
+		i2c1 = &sbc_i2c1;       /* eeprom and NIM */
+		i2c2 = &i2c0;           /* NIM */
+        };
+
+	soc {
+		leds {
+			compatible	= "gpio-leds";
+			red {
+				#gpio-cells = <2>;
+				gpios	= <&PIO4 1 0>;
+				linux,default-trigger	= "heartbeat";
+			};
+			green {
+				#gpio-cells = <2>;
+				gpios	= <&PIO1 3 0>;
+				default-state = "off";
+			};
+		};
+
+		i2c0: i2c@fed40000 {
+			status = "okay";
+		};
+
+		/* SSC1 to HDMI (via HDMI2C1_5DIJ) */
+		i2c1: i2c@fed41000 {
+			status = "okay";
+		};
+
+		/* sbc_i2c0 must be disabled as corresponding pio is
+		 * used for AVS while NIM B is shifted to sbc_i2c1
+		 */
+		sbc_i2c0: i2c@fe540000{
+			status = "disabled";
+		};
+
+		/* SSC10 to M24256-BWMN6 eeprom and NIM SCL2/SDA2 */
+		sbc_i2c1: i2c@fe541000 {
+			status = "okay";
+		};
+
+		pwm1: pwm@fe510000 {
+			status = "okay";
+
+			pwm-channel@0 {
+				reg = <0>;
+				st,locked;
+				st,retain-hw-value;
+				status = "okay";
+			};
+			pwm-channel@2 {
+				reg = <2>;
+				st,locked;
+				st,retain-hw-value;
+				status = "okay";
+			};
+			pwm-channel@3 {
+				reg = <3>;
+				st,locked;
+				st,retain-hw-value;
+				status = "okay";
+			};
+		};
+
+		ethernet1:ethernet@fef08000 {
+			status = "okay";
+			snps,reset-gpio = <&PIO0 7 0>;
+		};
+	};
+};
