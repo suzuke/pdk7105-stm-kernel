@@ -312,7 +312,7 @@
 
 			padcfg_i2c2_sda_pio8_7: i2c2_sda_pio8_7 {
 				st,pins {
-					SDA	= <&PIO7 7	BIDIR	ALT2>;
+					SDA	= <&PIO8 7	BIDIR	ALT5>;
 				};
 			};
 		};
