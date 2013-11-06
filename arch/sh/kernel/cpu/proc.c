@@ -18,14 +18,9 @@ static const char *cpu_name[] = {
 	[CPU_SH7751R]	= "SH7751R",	[CPU_SH7760]	= "SH7760",
 	[CPU_SH4_202]	= "SH4-202",	[CPU_SH4_501]	= "SH4-501",
 
-	[CPU_FLI7510]   = "Freeman-510", [CPU_FLI7520]  = "Freeman-520",
-	[CPU_FLI7530]   = "Freeman-530", [CPU_FLI7540]  = "Freeman-540",
-	[CPU_ST40RA]    = "ST40RA",	[CPU_ST40GX1]   = "ST40GX1",
-	[CPU_STX5197]   = "STx5197",	[CPU_STX5206]   = "STx5206",
-	[CPU_STX7100]   = "STx7100",	[CPU_STX7105]   = "STx7105",
-	[CPU_STX7106]   = "STx7106",	[CPU_STX7108]   = "STx7108",
-	[CPU_STX7109]   = "STx7109",	[CPU_STXH205]	= "STxH205",
-	[CPU_STX7200]   = "STx7200",	[CPU_STIH415]   = "STiH415",
+	[CPU_STX7108]   = "STx7108",
+	[CPU_STXH205]	= "STxH205",
+	[CPU_STIH415]   = "STiH415",
 
 	[CPU_SH7763]	= "SH7763",	[CPU_SH7770]	= "SH7770",
 	[CPU_SH7780]	= "SH7780",	[CPU_SH7781]	= "SH7781",
@@ -43,6 +38,19 @@ const char *get_cpu_subtype(struct sh_cpuinfo *c)
 	return cpu_name[c->type];
 }
 EXPORT_SYMBOL(get_cpu_subtype);
+
+static const char *cpu_variant[] = {
+	[CPU_VARIANT_SH4_102] = "sh4-102",
+	[CPU_VARIANT_SH4_103] = "sh4-103",
+	[CPU_VARIANT_SH4_202] = "sh4-202",
+	[CPU_VARIANT_ST40_300] = "st40-300",
+	[CPU_VARIANT_UNKNOWN] = "Unknown",
+};
+
+const char *get_cpu_variant(struct sh_cpuinfo *c)
+{
+	return cpu_variant[c->variant];
+}
 
 #ifdef CONFIG_PROC_FS
 /* Symbolic CPU flags, keep in sync with asm/cpu-features.h */
@@ -98,6 +106,7 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 
 	seq_printf(m, "processor\t: %d\n", cpu);
 	seq_printf(m, "cpu family\t: %s\n", init_utsname()->machine);
+	seq_printf(m, "cpu variant\t: %s\n", get_cpu_variant(c));
 	seq_printf(m, "cpu type\t: %s\n", get_cpu_subtype(c));
 	if (c->cut_major == -1)
 		seq_printf(m, "cut\t\t: unknown\n");

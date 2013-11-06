@@ -29,6 +29,7 @@
 #define B2057_GPIO_FLASH_WP		stm_gpio(6, 2)
 #define B2057_GPIO_POWER_ON_ETH		stm_gpio(2, 5)
 #define B2057_MII1_TXER			stm_gpio(0, 4)
+#define B2057_POWER_ON			stm_gpio(3, 7)
 
 static void __init b2057_setup(char **cmdline_p)
 {
@@ -161,7 +162,7 @@ static struct stm_nand_bank_data b2057_nand_flash = {
 		{
 			.name	= "NAND Flash 1",
 			.offset	= 0,
-			.size	= 0x00800000
+			.size	= 0x04000000
 		}, {
 			.name	= "NAND Flash 2",
 			.offset = MTDPART_OFS_NXTBLK,
@@ -203,6 +204,10 @@ static int __init device_init(void)
 	 * but it isn't... ;-) */
 	gpio_request(B2057_GPIO_POWER_ON_ETH, "POWER_ON_ETH");
 	gpio_direction_output(B2057_GPIO_POWER_ON_ETH, 0);
+
+	/* This PIO controls power of board */
+	gpio_request(B2057_POWER_ON, "POWER_ON");
+	gpio_direction_output(B2057_POWER_ON, 0);
 
 #ifdef CONFIG_STM_B2057_INT_PHY_IC101A
 	/*
@@ -247,6 +252,15 @@ static int __init device_init(void)
 		});
 #endif
 
+	/* PHY IRQ has to be triggered LOW */
+	irq_set_irq_type(ILC_IRQ(25), IRQ_TYPE_LEVEL_LOW);
+
+	stxh205_configure_miphy(&(struct stxh205_miphy_config){
+			.mode = SATA_MODE,
+			.iface = UPORT_IF,
+			});
+	stxh205_configure_sata();
+
 	stxh205_configure_usb(0);
 	stxh205_configure_usb(1);
 
@@ -276,7 +290,15 @@ static int __init device_init(void)
 			.pwm_channel_config[0].enabled = 0,
 		});
 
-	stxh205_configure_mmc(0);
+	stxh205_configure_mmc(&(struct stxh205_mmc_config) {
+			.emmc = 0,
+		});
+
+	/*
+	 * NAND MTD has no concept of write-protect, so permanently disable WP
+	 */
+	gpio_request(B2057_GPIO_FLASH_WP, "FLASH_WP");
+	gpio_direction_output(B2057_GPIO_FLASH_WP, 1);
 
 	/*
 	 * NAND MTD has no concept of write-protect, so permanently disable WP

@@ -95,6 +95,7 @@ struct stmmac_priv {
 	u32 msg_enable;
 	int wolopts;
 	int wol_irq;
+	int phy_wol_plus;
 	struct clk *stmmac_clk;
 	int clk_csr;
 	struct timer_list eee_ctrl_timer;

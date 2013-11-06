@@ -46,6 +46,7 @@ static int stm_usb_boot(struct platform_device *pdev)
 	void *wrapper_base = usb_data->ahb2stbus_wrapper_glue_base;
 	struct stm_plat_usb_data *pl_data  = NULL;
 	unsigned long reg;
+	unsigned long flags;
 
 	if (usb_data)
 		pl_data = usb_data->plat_data;
@@ -55,19 +56,19 @@ static int stm_usb_boot(struct platform_device *pdev)
 		return 0;
 	}
 
-	if (pl_data->flags &
-		(STM_PLAT_USB_FLAGS_STRAP_8BIT |
-		 STM_PLAT_USB_FLAGS_STRAP_16BIT)) {
+	flags = pl_data->flags;
+	if (flags & (STM_PLAT_USB_FLAGS_STRAP_8BIT |
+		     STM_PLAT_USB_FLAGS_STRAP_16BIT)) {
 		/* Set strap mode */
 		reg = readl(wrapper_base + AHB2STBUS_STRAP_OFFSET);
-		if (pl_data->flags & STM_PLAT_USB_FLAGS_STRAP_16BIT)
+		if (flags & STM_PLAT_USB_FLAGS_STRAP_16BIT)
 			reg |= AHB2STBUS_STRAP_16_BIT;
 		else
 			reg &= ~AHB2STBUS_STRAP_16_BIT;
 		writel(reg, wrapper_base + AHB2STBUS_STRAP_OFFSET);
 	}
 
-	if (pl_data->flags & STM_PLAT_USB_FLAGS_STRAP_PLL) {
+	if (flags & STM_PLAT_USB_FLAGS_STRAP_PLL) {
 		/* Start PLL */
 		reg = readl(wrapper_base + AHB2STBUS_STRAP_OFFSET);
 		writel(reg | AHB2STBUS_STRAP_PLL,

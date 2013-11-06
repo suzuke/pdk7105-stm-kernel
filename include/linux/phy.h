@@ -264,6 +264,7 @@ enum phy_state {
  * changes in the link state.
  * adjust_state: Callback for the enet driver to respond to
  * changes in the state machine.
+ * wol: which WoL mode will be used to wake-up the system via ethtool.
  *
  * speed, duplex, pause, supported, advertising, and
  * autoneg are used like in mii_if_info
@@ -337,6 +338,7 @@ struct phy_device {
 	struct mutex lock;
 
 	struct net_device *attached_dev;
+	int wol;
 
 	void (*adjust_link)(struct net_device *dev);
 
@@ -355,6 +357,8 @@ struct phy_device {
  *   by this PHY
  * flags: A bitfield defining certain other features this PHY
  *   supports (like interrupts)
+ * wol: to define which Wake-up modes are supported (e.g. WoL
+ * via magic packet).
  *
  * The drivers must implement config_aneg and read_status.  All
  * other functions are optional. Note that none of these
@@ -370,6 +374,7 @@ struct phy_driver {
 	unsigned int phy_id_mask;
 	u32 features;
 	u32 flags;
+	u32 wol_supported;
 
 	/*
 	 * Called to initialize the PHY,
@@ -520,6 +525,9 @@ void phy_start_machine(struct phy_device *phydev,
 void phy_stop_machine(struct phy_device *phydev);
 int phy_ethtool_sset(struct phy_device *phydev, struct ethtool_cmd *cmd);
 int phy_ethtool_gset(struct phy_device *phydev, struct ethtool_cmd *cmd);
+int phy_ethtool_set_wol(struct phy_device *phydev, struct ethtool_wolinfo *wol);
+int phy_ethtool_get_wol(struct phy_device *phydev, struct ethtool_wolinfo *wol);
+
 int phy_mii_ioctl(struct phy_device *phydev,
 		struct ifreq *ifr, int cmd);
 int phy_start_interrupts(struct phy_device *phydev);

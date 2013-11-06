@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/string.h>
 #include <linux/export.h>
+#include <linux/phy.h>
 
 static int wokenup_by;
 
@@ -59,17 +60,34 @@ static int __check_wakeup_device(struct device *dev, void *data)
 			wkd->asc = 1;
 		else if (strstr(dev_name(dev), "rtc_sbc"))
 			wkd->rtc_sbc = 1;
-
 	}
 	return 0;
 }
+
+#ifdef CONFIG_PHYLIB
+static int __check_mdio_wakeup_device(struct device *dev, void *data)
+{
+	struct stm_wakeup_devices *wkd = (struct stm_wakeup_devices *)data;
+
+	if (device_may_wakeup(dev)) {
+		if (!strncmp(dev_name(dev), "0:", 2))
+			wkd->stm_phy_can_wakeup = 1;
+		else if (!strncmp(dev_name(dev), "1:", 2))
+			wkd->stm_phy_can_wakeup = 1;
+	}
+
+	return 0;
+}
+#endif
 
 int stm_check_wakeup_devices(struct stm_wakeup_devices *wkd)
 {
 	stm_wake_init(wkd);
 	bus_for_each_dev(&platform_bus_type, NULL, wkd, __check_wakeup_device);
+#ifdef CONFIG_PHYLIB
+	bus_for_each_dev(&mdio_bus_type, NULL, wkd, __check_mdio_wakeup_device);
+#endif
 	return 0;
 }
 
 EXPORT_SYMBOL(stm_check_wakeup_devices);
-

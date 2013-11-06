@@ -21,6 +21,7 @@
 #include <linux/stm/sysconf.h>
 #include <linux/stm/stxh205.h>
 #include <linux/delay.h>
+#include <linux/ahci_platform.h>
 #include <asm/irq-ilc.h>
 #include "pio-control.h"
 
@@ -291,11 +292,12 @@ static struct plat_stmmacenet_data stxh205_ethernet_platform_data = {
 static struct platform_device stxh205_ethernet_device = {
 	.name = "stmmaceth",
 	.id = 0,
-	.num_resources = 3,
+	.num_resources = 4,
 	.resource = (struct resource[]) {
 		STM_PLAT_RESOURCE_MEM(0xfda88000, 0x8000),
 		STM_PLAT_RESOURCE_IRQ_NAMED("macirq", ILC_IRQ(21), -1),
 		STM_PLAT_RESOURCE_IRQ_NAMED("eth_wake_irq", ILC_IRQ(22), -1),
+		STM_PLAT_RESOURCE_IRQ_NAMED("eth_lpi", ILC_IRQ(23), -1),
 	},
 	.dev = {
 		.dma_mask = &stxh205_dma_mask,
@@ -310,6 +312,7 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 	struct stxh205_ethernet_config default_config;
 	struct plat_stmmacenet_data *plat_data;
 	struct stm_pad_config *pad_config;
+	struct clk *clk;
 
 	BUG_ON(configured++);
 
@@ -361,6 +364,12 @@ void __init stxh205_configure_ethernet(struct stxh205_ethernet_config *config)
 	plat_data->phy_addr = config->phy_addr;
 	plat_data->mdio_bus_data = config->mdio_bus_data;
 
+	clk = clk_get(NULL, "stmmac_clk");
+	if (!IS_ERR(clk))
+		clk_enable(clk);
+	clk = clk_get(NULL, "stmmac_phy_clk");
+	if (!IS_ERR(clk))
+		clk_enable(clk);
 	platform_device_register(&stxh205_ethernet_device);
 }
 
@@ -450,7 +459,7 @@ static void stxh205_usb_power(struct stm_device_state *device_state,
 
 /* STBus Convertor config */
 static struct stm_amba_bridge_config stxh205_amba_usb_config = {
-	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128)
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG_OLD
 };
 static struct stm_plat_usb_data stxh205_usb_platform_data[] = {
 	[0] = {
@@ -555,10 +564,26 @@ static struct platform_device stxh205_usb_devices[] = {
 void __init stxh205_configure_usb(int port)
 {
 	static int configured[ARRAY_SIZE(stxh205_usb_devices)];
+	static void *lmi16reg;
+	static int lmi_is_16;
 
 	BUG_ON(port < 0 || port >= ARRAY_SIZE(stxh205_usb_devices));
 
 	BUG_ON(configured[port]++);
+
+	if (!lmi16reg) {
+		/* Have a quick peek at the relevant LMI register to see if
+		 * the LMI is configured in 16 bit mode or not
+		 */
+		lmi16reg = ioremap(0xfde50084, 4);
+		if (lmi16reg) {
+			lmi_is_16 =  readl(lmi16reg) & 0x1;
+			iounmap(lmi16reg);
+		}
+	}
+
+	if (lmi_is_16)
+		stxh205_amba_usb_config.type2.threshold = 16;
 
 	platform_device_register(&stxh205_usb_devices[port]);
 }
@@ -573,12 +598,15 @@ void __init stxh205_configure_usb(int port)
 		.name = "MMCCLK", \
 	}
 
-#define STXH205_PIO_MMC_OUT(_port, _pin, funct) \
+#define STXH205_PIO_MMC_OUT_NAME(_port, _pin, funct, _name)	\
 	{ \
 		.gpio = stm_gpio(_port, _pin), \
 		.direction = stm_pad_gpio_direction_out, \
 		.function = funct, \
+		.name = _name, \
 	}
+#define STXH205_PIO_MMC_OUT(_port, _pin, funct) \
+	STXH205_PIO_MMC_OUT_NAME(_port, _pin, funct, NULL)
 
 #define STXH205_PIO_MMC_BIDIR(_port, _pin, funct) \
 	{ \
@@ -612,7 +640,7 @@ static struct stm_pad_config stxh205_mmc_pad_config  = {
 		STXH205_PIO_MMC_CLK_OUT(14, 1, 1),	/* MMC clk */
 		STXH205_PIO_MMC_BIDIR(14, 2, 1),	/* MMC command */
 		STXH205_PIO_MMC_IN(14, 3, 1),	/* MMC Write Protection */
-		STXH205_PIO_MMC_OUT(14, 4, 1),	/* MMC boot data error */
+		STXH205_PIO_MMC_OUT_NAME(14, 4, 1, "BDE"),	/* MMC boot data error */
 		STXH205_PIO_MMC_OUT(14, 5, 1),	/* MMC Card PWR */
 		STXH205_PIO_MMC_IN(14, 6, 1),	/* MMC Card Detect */
 	},
@@ -656,14 +684,138 @@ static struct platform_device stxh205_mmc_device = {
 		}
 };
 
-void __init stxh205_configure_mmc(int emmc)
+void __init stxh205_configure_mmc(struct stxh205_mmc_config *config)
 {
 	struct stm_mmc_platform_data *plat_data;
 
 	plat_data = &stxh205_mmc_platform_data;
 
-	if (unlikely(emmc))
+	if (unlikely(config->emmc))
 		plat_data->nonremovable = true;
+	if (unlikely(config->no_mmc_boot_data_error))
+		stm_pad_set_pio_ignored(&stxh205_mmc_pad_config, "BDE");
 
 	platform_device_register(&stxh205_mmc_device);
+}
+
+static void stxh205_pcie_mp_select(void* data, int port)
+{
+}
+static enum miphy_mode stxh205_miphy_modes[1] = {SATA_MODE};
+struct stm_plat_pcie_mp_data stxh205_pcie_mp_platform_data = {
+	.style_id = ID_MIPHYA40X,
+	.miphy_first = 0,
+	.miphy_count = 1,
+	.miphy_modes = stxh205_miphy_modes,
+	.mp_select = stxh205_pcie_mp_select,
+};
+
+/* Both the SATA AHCI controller and the PCIe controller
+ * contain a microport interface to the single miphy. Which
+ * one is actually in use depends on the SATA_SEL sysconf
+ */
+#define PCIE_UPORT_BASE		0xfd904000
+#define SATA_UPORT_BASE		0xfd54a000
+#define UPORT_REG_SIZE		0xff
+
+static struct platform_device stxh205_pcie_mp_device = {
+	.name	= "pcie-mp",
+	.id	= 0,
+	.num_resources = 2,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM_NAMED("sata-uport",
+			SATA_UPORT_BASE, UPORT_REG_SIZE),
+		STM_PLAT_RESOURCE_MEM_NAMED("pcie-uport",
+			PCIE_UPORT_BASE, UPORT_REG_SIZE),
+	},
+	.dev = {
+		.platform_data = &stxh205_pcie_mp_platform_data,
+	}
+};
+
+/* STiH205 has 1 × eSATA or 1 × PCI-express, and can be configured
+ * to map PCIe, instead of eSATA, on PHY Lane */
+void __init stxh205_configure_miphy(struct stxh205_miphy_config *config)
+{
+	struct sysconf_field *sel_sata;
+
+	if (config->iface != UPORT_IF) {
+		printk(KERN_ERR "MiPhy only supported in microport mode\n");
+		return;
+	}
+
+	sel_sata = sysconf_claim(SYSCONF(445), 1, 1, "sata/pcie");
+	if (!sel_sata) {
+		printk(KERN_ERR "Cannot claim SELECT_SATA sysconf\n");
+		return;
+	}
+
+	stxh205_miphy_modes[0] = config->mode;
+	stxh205_pcie_mp_platform_data.rx_pol_inv = config->rx_pol_inv;
+	stxh205_pcie_mp_platform_data.tx_pol_inv = config->tx_pol_inv;
+
+	/* Select either PCIE or SATA mode */
+	sysconf_write(sel_sata, config->mode == SATA_MODE);
+
+	if (config->mode == PCIE_MODE) {
+		struct sysconf_field *miphy_reset, *pcie_reset, *pcie_clk_sel;
+
+		/* Change addresses to other port */
+		stxh205_pcie_mp_device.resource[0].start = PCIE_UPORT_BASE,
+		stxh205_pcie_mp_device.resource[0].end =
+					PCIE_UPORT_BASE + UPORT_REG_SIZE;
+
+		miphy_reset = sysconf_claim(SYSCONF(460), 18, 18, "miphy");
+		pcie_reset = sysconf_claim(SYSCONF(461), 0, 0, "pcie");
+		pcie_clk_sel = sysconf_claim(SYSCONF(468), 0, 0, "pcie");
+
+		sysconf_write(miphy_reset, 0); /* Reset miphy */
+		sysconf_write(pcie_reset, 0); /* Reset PCIe */
+		sysconf_write(pcie_clk_sel, 1); /* Select 100MHz ext clock */
+		sysconf_write(miphy_reset, 1); /* Release miphy */
+		sysconf_write(pcie_reset, 1); /* Release PCIe */
+	}
+
+	platform_device_register(&stxh205_pcie_mp_device);
+}
+
+static struct stm_amba_bridge_config stxh205_ahci_amba_config = {
+	.type = stm_amba_type2,
+	.chunks_in_msg = 1,
+	.packets_in_chunk = 1,
+	.write_posting = stm_amba_write_posting_enabled,
+	.max_opcode = stm_amba_opc_LD64_ST64,
+	.type2.threshold = 128,
+	.type2.sd_config_missing = 1,
+	.type2.trigger_mode = stm_amba_stbus_threshold_based,
+	.type2.read_ahead = stm_amba_read_ahead_enabled,
+};
+
+static struct stm_plat_ahci_data stxh205_ahci_plat_data = {
+	.device_config = &(struct stm_device_config) {},
+	.amba_config = &stxh205_ahci_amba_config,
+	.miphy_num = 0,
+};
+
+static u64 stxh205_ahci_dmamask = DMA_BIT_MASK(32);
+
+struct platform_device stxh205_ahci_device = {
+	.name = "ahci_stm",
+	.id = -1,
+	.num_resources = 3,
+	.resource = (struct resource[]) {
+		STM_PLAT_RESOURCE_MEM_NAMED("ahci", 0xFD548000, 0x1000),
+		STM_PLAT_RESOURCE_MEM_NAMED("ahci-amba", 0xFD543000, 0x1000),
+		STM_PLAT_RESOURCE_IRQ_NAMED("ahci", ILC_IRQ(58), -1),
+	},
+	.dev = {
+		.platform_data = &stxh205_ahci_plat_data,
+		.dma_mask = &stxh205_ahci_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+	}
+};
+
+void __init stxh205_configure_sata(void)
+{
+	platform_device_register(&stxh205_ahci_device);
 }

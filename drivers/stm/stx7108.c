@@ -899,7 +899,7 @@ static void __init stx7108_pio_init(void)
 
 static struct platform_device stx7108_sysconf_devices[] = {
 	{
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 0,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -920,7 +920,7 @@ static struct platform_device stx7108_sysconf_devices[] = {
 			},
 		}
 	}, {
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 1,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -941,7 +941,7 @@ static struct platform_device stx7108_sysconf_devices[] = {
 			},
 		}
 	}, {
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 2,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -962,7 +962,7 @@ static struct platform_device stx7108_sysconf_devices[] = {
 			},
 		}
 	}, {
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 3,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -983,7 +983,7 @@ static struct platform_device stx7108_sysconf_devices[] = {
 			},
 		}
 	}, {
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 4,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -1069,6 +1069,7 @@ static struct platform_device stx7108_temp_device = {
 	.name		   = "stm-temp",
 	.id		     = -1,
 	.dev.platform_data      = &(struct plat_stm_temp_data) {
+		.correction_factor = 20,
 		.device_config = &(struct stm_device_config) {
 			.sysconfs_num = 4,
 			.power = stx7108_temp_power,

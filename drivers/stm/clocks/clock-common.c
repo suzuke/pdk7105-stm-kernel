@@ -10,6 +10,10 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+28/jun/12 fabrice.charpentier@st.com
+	  clk_fs216c65_get_params() bug fix for 64bits division under Linux.
+19/jun/12 Ravinder SINGH
+	  clk_pll1600c45_get_phi_params() fix.
 30/apr/12 fabrice.charpentier@st.com
 	  FS660C32 fine tuning to get better result.
 26/apr/12 fabrice.charpentier@st.com
@@ -724,9 +728,8 @@ int clk_fs216c65_get_params(unsigned long input, unsigned long output,
 			p = p2 - p;
 
 			if (p > 32768LL)
-				break; /* Already too high. Let's move to
-					* next sdiv
-					*/
+				/* Already too high. Let's move to next sdiv */
+				break;
 
 			md_tmp = (unsigned long)(m + 32);
 			/* pe fine tuning: +/- 2 around computed pe value */
@@ -914,19 +917,6 @@ int clk_fs432c65_get_rate(unsigned long input, unsigned long md,
 	return 0;
 }
 
-/*
-   FS660
-   Based on C32_4FS_660MHZ_LR_EG_5U1X2T8X_um spec.
-
-   This FSYN embed a programmable PLL which then serve the 4 digital blocks
-
-   clkin => PLL660 => DIG660_0 => clkout0
-		   => DIG660_1 => clkout1
-		   => DIG660_2 => clkout2
-		   => DIG660_3 => clkout3
-   For this reason the PLL660 is programmed separately from digital parts.
-*/
-
 /* ========================================================================
    Name:	clk_fs660c32_vco_get_params()
    Description: Compute params for embeded PLL660
@@ -1015,14 +1005,11 @@ skip_ns_programming:
 		s = (1 << si);
 		for (m = 0; (m < 32) && deviation; m++) {
 			p = (uint64_t)input * SCALING_FACTOR;
-			p = p - SCALING_FACTOR * ((uint64_t)s
-				 *(uint64_t)ns * (uint64_t)output) -
-				 ((uint64_t)s * (uint64_t)ns *
-				 (uint64_t)output) *
+			p = p - SCALING_FACTOR * ((uint64_t)s * (uint64_t)ns * (uint64_t)output) -
+				 ((uint64_t)s * (uint64_t)ns * (uint64_t)output) *
 				 ((uint64_t)m * (SCALING_FACTOR / 32LL));
 			p = p * (P20 / SCALING_FACTOR);
-			p = div64_u64(p, (uint64_t)((uint64_t)s *
-				(uint64_t)ns * (uint64_t)output));
+			p = div64_u64(p, (uint64_t)((uint64_t)s * (uint64_t)ns * (uint64_t)output));
 
 			if (p > 32767LL)
 				continue;
@@ -1049,85 +1036,6 @@ skip_ns_programming:
 					*nsdiv = (ns == 1) ? 1 : 0;
 					deviation = new_deviation;
 				}
-			}
-		}
-	}
-
-	if (deviation == 0xffffffff) /* No solution found */
-		return CLK_ERR_BAD_PARAMETER;
-
-	return 0;
-}
-
-/* ========================================================================
-   Name:	clk_fs660liege_dig_get_params()
-   Description: Compute params for digital part of FS660
-   Input:       input=VCO freq, output=requested freq (Hz) & nsdiv
-   Output:      updated *md, *pe & *sdiv registers values.
-   Return:      'clk_err_t' error code
-   ======================================================================== */
-#define P20		(uint64_t)(1 << 20)
-int clk_fs660liege_dig_get_params(unsigned long input, unsigned long output,
-			     unsigned long *nsdiv, unsigned long *md,
-			     unsigned long *pe, unsigned long *sdiv)
-{
-	int si;
-	unsigned long ns; /* nsdiv value (1 or 3) */
-	unsigned long s; /* sdiv value = 1 << sdiv_reg_value */
-	unsigned long m; /* md value */
-	unsigned long new_freq, new_deviation;
-	/* initial condition to say: "infinite deviation" */
-	unsigned long deviation = 0xffffffff;
-	uint64_t p; /* pe value */
-
-	/*
-	 * nsdiv is a register value ('BIN') which is translated
-	 * to a decimal value
-	 * moreover on some chip this register is totally hard-wired on silicon
-	 * while on other chip it's programmable
-	 *  following the below table:
-	 *
-	 *    *nsdiv        ns.bin       	  ns.dec
-	 * 	-1	  programmable
-	 *       0          0-silicon               3
-	 *       1          1-silicon               1
-	 */
-	if (*nsdiv != -1) {
-		ns = (*nsdiv ? 1 : 3);
-		goto skip_ns_programming;
-	}
-
-	for (ns = 1; ns < 4; ns += 2)
-
-skip_ns_programming:
-
-	for (si = 0; (si < 9) && deviation; si++) {
-		s = (1 << si);
-		for (m = 0; (m < 32) && deviation; m++) {
-			p = (uint64_t)input * SCALING_FACTOR;
-			p = p - SCALING_FACTOR * ((uint64_t)s * (uint64_t)ns * (uint64_t)output) -
-				 ((uint64_t)s * (uint64_t)ns * (uint64_t)output) *
-				 ((uint64_t)m * (SCALING_FACTOR / 32LL));
-			p = p * (P20 / SCALING_FACTOR);
-			p = div64_u64(p, (uint64_t)((uint64_t)s * (uint64_t)ns * (uint64_t)output));
-
-			if (p > 32767LL)
-				continue;
-
-			clk_fs660c32_get_rate(input, (ns == 1) ? 1 : 0, m,
-					(unsigned long)p, si, &new_freq);
-
-			if (new_freq < output)
-				new_deviation = output - new_freq;
-			else
-				new_deviation = new_freq - output;
-			/* Check if this is a better solution */
-			if (new_deviation < deviation) {
-				*pe = (unsigned long)p;
-				*md = m;
-				*sdiv = si;
-				*nsdiv = (ns == 1) ? 1 : 0;
-				deviation = new_deviation;
 			}
 		}
 	}

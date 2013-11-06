@@ -922,6 +922,13 @@ static int phy_probe(struct device *dev)
 	/* Disable the interrupt if the PHY doesn't support it */
 	if (!(phydrv->flags & PHY_HAS_INTERRUPT))
 		phydev->irq = PHY_POLL;
+	else {
+		/* Check if the PHY is WoL capable but driver cannot work
+		 * in polling mode.
+		 */
+		if (phydrv->wol_supported)
+			device_set_wakeup_capable(dev, 1);
+	}
 
 	mutex_lock(&phydev->lock);
 

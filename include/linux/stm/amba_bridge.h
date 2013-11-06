@@ -114,6 +114,16 @@ void stm_amba_bridge_init(struct stm_amba_bridge *plug);
 	.packets_in_chunk			= 8,			\
 	.type2.threshold			= (thresh)
 
+/* Older SOCs need different settings, which depend on the LMI width.
+ * This is the default for 32 bit wide LMIs, threshold should be reduced
+ * to 16 for 16 bit wide LMI.
+ */
+#define STM_DEFAULT_USB_AMBA_PLUG_CONFIG_OLD				\
+	STM_DEFAULT_TYPE2_AMBA_PLUG_CONFIG,				\
+	.max_opcode		=	stm_amba_opc_LD64_ST64,		\
+	.packets_in_chunk	=	2,				\
+	.type2.threshold	=	128
+
 /* SATA uses type 1 convertors */
 #define STM_DEFAULT_SATA_AMBA_PLUG_CONFIG				\
 	.type			=	stm_amba_type1,			\

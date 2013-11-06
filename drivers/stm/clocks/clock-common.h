@@ -224,16 +224,14 @@ int clk_fs660c32_dig_get_params(unsigned long input, unsigned long output,
 				unsigned long *pe, unsigned long *sdiv);
 
 /* ========================================================================
-   Name:	clk_fs660liege_dig_get_params ()
-   Description: Compute params for digital part of FS660
-   Input:       input=VCO freq, output=requested freq (Hz) & nsdiv
-   Output:      updated *md, *pe & *sdiv registers values.
-   Return:      'clk_err_t' error code
+   Name:	clk_fs660c32_vco_get_rate()
+   Description: Compute VCO frequency of FS660 embeded PLL (PLL660)
+   Input: ndiv & pdiv registers values
+   Output: updated *rate (Hz)
    ======================================================================== */
 
-int clk_fs660liege_dig_get_params(unsigned long input, unsigned long output,
-				unsigned long *nsdiv, unsigned long *md,
-				unsigned long *pe, unsigned long *sdiv);
+int clk_fs660c32_vco_get_rate(unsigned long input, unsigned long ndiv,
+			      unsigned long *rate);
 
 /* ========================================================================
    Name:	clk_fs660c32_vco_get_rate()
@@ -255,14 +253,6 @@ int clk_fs660c32_vco_get_rate(unsigned long input, unsigned long ndiv,
 int clk_fs660c32_get_rate(unsigned long input, unsigned long nsdiv,
 			unsigned long md, unsigned long pe,
 			unsigned long sdiv, unsigned long *rate);
-
-/* ========================================================================
-   Name:	clk_err_string
-   Description: Convert LLA error code to string.
-   Returns:     const char *ErrMessage
-   ======================================================================== */
-
-const char *clk_err_string(int err);
 
 /* ========================================================================
    Name:        clk_register_table

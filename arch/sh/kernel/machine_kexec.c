@@ -23,6 +23,7 @@
 #include <asm/cacheflush.h>
 #include <asm/sh_bios.h>
 #include <asm/reboot.h>
+#include <asm/irq-ilc.h>
 
 typedef void (*relocate_new_kernel_t)(unsigned long indirection_page,
 				      unsigned long reboot_code_buffer,
@@ -114,6 +115,7 @@ void machine_kexec(struct kimage *image)
 
 	kexec_info(image);
 	flush_cache_all();
+	stm_l2_disable();
 
 	sh_bios_vbr_reload();
 

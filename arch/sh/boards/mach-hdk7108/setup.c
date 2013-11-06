@@ -91,6 +91,7 @@
 #define HDK7108_GPIO_MII_SPEED_SEL stm_gpio(21, 7)
 #define HDK7108_GPIO_SPI_HOLD stm_gpio(2, 2)
 #define HDK7108_GPIO_SPI_WRITE_PRO stm_gpio(2, 3)
+#define HDK7108_GPIO_LPM	stm_gpio(26, 7)
 
 static void __init hdk7108_setup(char **cmdline_p)
 {
@@ -497,6 +498,20 @@ static int __init device_init(void)
 				SATA_MODE, PCIE_MODE },
 			});
 	stx7108_configure_sata(0, &(struct stx7108_sata_config) { });
+
+	stx7108_configure_pcie(&(struct stx7108_pcie_config) {
+					.reset_gpio = stm_gpio(24, 6)
+				});
+#endif
+
+#if !defined(CONFIG_SH_ST_HDK7108_VER1_BOARD) && \
+	!defined(CONFIG_SH_ST_HDK7108_VER1_1_BOARD)
+
+	stx7108_configure_lpm_i2c_interface(&(struct stx7108_lpm_i2c_config) {
+					.number_i2c = 2,
+					.number_gpio = HDK7108_GPIO_LPM,
+				});
+
 #endif
 
 
@@ -564,7 +579,7 @@ static int __init device_init(void)
 	defined(CONFIG_SH_ST_HDK7108_VER2_2_BOARD)
 	/*
 	 * NAND only supported on Rev 1.0, 1.1, and 2.2 boards; Rev 2.0 and 2.1A
-	 * are popuplated with MLC NAND which is not supported.
+	 * are populated with MLC NAND which is not supported.
 	 */
 	stx7108_configure_nand(&(struct stm_nand_config) {
 			.driver = stm_nand_flex,

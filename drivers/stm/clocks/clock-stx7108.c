@@ -10,6 +10,13 @@
  *****************************************************************************/
 
 /* ----- Modification history (most recent first)----
+02/nov/11 fabrice.charpentier@st.com
+	  clk_pll1600_xxx() renamed to clk_pll1600c65_xxx().
+11/may/11 fabrice.charpentier@st.com, Udit/Suvrat
+	  clkgenc_xable_fsyn() updated.
+08/oct/10 fabrice.charpentier@st.com
+	  Aligned OS21 & Linux init functions to "plat_clk_init()".
+	  Removed CLK_LAST.
 11/mar/10 fabrice.charpentier@st.com
 	  Added CKGA0 & A1 PLL1 (PLL800) set rate feature.
 03/mar/10 fabrice.charpentier@st.com
@@ -19,8 +26,8 @@
 	  clkgenc_enable()/clkgenc_disable()/clkgenc_xable_fsyn() revisited.
 15/dec/09 fabrice.charpent/francesco.virlinzi@st.com
 	  Bug fix in clkgenax_recalc() for CLKA1_PLL0LS.
-	  Replaced REGISTER_OPS by
-	  _CLK_OPS macro. Added LLA_VERSION in 'clock-stx7108.h'.
+	  Replaced REGISTER_OPS by _CLK_OPS macro.
+	  Added LLA_VERSION in 'clock-stx7108.h'.
 20/nov/09 francesco.virlinzi@st.com
 	  ClockGenA/B/C managed as bank
 03/nov/09 fabrice.charpentier@st.com
@@ -46,6 +53,7 @@
 #include <linux/stm/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
+
 #include "clock-stx7108.h"
 #include "clock-regs-stx7108.h"
 
@@ -176,7 +184,7 @@ _CLK_OPS(clkgene,
 );
 
 /* Physical clocks description */
-clk_t clk_clocks[] = {
+static clk_t clk_clocks[] = {
 /* Top level clocks */
 _CLK(CLK_SYSIN, &clkgentop, 0,
 	  CLK_RATE_PROPAGATES | CLK_ALWAYS_ENABLED),
@@ -300,11 +308,14 @@ _CLK_P(CLKD_DDR, &clkgend, 1066000000,
 
 /* Clockgen E (USB) */
 _CLK_P(CLKE_REF, &clkgene, 30000000,
-		CLK_ALWAYS_ENABLED, &clk_clocks[CLK_SYSIN]),
-
+		CLK_ALWAYS_ENABLED, &clk_clocks[CLK_SYSIN])
 };
 
-
+/* ========================================================================
+   Name:        plat_clk_init()
+   Description: SOC specific LLA initialization
+   Returns:     'clk_err_t' error code.
+   ======================================================================== */
 
 SYSCONF(SYS_CFG_BANK1, 4, 8, 15);
 SYSCONF(SYS_CFG_BANK1, 4, 16, 23);
@@ -595,14 +606,17 @@ static int clkgenax_enable(clk_t *clk_p)
 		/* Unsupported. Init must be called first. */
 		return CLK_ERR_BAD_PARAMETER;
 
-	/* PLL power up */
-	if ((clk_p->id >= CLKA0_PLL0HS && clk_p->id <= CLKA0_PLL1) ||
-	    (clk_p->id >= CLKA1_PLL0HS && clk_p->id <= CLKA1_PLL1))
+	switch (clk_p->id) {
+	case CLKA1_REF:
+	case CLKA0_REF:
+		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+	case CLKA0_PLL0HS ... CLKA0_PLL1:
+	case CLKA1_PLL0HS ... CLKA1_PLL1:
 		return clkgenax_xable_pll(clk_p, 1);
-
-	err = clkgenax_set_parent(clk_p, clk_p->parent);
-	/* clkgenax_set_parent() is performing also a recalc() */
-
+	default:
+		err = clkgenax_set_parent(clk_p, clk_p->parent);
+		/* clkgenax_set_parent() is performing also a recalc() */
+	}
 	return err;
 }
 
@@ -622,14 +636,16 @@ static int clkgenax_disable(clk_t *clk_p)
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
-	/* Can this clock be disabled ? */
-	if (clk_p->flags & CLK_ALWAYS_ENABLED)
-		return 0;
-
-	/* PLL power down */
-	if ((clk_p->id >= CLKA0_PLL0HS && clk_p->id <= CLKA0_PLL1) ||
-	    (clk_p->id >= CLKA1_PLL0HS && clk_p->id <= CLKA1_PLL1))
+	switch (clk_p->id) {
+	case CLKA1_REF:
+	case CLKA0_REF:
+		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+	case CLKA0_PLL0HS ... CLKA0_PLL1:
+	case CLKA1_PLL0HS ... CLKA1_PLL1:
 		return clkgenax_xable_pll(clk_p, 0);
+	default:
+		break;
+	}
 
 	idx = clkgenax_get_index(clk_p->id, &srcreg, &shift);
 	if (idx == -1)
@@ -1241,6 +1257,9 @@ static int clkgenb_enable(clk_t *clk_p)
 	if (!clk_p)
 		return CLK_ERR_BAD_PARAMETER;
 
+	if (clk_p->id == CLKB_REF)
+		return CLK_ERR_FEATURE_NOT_SUPPORTED;
+
 	if (clk_p->id >= CLKB_FS0_CH1 && clk_p->id <= CLKB_FS1_CH4)
 		err = clkgenb_xable_fsyn(clk_p, 1);
 	else
@@ -1624,21 +1643,20 @@ static int clkgenb_observe(clk_t *clk_p, unsigned long *div_p)
 
 static int clkgenb_fsyn_recalc(clk_t *clk_p)
 {
-	unsigned long val, bit;
-	unsigned long clkout = CKGB_FS0_CLKOUT_CTRL, ctrl = CKGB_FS0_CTRL;
+	unsigned long val, clkout, ctrl, bit;
 	unsigned long pe, md, sdiv;
 	int bank, channel;
 
 	if (!clk_p || !clk_p->parent)
 		return CLK_ERR_BAD_PARAMETER;
 
-	bank = (clk_p->id - CLKB_FS0_CH1) / 4;
-	channel = (clk_p->id - CLKB_FS0_CH1) % 4;
-
 	/* Which FSYN control registers to use ? */
-	if (clk_p->id >= CLKB_FS0_CH1 && clk_p->id <= CLKB_FS1_CH4) {
-		clkout += (CKGB_FS1_CLKOUT_CTRL - CKGB_FS0_CLKOUT_CTRL) * bank;
-		ctrl += (CKGB_FS1_CTRL - CKGB_FS0_CTRL) * bank;
+	if (clk_p->id >= CLKB_FS0_CH1 && clk_p->id <= CLKB_FS0_CH4) {
+		clkout = CKGB_FS0_CLKOUT_CTRL;
+		ctrl = CKGB_FS0_CTRL;
+	} else if (clk_p->id >= CLKB_FS1_CH1 && clk_p->id <= CLKB_FS1_CH4) {
+		clkout = CKGB_FS1_CLKOUT_CTRL;
+		ctrl = CKGB_FS1_CTRL;
 	} else
 		return CLK_ERR_BAD_PARAMETER;
 
@@ -1660,6 +1678,8 @@ static int clkgenb_fsyn_recalc(clk_t *clk_p)
 
 	/* FSYN is up and running.
 	   Now computing frequency */
+	bank = (clk_p->id - CLKB_FS0_CH1) / 4;
+	channel = (clk_p->id - CLKB_FS0_CH1) % 4;
 	pe = CLK_READ(CKGB_BASE_ADDRESS + CKGB_FS_PE(bank, channel));
 	md = CLK_READ(CKGB_BASE_ADDRESS + CKGB_FS_MD(bank, channel));
 	sdiv = CLK_READ(CKGB_BASE_ADDRESS + CKGB_FS_SDIV(bank, channel));
@@ -2077,6 +2097,7 @@ static int clkgenc_init(clk_t *clk_p)
 		data |= (1 << 0); /* reset NOT active */
 		CLK_WRITE(CKGC_BASE_ADDRESS + CKGC_FS0_CFG, data);
 	}
+
 	err = clkgenc_identify_parent(clk_p);
 	if (!err)
 		err = clkgenc_recalc(clk_p);
@@ -2102,20 +2123,13 @@ static int clkgenc_xable_fsyn(clk_t *clk_p, unsigned long enable)
 
 	val = CLK_READ(CKGC_BASE_ADDRESS + CKGC_FS0_CFG);
 
-	/* Powering */
+	/* Powering down/up digital part */
 	if (enable) {
-		/* Powering digital parts */
+		val |= (1 << 14); /* Analog power up */
 		val |= (1 << (10 + (clk_p->id - CLKC_FS0_CH1)));
-		/*Put FS out of reset */
-		val |= 1;
-
-		/* Set the freq source */
+		/* Clock source = FS */
 		val |= (1 << (2 + (clk_p->id - CLKC_FS0_CH1)));
-		/* Enable FS too  */
-		val |= (1 << (6 + (clk_p->id - CLKC_FS0_CH1)));
-
-		/* Powering analog part */
-		val |= (1 << 14);
+		val |= 1; /* Put FS out of reset */
 	} else {
 		val &= ~(1 << (10 + (clk_p->id - CLKC_FS0_CH1)));
 

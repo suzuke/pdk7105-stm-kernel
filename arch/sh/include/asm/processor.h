@@ -31,14 +31,9 @@ enum cpu_type {
 	CPU_SH7760, CPU_SH4_202, CPU_SH4_501,
 
 	/* SH-4 (ST40) types */
-        CPU_FLI7510, CPU_FLI7520, CPU_FLI7530, CPU_FLI7540,
-	CPU_ST40RA, CPU_ST40GX1,
 	CPU_STIH415,
-	CPU_STX5197, CPU_STX5206,
-	CPU_STI5528, CPU_STM8000,
 	CPU_STXH205,
-	CPU_STX7100, CPU_STX7105, CPU_STX7106, CPU_STX7108, CPU_STX7109,
-	CPU_STX7111, CPU_STX7141, CPU_STX7200,
+	CPU_STX7108,
 
 	/* SH-4A types */
 	CPU_SH7763, CPU_SH7770, CPU_SH7780, CPU_SH7781, CPU_SH7785, CPU_SH7786,
@@ -65,6 +60,13 @@ enum cpu_family {
 	CPU_FAMILY_UNKNOWN,
 };
 
+enum cpu_family_variant {
+	CPU_VARIANT_SH4_102,
+	CPU_VARIANT_SH4_103,
+	CPU_VARIANT_SH4_202,
+	CPU_VARIANT_ST40_300,
+	CPU_VARIANT_UNKNOWN,
+};
 /*
  * TLB information structure
  *
@@ -82,7 +84,7 @@ struct tlb_info {
 };
 
 struct sh_cpuinfo {
-	unsigned int type, family;
+	unsigned int type, family, variant;
 	int cut_major, cut_minor;
 	unsigned long loops_per_jiffy;
 	unsigned long asid_cache;

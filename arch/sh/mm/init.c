@@ -351,8 +351,15 @@ void __init paging_init(void)
 	memory_start = (unsigned long)__va(__MEMORY_START);
 	memory_end = memory_start + (memory_limit ?: memblock_phys_mem_size());
 
+#if defined CONFIG_32BIT && defined CONFIG_PMB_ST
+	/*
+	 * pmb_init() will have been called much earlier, and initialises the
+	 * uncached description variables explicitly.
+	 */
+#else
 	uncached_init();
 	pmb_init();
+#endif
 	do_init_bootmem();
 	ioremap_fixed_init();
 

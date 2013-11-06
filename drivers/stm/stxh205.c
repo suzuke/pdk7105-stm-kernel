@@ -185,7 +185,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 	{
 		/* SBC system configuration bank 0 registers */
 		/* SYSCFG_BANK0 (aka SYSCFG_SBC, Sapphire): 0-42 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 0,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -204,7 +204,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* SYSCFG_BANK1 (aka Coral): 100-176 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 1,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -223,7 +223,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* SYSCFG_BANK2 (aka Perl): 200-243 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 2,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -242,7 +242,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* SYSCFG_BANK3 (aka Opal): 400-510 */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 3,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -261,7 +261,7 @@ static struct platform_device stxh205_sysconf_devices[] = {
 		}
 	}, {
 		/* LPM Configuration registers */
-		.name		= "sysconf",
+		.name		= "stm-sysconf",
 		.id		= 4,
 		.num_resources	= 1,
 		.resource	= (struct resource[]) {
@@ -356,6 +356,27 @@ static struct platform_device stxh205_emi = {
 /*
  * Temperature sensor
  */
+static int stxh205_temp_init(struct stm_device_state *device_state)
+{
+	struct clk *clk = clk_get(NULL, "CLK_A0_THNS");
+	struct clk *osc;
+
+	if (!IS_ERR(clk))
+		return -ENODEV;
+
+	osc = clk_get(NULL, "CLK_A0_REF");
+	if (!IS_ERR(osc)) {
+		clk_put(clk);
+		return -ENODEV;
+	}
+
+	clk_enable(clk);
+	clk_set_parent(clk, osc);
+	clk_set_rate(clk, clk_get_rate(osc) / 30);
+
+	return 0;
+}
+
 static void stxh205_temp_power(struct stm_device_state *device_state,
 		enum stm_device_power_state power)
 {
@@ -368,8 +389,10 @@ static struct platform_device sth205_temp = {
 	.name	= "stm-temp",
 	.id	= 0,
 	.dev.platform_data = &(struct plat_stm_temp_data) {
+		.correction_factor = -103,
 		.device_config = &(struct stm_device_config) {
 			.sysconfs_num = 4,
+			.init = stxh205_temp_init,
 			.power = stxh205_temp_power,
 			.sysconfs = (struct stm_device_sysconf []){
 				STM_DEVICE_SYSCONF(SYSCONF(140),
@@ -431,9 +454,9 @@ void __init stxh205_configure_spifsm(struct stm_plat_spifsm_data *data)
 	/* SoC/IP Capabilities */
 	data->capabilities.no_read_repeat = 1;
 	data->capabilities.no_write_repeat = 1;
-	data->capabilities.no_sw_reset = 1;
+	data->capabilities.no_sw_reset = 0;
 	data->capabilities.read_status_bug = spifsm_read_status_clkdiv4;
-	data->capabilities.no_poll_mode_change = 1;
+	data->capabilities.no_poll_mode_change = 0;
 	data->capabilities.boot_from_spi = (sysconf_read(sc) == 0x1a) ? 1 : 0;
 
 	sysconf_release(sc);
@@ -559,16 +582,7 @@ static struct platform_device stxh205_fdma_devices[] = {
 			STM_PLAT_RESOURCE_IRQ(ILC_IRQ(29), -1),
 		},
 		.dev.platform_data = &stxh205_fdma_platform_data,
-	}/*, {
-		.name = "stm-fdma",
-		.id = 2,
-		.num_resources = 2,
-		.resource = (struct resource[2]) {
-			STM_PLAT_RESOURCE_MEM(0xfda20000, 0x10000),
-			STM_PLAT_RESOURCE_IRQ(ILC_IRQ(31), -1),
-		},
-		.dev.platform_data = &stx7108_fdma_platform_data,
-	}*/
+	}
 };
 
 static struct platform_device stxh205_fdma_xbar_device = {

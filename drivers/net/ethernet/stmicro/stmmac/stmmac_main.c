@@ -117,6 +117,12 @@ static unsigned int chain_mode;
 module_param(chain_mode, int, S_IRUGO);
 MODULE_PARM_DESC(chain_mode, "To use chain instead of ring mode");
 
+/* Enable this option the driver could use the WoL+ feature
+ * available in some new PHY drivers. This allows to completely power-off
+ * the mac when suspend and the WoL will be done by the PHY device directly. */
+static int wol_plus_en;
+module_param(wol_plus_en, int, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(wol_plus_en, "Driver can use the WoL+ feature");
 static irqreturn_t stmmac_interrupt(int irq, void *dev_id);
 
 #ifdef CONFIG_STMMAC_DEBUG_FS
@@ -855,6 +861,11 @@ static int stmmac_init_phy(struct net_device *dev)
 		 " Link = %d\n", dev->name, phydev->phy_id, phydev->link);
 
 	priv->phydev = phydev;
+
+	if ((priv->phydev->drv->wol_supported) && (wol_plus_en)) {
+		pr_info("stmmac: attached PHY supports WoL Plus\n");
+		priv->phy_wol_plus = priv->phydev->drv->wol_supported;
+	}
 
 	return 0;
 }
@@ -2880,8 +2891,13 @@ int stmmac_suspend(struct net_device *ndev)
 
 	stmmac_clear_descriptors(priv);
 
-	/* Enable Power down mode by programming the PMT regs */
-	if (device_may_wakeup(priv->device))
+	/* If the wake-up On Lan can be done by the PHY device
+	 * (that supports WoL+) there is no reason to program the PMT
+	 * registers. This means that to enable Power down mode programming
+	 * the PMT regs either the phy doesn't support WoL+ or the PHY
+	 * supports that but not the WoL mode required by the user.
+	 */
+	if (device_may_wakeup(priv->device) && (!priv->phy_wol_plus))
 		priv->hw->mac->pmt(priv->ioaddr, priv->wolopts);
 	else {
 		stmmac_set_mac(priv->ioaddr, false);
@@ -2902,13 +2918,12 @@ int stmmac_resume(struct net_device *ndev)
 
 	spin_lock_irqsave(&priv->lock, flags);
 
-	/* Power Down bit, into the PM register, is cleared
-	 * automatically as soon as a magic packet or a Wake-up frame
-	 * is received. Anyway, it's better to manually clear
-	 * this bit because it can generate problems while resuming
-	 * from another devices (e.g. serial console).
-	 */
-	if (device_may_wakeup(priv->device))
+	if (device_may_wakeup(priv->device) && (!priv->phy_wol_plus))
+		/* Power Down bit, into the PM register, is cleared
+		 * automatically as soon as a magic packet or a Wake-up frame
+		 * is received. Anyway, it's better to manually clear
+		 * this bit because it can generate problems while resuming
+		 * from another devices (e.g. serial console). */
 		priv->hw->mac->pmt(priv->ioaddr, 0);
 	else
 		/* enable the clk prevously disabled */
@@ -3026,6 +3041,9 @@ static int __init stmmac_cmdline_opt(char *str)
 				goto err;
 		} else if (!strncmp(opt, "chain_mode:", 11)) {
 			if (kstrtoint(opt + 11, 0, &chain_mode))
+				goto err;
+		} else if (!strncmp(opt, "wol_plus_en:", 12)) {
+			if (kstrtoint(opt + 12, 0, &wol_plus_en))
 				goto err;
 		}
 	}

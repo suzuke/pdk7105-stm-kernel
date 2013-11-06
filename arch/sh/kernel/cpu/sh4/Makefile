@@ -4,9 +4,12 @@
 
 obj-y	:= probe.o common.o
 common-y	+= entry.o
+obj-$(CONFIG_COUNT_EXCEPTIONS)		+= count_exceptions.o
 
 swsusp-y				:= $(addprefix ../sh3/, swsusp.o)
+swsusp-$(CONFIG_CPU_SUBTYPE_STXH205)	+= swsusp-stxh205.o
 obj-$(CONFIG_HIBERNATION)		+= swsusp.o
+
 obj-$(CONFIG_SH_FPU)			+= fpu.o softfloat.o
 obj-$(CONFIG_SH_STORE_QUEUES)		+= sq.o
 
@@ -45,13 +48,16 @@ obj-$(CONFIG_PERF_EVENTS)		+= $(perf-y)
 obj-$(CONFIG_CPU_SUBTYPE_ST40)		+= stm-tmu.o
 
 cpufreq-y				:= cpufreq-stm.o
-cpufreq-$(CONFIG_CPU_SUBTYPE_STX7108)	+= cpufreq-stx7108.o
+cpufreq-$(CONFIG_CPU_SUBTYPE_STXH205)	:= cpufreq-stm_cpu_clk.o cpufreq-stxh205.o
+cpufreq-$(CONFIG_CPU_SUBTYPE_STX7108)	+= cpufreq-stm_cpu_clk.o
 obj-$(CONFIG_STM_CPU_FREQ)		+= $(cpufreq-y)
 
 suspend-y				:= stm_suspend.o stm_suspend-core.o
+suspend-$(CONFIG_CPU_SUBTYPE_STXH205)	+= suspend-stxh205.o
 suspend-$(CONFIG_CPU_SUBTYPE_STX7108)	+= suspend-stx7108.o
 obj-$(CONFIG_SUSPEND)			+= $(suspend-y)
 
 hom-y					:= stm_hom.o stm_hom-core.o
+hom-$(CONFIG_CPU_SUBTYPE_STXH205)	+= hom-stxh205.o
 hom-$(CONFIG_CPU_SUBTYPE_STX7108)	+= hom-stx7108.o
 obj-$(CONFIG_HIBERNATION_ON_MEMORY)	+= $(hom-y)

@@ -181,6 +181,9 @@ void _clk_disable(struct clk *clk)
 {
 	int ret;
 
+	if (WARN_ON(clk->usage_counter == 0))
+		return;
+
 	if (--clk->usage_counter == 0) {
 		ret = __clk_disable(clk);
 		if (ret) {/* on error */

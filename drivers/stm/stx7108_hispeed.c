@@ -482,6 +482,7 @@ static struct stm_pad_config stx7108_ethernet_reverse_mii_pad_configs[] = {
 struct stx7108_stmmac_priv {
 	struct sysconf_field *mac_speed_sel;
 	void (*txclk_select)(int txclk_250_not_25_mhz);
+	struct stm_pio_control_pad_config pio_config;
 } stx7108_stmmac_priv_data[2];
 
 static void stx7108_ethernet_rmii_speed(void *priv, unsigned int speed)
@@ -501,27 +502,21 @@ static void stx7108_ethernet_gtx_speed(void *priv, unsigned int speed)
 		txclk_select(speed == SPEED_1000);
 }
 
-/*
- * stm_pad_update_gpio() does not copy the priv struct, so these need
- * to survive after stx7108_ethernet_rgmii_gtx_speed() returns. They is
- * never modified however, so can be shared by the two MACs.
- */
-static struct stm_pio_control_retime_config *stx7108_ethernet_rgmii_gtx_niclk =
-	RET_NICLK(0, 0);
-static struct stm_pio_control_retime_config *stx7108_ethernet_rgmii_gtx_iclk =
-	RET_ICLK(0, 0);
-
 static void stx7108_ethernet_rgmii_gtx_speed(void *priv, unsigned int speed)
 {
-	struct stm_pio_control_retime_config *rt;
+	struct stx7108_stmmac_priv *stmmac_priv = priv;
+	struct stm_pio_control_pad_config *config = &stmmac_priv->pio_config;
 	struct plat_stmmacenet_data *plat_data =
 		container_of(priv, struct plat_stmmacenet_data, bsp_priv);
 
 	/* TX Clock inversion is not set for 1000Mbps */
+	if (speed == SPEED_1000)
+		config->retime = RET_NICLK(0, 0);
+	else
+		config->retime = RET_ICLK(0, 0);
+
 	stm_pad_update_gpio(plat_data->custom_data, "TXCLK",
-		stm_pad_gpio_direction_ignored, -1, -1, 
-		(speed == SPEED_1000) ? rt = stx7108_ethernet_rgmii_gtx_niclk:
-		stx7108_ethernet_rgmii_gtx_iclk);
+		stm_pad_gpio_direction_ignored, -1, -1, config);
 
 	stx7108_ethernet_gtx_speed(priv, speed);
 }
@@ -752,7 +747,7 @@ static void stx7108_usb_power(struct stm_device_state *device_state,
 
 /* STBus Convertor config */
 static struct stm_amba_bridge_config stx7108_amba_usb_config = {
-	STM_DEFAULT_USB_AMBA_PLUG_CONFIG(128)
+	STM_DEFAULT_USB_AMBA_PLUG_CONFIG_OLD
 };
 
 static struct stm_plat_usb_data stx7108_usb_platform_data[] = {
@@ -916,10 +911,31 @@ void __init stx7108_configure_usb(int port)
 	static int osc_initialized;
 	static int configured[ARRAY_SIZE(stx7108_usb_devices)];
 	struct sysconf_field *sc;
+	static void *lmi16reg;
+	static int lmi_is_16;
 
 	BUG_ON(port < 0 || port >= ARRAY_SIZE(stx7108_usb_devices));
 
 	BUG_ON(configured[port]++);
+
+	if (!lmi16reg) {
+		/* Look at PPCFG ENABLE bit */
+		lmi16reg = ioremap(0xfde50084, 4);
+		if (lmi16reg) {
+			/* Check lmi0 */
+			lmi_is_16 = readl(lmi16reg) & 0x1;
+			iounmap(lmi16reg);
+			/* And now lmi1 */
+			lmi16reg = ioremap(0xfde70084, 4);
+			if (lmi16reg) {
+				lmi_is_16 |= readl(lmi16reg) & 0x1;
+				iounmap(lmi16reg);
+			}
+		}
+	}
+
+	if (lmi_is_16)
+		stx7108_amba_usb_config.type2.threshold = 16;
 
 	if (!osc_initialized++) {
 		/* USB2TRIPPHY_OSCIOK */
