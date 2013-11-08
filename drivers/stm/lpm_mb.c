@@ -16,6 +16,7 @@
 
 #include <linux/stm/lpm.h>
 #include <linux/platform_device.h>
+#include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/stm/platform.h>
@@ -725,8 +726,8 @@ static int lpm_load_firmware(struct platform_device *pdev)
 		lpm_drv_p->fw_name);
 
 	err = request_firmware_nowait(THIS_MODULE, 1, lpm_drv_p->fw_name,
-			&pdev->dev, (struct stm_lpm_driver_data *)lpm_drv_p,
-			(void *)lpm_load_fw);
+		&pdev->dev, GFP_KERNEL,
+		(struct stm_lpm_driver_data *)lpm_drv_p , (void *)lpm_load_fw);
 
 	return err;
 }
