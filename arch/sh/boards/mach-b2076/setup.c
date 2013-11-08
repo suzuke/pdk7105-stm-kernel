@@ -303,13 +303,6 @@ static int __init device_init(void)
 }
 arch_initcall(device_init);
 
-#ifdef CONFIG_PCI
-int pcibios_map_platform_irq(struct pci_dev *dev, u8 slot, u8 pin)
-{
-	return stm_pci_legacy_irq(dev);
-}
-#endif
-
 struct sh_machine_vector mv_b2076 __initmv = {
 	.mv_name = "b2076",
 	.mv_setup = b2076_setup,

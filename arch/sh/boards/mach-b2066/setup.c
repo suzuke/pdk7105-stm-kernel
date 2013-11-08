@@ -371,7 +371,7 @@ static int __init b2066_device_init(void)
 
 	/* J1 ("FAN Connector") */
 	stx7108_configure_pwm(&(struct stx7108_pwm_config) {
-			.out0_enabled = 1, });
+			.pwm_channel_config[0].enabled = 1, });
 
 	stx7108_configure_usb(0);
 	stx7108_configure_usb(1);
@@ -387,7 +387,7 @@ static int __init b2066_device_init(void)
 	/* GMAC 0 + MoCA device */
 	BUG_ON(fixed_phy_add(PHY_POLL, 1, &stmmac0_fixed_phy_status));
 	stx7108_configure_ethernet(0, &(struct stx7108_ethernet_config) {
-			.mode = stx7108_ethernet_mode_mii,
+			.interface = PHY_INTERFACE_MODE_MII,
 			.ext_clk = 1,
 			.phy_bus = 0,
 			.phy_addr = 1,
@@ -396,7 +396,7 @@ static int __init b2066_device_init(void)
 	/* GMAC 1 + RTK8363 switch */
 	BUG_ON(fixed_phy_add(PHY_POLL, 2, &stmmac1_fixed_phy_status));
 	stx7108_configure_ethernet(1, &(struct stx7108_ethernet_config) {
-			.mode = stx7108_ethernet_mode_rgmii_gtx,
+			.interface = PHY_INTERFACE_MODE_RGMII,
 			.ext_clk = 0,
 			.phy_bus = 0,
 			.txclk_select = b2066_mi11_txclk_select,
