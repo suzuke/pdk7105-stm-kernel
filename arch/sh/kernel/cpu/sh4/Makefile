@@ -7,7 +7,6 @@ common-y	+= entry.o
 obj-$(CONFIG_COUNT_EXCEPTIONS)		+= count_exceptions.o
 
 swsusp-y				:= $(addprefix ../sh3/, swsusp.o)
-swsusp-$(CONFIG_CPU_SUBTYPE_STXH205)	+= swsusp-stxh205.o
 obj-$(CONFIG_HIBERNATION)		+= swsusp.o
 
 obj-$(CONFIG_SH_FPU)			+= fpu.o softfloat.o

@@ -185,22 +185,3 @@ static int __init hom_stx7108_setup(void)
 }
 
 module_init(hom_stx7108_setup);
-
-int platform_allow_pm_sysconf(struct device *dev, int reg_nr, int freezing)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-
-	/*
-	 * Don't save and restore SYSCFG Bank0 SYSTEM_CONFIG0
-	 * "CPUs soft reset register" as this may cause the slave processors
-	 * for example the ST40 RT to reboot.
-	 */
-
-	if (pdev->id != 0)
-		return 1;
-
-	if (reg_nr != 4)
-		return 1;
-
-	return 0;
-}
