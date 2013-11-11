@@ -7,6 +7,7 @@
  */
 
 #include <linux/stm/wakeup_devices.h>
+#include <linux/stm/lpm.h>
 #include <linux/device.h>
 #include <linux/string.h>
 #include <linux/export.h>
@@ -64,6 +65,29 @@ static int __check_wakeup_device(struct device *dev, void *data)
 	return 0;
 }
 
+#ifdef CONFIG_STM_LPM
+static void stm_lpm_set_wakeup_device_wrapper(struct stm_wakeup_devices *wkd)
+{
+	unsigned int c_wk_device = 0;
+
+	c_wk_device |= wkd->lirc_can_wakeup ? STM_LPM_WAKEUP_IR : 0;
+	c_wk_device |= wkd->stm_mac0_can_wakeup ? STM_LPM_WAKEUP_WOL : 0;
+	c_wk_device |= wkd->stm_mac1_can_wakeup ? STM_LPM_WAKEUP_WOL : 0;
+	c_wk_device |= wkd->hdmi_cec ? STM_LPM_WAKEUP_CEC : 0;
+	c_wk_device |= wkd->hdmi_hotplug ? STM_LPM_WAKEUP_HPD : 0;
+	c_wk_device |= wkd->kscan ? STM_LPM_WAKEUP_FRP : 0;
+	c_wk_device |= wkd->asc ? STM_LPM_WAKEUP_ASC : 0;
+	c_wk_device |= wkd->rtc ? STM_LPM_WAKEUP_RTC : 0;
+	c_wk_device |= wkd->rtc_sbc ? STM_LPM_WAKEUP_RTC : 0;
+
+	stm_lpm_set_wakeup_device(c_wk_device);
+}
+#else
+static void stm_lpm_set_wakeup_device_wrapper(struct stm_wakeup_devices *wkd)
+{
+}
+#endif
+
 #ifdef CONFIG_PHYLIB
 static int __check_mdio_wakeup_device(struct device *dev, void *data)
 {
@@ -87,6 +111,7 @@ int stm_check_wakeup_devices(struct stm_wakeup_devices *wkd)
 #ifdef CONFIG_PHYLIB
 	bus_for_each_dev(&mdio_bus_type, NULL, wkd, __check_mdio_wakeup_device);
 #endif
+	stm_lpm_set_wakeup_device_wrapper(wkd);
 	return 0;
 }
 
