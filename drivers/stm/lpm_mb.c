@@ -59,6 +59,7 @@
 
 struct stm_lpm_driver_data {
 	void * __iomem lpm_mem_base[3];
+	struct platform_device *pdev;
 	struct lpm_message fw_reply_msg;
 	struct lpm_message fw_request_msg;
 	char fw_name[20];
@@ -697,6 +698,8 @@ static int lpm_load_fw(const struct firmware *fw,
 		err = stm_lpm_get_version(&driver_ver, &fw_ver);
 		if (likely(err == 0))
 			lpm_drv_p->fw_major_ver = fw_ver.major_comm_protocol;
+		platform_device_register_data(&lpm_drv_p->pdev->dev,
+					      "stm-rtc-sbc", -1, NULL, 0);
 	}
 	/* We do not return error if caused by SBC communication */
 	return 1;
@@ -753,6 +756,8 @@ static int __init stm_lpm_probe(struct platform_device *pdev)
 		pr_err("%s: Request memory failed \n", __func__);
 		return -ENOMEM;
 	}
+
+	lpm_drv->pdev = pdev;
 
 	for (count = 0; count < 3; count++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, count);
