@@ -101,14 +101,7 @@ struct stx7108_lirc_config {
 	int tx_od_enabled;
 };
 
-struct stx7108_lpm_i2c_config {
-	int number_i2c;
-	int number_gpio;
-};
-
 void stx7108_configure_lirc(struct stx7108_lirc_config *config);
-
-void stx7108_configure_lpm_i2c_interface(struct stx7108_lpm_i2c_config *conf);
 
 struct stx7108_pwm_config {
 	struct stm_plat_pwm_channel_config pwm_channel_config[2];

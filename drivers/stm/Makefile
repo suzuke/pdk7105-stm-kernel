@@ -39,11 +39,7 @@ obj-$(CONFIG_STM_PCIE)			+= pcie.o
 obj-$(CONFIG_STM_IRQ_MUX)		+= irqmux.o
 
 obj-$(CONFIG_CPU_SUBTYPE_STXH205)	+= stxh205_lpm.o
-obj-$(CONFIG_CPU_SUBTYPE_STX7108)	+= stx7108_lpm.o
-obj-$(CONFIG_STM_LPM)			+= lpm_com.o
-obj-$(CONFIG_STM_LPM_MB)		+= lpm_mb.o
-obj-$(CONFIG_STM_LPM_I2C)		+= lpm_i2c.o
-obj-$(CONFIG_STM_LPM_RD_MONITOR)	+= lpm_gpio_monitor.o
+obj-$(CONFIG_STM_LPM)			+= lpm_com.o lpm_mb.o
 
 obj-$(CONFIG_CPU_SUBTYPE_FLI7610)	+= fli7610.o fli7610_clock.o fli7610_audio.o pio-control.o \
 					   fli7610_usb.o fli7610_comms.o mpe41_devices.o \

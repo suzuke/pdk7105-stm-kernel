@@ -504,17 +504,6 @@ static int __init device_init(void)
 				});
 #endif
 
-#if !defined(CONFIG_SH_ST_HDK7108_VER1_BOARD) && \
-	!defined(CONFIG_SH_ST_HDK7108_VER1_1_BOARD)
-
-	stx7108_configure_lpm_i2c_interface(&(struct stx7108_lpm_i2c_config) {
-					.number_i2c = 2,
-					.number_gpio = HDK7108_GPIO_LPM,
-				});
-
-#endif
-
-
 #ifdef CONFIG_SH_ST_HDK7108_STMMAC0
 	stx7108_configure_ethernet(0, &(struct stx7108_ethernet_config) {
 			.interface = PHY_INTERFACE_MODE_MII,
