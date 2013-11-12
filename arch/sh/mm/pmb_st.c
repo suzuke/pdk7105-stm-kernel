@@ -800,7 +800,7 @@ static void call_apply_boot_mappings(struct pmb_mapping *uc_mapping,
 		: "r"(&uc_stack[ARRAY_SIZE(uc_stack)]),
 		  "r"(&apply_boot_mappings),
 		  "r"(p1), "r"(p2)
-		: "r0", "r1", "r2", "r3", "r8", "t");
+		: "r0", "r1", "r2", "r3", "r8", "t", "pr");
 }
 
 void __devinit pmb_init(void)
@@ -953,8 +953,8 @@ static void pmb_resume(void)
 {
 	int idx;
 
-	for (idx = 1; idx < NR_PMB_ENTRIES; ++idx)
-		if (pmbm[idx].usage && pmbm[idx].virt != 0xbf)
+	for (idx = 0; idx < NR_PMB_ENTRIES; ++idx)
+		if (pmbm[idx].usage && &pmbm[idx] != uc_mapping)
 			pmb_mapping_set(&pmbm[idx]);
 
 	flush_cache_all();
