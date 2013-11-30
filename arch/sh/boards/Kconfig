@@ -465,6 +465,19 @@ config SH_ST_MB903
 	  Select SH_ST_MB903 if configuring for a
 	  STMicroelectronics STi7108M Reference Board.
 
+config SH_ST_PDK7105
+    bool "PDK7105-SDK : STi7105 SDK Reference board"
+    depends on CPU_SUBTYPE_STX7105
+    select SYS_SUPPORTS_PCI
+    select SH_ST_SYNOPSYS_PCI if PCI
+    default n
+    help
+      Select PDK7105-SDK if configuring for an
+      STMicroelectronics STi7105 SDK Reference Board.
+
+
+
+
 comment "ST Peripheral Boards"
 
 config SH_ST_DB641
