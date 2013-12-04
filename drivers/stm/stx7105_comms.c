@@ -166,7 +166,7 @@ static struct platform_device stx7105_asc_devices[] = {
  * for console bring up prior to platform initialisation. */
 
 /* the serial console device */
-int __initdata stm_asc_console_device;
+//int __initdata stm_asc_console_device;
 
 /* Platform devices to register */
 unsigned int __initdata stm_asc_configured_devices_num = 0;
@@ -228,7 +228,7 @@ void __init stx7105_configure_asc(int asc, struct stx7105_asc_config *config)
 	}
 
 	if (config->is_console)
-		stm_asc_console_device = pdev->id;
+		stm_asc_console_device = pdev;
 
 	stm_asc_configured_devices[stm_asc_configured_devices_num++] = pdev;
 }
@@ -503,11 +503,11 @@ int __init stx7105_configure_ssc_i2c(int ssc, struct stx7105_ssc_config *config)
 	}
 
 	plat_data->pad_config = pad_config;
-	plat_data->i2c_fastmode = config->i2c_fastmode;
+//	plat_data->i2c_fastmode = config->i2c_fastmode;
 
 	/* I2C bus number reservation (to prevent any hot-plug device
 	 * from using it) */
-	i2c_register_board_info(i2c_busnum, NULL, 0);
+//	i2c_register_board_info(i2c_busnum, NULL, 0);
 
 	platform_device_register(&stx7105_ssc_devices[ssc]);
 
@@ -683,7 +683,7 @@ int __init stx7105_configure_ssc_spi(int ssc, struct stx7105_ssc_config *config)
 		break;
 	}
 
-	plat_data->spi_chipselect = config->spi_chipselect;
+	//plat_data->spi_chipselect = config->spi_chipselect;
 	plat_data->pad_config = pad_config;
 
 	platform_device_register(&stx7105_ssc_devices[ssc]);
@@ -736,7 +736,10 @@ void __init stx7105_configure_lirc(struct stx7105_lirc_config *config)
 	BUG_ON(!pad_config);
 
 	plat_data->txenabled = config->tx_enabled || config->tx_od_enabled;
-	plat_data->pads = pad_config;
+    plat_data->dev_config = kzalloc(sizeof(struct stm_device_config),
+        GFP_KERNEL);
+    plat_data->dev_config->pad_config = pad_config;
+
 
 	switch (config->rx_mode) {
 	case stx7105_lirc_rx_disabled:
@@ -813,14 +816,21 @@ static struct platform_device stx7105_pwm_device = {
 void __init stx7105_configure_pwm(struct stx7105_pwm_config *config)
 {
 	static int configured;
+    int channel;
 
 	BUG_ON(configured);
 	configured = 1;
 
+    for (channel = 0; channel < ARRAY_SIZE(config->pwm_channel_config); channel++)
+        stx7105_pwm_platform_data.pwm_channel_config[channel] =
+            config->pwm_channel_config[channel];
+
+
+/*
 	if (config) {
 		switch (config->out0) {
 		case stx7105_pwm_out0_disabled:
-			/* Nothing to do... */
+			//Nothing to do...
 			break;
 		case stx7105_pwm_out0_pio4_4:
 			stx7105_pwm_platform_data.channel_enabled[0] = 1;
@@ -839,7 +849,7 @@ void __init stx7105_configure_pwm(struct stx7105_pwm_config *config)
 
 		switch (config->out1) {
 		case stx7105_pwm_out1_disabled:
-			/* Nothing to do... */
+			// Nothing to do...
 			break;
 		case stx7105_pwm_out1_pio4_5:
 			stx7105_pwm_platform_data.channel_enabled[1] = 1;
@@ -856,6 +866,7 @@ void __init stx7105_configure_pwm(struct stx7105_pwm_config *config)
 			break;
 		}
 	}
+*/
 
 	platform_device_register(&stx7105_pwm_device);
 }

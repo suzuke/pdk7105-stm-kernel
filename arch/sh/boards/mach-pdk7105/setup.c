@@ -12,6 +12,7 @@
 
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/pci.h>
 #include <linux/leds.h>
 #include <linux/stm/pio.h>
 #include <linux/stm/platform.h>
@@ -108,7 +109,7 @@ static int pdk7105_phy_reset(void* bus)
 }
 
 static struct stmmac_mdio_bus_data stmmac_mdio_bus = {
-    .bus_id = 0,
+//    .bus_id = 0,
     .phy_reset = pdk7105_phy_reset,
     .phy_mask = 0,
 };
@@ -410,10 +411,10 @@ static int __init device_init(void)
 	stx7105_configure_sata(0);
 	
     //stx7105_configure_pwm(&pwm_private_info);
-	stx7105_configure_pwm(&(struct stx7105_pwm_config) {
+	/*stx7105_configure_pwm(&(struct stx7105_pwm_config) {
             .out0 = stx7105_pwm_out0_pio13_0,
             .out1 = stx7105_pwm_out1_disabled, });
-
+    */
     //stx7105_configure_ssc(&ssc_private_info);
     stx7105_configure_ssc_i2c(1, &(struct stx7105_ssc_config) {
             .routing.ssc1.sclk = stx7105_ssc1_sclk_pio2_5,
@@ -461,7 +462,7 @@ static int __init device_init(void)
     gpio_set_value(PDK7105_PIO_PHY_RESET, 0);
 	for(i=0;i<5;i++)
 	{
-	    udelay(20000);
+	    mdelay(20000);
 	}	
 	//stpio_set_pin(phy_reset_pin, 1);
     gpio_set_value(PDK7105_PIO_PHY_RESET, 1);
@@ -526,8 +527,8 @@ static void __init pdk7105_init_irq(void)
 {
 #ifndef CONFIG_SH_ST_MB705
 	/* Configure STEM interrupts as active low. */
-	set_irq_type(ILC_EXT_IRQ(1), IRQ_TYPE_LEVEL_LOW);
-	set_irq_type(ILC_EXT_IRQ(2), IRQ_TYPE_LEVEL_LOW);
+	irq_set_irq_type(ILC_EXT_IRQ(1), IRQ_TYPE_LEVEL_LOW);
+	irq_set_irq_type(ILC_EXT_IRQ(2), IRQ_TYPE_LEVEL_LOW);
 #endif
 }
 
@@ -536,6 +537,6 @@ struct sh_machine_vector mv_pdk7105 __initmv = {
 	.mv_setup		= pdk7105_setup,
 	.mv_nr_irqs		= NR_IRQS,
 	.mv_init_irq		= pdk7105_init_irq,
-	.mv_ioport_map		= pdk7105_ioport_map,
+//	.mv_ioport_map		= pdk7105_ioport_map,
 };
 

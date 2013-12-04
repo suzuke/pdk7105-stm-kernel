@@ -325,9 +325,14 @@ static void stx7105_ethernet_fix_mac_speed(void *bsp_priv, unsigned int speed)
 		sysconf_write(mac_speed_sel, (speed == SPEED_100) ? 1 : 0);
 }
 
+static struct stmmac_dma_cfg gmac_dma_setting = {
+    .pbl = 32,
+};
+
+
 static struct plat_stmmacenet_data stx7105_ethernet_platform_data[] = {
 	{
-		.pbl = 32,
+        .dma_cfg = &gmac_dma_setting,
 		.has_gmac = 1,
 		.enh_desc = 1,
 		.tx_coe = 1,
@@ -336,8 +341,8 @@ static struct plat_stmmacenet_data stx7105_ethernet_platform_data[] = {
 		.fix_mac_speed = stx7105_ethernet_fix_mac_speed,
 		.init = &stmmac_claim_resource,
 	}, {
-		.pbl = 32,
-		.has_gmac = 1,
+		.dma_cfg = &gmac_dma_setting,
+        .has_gmac = 1,
 		.enh_desc = 1,
 		.tx_coe = 1,
 		.bugged_jumbo =1,
@@ -528,8 +533,7 @@ static void stx7105_usb_power(struct stm_device_state *device_state,
 
 static struct stm_plat_usb_data stx7105_usb_platform_data[] = {
 	[0] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
 		.device_config = &(struct stm_device_config){
 			/* .pad_config created in stx7105_configure_usb() */
 			.sysconfs_num = 3,
@@ -542,8 +546,7 @@ static struct stm_plat_usb_data stx7105_usb_platform_data[] = {
 		}
 	},
 	[1] = {
-		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT |
-				STM_PLAT_USB_FLAGS_STBUS_CONFIG_THRESHOLD128,
+		.flags = STM_PLAT_USB_FLAGS_STRAP_8BIT,
 		.device_config = &(struct stm_device_config){
 			/* .pad_config created in stx7105_configure_usb() */
 			.sysconfs_num = 3,

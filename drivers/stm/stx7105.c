@@ -23,7 +23,7 @@
 #include <linux/stm/stx7105.h>
 #include <linux/clk.h>
 #include <asm/irq-ilc.h>
-
+#include <linux/stm/mmc.h>
 
 /* EMI resources ---------------------------------------------------------- */
 
@@ -343,14 +343,19 @@ static struct platform_device stx7105_temp_device = {
 	.name			= "stm-temp",
 	.id			= -1,
 	.dev.platform_data	= &(struct plat_stm_temp_data) {
-		.dcorrect = { SYS_CFG, 41, 5, 9 },
+/*
+        .dcorrect = { SYS_CFG, 41, 5, 9 },
 		.overflow = { SYS_STA, 12, 8, 8 },
 		.data = { SYS_STA, 12, 10, 16 },
-		.device_config = &(struct stm_device_config) {
+*/
+        .device_config = &(struct stm_device_config) {
 			.sysconfs_num = 1,
 			.power = stx7105_temp_power,
 			.sysconfs = (struct stm_device_sysconf []){
 				STM_DEVICE_SYS_CFG(41, 4, 4, "TEMP_PWR"),
+                STM_DEVICE_SYS_CFG(41, 5, 9, "DCORRECT"),
+                STM_DEVICE_SYS_STA(12, 8, 8, "OVERFLOW"),
+                STM_DEVICE_SYS_STA(12, 10, 16, "DATA"),
 			},
 		}
 	},
@@ -525,6 +530,7 @@ static struct platform_device stx7105_pio_irqmux_device = {
 	}
 };
 
+
 static int stx7105_pio_config(unsigned gpio,
 		enum stm_pad_gpio_direction direction, int function, void *priv)
 {
@@ -633,6 +639,15 @@ static int stx7105_pio_config(unsigned gpio,
 	return 0;
 }
 
+
+static const struct stm_pad_ops stx7105_pad_ops = {
+    .gpio_config = stx7105_pio_config,
+    .gpio_report = NULL, //fixme 
+};
+
+
+
+
 /* MMC/SD resources ------------------------------------------------------ */
 
 /*
@@ -659,6 +674,7 @@ static struct stm_pad_config stx7105_mmc_pad_config = {
 	},
 };
 
+/*
 static int mmc_pad_resources(struct sdhci_host *sdhci)
 {
 	if (!devm_stm_pad_claim(sdhci->mmc->parent, &stx7105_mmc_pad_config,
@@ -667,12 +683,16 @@ static int mmc_pad_resources(struct sdhci_host *sdhci)
 
 	return 0;
 }
+*/
 
-static struct sdhci_pltfm_data stx7105_mmc_platform_data = {
-		.init = mmc_pad_resources,
+static struct stm_mmc_platform_data stx7105_mmc_platform_data = {
+/*		.init = mmc_pad_resources,
 		.quirks = SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC |
 			  SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN |
 			  SDHCI_QUIRK_FORCE_MAX_VDD,
+*/
+    .custom_cfg = &stx7105_mmc_pad_config,
+    .nonremovable = false,
 };
 
 static struct platform_device stx7105_mmc_device = {
@@ -745,7 +765,7 @@ void __init stx7105_early_device_init(void)
 			ARRAY_SIZE(stx7105_pio_devices),
 			ILC_FIRST_IRQ + ILC_NR_IRQS);
 	stm_pad_init(ARRAY_SIZE(stx7105_pio_devices) * STM_GPIO_PINS_PER_PORT,
-		     -1, 0, stx7105_pio_config);
+		     -1, 0, &stx7105_pad_ops);
 
 	sc = sysconf_claim(SYS_DEV, 0, 0, 31, "devid");
 	devid = sysconf_read(sc);

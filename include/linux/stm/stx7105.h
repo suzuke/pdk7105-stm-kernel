@@ -18,6 +18,7 @@
 #include <linux/stm/platform.h>
 
 
+
 /* Sysconfig groups */
 
 #define SYS_DEV 0
@@ -129,7 +130,8 @@ void stx7105_configure_lirc(struct stx7105_lirc_config *config);
 
 
 struct stx7105_pwm_config {
-	enum {
+    struct stm_plat_pwm_channel_config pwm_channel_config[2];
+/*	enum {
 		stx7105_pwm_out0_disabled,
 		stx7105_pwm_out0_pio4_4,
 		stx7105_pwm_out0_pio13_0
@@ -138,7 +140,7 @@ struct stx7105_pwm_config {
 		stx7105_pwm_out1_disabled,
 		stx7105_pwm_out1_pio4_5,
 		stx7105_pwm_out1_pio13_1,
-	} out1;
+	} out1;*/
 };
 void stx7105_configure_pwm(struct stx7105_pwm_config *config);
 
@@ -224,6 +226,12 @@ void stx7105_configure_nand(struct stm_nand_config *config);
 
 
 void stx7106_configure_spifsm(struct stm_plat_spifsm_data *data);
+
+/* Clk Stuff */
+//int stx7105_plat_clk_init(void);
+//int stx7105_plat_clk_alias_init(void);
+
+
 
 struct stx7105_audio_config {
 	enum {

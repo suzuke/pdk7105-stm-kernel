@@ -11,7 +11,7 @@ menu "STM specific devices"
 
 config STM_PCI_EMISS
 	bool "STMicroelectronics PCI controller"
-	depends on PCI && (CPU_SUBTYPE_STX7108)
+	depends on PCI && (CPU_SUBTYPE_STX7108 || CPU_SUBTYPE_STX7105)
 	def_bool n
 	---help---
 	  This option adds support for the PCI controller found on some
@@ -34,7 +34,8 @@ config STM_MIPHY
 config STM_MIPHY_TAP
 	bool
 	depends on STM_MIPHY
-	default y if CPU_SUBTYPE_STX7108
+    default y if CPU_SUBTYPE_STX7105
+    default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STIH415
 	default n
 
@@ -57,6 +58,7 @@ config STM_MIPHY_DUMMY
 config STM_MIPHY365X
 	bool
 	depends on STM_MIPHY
+    default y if CPU_SUBTYPE_STX7105
 	default y if CPU_SUBTYPE_STX7108
 	default y if CPU_SUBTYPE_STIH415
 	default y if MACH_STM_STIH416
